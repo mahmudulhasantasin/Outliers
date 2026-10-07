@@ -249,7 +249,7 @@ export default function CopilotPage() {
               </p>
             </div>
 
-            <div className="shadow-[0_20px_50px_rgba(0,0,0,0.14)] rounded-[22px]">
+            <div className="w-full max-w-[620px] shadow-[0_20px_50px_rgba(0,0,0,0.14)] rounded-[22px]">
               <PromptBar
                 placeholder={
                   language === "bn"
@@ -257,6 +257,7 @@ export default function CopilotPage() {
                     : "Ask anything about contracts or Bangladesh statutes..."
                 }
                 width={620}
+                className="w-full !max-w-none"
                 busy={isTyping}
                 onSend={handleSendPrompt}
               />

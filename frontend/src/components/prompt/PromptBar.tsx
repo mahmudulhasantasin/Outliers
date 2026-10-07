@@ -363,14 +363,15 @@ export default function PromptBar({
   return (
     <div
       ref={rootRef}
-      className={`group relative text-[14px] leading-[22px] [width:min(var(--pb-w),100%)] [color:var(--pb-ink)]${className ? ` ${className}` : ''}`}
+      className={`group relative text-[14px] leading-[22px] w-full [color:var(--pb-ink)]${className ? ` ${className}` : ''}`}
       data-busy={busy ? '' : undefined}
       style={
         {
           '--pb-bg': background,
           '--pb-ink': color,
           '--pb-menu': menuBackground,
-          '--pb-w': `${width}px`,
+          width: `${width}px`,
+          maxWidth: '100%',
           '--pb-radius': `${radius}px`,
           '--pb-press': pressScale
         } as CSSProperties
