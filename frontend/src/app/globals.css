@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-primary: #F4F4F6;
+    --bg-secondary: #FFFFFF;
+    --bg-surface: #EAEAEC;
+    --bg-card: #FFFFFF;
+    --text-primary: #121212;
+    --text-muted: #71717A;
+    --accent-solid: #18181B;
+    --accent-contrast: #FFFFFF;
+    --status-risk-high: #EF4444;
+    --status-risk-med: #F59E0B;
+    --status-risk-low: #10B981;
+  }
+
+  .dark {
+    --bg-primary: #09090B;
+    --bg-secondary: #121215;
+    --bg-surface: #18181C;
+    --bg-card: #141418;
+    --text-primary: #F4F4F5;
+    --text-muted: #A1A1AA;
+    --accent-solid: #FFFFFF;
+    --accent-contrast: #09090B;
+    --status-risk-high: #F87171;
+    --status-risk-med: #FBBF24;
+    --status-risk-low: #34D399;
+  }
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Zero-Border Card System */
+.minimal-card {
+  border: none !important;
+  outline: none !important;
+  background-color: var(--bg-card);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.04);
+  border-radius: 1.25rem;
+}
+
+.dark .minimal-card {
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+}
+
+.minimal-surface {
+  border: none !important;
+  outline: none !important;
+  background-color: var(--bg-surface);
+  border-radius: 1rem;
+}
+
+.minimal-dock {
+  border: none !important;
+  background-color: var(--bg-secondary);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+}
+
+.dark .minimal-dock {
+  box-shadow: 0 16px 50px rgba(0, 0, 0, 0.45);
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-surface);
+  border-radius: 9999px;
+}
