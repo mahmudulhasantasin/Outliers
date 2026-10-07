@@ -139,19 +139,25 @@ export default function LandingPage() {
               : "স্বয়ংক্রিয় চুক্তি পর্যালোচনা, আইনি ধারা ম্যাপিং এবং নির্ভরযোগ্য মেমো প্রস্তুতকরণ।"}
           </p>
 
-          {/* Action Buttons */}
+          {/* Action Buttons: Sign In & Sign Up */}
           <div className="flex items-center gap-3.5">
             <button
-              onClick={handleStartContractMind}
-              className="px-6 py-2.5 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs md:text-sm font-medium transition-colors shadow-sm"
+              onClick={() => {
+                loginAsDemoUser();
+                router.push("/copilot");
+              }}
+              className="px-7 py-2.5 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs md:text-sm font-medium transition-colors shadow-sm"
             >
-              {language === "en" ? "Analyze Contract" : "চুক্তিপত্র বিশ্লেষণ"}
+              {language === "en" ? "Sign In" : "লগইন করুন"}
             </button>
             <button
-              onClick={handleStartCopilot}
-              className="px-6 py-2.5 rounded-xl border border-black/20 hover:border-black text-black text-xs md:text-sm font-medium transition-colors bg-transparent"
+              onClick={() => {
+                loginAsDemoUser();
+                router.push("/copilot");
+              }}
+              className="px-7 py-2.5 rounded-xl border border-black/20 hover:border-black text-black text-xs md:text-sm font-medium transition-colors bg-transparent"
             >
-              {language === "en" ? "Legal Copilot" : "লিগ্যাল কোপাইলট"}
+              {language === "en" ? "Sign Up" : "সাইন আপ"}
             </button>
           </div>
         </div>
