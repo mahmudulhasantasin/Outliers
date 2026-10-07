@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
@@ -9,6 +9,11 @@ export default function LandingPage() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
   const { loginAsDemoUser } = useAuth();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleStartContractMind = () => {
     loginAsDemoUser();
@@ -20,9 +25,18 @@ export default function LandingPage() {
     router.push("/copilot");
   };
 
+  if (!mounted) {
+    return (
+      <div className="min-h-screen w-full bg-[#FFFFFF]" />
+    );
+  }
+
   return (
-    <div className="relative min-h-screen w-full bg-[#FFFFFF] text-[#000000] flex flex-col justify-between overflow-hidden selection:bg-black selection:text-white font-sans">
-      {/* Background Graphic: Right Geometric Network Graph (Pure Minimalist Grey) */}
+    <div
+      suppressHydrationWarning
+      className="relative min-h-screen w-full bg-[#FFFFFF] text-[#000000] flex flex-col justify-between overflow-hidden selection:bg-black selection:text-white font-sans"
+    >
+      {/* Background Graphic: Right Geometric Network Graph */}
       <div className="absolute right-[-60px] md:right-[-20px] top-1/2 -translate-y-1/2 w-[480px] h-[480px] md:w-[680px] md:h-[680px] pointer-events-none opacity-20 select-none">
         <svg
           viewBox="0 0 600 600"
@@ -125,7 +139,7 @@ export default function LandingPage() {
               : "স্বয়ংক্রিয় চুক্তি পর্যালোচনা, আইনি ধারা ম্যাপিং এবং নির্ভরযোগ্য মেমো প্রস্তুতকরণ।"}
           </p>
 
-          {/* Action Buttons: Solid Black & Thin Border White/Transparent */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-3.5">
             <button
               onClick={handleStartContractMind}
