@@ -238,27 +238,29 @@ export default function CopilotPage() {
         ) : (
           /* Initial Stage: Centered Prompt Bar */
           <div className="flex-1 flex flex-col items-center justify-center -mt-8">
-            <div className="text-center mb-7">
-              <h2 className="text-3xl font-serif font-normal text-black tracking-tight mb-2">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl sm:text-4xl font-serif font-normal text-black tracking-tight mb-2.5 drop-shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
                 {language === "bn" ? "লিগ্যাল কোপাইলট" : "Legal Copilot"}
               </h2>
-              <p className="text-sm text-neutral-500 font-sans">
+              <p className="text-sm sm:text-[15px] text-neutral-600 font-sans drop-shadow-[0_1px_6px_rgba(0,0,0,0.08)]">
                 {language === "bn"
                   ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
                   : "Ask statutory questions with verifiable citations"}
               </p>
             </div>
 
-            <PromptBar
-              placeholder={
-                language === "bn"
-                  ? "আইনি প্রশ্ন বা চুক্তির ধারা জানতে লিখুন..."
-                  : "Ask anything about contracts or Bangladesh statutes..."
-              }
-              width={580}
-              busy={isTyping}
-              onSend={handleSendPrompt}
-            />
+            <div className="shadow-[0_20px_50px_rgba(0,0,0,0.14)] rounded-[22px]">
+              <PromptBar
+                placeholder={
+                  language === "bn"
+                    ? "আইনি প্রশ্ন বা চুক্তির ধারা জানতে লিখুন..."
+                    : "Ask anything about contracts or Bangladesh statutes..."
+                }
+                width={620}
+                busy={isTyping}
+                onSend={handleSendPrompt}
+              />
+            </div>
           </div>
         )}
 
