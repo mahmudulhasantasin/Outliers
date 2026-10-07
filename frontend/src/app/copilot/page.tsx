@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
+import Aurora from "@/components/effects/Aurora";
 import { useLanguage } from "@/context/LanguageContext";
 import { STATUTORY_PROVISIONS, StatutoryProvision } from "@/data/statutoryProvisions";
 import {
@@ -133,6 +134,17 @@ export default function CopilotPage() {
 
   return (
     <AppShell>
+      {/* Background Animated Aurora - Sophisticated Muted Palette */}
+      <div className="fixed inset-0 pointer-events-none opacity-45 -z-10 overflow-hidden">
+        <Aurora
+          colorStops={["#E2E8F0", "#CBD5E1", "#E2E8F0"]}
+          blend={0.65}
+          amplitude={1.2}
+          speed={0.4}
+          lightMode={true}
+        />
+      </div>
+
       <div className="relative flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto">
         {/* Context Bar if contract is loaded */}
         {loadedContractTitle && (
