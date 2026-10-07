@@ -30,16 +30,7 @@ interface ChatMessage {
   };
 }
 
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: "msg-welcome",
-    sender: "copilot",
-    timestamp: "Just now",
-    textEn: "Welcome to Legal Copilot. I am your sovereign advisory assistant grounded strictly in statutory provisions of Bangladesh. You can ask general legal compliance questions or analyze specific contractual liabilities. All findings are verified with direct citations.",
-    textBn: "লিগ্যাল কোপাইলটে স্বাগতম। আমি বাংলাদেশের সংবিধিবদ্ধ আইনভাণ্ডারের সুনির্দিষ্ট ধারার ভিত্তিতে দায়িত্বশীল আইনি সহকারী। আপনি শ্রম আইন, চুক্তি আইন বা বাণিজ্যিক বাধ্যবাধকতা নিয়ে যেকোনো প্রশ্ন করতে পারেন। প্রতিটি উত্তর যাচাইকৃত আইনি ধারা সহ উপস্থাপিত হবে।",
-    citations: ["contract-act-73", "contract-act-27"]
-  }
-];
+const INITIAL_MESSAGES: ChatMessage[] = [];
 
 export default function CopilotPage() {
   const { language, t } = useLanguage();
@@ -215,21 +206,8 @@ export default function CopilotPage() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Bottom Input Area & Quick Prompt */}
+        {/* Bottom Input Area */}
         <div className="pt-3">
-          {/* Quick Prompt Chip */}
-          <div className="flex items-center gap-2 mb-3 overflow-x-auto pb-1 text-xs select-none">
-            <span className="text-neutral-400 font-medium whitespace-nowrap">
-              {language === "bn" ? "প্রস্তাবিত প্রশ্ন:" : "Suggested:"}
-            </span>
-            <button
-              onClick={() => handleSendMessage(samplePrompt)}
-              className="px-3.5 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-normal whitespace-nowrap transition-colors shadow-sm"
-            >
-              {samplePrompt}
-            </button>
-          </div>
-
           {/* Clean Zero-Border Input Bar */}
           <form
             onSubmit={(e) => {
