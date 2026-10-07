@@ -43,31 +43,31 @@ export default function AppDock() {
 
   const items: VerticalDockItemData[] = [
     {
-      icon: <Bot className="w-5 h-5" />,
+      icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
       label: language === "bn" ? "লিগ্যাল কোপাইলট (Q&A)" : "Legal Copilot",
       isActive: pathname === "/copilot" || pathname === "/app",
       onClick: () => router.push("/copilot"),
     },
     {
-      icon: <FileText className="w-5 h-5" />,
+      icon: <FileText className="w-5 h-5 stroke-[2.4]" />,
       label: language === "bn" ? "কন্ট্রাক্টমাইন্ড (চুক্তি বিশ্লেষণ)" : "ContractMind Audit",
       isActive: pathname === "/contractmind",
       onClick: () => router.push("/contractmind"),
     },
     {
-      icon: <FolderClock className="w-5 h-5" />,
+      icon: <FolderClock className="w-5 h-5 stroke-[2.4]" />,
       label: language === "bn" ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
       isActive: pathname === "/archive",
       onClick: () => router.push("/archive"),
     },
     {
-      icon: <Cpu className="w-5 h-5" />,
+      icon: <Cpu className="w-5 h-5 stroke-[2.4]" />,
       label: language === "bn" ? "সিস্টেম আর্কিটেকচার" : "Architecture",
       isActive: pathname === "/architecture",
       onClick: () => router.push("/architecture"),
     },
     {
-      icon: <ShieldCheck className="w-5 h-5" />,
+      icon: <ShieldCheck className="w-5 h-5 stroke-[2.4]" />,
       label: language === "bn" ? "সিকিউরিটি ও অডিট" : "Security & Audit",
       isActive: pathname === "/security" || pathname === "/audit",
       onClick: () => router.push("/security"),

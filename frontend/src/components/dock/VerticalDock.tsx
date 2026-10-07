@@ -90,8 +90,8 @@ function VerticalDockItem({
       onKeyDown={handleKeyDown}
       className={`relative inline-flex items-center justify-center rounded-2xl cursor-pointer transition-colors duration-150 border-0 outline-none bg-transparent ${
         isActive
-          ? 'text-black dark:text-white'
-          : 'text-neutral-500 hover:text-black dark:text-neutral-400 dark:hover:text-white'
+          ? 'text-black font-bold scale-110 drop-shadow-sm'
+          : 'text-neutral-800 hover:text-black hover:scale-105'
       } ${className}`}
       tabIndex={0}
       role="button"
