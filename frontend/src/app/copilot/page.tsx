@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from "react";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
 import Aurora from "@/components/effects/Aurora";
+import ThoughtLine from "@/components/effects/ThoughtLine";
 import { useLanguage } from "@/context/LanguageContext";
 import { STATUTORY_PROVISIONS, StatutoryProvision } from "@/data/statutoryProvisions";
 import {
@@ -22,6 +23,8 @@ interface ChatMessage {
   textEn: string;
   textBn: string;
   citations?: string[];
+  isThinking?: boolean;
+  thoughtSeconds?: number;
 }
 
 export default function CopilotPage() {
@@ -61,7 +64,18 @@ export default function CopilotPage() {
       textBn: text
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const copilotMsgId = `cop-${Date.now()}`;
+    const pendingCopilotMessage: ChatMessage = {
+      id: copilotMsgId,
+      sender: "copilot",
+      timestamp: "Just now",
+      textEn: "",
+      textBn: "",
+      citations: [],
+      isThinking: true
+    };
+
+    setMessages((prev) => [...prev, userMessage, pendingCopilotMessage]);
     setIsTyping(true);
 
     setTimeout(() => {
@@ -116,18 +130,22 @@ export default function CopilotPage() {
         relevantCitations = ["contract-act-73", "contract-act-27"];
       }
 
-      const copilotMessage: ChatMessage = {
-        id: `cop-${Date.now()}`,
-        sender: "copilot",
-        timestamp: "Just now",
-        textEn: responseEn,
-        textBn: responseBn,
-        citations: relevantCitations
-      };
-
-      setMessages((prev) => [...prev, copilotMessage]);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === copilotMsgId
+            ? {
+                ...msg,
+                textEn: responseEn,
+                textBn: responseBn,
+                citations: relevantCitations,
+                isThinking: false,
+                thoughtSeconds: 1.5
+              }
+            : msg
+        )
+      );
       setIsTyping(false);
-    }, 600);
+    }, 1500);
   };
 
   const hasMessages = messages.length > 0;
@@ -178,58 +196,85 @@ export default function CopilotPage() {
                   }`}
               >
                 <div
-                  className={`max-w-[85%] sm:max-w-[78%] p-5 rounded-3xl ${msg.sender === "user"
-                    ? "bg-black text-white rounded-br-md shadow-md"
-                    : "bg-white text-neutral-950 shadow-md rounded-bl-md"
-                    }`}
+                  className={`max-w-[85%] sm:max-w-[78%] transition-all duration-300 ${
+                    msg.sender === "user"
+                      ? "p-5 rounded-3xl bg-black text-white rounded-br-md shadow-md"
+                      : msg.isThinking
+                      ? "p-2 bg-transparent shadow-none"
+                      : "p-5 rounded-3xl bg-white text-neutral-950 shadow-md rounded-bl-md"
+                  }`}
                 >
-                  <p className="text-sm sm:text-[15px] leading-relaxed font-sans">
-                    {language === "bn" ? msg.textBn : msg.textEn}
-                  </p>
-
-                  {/* Statutory Citations Section */}
-                  {msg.citations && msg.citations.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-black/5 flex flex-wrap gap-2 items-center">
-                      <span className="text-[11px] font-medium text-neutral-500 flex items-center gap-1">
-                        <Scale className="w-3 h-3 text-neutral-600" />
-                        {language === "bn" ? "যাচাইকৃত আইনি রেফারেন্স:" : "Statutory Citations:"}
-                      </span>
-                      {msg.citations.map((citeId) => {
-                        const provision = STATUTORY_PROVISIONS[citeId];
-                        if (!provision) return null;
-                        return (
-                          <button
-                            key={citeId}
-                            onClick={() => setActiveCitation(provision)}
-                            className="px-3 py-1 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
-                          >
-                            <span>
-                              {language === "bn"
-                                ? provision.sectionBn.split(" - ")[0]
-                                : provision.sectionEn.split(" - ")[0]}
-                            </span>
-                            <BookOpen className="w-3 h-3 text-neutral-500" />
-                          </button>
-                        );
-                      })}
+                  {/* ThoughtLine for Copilot Response */}
+                  {msg.sender === "copilot" && (
+                    <div className={msg.isThinking ? "" : "mb-3"}>
+                      <ThoughtLine
+                        working={msg.isThinking ?? false}
+                        elapsed={msg.isThinking ? undefined : (msg.thoughtSeconds ?? 1.5)}
+                        steps={[]}
+                        label={language === "bn" ? "আইনি বিশ্লেষণ চলছে…" : "Thinking…"}
+                        doneLabel={language === "bn" ? "বিশ্লেষণ সম্পন্ন" : "Thought for"}
+                        glyph="sparkle"
+                        fontSize={msg.isThinking ? 15 : 13}
+                        breathPeriod={1.6}
+                        breathDepth={0.45}
+                        settleDuration={350}
+                        settleBlur={2}
+                        collapsible={false}
+                        collapseOnSettle={true}
+                        showTimer
+                        color={msg.isThinking ? "#171717" : "#525252"}
+                        glyphColor="#2563eb"
+                        onSettle={(seconds) => console.log(`thought for ${seconds}s`)}
+                      />
                     </div>
+                  )}
+
+                  {/* User message text */}
+                  {msg.sender === "user" && (
+                    <p className="text-sm sm:text-[15px] leading-relaxed font-sans">
+                      {language === "bn" ? msg.textBn : msg.textEn}
+                    </p>
+                  )}
+
+                  {/* Copilot message text and citations */}
+                  {msg.sender === "copilot" && !msg.isThinking && (msg.textEn || msg.textBn) && (
+                    <>
+                      <p className="text-sm sm:text-[15px] leading-relaxed font-sans">
+                        {language === "bn" ? msg.textBn : msg.textEn}
+                      </p>
+
+                      {/* Statutory Citations Section */}
+                      {msg.citations && msg.citations.length > 0 && (
+                        <div className="mt-3.5 flex flex-wrap gap-2 items-center">
+                          <span className="text-[11px] font-medium text-neutral-500 flex items-center gap-1">
+                            <Scale className="w-3 h-3 text-neutral-600" />
+                            {language === "bn" ? "যাচাইকৃত আইনি রেফারেন্স:" : "Statutory Citations:"}
+                          </span>
+                          {msg.citations.map((citeId) => {
+                            const provision = STATUTORY_PROVISIONS[citeId];
+                            if (!provision) return null;
+                            return (
+                              <button
+                                key={citeId}
+                                onClick={() => setActiveCitation(provision)}
+                                className="px-3 py-1 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                              >
+                                <span>
+                                  {language === "bn"
+                                    ? provision.sectionBn.split(" - ")[0]
+                                    : provision.sectionEn.split(" - ")[0]}
+                                </span>
+                                <BookOpen className="w-3 h-3 text-neutral-500" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             ))}
-
-            {isTyping && (
-              <div className="flex items-start">
-                <div className="p-4 rounded-3xl bg-white shadow-md text-xs text-neutral-500 flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-neutral-400 animate-ping" />
-                  <span>
-                    {language === "bn"
-                      ? "আইনের ধারা যাচাই করা হচ্ছে..."
-                      : "Cross-referencing bdlaws statutory repository..."}
-                  </span>
-                </div>
-              </div>
-            )}
 
             <div ref={messagesEndRef} />
           </div>
