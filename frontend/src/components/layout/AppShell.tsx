@@ -5,7 +5,7 @@ import AppDock from "@/components/dock/AppDock";
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex min-h-screen w-full bg-[var(--bg-primary)] transition-colors duration-200 overflow-x-hidden">
+    <div className="relative flex min-h-screen w-full bg-transparent transition-colors duration-200 overflow-x-hidden">
       {/* Left Vertical Dock - Only navigation in the app */}
       <AppDock />
 

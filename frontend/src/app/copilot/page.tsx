@@ -134,13 +134,13 @@ export default function CopilotPage() {
 
   return (
     <AppShell>
-      {/* Background Animated Aurora - Sophisticated Muted Palette */}
-      <div className="fixed inset-0 pointer-events-none opacity-45 -z-10 overflow-hidden">
+      {/* Background Animated Aurora - Smart Modern Subtle Glow */}
+      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-white">
         <Aurora
-          colorStops={["#E2E8F0", "#CBD5E1", "#E2E8F0"]}
-          blend={0.65}
+          colorStops={["#5227FF", "#7cff67", "#00d2ff"]}
+          blend={0.7}
           amplitude={1.2}
-          speed={0.4}
+          speed={0.8}
           lightMode={true}
         />
       </div>
