@@ -1,14 +1,12 @@
-@import "tailwindcss";
-
 @layer base {
   :root {
-    --bg-primary: #F4F4F6;
+    --bg-primary: #EAEAEA;
     --bg-secondary: #FFFFFF;
-    --bg-surface: #EAEAEC;
+    --bg-surface: #F4F4F6;
     --bg-card: #FFFFFF;
-    --text-primary: #121212;
-    --text-muted: #71717A;
-    --accent-solid: #18181B;
+    --text-primary: #111111;
+    --text-muted: #6B7280;
+    --accent-solid: #111111;
     --accent-contrast: #FFFFFF;
     --status-risk-high: #EF4444;
     --status-risk-med: #F59E0B;

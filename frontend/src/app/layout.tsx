@@ -30,7 +30,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className="dark h-full">
+    <html lang="en" className="h-full">
       <body
         className={`${inter.variable} ${hindSiliguri.variable} font-sans h-full min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased transition-colors duration-200`}
         style={{ fontFamily: "var(--font-inter), var(--font-bangla), sans-serif" }}

@@ -13,7 +13,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
     const saved = localStorage.getItem("app_theme") as Theme;
@@ -21,8 +21,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setThemeState(saved);
       document.documentElement.classList.toggle("dark", saved === "dark");
     } else {
-      // Default to dark mode for ultra-minimalist style
-      document.documentElement.classList.add("dark");
+      // Default to light mode
+      document.documentElement.classList.remove("dark");
     }
   }, []);
 
