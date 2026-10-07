@@ -134,11 +134,11 @@ export default function CopilotPage() {
 
   return (
     <AppShell>
-      {/* Background Animated Aurora with Google Gradient Colors */}
+      {/* Background Animated Aurora - Smart Modern Subtle Glow */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-white">
         <Aurora
-          colorStops={["#FF4B4B", "#FFD000", "#00C853"]}
-          blend={0.65}
+          colorStops={["#5227FF", "#7cff67", "#00d2ff"]}
+          blend={0.7}
           amplitude={1.2}
           speed={0.8}
           lightMode={true}
@@ -179,8 +179,8 @@ export default function CopilotPage() {
               >
                 <div
                   className={`max-w-[85%] sm:max-w-[78%] p-5 rounded-3xl ${msg.sender === "user"
-                      ? "bg-black text-white rounded-br-md shadow-md"
-                      : "bg-white text-neutral-950 shadow-md rounded-bl-md"
+                    ? "bg-black text-white rounded-br-md shadow-md"
+                    : "bg-white text-neutral-950 shadow-md rounded-bl-md"
                     }`}
                 >
                   <p className="text-sm sm:text-[15px] leading-relaxed font-sans">

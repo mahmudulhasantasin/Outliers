@@ -169,7 +169,7 @@ export default function VerticalDock({
         onMouseLeave={() => {
           mouseY.set(Infinity);
         }}
-        className="flex flex-col items-center gap-3 rounded-3xl bg-white/35 p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.08)] backdrop-blur-2xl dark:bg-black/40 border-0"
+        className="flex flex-col items-center gap-3 rounded-3xl bg-white/85 p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl border-0"
         style={{ width: panelWidth }}
         role="toolbar"
       >
