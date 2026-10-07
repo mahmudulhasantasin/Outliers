@@ -88,10 +88,10 @@ function VerticalDockItem({
       onBlur={() => isHovered.set(0)}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      className={`relative inline-flex items-center justify-center rounded-2xl cursor-pointer transition-colors duration-150 border-0 outline-none ${
+      className={`relative inline-flex items-center justify-center rounded-2xl cursor-pointer transition-colors duration-150 border-0 outline-none bg-transparent ${
         isActive
-          ? 'bg-white text-black dark:bg-white dark:text-black shadow-lg shadow-black/10 dark:shadow-white/10'
-          : 'bg-neutral-200/80 text-neutral-700 hover:bg-neutral-300 dark:bg-neutral-900/90 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100'
+          ? 'text-black dark:text-white'
+          : 'text-neutral-500 hover:text-black dark:text-neutral-400 dark:hover:text-white'
       } ${className}`}
       tabIndex={0}
       role="button"
