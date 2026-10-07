@@ -174,16 +174,14 @@ export default function CopilotPage() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex flex-col ${
-                  msg.sender === "user" ? "items-end" : "items-start"
-                }`}
+                className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"
+                  }`}
               >
                 <div
-                  className={`max-w-[85%] sm:max-w-[78%] p-5 rounded-3xl ${
-                    msg.sender === "user"
+                  className={`max-w-[85%] sm:max-w-[78%] p-5 rounded-3xl ${msg.sender === "user"
                       ? "bg-black text-white rounded-br-md shadow-md"
                       : "bg-white text-neutral-950 shadow-md rounded-bl-md"
-                  }`}
+                    }`}
                 >
                   <p className="text-sm sm:text-[15px] leading-relaxed font-sans">
                     {language === "bn" ? msg.textBn : msg.textEn}
