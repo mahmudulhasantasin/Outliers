@@ -1,320 +1,150 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { useRouter } from "next/navigation";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { usePersona } from "@/context/PersonaContext";
-import { useTheme } from "@/context/ThemeContext";
-import { SAMPLE_CONTRACTS, SampleContract } from "@/data/sampleContracts";
-import {
-  FileText,
-  Bot,
-  ShieldCheck,
-  CheckCircle2,
-  ArrowRight,
-  Sparkles,
-  Lock,
-  Globe,
-  Sun,
-  Moon,
-  Zap,
-  Scale,
-} from "lucide-react";
 
 export default function LandingPage() {
   const router = useRouter();
-  const { language, setLanguage, t } = useLanguage();
-  const { isAuthenticated, loginAsDemoUser, loginAsDemoAdmin } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const [activeTab, setActiveTab] = useState<number>(0);
+  const { language, setLanguage } = useLanguage();
+  const { loginAsDemoUser } = useAuth();
 
-  const handleOpenContract = (contract: SampleContract) => {
+  const handleStartContractMind = () => {
     loginAsDemoUser();
-    sessionStorage.setItem("active_audit_contract", JSON.stringify(contract));
     router.push("/contractmind");
   };
 
-  const handleLaunchCopilot = () => {
+  const handleStartCopilot = () => {
     loginAsDemoUser();
     router.push("/copilot");
   };
 
-  const selectedContract = SAMPLE_CONTRACTS[activeTab];
-
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] transition-colors duration-200">
-      {/* Top Header - Ultra Minimalist & Borderless */}
-      <header className="w-full max-w-7xl mx-auto px-6 py-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-2xl bg-neutral-900 text-white dark:bg-white dark:text-black flex items-center justify-center font-bold text-base shadow-sm">
-            LC
-          </div>
-          <div>
-            <span className="font-semibold tracking-tight text-base text-neutral-900 dark:text-neutral-100">
-              Legal Copilot
-            </span>
-            <span className="ml-2 text-xs px-2.5 py-0.5 rounded-full bg-neutral-200/80 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 font-medium">
-              ContractMind
-            </span>
-          </div>
-        </div>
+    <div className="relative min-h-screen w-full bg-[#EAE8E3] text-[#1E2322] flex flex-col justify-between overflow-hidden selection:bg-[#5C6B66] selection:text-white font-sans">
+      {/* Background Graphic: Right Constellation / Network Graph */}
+      <div className="absolute right-[-60px] md:right-[-20px] top-1/2 -translate-y-1/2 w-[480px] h-[480px] md:w-[680px] md:h-[680px] pointer-events-none opacity-45 select-none">
+        <svg
+          viewBox="0 0 600 600"
+          className="w-full h-full stroke-[#4A5551] fill-[#4A5551]"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Network Connections */}
+          <g strokeWidth="0.8" opacity="0.6">
+            <line x1="280" y1="120" x2="380" y2="180" />
+            <line x1="380" y1="180" x2="480" y2="130" />
+            <line x1="380" y1="180" x2="340" y2="290" />
+            <line x1="480" y1="130" x2="520" y2="230" />
+            <line x1="340" y1="290" x2="450" y2="310" />
+            <line x1="450" y1="310" x2="520" y2="230" />
+            <line x1="450" y1="310" x2="540" y2="390" />
+            <line x1="340" y1="290" x2="260" y2="380" />
+            <line x1="260" y1="380" x2="370" y2="440" />
+            <line x1="370" y1="440" x2="450" y2="310" />
+            <line x1="370" y1="440" x2="500" y2="480" />
+            <line x1="450" y1="310" x2="500" y2="480" />
+            <line x1="280" y1="120" x2="340" y2="290" />
+            <line x1="480" y1="130" x2="420" y2="60" />
+            <line x1="380" y1="180" x2="420" y2="60" />
+            <line x1="520" y1="230" x2="580" y2="300" />
+            <line x1="540" y1="390" x2="580" y2="300" />
+            <line x1="540" y1="390" x2="500" y2="480" />
+            <line x1="260" y1="380" x2="220" y2="480" />
+            <line x1="370" y1="440" x2="220" y2="480" />
+            <line x1="370" y1="440" x2="360" y2="550" />
+            <line x1="500" y1="480" x2="480" y2="570" />
+          </g>
 
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLanguage(language === "bn" ? "en" : "bn")}
-            className="px-3.5 py-1.5 rounded-xl bg-neutral-200/70 hover:bg-neutral-300 dark:bg-neutral-900/80 dark:hover:bg-neutral-800 text-xs font-semibold text-neutral-800 dark:text-neutral-200 transition-colors"
-          >
-            {language === "bn" ? "English" : "বাংলা"}
-          </button>
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-xl bg-neutral-200/70 hover:bg-neutral-300 dark:bg-neutral-900/80 dark:hover:bg-neutral-800 text-neutral-700 dark:text-neutral-300 transition-colors"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-          </button>
-          <button
-            onClick={() => {
-              loginAsDemoUser();
-              router.push("/copilot");
-            }}
-            className="px-5 py-2 rounded-xl bg-neutral-900 text-white hover:bg-neutral-800 dark:bg-white dark:text-black dark:hover:bg-neutral-100 text-xs font-semibold shadow-md transition-all active:scale-95"
-          >
-            {language === "bn" ? "প্রবেশ করুন (Demo)" : "Explore Platform"}
-          </button>
+          {/* Network Nodes */}
+          <circle cx="280" cy="120" r="4" />
+          <circle cx="380" cy="180" r="5" />
+          <circle cx="480" cy="130" r="4.5" />
+          <circle cx="420" cy="60" r="3" />
+          <circle cx="520" cy="230" r="6" />
+          <circle cx="340" cy="290" r="5.5" />
+          <circle cx="450" cy="310" r="14" fill="#6A7A74" opacity="0.8" />
+          <circle cx="580" cy="300" r="3.5" />
+          <circle cx="540" cy="390" r="8" fill="#586762" opacity="0.7" />
+          <circle cx="260" cy="380" r="4" />
+          <circle cx="370" cy="440" r="6.5" />
+          <circle cx="500" cy="480" r="16" fill="#75857F" opacity="0.65" />
+          <circle cx="220" cy="480" r="3" />
+          <circle cx="360" cy="550" r="4" />
+          <circle cx="480" cy="570" r="3.5" />
+        </svg>
+      </div>
+
+      {/* Top Navigation */}
+      <header className="relative z-10 w-full max-w-6xl mx-auto px-8 md:px-12 pt-8 md:pt-10">
+        <div className="flex items-center justify-between pb-4 border-b border-[#2C3432]/15">
+          <div className="text-lg md:text-xl font-medium tracking-tight text-[#1E2322]">
+            Legal Copilot
+          </div>
+
+          <nav className="flex items-center gap-6 md:gap-9 text-xs md:text-sm font-normal text-[#2C3432]/85">
+            <button
+              onClick={handleStartContractMind}
+              className="hover:text-black transition-colors"
+            >
+              ContractMind
+            </button>
+            <button
+              onClick={handleStartCopilot}
+              className="hover:text-black transition-colors"
+            >
+              Copilot Q&amp;A
+            </button>
+            <button
+              onClick={() => router.push("/architecture")}
+              className="hover:text-black transition-colors"
+            >
+              Architecture
+            </button>
+            <button
+              onClick={() => setLanguage(language === "en" ? "bn" : "en")}
+              className="hover:text-black transition-colors"
+            >
+              {language === "en" ? "বাং" : "EN"}
+            </button>
+          </nav>
         </div>
       </header>
 
       {/* Hero Section */}
-      <section className="w-full max-w-5xl mx-auto px-6 pt-16 pb-16 text-center flex flex-col items-center">
-        <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-neutral-950 max-w-3xl leading-[1.12] mb-6">
-          {t("heroTitle")}
-        </h1>
+      <main className="relative z-10 w-full max-w-6xl mx-auto px-8 md:px-12 flex-1 flex flex-col justify-center py-16 md:py-24">
+        <div className="max-w-2xl">
+          <h1 className="text-4xl sm:text-5xl md:text-[58px] font-serif font-normal leading-[1.12] text-[#161B1A] tracking-tight mb-5">
+            {language === "en"
+              ? "‘Precision Legal Intelligence for the Age of AI’"
+              : "‘এআই যুগের নির্ভুল ও দায়িত্বশীল আইনি বুদ্ধিমত্তা’"}
+          </h1>
 
-        <p className="text-base sm:text-lg text-neutral-600 max-w-2xl leading-relaxed mb-12 font-normal">
-          {t("heroSubtitle")}
-        </p>
-
-        {/* Primary CTA Cards in Style of Reference Image */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 w-full max-w-xl mb-14">
-          <div
-            onClick={() => {
-              loginAsDemoUser();
-              router.push("/contractmind");
-            }}
-            className="group cursor-pointer p-7 rounded-3xl bg-neutral-950 text-white hover:bg-neutral-900 shadow-xl transition-all duration-200 flex flex-col justify-between items-start text-left min-h-[150px]"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center mb-5">
-              <FileText className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="text-base font-semibold tracking-tight text-white mb-1.5 flex items-center gap-1.5">
-                {language === "bn" ? "চুক্তিপত্র বিশ্লেষণ" : "ContractMind Audit"}
-                <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <p className="text-xs text-neutral-400 leading-normal">
-                {language === "bn"
-                  ? "আপলোড করুন ও তাৎক্ষণিক ধারাভিত্তিক ঝুঁকি ও রেডলাইন দেখুন"
-                  : "Upload contract & pinpoint liability risks with redlines"}
-              </p>
-            </div>
-          </div>
-
-          <div
-            onClick={handleLaunchCopilot}
-            className="group cursor-pointer p-7 rounded-3xl bg-neutral-950 text-white hover:bg-neutral-900 shadow-xl transition-all duration-200 flex flex-col justify-between items-start text-left min-h-[150px]"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-white/15 flex items-center justify-center mb-5">
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <div className="text-base font-semibold tracking-tight text-white mb-1.5 flex items-center gap-1.5">
-                {language === "bn" ? "লিগ্যাল কোপাইলট (Q&A)" : "Legal Copilot Q&A"}
-                <ArrowRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <p className="text-xs text-neutral-400 leading-normal">
-                {language === "bn"
-                  ? "বাংলা ও ইংরেজিতে আইনি প্রশ্নোত্তর এবং bdlaws সাইটেশন"
-                  : "Ask legal questions with verifiable statutory citations"}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Metrics Pill Bar */}
-        <div className="flex flex-wrap items-center justify-center gap-8 text-xs text-neutral-600 pt-2">
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-neutral-950">99.4%</span>
-            <span>{language === "bn" ? "সাইটেশন সঠিকতা" : "Citation Accuracy"}</span>
-          </div>
-          <span className="text-neutral-400">•</span>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-neutral-950">0%</span>
-            <span>{language === "bn" ? "হ্যালুসিনেশন রোধ" : "Hallucination Safeguard"}</span>
-          </div>
-          <span className="text-neutral-400">•</span>
-          <div className="flex items-center gap-2">
-            <span className="font-bold text-neutral-950">5x</span>
-            <span>{language === "bn" ? "দ্রুত আইনি মেমো" : "Faster Review"}</span>
-          </div>
-        </div>
-      </section>
-
-      {/* Interactive Sample Contracts Section */}
-      <section className="w-full max-w-5xl mx-auto px-6 py-12">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl font-bold tracking-tight text-neutral-950 mb-2">
-            {language === "bn" ? "এক ক্লিকে নমুনা চুক্তিপত্র পরীক্ষা করুন" : "One-Click Interactive Contract Audit"}
-          </h2>
-          <p className="text-sm text-neutral-600">
-            {language === "bn"
-              ? "বাস্তব চুক্তির ওপর এআই কীভাবে ধারা ও আইন ম্যাপিং করে তা দেখুন"
-              : "Select a real-world scenario to experience autonomous clause and risk extraction"}
+          <p className="text-sm sm:text-base md:text-[17px] text-[#4F5956] leading-relaxed mb-9 max-w-lg font-sans">
+            {language === "en"
+              ? "Autonomous contract auditing, statutory verification, and hallucination-free legal memoranda."
+              : "স্বয়ংক্রিয় চুক্তি পর্যালোচনা, আইনি ধারা ম্যাপিং এবং নির্ভরযোগ্য মেমো প্রস্তুতকরণ।"}
           </p>
-        </div>
 
-        {/* Sample Tabs */}
-        <div className="flex items-center justify-center gap-2.5 mb-8 flex-wrap">
-          {SAMPLE_CONTRACTS.map((sample, idx) => (
+          {/* Action Buttons */}
+          <div className="flex items-center gap-3.5">
             <button
-              key={sample.id}
-              onClick={() => setActiveTab(idx)}
-              className={`px-4 py-2.5 rounded-2xl text-xs font-semibold transition-all ${
-                activeTab === idx
-                  ? "bg-neutral-950 text-white shadow-md"
-                  : "bg-neutral-200/90 text-neutral-700 hover:bg-neutral-300"
-              }`}
+              onClick={handleStartContractMind}
+              className="px-6 py-2.5 rounded-[9px] bg-[#63726D] hover:bg-[#52605B] text-white text-xs md:text-sm font-medium transition-colors shadow-sm"
             >
-              {language === "bn" ? sample.titleBn : sample.titleEn}
+              {language === "en" ? "Analyze Contract" : "চুক্তিপত্র বিশ্লেষণ"}
             </button>
-          ))}
-        </div>
-
-        {/* Selected Sample Showcase Card */}
-        <div className="p-8 rounded-3xl bg-white shadow-xl transition-all flex flex-col md:flex-row gap-8 items-start">
-          <div className="flex-1 space-y-4">
-            <h3 className="text-xl font-bold text-neutral-950">
-              {language === "bn" ? selectedContract.titleBn : selectedContract.titleEn}
-            </h3>
-
-            <p className="text-sm text-neutral-600 leading-relaxed">
-              {language === "bn" ? selectedContract.summaryBn : selectedContract.summaryEn}
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 pt-2 text-xs">
-              <div className="p-3.5 rounded-2xl bg-neutral-100">
-                <span className="text-neutral-500 block mb-1">
-                  {language === "bn" ? "১ম পক্ষ" : "First Party"}
-                </span>
-                <span className="font-semibold text-neutral-950">
-                  {language === "bn"
-                    ? selectedContract.parties.firstPartyBn
-                    : selectedContract.parties.firstPartyEn}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-neutral-100">
-                <span className="text-neutral-500 block mb-1">
-                  {language === "bn" ? "২য় পক্ষ" : "Second Party"}
-                </span>
-                <span className="font-semibold text-neutral-950">
-                  {language === "bn"
-                    ? selectedContract.parties.secondPartyBn
-                    : selectedContract.parties.secondPartyEn}
-                </span>
-              </div>
-            </div>
-
-            <div className="pt-3">
-              <button
-                onClick={() => handleOpenContract(selectedContract)}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-neutral-950 text-white font-semibold text-xs shadow-lg hover:bg-neutral-900 transition-all flex items-center justify-center gap-2"
-              >
-                <span>{language === "bn" ? "এই চুক্তিটি বিশ্লেষণ করুন" : "Analyze This Contract"}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          {/* Snippet Preview */}
-          <div className="w-full md:w-80 p-5 rounded-2xl bg-neutral-100 font-mono text-xs text-neutral-700 leading-relaxed max-h-64 overflow-y-auto select-none">
-            <div className="text-[10px] tracking-wider uppercase text-neutral-500 mb-2 font-sans font-bold">
-              {language === "bn" ? "চুক্তির টেক্সট প্রিভিউ" : "Contract Text Snippet"}
-            </div>
-            {selectedContract.sampleText}
+            <button
+              onClick={handleStartCopilot}
+              className="px-6 py-2.5 rounded-[9px] border border-[#3B4643]/30 hover:border-[#3B4643]/70 text-[#1E2322] text-xs md:text-sm font-medium transition-colors bg-transparent"
+            >
+              {language === "en" ? "Legal Copilot" : "লিগ্যাল কোপাইলট"}
+            </button>
           </div>
         </div>
-      </section>
+      </main>
 
-      {/* Comparison Grid: Zero Borderline */}
-      <section className="w-full max-w-5xl mx-auto px-6 py-14">
-        <div className="text-center mb-10">
-          <h2 className="text-2xl font-bold tracking-tight text-neutral-950 mb-2">
-            {language === "bn" ? "সাধারণ চ্যাটবট থেকে আমাদের পার্থক্য" : "Why Legal Copilot is Different"}
-          </h2>
-          <p className="text-sm text-neutral-600">
-            {language === "bn"
-              ? "আইনি বিষয়ে সাধারণ অনুমানের বদলে কঠোর প্রমাণভিত্তিক ভেরিফিকেশন"
-              : "Deterministic statutory cross-referencing vs generic LLM speculation"}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-7 rounded-3xl bg-white shadow-lg">
-            <div className="w-10 h-10 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
-              <ShieldCheck className="w-5 h-5 text-neutral-900" />
-            </div>
-            <h3 className="text-base font-bold text-neutral-950 mb-2">
-              {language === "bn" ? "bdlaws আইনভাণ্ডার লিংকিং" : "Direct Statute Linkage"}
-            </h3>
-            <p className="text-xs text-neutral-600 leading-relaxed">
-              {language === "bn"
-                ? "চুক্তির প্রতিটি ঝুঁকিপূর্ণ ধারাকে সরাসরি বাংলাদেশের প্রাসঙ্গিক আইনের সঙ্গে জোড়া হয়।"
-                : "Every risky clause is directly connected to official Bangladesh statutory provisions."}
-            </p>
-          </div>
-
-          <div className="p-7 rounded-3xl bg-white shadow-lg">
-            <div className="w-10 h-10 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
-              <Zap className="w-5 h-5 text-neutral-900" />
-            </div>
-            <h3 className="text-base font-bold text-neutral-950 mb-2">
-              {language === "bn" ? "রেডলাইন ও নিরাপদ খসড়া" : "Actionable Redlining"}
-            </h3>
-            <p className="text-xs text-neutral-600 leading-relaxed">
-              {language === "bn"
-                ? "শুধুমাত্র সমস্যা দেখানো নয়, বরং আদালতে গ্রহণযোগ্য বিকল্প খসড়া তৈরি করে দেওয়া হয়।"
-                : "Provides enforceable counter-proposals to negotiate and balance liabilities."}
-            </p>
-          </div>
-
-          <div className="p-7 rounded-3xl bg-white shadow-lg">
-            <div className="w-10 h-10 rounded-2xl bg-neutral-100 flex items-center justify-center mb-4">
-              <Lock className="w-5 h-5 text-neutral-900" />
-            </div>
-            <h3 className="text-base font-bold text-neutral-950 mb-2">
-              {language === "bn" ? "ক্লায়েন্ট-সাইড PII সুরক্ষা" : "Sovereign PII Protection"}
-            </h3>
-            <p className="text-xs text-neutral-600 leading-relaxed">
-              {language === "bn"
-                ? "ব্যক্তিগত নাম, জাতীয় পরিচয়পত্র ও আর্থিক তথ্য ব্রাউজারে মাস্কিং করে পাঠানো হয়।"
-                : "Sensitive identifiers are redacted client-side before any AI reasoning occurs."}
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Footer */}
-      <footer className="w-full max-w-5xl mx-auto px-6 py-12 text-center text-xs text-neutral-500 dark:text-neutral-500 border-t border-transparent">
-        <p className="mb-2">
-          {language === "bn"
-            ? "সতর্কবার্তা: লিগ্যাল কোপাইলট একটি আইনি প্রযুক্তি টুল, এটি কোনো পেশাদার আইনজীবীর সরাসরি বিকল্প নয়।"
-            : "Notice: Legal Copilot is an AI decision-support platform and does not constitute formal legal counsel."}
-        </p>
-        <p className="text-[11px]">
-          International AI Builders Congress 2026 — JusticeSphere AI
-        </p>
-      </footer>
+      {/* Clean Bottom Spacer for Visual Balance */}
+      <div className="w-full h-8" />
     </div>
   );
 }
