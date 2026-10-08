@@ -225,10 +225,22 @@ export default function ContractMindPage() {
           /* ==================================================================== */
           /* STATE 2: ACTIVE CONTRACT ANALYSIS VIEW (BORDERLESS NATURAL READING)  */
           /* ==================================================================== */
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 print:pt-0 print:px-0 print:max-w-none">
 
-            {/* Back to Upload Bar */}
-            <div className="flex items-center justify-between mb-8">
+            {/* Print-Only Official Legal Audit Memo Header */}
+            <div className="hidden print:block pb-6 mb-8 border-b-2 border-neutral-900">
+              <div className="flex justify-between items-baseline mb-2 text-xs font-mono uppercase tracking-widest text-neutral-800">
+                <span className="font-bold">CONFIDENTIAL ATTORNEY-CLIENT AUDIT MEMORANDUM</span>
+                <span>BANGLADESH LAW STATUTORY JURISDICTION</span>
+              </div>
+              <div className="flex justify-between text-[11px] text-neutral-500 font-sans">
+                <span>Audited via ContractMind · Automated Statutory Risk Engine</span>
+                <span>Statutes verified against Laws of Bangladesh (bdlaws.minlaw.gov.bd)</span>
+              </div>
+            </div>
+
+            {/* Back to Upload Bar (Hidden during Print) */}
+            <div className="flex items-center justify-between mb-8 print:hidden">
               <button
                 onClick={() => setIsLoaded(false)}
                 className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1.5 transition-colors"
@@ -251,7 +263,7 @@ export default function ContractMindPage() {
                   className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>{language === "bn" ? "প্রিন্ট" : "Print"}</span>
+                  <span>{language === "bn" ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
                 </button>
 
                 <button
@@ -265,14 +277,14 @@ export default function ContractMindPage() {
             </div>
 
             {/* Contract Title & Meta (Clean Editorial Header) */}
-            <div className="pb-8 border-b border-neutral-100">
-              <div className="text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2">
+            <div className="pb-8 border-b border-neutral-100 print:pb-5 print:border-neutral-200">
+              <div className="text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2 print:text-neutral-600">
                 {language === "bn" ? currentContract.categoryBn : currentContract.categoryEn}
               </div>
               <h2 className="text-2xl sm:text-3xl font-serif font-normal text-neutral-950 tracking-tight leading-snug mb-3">
                 {language === "bn" ? currentContract.titleBn : currentContract.titleEn}
               </h2>
-              <p className="text-xs text-neutral-500">
+              <p className="text-xs text-neutral-500 print:text-neutral-700">
                 {language === "bn"
                   ? `পক্ষসমূহ: ${piiMasked ? "[REDACTED_PARTY_A] ও [REDACTED_PARTY_B]" : `${currentContract.parties.firstPartyBn} ও ${currentContract.parties.secondPartyBn}`}`
                   : `Parties: ${piiMasked ? "[REDACTED_PARTY_A] & [REDACTED_PARTY_B]" : `${currentContract.parties.firstPartyEn} & ${currentContract.parties.secondPartyEn}`}`}
@@ -280,18 +292,18 @@ export default function ContractMindPage() {
             </div>
 
             {/* Executive Legal Audit Summary (Borderless Minimal Section) */}
-            <div className="py-8 border-b border-neutral-100 space-y-4">
+            <div className="py-8 border-b border-neutral-100 print:py-5 print:border-neutral-200 space-y-4 break-inside-avoid print-avoid-break">
               <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-2">
                   <h3 className="text-lg font-serif font-semibold text-neutral-950">
                     {language === "bn" ? currentAudit.riskGradeBn : currentAudit.riskGradeEn}
                   </h3>
-                  <span className="text-xs text-neutral-400 font-sans">
+                  <span className="text-xs text-neutral-400 print:text-neutral-600 font-sans font-medium">
                     ({currentAudit.riskScore}/100 Risk Score)
                   </span>
                 </div>
 
-                <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium">
+                <div className="flex items-center gap-3 text-xs text-neutral-500 print:text-neutral-700 font-medium">
                   <span>{currentAudit.stats.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকি" : "High Risk"}</span>
                   <span>·</span>
                   <span>{currentAudit.stats.mediumRiskCount} {language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}</span>
@@ -300,13 +312,13 @@ export default function ContractMindPage() {
                 </div>
               </div>
 
-              <p className="text-sm text-neutral-600 leading-relaxed font-sans">
+              <p className="text-sm text-neutral-600 print:text-neutral-800 leading-relaxed font-sans">
                 {language === "bn" ? currentAudit.summaryBn : currentAudit.summaryEn}
               </p>
             </div>
 
-            {/* Clauses List (Pure Natural Document Flow - Zero Nested Boxes) */}
-            <div className="divide-y divide-neutral-100">
+            {/* Clauses List (Pure Natural Document Flow - Zero Page Breaks Mid-Clause) */}
+            <div className="divide-y divide-neutral-100 print:divide-neutral-200">
               {currentAudit.clauses.map((clause) => {
                 const statProvision = clause.statutoryReferenceId
                   ? STATUTORY_PROVISIONS[clause.statutoryReferenceId]
@@ -318,12 +330,12 @@ export default function ContractMindPage() {
                   <div
                     key={clause.id}
                     id={`clause-${clause.id}`}
-                    className="py-10 space-y-5"
+                    className="py-10 space-y-5 print:py-6 print:space-y-3 break-inside-avoid print-avoid-break"
                   >
                     {/* Clause Header: Title & Status */}
                     <div className="flex items-baseline justify-between gap-4">
                       <div className="flex items-baseline gap-2">
-                        <span className="text-xs font-semibold text-neutral-400">
+                        <span className="text-xs font-semibold text-neutral-400 print:text-neutral-600">
                           § {clause.clauseNumber}
                         </span>
                         <h4 className="text-base sm:text-lg font-serif font-medium text-neutral-950">
@@ -332,7 +344,7 @@ export default function ContractMindPage() {
                       </div>
 
                       <div className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-neutral-500">
+                        <span className="text-xs font-medium text-neutral-500 print:text-neutral-700">
                           {clause.riskLevel === "HIGH"
                             ? language === "bn"
                               ? "উচ্চ ঝুঁকি"
@@ -349,7 +361,7 @@ export default function ContractMindPage() {
                         {hasIssue && (
                           <button
                             onClick={() => handleOpenInCopilot(clause)}
-                            className="text-neutral-400 hover:text-black transition-colors"
+                            className="text-neutral-400 hover:text-black transition-colors print:hidden"
                             title="Discuss in Legal Copilot"
                           >
                             <Bot className="w-4 h-4" />
@@ -359,7 +371,7 @@ export default function ContractMindPage() {
                     </div>
 
                     {/* Original Contract Verbatim (Styled as a clean legal quote) */}
-                    <div className="pl-4 border-l-2 border-neutral-200">
+                    <div className="pl-4 border-l-2 border-neutral-200 print:border-neutral-400">
                       <p className="font-serif text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap">
                         {piiMasked
                           ? maskPii(clause.originalText, true).redactedText
@@ -369,12 +381,12 @@ export default function ContractMindPage() {
 
                     {/* Legal Finding & Redline (Only for clauses with issues) */}
                     {hasIssue ? (
-                      <div className="space-y-4 pt-1">
+                      <div className="space-y-4 print:space-y-2.5 pt-1">
                         {/* Statute Citation */}
                         {clause.statuteCitationEn && (
                           <div className="text-xs text-neutral-500 flex items-center gap-1.5">
-                            <BookOpen className="w-3.5 h-3.5 text-neutral-400" />
-                            <span className="font-medium text-neutral-400">Statute:</span>
+                            <BookOpen className="w-3.5 h-3.5 text-neutral-400 print:text-neutral-700" />
+                            <span className="font-medium text-neutral-400 print:text-neutral-600">Statute:</span>
                             <span className="text-neutral-800 font-semibold">
                               {language === "bn" ? clause.statuteCitationBn : clause.statuteCitationEn}
                             </span>
@@ -383,7 +395,7 @@ export default function ContractMindPage() {
                                 href={statProvision.bdlawsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-neutral-400 hover:text-black ml-1 inline-flex items-center"
+                                className="text-neutral-400 hover:text-black ml-1 inline-flex items-center print:hidden"
                                 title="View on official bdlaws portal"
                               >
                                 <ExternalLink className="w-3 h-3" />
@@ -393,22 +405,22 @@ export default function ContractMindPage() {
                         )}
 
                         {/* Analysis Body */}
-                        <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed font-sans">
+                        <p className="text-xs sm:text-[13px] text-neutral-600 print:text-neutral-800 leading-relaxed font-sans">
                           {language === "bn" ? clause.detailedAnalysisBn : clause.detailedAnalysisEn}
                         </p>
 
                         {/* Proposed Safe Redline */}
                         {(clause.redlineSuggestionEn || clause.redlineSuggestionBn) && (
-                          <div className="p-4 rounded-xl bg-neutral-50 space-y-2">
+                          <div className="p-4 rounded-xl bg-neutral-50 print:bg-neutral-50 print:border print:border-neutral-300 space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 print:text-neutral-700 flex items-center gap-1">
                                 <Sparkles className="w-3 h-3 text-neutral-600" />
                                 {language === "bn" ? "প্রস্তাবিত নিরাপদ ক্লজ (Redline):" : "Proposed Safe Redline:"}
                               </span>
 
                               <button
                                 onClick={() => handleCopyRedline(clause)}
-                                className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
+                                className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1 transition-colors print:hidden"
                               >
                                 {copiedClauseId === clause.id ? (
                                   <>
@@ -424,7 +436,7 @@ export default function ContractMindPage() {
                               </button>
                             </div>
 
-                            <p className="text-xs sm:text-[13px] leading-relaxed text-neutral-800 font-sans">
+                            <p className="text-xs sm:text-[13px] leading-relaxed text-neutral-800 font-sans font-medium">
                               {language === "bn"
                                 ? clause.redlineSuggestionBn || clause.redlineSuggestionEn
                                 : clause.redlineSuggestionEn}
@@ -433,7 +445,7 @@ export default function ContractMindPage() {
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-neutral-400 font-sans">
+                      <p className="text-xs text-neutral-400 print:text-neutral-600 font-sans">
                         {language === "bn"
                           ? "✓ প্রাসঙ্গিক আইনের মানদণ্ডের সাথে সঙ্গতিপূর্ণ।"
                           : "✓ Fully compliant with statutory standards."}
@@ -443,6 +455,17 @@ export default function ContractMindPage() {
                   </div>
                 );
               })}
+            </div>
+
+            {/* Official Legal Print Footer */}
+            <div className="hidden print:block pt-8 mt-12 border-t border-neutral-300 text-xs text-neutral-500 space-y-1.5 font-sans break-inside-avoid print-avoid-break">
+              <div className="flex justify-between items-baseline text-[11px] font-medium text-neutral-700">
+                <span>ContractMind · Autonomous Statutory Contract Auditor</span>
+                <span>Verified against bdlaws (Government of Bangladesh)</span>
+              </div>
+              <p className="text-[10px] text-neutral-400 leading-normal">
+                Notice: This legal audit report is computer-generated based on statutory rules under the Bangladesh Labour Act 2006, The Contract Act 1872, and relevant codified legislation. For formal legal representation or litigation proceedings, consultation with a Supreme Court Advocate is recommended.
+              </p>
             </div>
 
           </div>

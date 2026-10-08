@@ -78,3 +78,52 @@ html, body {
   background: var(--bg-surface);
   border-radius: 9999px;
 }
+
+/* ==================================================================== */
+/* PROFESSIONAL LEGAL PRINT & PDF EXPORT STYLES                         */
+/* ==================================================================== */
+@media print {
+  @page {
+    margin: 18mm 16mm 18mm 16mm;
+    size: A4 portrait;
+  }
+
+  html, body {
+    background: #FFFFFF !important;
+    background-color: #FFFFFF !important;
+    color: #111111 !important;
+    font-size: 11pt !important;
+    line-height: 1.5 !important;
+  }
+
+  /* Force crisp colors in PDF generation */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide interactive UI elements */
+  aside,
+  nav,
+  button,
+  input,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Clean print layout reset */
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+  }
+
+  /* Avoid cutting clauses or memos across page breaks */
+  .break-inside-avoid,
+  .print-avoid-break {
+    break-inside: avoid !important;
+    page-break-inside: avoid !important;
+  }
+}
+

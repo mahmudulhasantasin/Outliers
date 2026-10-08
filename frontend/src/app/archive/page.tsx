@@ -172,11 +172,23 @@ export default function ArchivePage() {
 
   return (
     <AppShell className="bg-white" mainClassName="bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans text-neutral-900">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans text-neutral-900 print:pt-0 print:px-0 print:max-w-none">
         
+        {/* Print-Only Official Archive Summary Header */}
+        <div className="hidden print:block pb-6 mb-8 border-b-2 border-neutral-900">
+          <div className="flex justify-between items-baseline mb-2 text-xs font-mono uppercase tracking-widest text-neutral-800">
+            <span className="font-bold">LEGAL CONTRACT AUDIT ARCHIVE REPORT</span>
+            <span>BANGLADESH JURISDICTION</span>
+          </div>
+          <div className="flex justify-between text-[11px] text-neutral-500 font-sans">
+            <span>Generated via Legal Copilot Repository</span>
+            <span>Statutory records verified against bdlaws (bdlaws.minlaw.gov.bd)</span>
+          </div>
+        </div>
+
         {/* Page Header */}
-        <div className="pb-8 border-b border-neutral-100">
-          <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2">
+        <div className="pb-8 border-b border-neutral-100 print:pb-5 print:border-neutral-200">
+          <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2 print:text-neutral-600">
             <FolderClock className="w-4 h-4" />
             <span>{language === "bn" ? "অডিট সংগ্রহশালা ও রেকর্ড" : "Audit Repository"}</span>
           </div>
@@ -185,14 +197,14 @@ export default function ArchivePage() {
             {language === "bn" ? "সংরক্ষিত চুক্তি ও অডিট মেমো" : "Archived Audits & Legal Memos"}
           </h1>
 
-          <p className="text-sm text-neutral-500 font-sans leading-relaxed max-w-2xl">
+          <p className="text-sm text-neutral-500 font-sans leading-relaxed max-w-2xl print:text-neutral-700">
             {language === "bn"
               ? "পূর্বে বিশ্লেষিত চুক্তিপত্র, বাংলাদেশ আইনের আওতায় চিহ্নিত ঝুঁকি এবং সংবিধিবদ্ধ রেডলাইন প্রতিবেদনের পূর্ণাঙ্গ আর্কাইভ।"
               : "Repository of audited contracts, statutory compliance assessments, and legally protected redlines under Bangladesh statutes."}
           </p>
 
           {/* Quick Stats Strip */}
-          <div className="flex flex-wrap items-center gap-6 pt-6 mt-6 border-t border-neutral-100 text-xs text-neutral-500">
+          <div className="flex flex-wrap items-center gap-6 pt-6 mt-6 border-t border-neutral-100 print:border-neutral-200 text-xs text-neutral-500 print:text-neutral-700">
             <div>
               <span className="font-semibold text-neutral-900 text-sm mr-1.5">{records.length}</span>
               <span>{language === "bn" ? "মোট অডিট" : "Total Audits"}</span>
@@ -212,8 +224,8 @@ export default function ArchivePage() {
           </div>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-neutral-100">
+        {/* Search & Filter Bar (Hidden during Print) */}
+        <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-neutral-100 print:hidden">
           {/* Search Box */}
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -254,30 +266,30 @@ export default function ArchivePage() {
         </div>
 
         {/* Archived Records List */}
-        <div className="divide-y divide-neutral-100">
+        <div className="divide-y divide-neutral-100 print:divide-neutral-200">
           {filteredRecords.length > 0 ? (
             filteredRecords.map((record) => (
               <div
                 key={record.id}
-                className="py-8 space-y-4 group transition-colors"
+                className="py-8 space-y-4 group transition-colors print:py-6 break-inside-avoid print-avoid-break"
               >
                 {/* Item Top Metadata */}
                 <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                   <div className="flex items-baseline gap-3">
-                    <span className="text-xs font-semibold text-neutral-400">
+                    <span className="text-xs font-semibold text-neutral-400 print:text-neutral-600">
                       {language === "bn" ? record.auditDateBn : record.auditDateEn}
                     </span>
                     <span className="text-xs text-neutral-400 font-sans">·</span>
-                    <span className="text-xs font-medium text-neutral-500">
+                    <span className="text-xs font-medium text-neutral-500 print:text-neutral-700">
                       {language === "bn" ? record.categoryBn : record.categoryEn}
                     </span>
                   </div>
 
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-medium text-neutral-500">
+                    <span className="text-xs font-medium text-neutral-500 print:text-neutral-700">
                       {language === "bn" ? record.riskGradeBn : record.riskGradeEn}
                     </span>
-                    <span className="text-xs text-neutral-400">
+                    <span className="text-xs text-neutral-400 print:text-neutral-600">
                       ({record.riskScore}/100 Risk Score)
                     </span>
                   </div>
@@ -288,7 +300,7 @@ export default function ArchivePage() {
                   <h2 className="text-xl font-serif font-medium text-neutral-950 group-hover:text-black transition-colors leading-snug">
                     {language === "bn" ? record.titleBn : record.titleEn}
                   </h2>
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 print:text-neutral-700 mt-1">
                     {language === "bn"
                       ? `পক্ষসমূহ: ${record.firstPartyBn} ও ${record.secondPartyBn}`
                       : `Parties: ${record.firstPartyEn} & ${record.secondPartyEn}`}
@@ -296,13 +308,13 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Statutory Risk Takeaway */}
-                <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed font-sans max-w-3xl">
+                <p className="text-xs sm:text-[13px] text-neutral-600 print:text-neutral-800 leading-relaxed font-sans max-w-3xl">
                   {language === "bn" ? record.summaryBn : record.summaryEn}
                 </p>
 
                 {/* Breakdown & Action Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                  <div className="flex items-center gap-3 text-xs text-neutral-400">
+                  <div className="flex items-center gap-3 text-xs text-neutral-400 print:text-neutral-600">
                     <span>
                       {record.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকি" : "High Risk"}
                     </span>
@@ -316,8 +328,8 @@ export default function ArchivePage() {
                     </span>
                   </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  {/* Actions (Hidden during Print) */}
+                  <div className="flex items-center gap-2 print:hidden">
                     <button
                       onClick={() => handleOpenInCopilot(record)}
                       className="px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium flex items-center gap-1.5 transition-colors"
