@@ -153,7 +153,7 @@ export default function CopilotPage() {
   return (
     <AppShell className="bg-transparent" mainClassName="bg-transparent">
       {/* Background Animated Aurora - Smart Modern Subtle Glow */}
-      <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-white">
+      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <Aurora
           colorStops={["#5227FF", "#7cff67", "#00d2ff"]}
           blend={0.7}
@@ -163,7 +163,7 @@ export default function CopilotPage() {
         />
       </div>
 
-      <div className="relative flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto">
+      <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto">
         {/* Context Bar if contract is loaded */}
         {loadedContractTitle && (
           <div className="mb-3 px-4 py-2 rounded-2xl bg-white shadow-sm flex items-center justify-between text-xs text-neutral-800">

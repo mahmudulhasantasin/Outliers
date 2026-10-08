@@ -154,8 +154,8 @@ export default function Aurora(props: AuroraProps) {
 
     function resize() {
       if (!ctn) return;
-      const width = ctn.offsetWidth;
-      const height = ctn.offsetHeight;
+      const width = ctn.offsetWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+      const height = ctn.offsetHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080);
       renderer.setSize(width, height);
       if (program) {
         program.uniforms.uResolution.value = [width, height];
@@ -173,6 +173,9 @@ export default function Aurora(props: AuroraProps) {
       return [c.r, c.g, c.b];
     });
 
+    const initialWidth = ctn.offsetWidth || (typeof window !== 'undefined' ? window.innerWidth : 1920);
+    const initialHeight = ctn.offsetHeight || (typeof window !== 'undefined' ? window.innerHeight : 1080);
+
     program = new Program(gl, {
       vertex: VERT,
       fragment: FRAG,
@@ -180,13 +183,19 @@ export default function Aurora(props: AuroraProps) {
         uTime: { value: 0 },
         uAmplitude: { value: amplitude },
         uColorStops: { value: colorStopsArray },
-        uResolution: { value: [ctn.offsetWidth, ctn.offsetHeight] },
+        uResolution: { value: [initialWidth, initialHeight] },
         uBlend: { value: blend },
         uLightMode: { value: lightMode ? 1 : 0 }
       }
     });
 
     const mesh = new Mesh(gl, { geometry, program });
+    gl.canvas.style.position = 'absolute';
+    gl.canvas.style.top = '0';
+    gl.canvas.style.left = '0';
+    gl.canvas.style.width = '100%';
+    gl.canvas.style.height = '100%';
+    gl.canvas.style.display = 'block';
     ctn.appendChild(gl.canvas);
 
     let animateId = 0;
