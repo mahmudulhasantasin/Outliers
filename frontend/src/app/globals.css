@@ -2,9 +2,9 @@
 
 @layer base {
   :root {
-    --bg-primary: #EAEAEA;
+    --bg-primary: #FFFFFF;
     --bg-secondary: #FFFFFF;
-    --bg-surface: #F4F4F6;
+    --bg-surface: #F5F5F7;
     --bg-card: #FFFFFF;
     --text-primary: #111111;
     --text-muted: #6B7280;
