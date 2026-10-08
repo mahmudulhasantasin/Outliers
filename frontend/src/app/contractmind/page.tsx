@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
@@ -33,6 +33,18 @@ export default function ContractMindPage() {
   const [copiedClauseId, setCopiedClauseId] = useState<string | null>(null);
   const [piiMasked, setPiiMasked] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+
+  // Check URL query parameter (e.g. ?id=vendor-sla)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const contractId = params.get("id");
+      if (contractId && CONTRACT_AUDITS[contractId]) {
+        setSelectedContractId(contractId);
+        setIsLoaded(true);
+      }
+    }
+  }, []);
 
   // Current contract & audit
   const currentContract: SampleContract =
