@@ -211,104 +211,90 @@ export default function ContractMindPage() {
           </div>
         ) : (
           /* ==================================================================== */
-          /* STATE 2: ACTIVE CONTRACT ANALYSIS VIEW (NATURAL FULL-PAGE FLOW)      */
+          /* STATE 2: ACTIVE CONTRACT ANALYSIS VIEW (BORDERLESS NATURAL READING)  */
           /* ==================================================================== */
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8">
 
-            {/* Top Navigation & Action Header */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-black/5">
+            {/* Back to Upload Bar */}
+            <div className="flex items-center justify-between mb-8">
+              <button
+                onClick={() => setIsLoaded(false)}
+                className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1.5 transition-colors"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{language === "bn" ? "অন্য চুক্তিপত্র আপলোড করুন" : "Upload another agreement"}</span>
+              </button>
+
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => setIsLoaded(false)}
-                  className="p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors"
-                  title="Upload another contract"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <div>
-                  <h2 className="text-xl sm:text-2xl font-serif font-normal text-neutral-950">
-                    {language === "bn" ? currentContract.titleBn : currentContract.titleEn}
-                  </h2>
-                  <p className="text-xs text-neutral-400 font-sans mt-0.5">
-                    {language === "bn" ? currentContract.categoryBn : currentContract.categoryEn}
-                  </p>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2">
-                <button
                   onClick={() => setPiiMasked(!piiMasked)}
-                  className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                    piiMasked
-                      ? "bg-neutral-100 text-neutral-800"
-                      : "bg-neutral-50 text-neutral-400 hover:text-black"
-                  }`}
-                  title="Toggle client-side entity redaction"
+                  className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
                 >
-                  <Lock className="w-3.5 h-3.5" />
+                  <Lock className="w-3 h-3" />
                   <span>{piiMasked ? "PII Masked" : "Raw Text"}</span>
                 </button>
 
                 <button
-                  onClick={() => handleOpenInCopilot()}
-                  className="px-4 py-2 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                  onClick={() => window.print()}
+                  className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
                 >
-                  <Bot className="w-3.5 h-3.5 text-white" />
-                  <span>{language === "bn" ? "কোপাইলটে উন্মুক্ত করুন" : "Open in Copilot"}</span>
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{language === "bn" ? "প্রিন্ট" : "Print"}</span>
                 </button>
 
                 <button
-                  onClick={() => window.print()}
-                  className="p-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 transition-colors"
-                  title="Print / Save Audit"
+                  onClick={() => handleOpenInCopilot()}
+                  className="px-3.5 py-1.5 rounded-full bg-black text-white text-xs font-medium hover:bg-neutral-800 transition-colors flex items-center gap-1.5"
                 >
-                  <Printer className="w-4 h-4" />
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>{language === "bn" ? "কোপাইলটে উন্মুক্ত করুন" : "Open in Copilot"}</span>
                 </button>
               </div>
             </div>
 
-            {/* Executive Risk Health Summary Card */}
-            <div className="p-7 rounded-3xl bg-neutral-50 space-y-4 mb-10">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
-                    {language === "bn" ? "সার্বিক অডিট মূল্যায়ন" : "Executive Audit Assessment"}
-                  </span>
-                  <h3 className="text-xl font-bold font-serif text-neutral-950">
+            {/* Contract Title & Meta (Clean Editorial Header) */}
+            <div className="pb-8 border-b border-neutral-100">
+              <div className="text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2">
+                {language === "bn" ? currentContract.categoryBn : currentContract.categoryEn}
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-serif font-normal text-neutral-950 tracking-tight leading-snug mb-3">
+                {language === "bn" ? currentContract.titleBn : currentContract.titleEn}
+              </h2>
+              <p className="text-xs text-neutral-500">
+                {language === "bn"
+                  ? `পক্ষসমূহ: ${piiMasked ? "[REDACTED_PARTY_A] ও [REDACTED_PARTY_B]" : `${currentContract.parties.firstPartyBn} ও ${currentContract.parties.secondPartyBn}`}`
+                  : `Parties: ${piiMasked ? "[REDACTED_PARTY_A] & [REDACTED_PARTY_B]" : `${currentContract.parties.firstPartyEn} & ${currentContract.parties.secondPartyEn}`}`}
+              </p>
+            </div>
+
+            {/* Executive Legal Audit Summary (Borderless Minimal Section) */}
+            <div className="py-8 border-b border-neutral-100 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+                <div className="flex items-baseline gap-2">
+                  <h3 className="text-lg font-serif font-semibold text-neutral-950">
                     {language === "bn" ? currentAudit.riskGradeBn : currentAudit.riskGradeEn}
                   </h3>
+                  <span className="text-xs text-neutral-400 font-sans">
+                    ({currentAudit.riskScore}/100 Risk Score)
+                  </span>
                 </div>
 
-                <div className="flex items-baseline gap-1.5">
-                  <span className="text-4xl font-bold font-serif text-neutral-950">
-                    {currentAudit.riskScore}
-                  </span>
-                  <span className="text-sm text-neutral-400 font-medium">/ 100 Risk Score</span>
+                <div className="flex items-center gap-3 text-xs text-neutral-500 font-medium">
+                  <span>{currentAudit.stats.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকি" : "High Risk"}</span>
+                  <span>·</span>
+                  <span>{currentAudit.stats.mediumRiskCount} {language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}</span>
+                  <span>·</span>
+                  <span>{currentAudit.stats.compliantCount} {language === "bn" ? "আইনসম্মত" : "Compliant"}</span>
                 </div>
               </div>
 
               <p className="text-sm text-neutral-600 leading-relaxed font-sans">
                 {language === "bn" ? currentAudit.summaryBn : currentAudit.summaryEn}
               </p>
-
-              <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-neutral-500 font-medium border-t border-black/5">
-                <span>
-                  {currentAudit.stats.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকিপূর্ণ ধারা" : "High Risk Clauses"}
-                </span>
-                <span>·</span>
-                <span>
-                  {currentAudit.stats.mediumRiskCount} {language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}
-                </span>
-                <span>·</span>
-                <span>
-                  {currentAudit.stats.compliantCount} {language === "bn" ? "আইনসম্মত ধারা" : "Compliant"}
-                </span>
-              </div>
             </div>
 
-            {/* Clauses Natural Document Flow (No restricted boxes or internal scrollbars!) */}
-            <div className="space-y-8">
+            {/* Clauses List (Pure Natural Document Flow - Zero Nested Boxes) */}
+            <div className="divide-y divide-neutral-100">
               {currentAudit.clauses.map((clause) => {
                 const statProvision = clause.statutoryReferenceId
                   ? STATUTORY_PROVISIONS[clause.statutoryReferenceId]
@@ -320,21 +306,21 @@ export default function ContractMindPage() {
                   <div
                     key={clause.id}
                     id={`clause-${clause.id}`}
-                    className="p-8 rounded-3xl bg-neutral-50/70 transition-all hover:bg-neutral-50"
+                    className="py-10 space-y-5"
                   >
-                    {/* Clause Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-black/5">
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-sm font-semibold text-neutral-400">
-                          Clause {clause.clauseNumber}
+                    {/* Clause Header: Title & Status */}
+                    <div className="flex items-baseline justify-between gap-4">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-semibold text-neutral-400">
+                          § {clause.clauseNumber}
                         </span>
-                        <h4 className="text-lg font-bold font-serif text-neutral-950">
+                        <h4 className="text-base sm:text-lg font-serif font-medium text-neutral-950">
                           {language === "bn" ? clause.titleBn : clause.titleEn}
                         </h4>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-neutral-700 bg-white px-3 py-1 rounded-full shadow-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-neutral-500">
                           {clause.riskLevel === "HIGH"
                             ? language === "bn"
                               ? "উচ্চ ঝুঁকি"
@@ -351,36 +337,33 @@ export default function ContractMindPage() {
                         {hasIssue && (
                           <button
                             onClick={() => handleOpenInCopilot(clause)}
-                            className="p-1.5 rounded-full bg-white hover:bg-neutral-200 text-neutral-800 transition-colors shadow-sm"
+                            className="text-neutral-400 hover:text-black transition-colors"
                             title="Discuss in Legal Copilot"
                           >
-                            <Bot className="w-3.5 h-3.5" />
+                            <Bot className="w-4 h-4" />
                           </button>
                         )}
                       </div>
                     </div>
 
-                    {/* Verbatim Contract Text */}
-                    <div className="mb-6">
-                      <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block mb-2">
-                        {language === "bn" ? "চুক্তির মূল টেক্সট (Verbatim):" : "Contract Verbatim:"}
-                      </span>
-                      <p className="font-serif text-sm leading-relaxed text-neutral-800 bg-white p-5 rounded-2xl shadow-sm whitespace-pre-wrap">
+                    {/* Original Contract Verbatim (Styled as a clean legal quote) */}
+                    <div className="pl-4 border-l-2 border-neutral-200">
+                      <p className="font-serif text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap">
                         {piiMasked
                           ? maskPii(clause.originalText, true).redactedText
                           : clause.originalText}
                       </p>
                     </div>
 
-                    {/* Statutory Finding & Analysis (if flagged) */}
-                    {hasIssue && (
-                      <div className="space-y-4">
-                        {/* Statutory Reference Tag */}
+                    {/* Legal Finding & Redline (Only for clauses with issues) */}
+                    {hasIssue ? (
+                      <div className="space-y-4 pt-1">
+                        {/* Statute Citation */}
                         {clause.statuteCitationEn && (
-                          <div className="text-xs text-neutral-800 flex items-center gap-1.5">
-                            <BookOpen className="w-3.5 h-3.5 text-neutral-500" />
-                            <span className="text-neutral-400 font-medium">Statute:</span>
-                            <span className="font-semibold text-neutral-950">
+                          <div className="text-xs text-neutral-500 flex items-center gap-1.5">
+                            <BookOpen className="w-3.5 h-3.5 text-neutral-400" />
+                            <span className="font-medium text-neutral-400">Statute:</span>
+                            <span className="text-neutral-800 font-semibold">
                               {language === "bn" ? clause.statuteCitationBn : clause.statuteCitationEn}
                             </span>
                             {statProvision && (
@@ -388,7 +371,7 @@ export default function ContractMindPage() {
                                 href={statProvision.bdlawsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-neutral-400 hover:text-black ml-1"
+                                className="text-neutral-400 hover:text-black ml-1 inline-flex items-center"
                                 title="View on official bdlaws portal"
                               >
                                 <ExternalLink className="w-3 h-3" />
@@ -397,39 +380,39 @@ export default function ContractMindPage() {
                           </div>
                         )}
 
-                        {/* Legal Finding Explanation */}
-                        <div className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed font-sans">
-                          <p>{language === "bn" ? clause.detailedAnalysisBn : clause.detailedAnalysisEn}</p>
-                        </div>
+                        {/* Analysis Body */}
+                        <p className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed font-sans">
+                          {language === "bn" ? clause.detailedAnalysisBn : clause.detailedAnalysisEn}
+                        </p>
 
-                        {/* Proposed Safe Redline Rewrite Box */}
+                        {/* Proposed Safe Redline */}
                         {(clause.redlineSuggestionEn || clause.redlineSuggestionBn) && (
-                          <div className="mt-4 p-5 rounded-2xl bg-white space-y-2.5 shadow-sm border-l-2 border-neutral-400">
+                          <div className="p-4 rounded-xl bg-neutral-50 space-y-2">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-600 flex items-center gap-1.5">
-                                <Sparkles className="w-3.5 h-3.5 text-neutral-800" />
+                              <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
+                                <Sparkles className="w-3 h-3 text-neutral-600" />
                                 {language === "bn" ? "প্রস্তাবিত নিরাপদ ক্লজ (Redline):" : "Proposed Safe Redline:"}
                               </span>
 
                               <button
                                 onClick={() => handleCopyRedline(clause)}
-                                className="text-xs font-semibold text-neutral-700 hover:text-black flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-neutral-100 transition-colors"
+                                className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1 transition-colors"
                               >
                                 {copiedClauseId === clause.id ? (
                                   <>
                                     <Check className="w-3 h-3 text-black" />
-                                    <span>{language === "bn" ? "কপি হয়েছে!" : "Copied!"}</span>
+                                    <span>{language === "bn" ? "কপি হয়েছে" : "Copied"}</span>
                                   </>
                                 ) : (
                                   <>
                                     <Copy className="w-3 h-3" />
-                                    <span>{language === "bn" ? "কপি করুন" : "Copy Redline"}</span>
+                                    <span>{language === "bn" ? "কপি করুন" : "Copy"}</span>
                                   </>
                                 )}
                               </button>
                             </div>
 
-                            <p className="text-xs sm:text-[13px] leading-relaxed text-neutral-900 font-sans">
+                            <p className="text-xs sm:text-[13px] leading-relaxed text-neutral-800 font-sans">
                               {language === "bn"
                                 ? clause.redlineSuggestionBn || clause.redlineSuggestionEn
                                 : clause.redlineSuggestionEn}
@@ -437,6 +420,12 @@ export default function ContractMindPage() {
                           </div>
                         )}
                       </div>
+                    ) : (
+                      <p className="text-xs text-neutral-400 font-sans">
+                        {language === "bn"
+                          ? "✓ প্রাসঙ্গিক আইনের মানদণ্ডের সাথে সঙ্গতিপূর্ণ।"
+                          : "✓ Fully compliant with statutory standards."}
+                      </p>
                     )}
 
                   </div>
