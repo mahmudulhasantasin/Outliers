@@ -15,8 +15,6 @@ import {
   UserCheck,
   Moon,
   Sun,
-  ShieldCheck,
-  Cpu,
   LogOut,
   Sparkles,
 } from "lucide-react";
@@ -59,18 +57,6 @@ export default function AppDock() {
       label: language === "bn" ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
       isActive: pathname === "/archive",
       onClick: () => router.push("/archive"),
-    },
-    {
-      icon: <Cpu className="w-5 h-5 stroke-[2.4]" />,
-      label: language === "bn" ? "সিস্টেম আর্কিটেকচার" : "Architecture",
-      isActive: pathname === "/architecture",
-      onClick: () => router.push("/architecture"),
-    },
-    {
-      icon: <ShieldCheck className="w-5 h-5 stroke-[2.4]" />,
-      label: language === "bn" ? "সিকিউরিটি ও অডিট" : "Security & Audit",
-      isActive: pathname === "/security" || pathname === "/audit",
-      onClick: () => router.push("/security"),
     },
     {
       icon: (
