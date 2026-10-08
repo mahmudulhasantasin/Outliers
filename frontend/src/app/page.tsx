@@ -109,10 +109,13 @@ export default function LandingPage() {
               Copilot Q&amp;A
             </button>
             <button
-              onClick={() => router.push("/architecture")}
+              onClick={() => {
+                loginAsDemoUser();
+                router.push("/archive");
+              }}
               className="hover:text-black transition-colors"
             >
-              Architecture
+              {language === "en" ? "Archive" : "আর্কাইভ"}
             </button>
             <button
               onClick={() => setLanguage(language === "en" ? "bn" : "en")}
