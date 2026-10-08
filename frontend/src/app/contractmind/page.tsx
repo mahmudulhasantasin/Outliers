@@ -17,10 +17,9 @@ import {
   Check,
   Printer,
   ExternalLink,
-  ShieldCheck,
   Lock,
-  Search,
-  Sparkles
+  Sparkles,
+  BookOpen
 } from "lucide-react";
 
 export default function ContractMindPage() {
@@ -31,11 +30,9 @@ export default function ContractMindPage() {
   // Initial stage: no contract loaded by default
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [selectedContractId, setSelectedContractId] = useState<string>("employment-agreement");
-  const [selectedClauseId, setSelectedClauseId] = useState<string>("emp-c3");
   const [copiedClauseId, setCopiedClauseId] = useState<string | null>(null);
   const [piiMasked, setPiiMasked] = useState<boolean>(true);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [searchTerm, setSearchTerm] = useState<string>("");
 
   // Current contract & audit
   const currentContract: SampleContract =
@@ -46,15 +43,11 @@ export default function ContractMindPage() {
   // Load a contract (dummy data until backend is ready)
   const handleLoadContract = (contractId: string) => {
     setSelectedContractId(contractId);
-    const audit = CONTRACT_AUDITS[contractId];
-    if (audit && audit.clauses.length > 0) {
-      setSelectedClauseId(audit.clauses[0].id);
-    }
     setIsAnalyzing(true);
     setTimeout(() => {
       setIsAnalyzing(false);
       setIsLoaded(true);
-    }, 600);
+    }, 500);
   };
 
   // Handle file drop or selection
@@ -65,7 +58,7 @@ export default function ContractMindPage() {
       setTimeout(() => {
         setIsAnalyzing(false);
         setIsLoaded(true);
-      }, 800);
+      }, 700);
     }
   };
 
@@ -76,7 +69,7 @@ export default function ContractMindPage() {
       setTimeout(() => {
         setIsAnalyzing(false);
         setIsLoaded(true);
-      }, 800);
+      }, 700);
     }
   };
 
@@ -113,21 +106,9 @@ export default function ContractMindPage() {
     router.push("/copilot");
   };
 
-  // Filter clauses by search
-  const displayedClauses = currentAudit.clauses.filter((clause) => {
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      clause.titleEn.toLowerCase().includes(term) ||
-      clause.titleBn.toLowerCase().includes(term) ||
-      clause.originalText.toLowerCase().includes(term) ||
-      clause.detailedAnalysisEn.toLowerCase().includes(term)
-    );
-  });
-
   return (
-    <AppShell>
-      <div className="w-full min-h-screen bg-white text-neutral-900 pb-24 font-sans">
+    <AppShell className="bg-white" mainClassName="bg-white">
+      <div className="w-full min-h-screen bg-white text-neutral-900 pb-32 font-sans">
         
         {/* Hidden File Input */}
         <input
@@ -230,11 +211,11 @@ export default function ContractMindPage() {
           </div>
         ) : (
           /* ==================================================================== */
-          /* STATE 2: ACTIVE CONTRACT ANALYSIS VIEW (SHOWN AFTER FILE IS LOADED)  */
+          /* STATE 2: ACTIVE CONTRACT ANALYSIS VIEW (NATURAL FULL-PAGE FLOW)      */
           /* ==================================================================== */
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-6">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
 
-            {/* Top Minimal Action Header */}
+            {/* Top Navigation & Action Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 mb-8 border-b border-black/5">
               <div className="flex items-center gap-3">
                 <button
@@ -248,7 +229,7 @@ export default function ContractMindPage() {
                   <h2 className="text-xl sm:text-2xl font-serif font-normal text-neutral-950">
                     {language === "bn" ? currentContract.titleBn : currentContract.titleEn}
                   </h2>
-                  <p className="text-xs text-neutral-400 font-sans">
+                  <p className="text-xs text-neutral-400 font-sans mt-0.5">
                     {language === "bn" ? currentContract.categoryBn : currentContract.categoryEn}
                   </p>
                 </div>
@@ -287,152 +268,119 @@ export default function ContractMindPage() {
               </div>
             </div>
 
-            {/* Spacious Split-Screen Layout */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-
-              {/* LEFT PANE: Clean Verbatim Document Viewer (5 cols) */}
-              <div className="lg:col-span-5 flex flex-col space-y-4">
-                <div className="flex items-center justify-between pb-2">
-                  <span className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">
-                    {language === "bn" ? "চুক্তির মূল খসড়া" : "Contract Verbatim Text"}
+            {/* Executive Risk Health Summary Card */}
+            <div className="p-7 rounded-3xl bg-neutral-50 space-y-4 mb-10">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400 block mb-1">
+                    {language === "bn" ? "সার্বিক অডিট মূল্যায়ন" : "Executive Audit Assessment"}
                   </span>
-                  <span className="text-xs text-neutral-400">
-                    {currentAudit.clauses.length} {language === "bn" ? "টি ধারা" : "clauses"}
-                  </span>
+                  <h3 className="text-xl font-bold font-serif text-neutral-950">
+                    {language === "bn" ? currentAudit.riskGradeBn : currentAudit.riskGradeEn}
+                  </h3>
                 </div>
 
-                <div className="space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto pr-2">
-                  {currentAudit.clauses.map((clause) => {
-                    const isSelected = clause.id === selectedClauseId;
-
-                    return (
-                      <div
-                        key={clause.id}
-                        onClick={() => setSelectedClauseId(clause.id)}
-                        className={`p-4 rounded-2xl cursor-pointer transition-all duration-150 ${
-                          isSelected
-                            ? "bg-neutral-100/90 shadow-sm"
-                            : "bg-neutral-50/60 hover:bg-neutral-100/60"
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-neutral-900 font-sans">
-                            Clause {clause.clauseNumber}: {language === "bn" ? clause.titleBn : clause.titleEn}
-                          </span>
-                          <span className="text-[11px] font-medium text-neutral-500">
-                            {clause.riskLevel === "HIGH"
-                              ? "High Risk"
-                              : clause.riskLevel === "MEDIUM"
-                              ? "Review"
-                              : "Compliant"}
-                          </span>
-                        </div>
-
-                        <p className="font-serif text-xs leading-relaxed text-neutral-700 whitespace-pre-wrap">
-                          {piiMasked
-                            ? maskPii(clause.originalText, true).redactedText
-                            : clause.originalText}
-                        </p>
-                      </div>
-                    );
-                  })}
+                <div className="flex items-baseline gap-1.5">
+                  <span className="text-4xl font-bold font-serif text-neutral-950">
+                    {currentAudit.riskScore}
+                  </span>
+                  <span className="text-sm text-neutral-400 font-medium">/ 100 Risk Score</span>
                 </div>
               </div>
 
-              {/* RIGHT PANE: Statutory Audit & Safe Redlines (7 cols) */}
-              <div className="lg:col-span-7 flex flex-col space-y-6">
+              <p className="text-sm text-neutral-600 leading-relaxed font-sans">
+                {language === "bn" ? currentAudit.summaryBn : currentAudit.summaryEn}
+              </p>
 
-                {/* Executive Risk Health Summary Banner */}
-                <div className="p-6 rounded-3xl bg-neutral-50 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 block mb-0.5">
-                        {language === "bn" ? "অডিট ফলাফল" : "Audit Finding"}
-                      </span>
-                      <h3 className="text-lg font-bold font-serif text-neutral-950">
-                        {language === "bn" ? currentAudit.riskGradeBn : currentAudit.riskGradeEn}
-                      </h3>
+              <div className="flex flex-wrap items-center gap-3 pt-2 text-xs text-neutral-500 font-medium border-t border-black/5">
+                <span>
+                  {currentAudit.stats.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকিপূর্ণ ধারা" : "High Risk Clauses"}
+                </span>
+                <span>·</span>
+                <span>
+                  {currentAudit.stats.mediumRiskCount} {language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}
+                </span>
+                <span>·</span>
+                <span>
+                  {currentAudit.stats.compliantCount} {language === "bn" ? "আইনসম্মত ধারা" : "Compliant"}
+                </span>
+              </div>
+            </div>
+
+            {/* Clauses Natural Document Flow (No restricted boxes or internal scrollbars!) */}
+            <div className="space-y-8">
+              {currentAudit.clauses.map((clause) => {
+                const statProvision = clause.statutoryReferenceId
+                  ? STATUTORY_PROVISIONS[clause.statutoryReferenceId]
+                  : null;
+
+                const hasIssue = clause.riskLevel === "HIGH" || clause.riskLevel === "MEDIUM";
+
+                return (
+                  <div
+                    key={clause.id}
+                    id={`clause-${clause.id}`}
+                    className="p-8 rounded-3xl bg-neutral-50/70 transition-all hover:bg-neutral-50"
+                  >
+                    {/* Clause Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-4 mb-4 border-b border-black/5">
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-sm font-semibold text-neutral-400">
+                          Clause {clause.clauseNumber}
+                        </span>
+                        <h4 className="text-lg font-bold font-serif text-neutral-950">
+                          {language === "bn" ? clause.titleBn : clause.titleEn}
+                        </h4>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-semibold text-neutral-700 bg-white px-3 py-1 rounded-full shadow-sm">
+                          {clause.riskLevel === "HIGH"
+                            ? language === "bn"
+                              ? "উচ্চ ঝুঁকি"
+                              : "High Risk"
+                            : clause.riskLevel === "MEDIUM"
+                            ? language === "bn"
+                              ? "পর্যালোচনা প্রয়োজন"
+                              : "Review Needed"
+                            : language === "bn"
+                            ? "আইনসম্মত"
+                            : "Compliant"}
+                        </span>
+
+                        {hasIssue && (
+                          <button
+                            onClick={() => handleOpenInCopilot(clause)}
+                            className="p-1.5 rounded-full bg-white hover:bg-neutral-200 text-neutral-800 transition-colors shadow-sm"
+                            title="Discuss in Legal Copilot"
+                          >
+                            <Bot className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
 
-                    <div className="text-right">
-                      <span className="text-3xl font-bold font-serif text-neutral-950">
-                        {currentAudit.riskScore}
+                    {/* Verbatim Contract Text */}
+                    <div className="mb-6">
+                      <span className="text-[11px] font-semibold text-neutral-400 uppercase tracking-wider block mb-2">
+                        {language === "bn" ? "চুক্তির মূল টেক্সট (Verbatim):" : "Contract Verbatim:"}
                       </span>
-                      <span className="text-xs text-neutral-400"> / 100</span>
+                      <p className="font-serif text-sm leading-relaxed text-neutral-800 bg-white p-5 rounded-2xl shadow-sm whitespace-pre-wrap">
+                        {piiMasked
+                          ? maskPii(clause.originalText, true).redactedText
+                          : clause.originalText}
+                      </p>
                     </div>
-                  </div>
 
-                  <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed font-sans">
-                    {language === "bn" ? currentAudit.summaryBn : currentAudit.summaryEn}
-                  </p>
-                </div>
-
-                {/* Search Bar */}
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-neutral-400" />
-                  <input
-                    type="text"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder={language === "bn" ? "ধারা ও আইনি বিষয় অনুসন্ধান..." : "Search findings & statutory clauses..."}
-                    className="w-full pl-8 pr-3 py-2 text-xs rounded-xl bg-neutral-50 text-neutral-900 placeholder:text-neutral-400 outline-none focus:bg-neutral-100 transition-colors"
-                  />
-                </div>
-
-                {/* Detailed Findings & Redline Proposals */}
-                <div className="space-y-5">
-                  {displayedClauses.map((clause) => {
-                    const isSelected = clause.id === selectedClauseId;
-                    const statProvision = clause.statutoryReferenceId
-                      ? STATUTORY_PROVISIONS[clause.statutoryReferenceId]
-                      : null;
-
-                    return (
-                      <div
-                        key={clause.id}
-                        onClick={() => setSelectedClauseId(clause.id)}
-                        className={`p-6 rounded-3xl bg-neutral-50/70 transition-all ${
-                          isSelected ? "bg-neutral-100/90 shadow-sm" : "hover:bg-neutral-100/60"
-                        }`}
-                      >
-                        {/* Title and Action */}
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div>
-                            <span className="text-[11px] font-semibold text-neutral-400 block mb-0.5">
-                              Clause {clause.clauseNumber}
-                            </span>
-                            <h4 className="text-base font-bold font-serif text-neutral-950">
-                              {language === "bn" ? clause.titleBn : clause.titleEn}
-                            </h4>
-                          </div>
-
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-neutral-600 bg-white px-2.5 py-1 rounded-lg shadow-sm">
-                              {clause.riskLevel === "HIGH"
-                                ? "High Risk"
-                                : clause.riskLevel === "MEDIUM"
-                                ? "Review Needed"
-                                : "Compliant"}
-                            </span>
-
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleOpenInCopilot(clause);
-                              }}
-                              className="p-1.5 rounded-lg bg-white hover:bg-neutral-200 text-neutral-800 transition-colors shadow-sm"
-                              title="Ask Copilot about this clause"
-                            >
-                              <Bot className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-
-                        {/* Statutory Reference Link */}
+                    {/* Statutory Finding & Analysis (if flagged) */}
+                    {hasIssue && (
+                      <div className="space-y-4">
+                        {/* Statutory Reference Tag */}
                         {clause.statuteCitationEn && (
-                          <div className="mb-3 text-xs text-neutral-700 flex items-center gap-1.5">
+                          <div className="text-xs text-neutral-800 flex items-center gap-1.5">
+                            <BookOpen className="w-3.5 h-3.5 text-neutral-500" />
                             <span className="text-neutral-400 font-medium">Statute:</span>
-                            <span className="font-semibold text-neutral-900">
+                            <span className="font-semibold text-neutral-950">
                               {language === "bn" ? clause.statuteCitationBn : clause.statuteCitationEn}
                             </span>
                             {statProvision && (
@@ -440,8 +388,8 @@ export default function ContractMindPage() {
                                 href={statProvision.bdlawsUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-neutral-400 hover:text-black ml-0.5"
-                                title="View bdlaws official provision"
+                                className="text-neutral-400 hover:text-black ml-1"
+                                title="View on official bdlaws portal"
                               >
                                 <ExternalLink className="w-3 h-3" />
                               </a>
@@ -449,56 +397,51 @@ export default function ContractMindPage() {
                           </div>
                         )}
 
-                        {/* Legal Analysis Body */}
-                        <p className="text-xs text-neutral-600 leading-relaxed font-sans mb-4">
-                          {language === "bn" ? clause.detailedAnalysisBn : clause.detailedAnalysisEn}
-                        </p>
+                        {/* Legal Finding Explanation */}
+                        <div className="text-xs sm:text-[13px] text-neutral-600 leading-relaxed font-sans">
+                          <p>{language === "bn" ? clause.detailedAnalysisBn : clause.detailedAnalysisEn}</p>
+                        </div>
 
-                        {/* Redline Suggestion Box */}
+                        {/* Proposed Safe Redline Rewrite Box */}
                         {(clause.redlineSuggestionEn || clause.redlineSuggestionBn) && (
-                          <div className="p-4 rounded-2xl bg-white space-y-2 shadow-sm">
+                          <div className="mt-4 p-5 rounded-2xl bg-white space-y-2.5 shadow-sm border-l-2 border-neutral-400">
                             <div className="flex items-center justify-between">
-                              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-500 flex items-center gap-1">
-                                <Sparkles className="w-3 h-3 text-neutral-700" />
-                                {language === "bn" ? "প্রস্তাবিত নিরাপদ ক্লজ" : "Proposed Safe Redline"}
+                              <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-600 flex items-center gap-1.5">
+                                <Sparkles className="w-3.5 h-3.5 text-neutral-800" />
+                                {language === "bn" ? "প্রস্তাবিত নিরাপদ ক্লজ (Redline):" : "Proposed Safe Redline:"}
                               </span>
 
                               <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleCopyRedline(clause);
-                                }}
-                                className="text-[11px] font-semibold text-neutral-700 hover:text-black flex items-center gap-1"
+                                onClick={() => handleCopyRedline(clause)}
+                                className="text-xs font-semibold text-neutral-700 hover:text-black flex items-center gap-1 px-2.5 py-1 rounded-lg hover:bg-neutral-100 transition-colors"
                               >
                                 {copiedClauseId === clause.id ? (
                                   <>
                                     <Check className="w-3 h-3 text-black" />
-                                    <span>{language === "bn" ? "কপি সম্পন্ন" : "Copied"}</span>
+                                    <span>{language === "bn" ? "কপি হয়েছে!" : "Copied!"}</span>
                                   </>
                                 ) : (
                                   <>
                                     <Copy className="w-3 h-3" />
-                                    <span>{language === "bn" ? "কপি করুন" : "Copy"}</span>
+                                    <span>{language === "bn" ? "কপি করুন" : "Copy Redline"}</span>
                                   </>
                                 )}
                               </button>
                             </div>
 
-                            <p className="text-xs leading-relaxed text-neutral-800 font-sans">
+                            <p className="text-xs sm:text-[13px] leading-relaxed text-neutral-900 font-sans">
                               {language === "bn"
                                 ? clause.redlineSuggestionBn || clause.redlineSuggestionEn
                                 : clause.redlineSuggestionEn}
                             </p>
                           </div>
                         )}
-
                       </div>
-                    );
-                  })}
-                </div>
+                    )}
 
-              </div>
-
+                  </div>
+                );
+              })}
             </div>
 
           </div>
