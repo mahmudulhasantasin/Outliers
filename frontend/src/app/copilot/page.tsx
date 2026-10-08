@@ -151,7 +151,7 @@ export default function CopilotPage() {
   const hasMessages = messages.length > 0;
 
   return (
-    <AppShell>
+    <AppShell className="bg-transparent" mainClassName="bg-transparent">
       {/* Background Animated Aurora - Smart Modern Subtle Glow */}
       <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden bg-white">
         <Aurora
