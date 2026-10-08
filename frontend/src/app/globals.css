@@ -1,4 +1,9 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&display=swap');
+
+@theme {
+  --font-serif: var(--font-bangla), "Tiro Bangla", Georgia, Cambria, "Times New Roman", Times, serif;
+}
 
 :root {
   --bg-primary: #FFFFFF;
@@ -32,6 +37,7 @@ html, body {
   background-color: #FFFFFF !important;
   background: #FFFFFF !important;
   color: var(--text-primary);
+  font-family: var(--font-bangla), var(--font-inter), 'Tiro Bangla', Georgia, serif, sans-serif;
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   -webkit-font-smoothing: antialiased;
 }
