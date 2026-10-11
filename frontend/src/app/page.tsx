@@ -7,6 +7,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Eye, EyeOff, Sparkles, Sun, Moon, Scale } from "lucide-react";
 import DotField from "@/components/effects/DotField";
+import GradientWaves from "@/components/effects/GradientWaves";
 
 export default function RootAuthPage() {
   const router = useRouter();
@@ -98,16 +99,31 @@ export default function RootAuthPage() {
             backgroundColor: "var(--bg-surface)",
           }}
         >
-          {/* Subtle Ambient Mesh Texture */}
-          <div
-            className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-20"
-            style={{
-              background:
-                theme === "dark"
-                  ? "radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.25), transparent 50%), radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.15), transparent 50%)"
-                  : "radial-gradient(circle at 25% 25%, rgba(251, 146, 60, 0.25), transparent 55%), radial-gradient(circle at 80% 75%, rgba(244, 114, 182, 0.2), transparent 50%)"
-            }}
-          />
+          {/* Animated GradientWaves WebGL Background */}
+          <div className="absolute inset-0 pointer-events-auto z-0 overflow-hidden">
+            <GradientWaves
+              horizonColor={theme === "dark" ? "#1e1b4b" : "#5227FF"}
+              waveColor={theme === "dark" ? "#818cf8" : "#FF9FFC"}
+              crestColor={theme === "dark" ? "#e0e7ff" : "#FFFFFF"}
+              speed={0.4}
+              amplitude={2.5}
+              waveScale={0.6}
+              waveRatio={0.9}
+              swell={35}
+              turbulence={20}
+              tilt={1.11}
+              zoom={1}
+              height={5.5}
+              fogDepth={15}
+              detail="medium"
+              brightness={1}
+              opacity={theme === "dark" ? 0.85 : 0.9}
+              mouseInteraction
+              parallaxStrength={0.5}
+              grain
+              grainIntensity={0.05}
+            />
+          </div>
 
           {/* Top Brand Logo & Name */}
           <div className="relative z-10 flex items-center gap-2.5">
@@ -128,20 +144,20 @@ export default function RootAuthPage() {
               className="text-xs font-semibold uppercase tracking-wider block mb-2"
               style={{ color: "var(--text-muted)" }}
             >
-              {language === "bn" ? "সহজ ও নির্ভরযোগ্য সমাধান" : "You can easily"}
+              {language === "bn" ? "আইনি নিশ্চয়তা ও প্রফেশনাল বুদ্ধিমত্তা" : "Sovereign Contract Intelligence"}
             </span>
             <h2
               className="text-2xl sm:text-3xl md:text-[34px] font-serif font-normal leading-[1.22] tracking-tight mb-3"
               style={{ color: "var(--text-primary)" }}
             >
               {language === "bn"
-                ? "বাংলাদেশের আইনের নির্ভুল সহায়তায় স্মার্ট চুক্তি পর্যালোচনা"
-                : "Get access your personal hub for clarity and productivity."}
+                ? "চুক্তির প্রতিটি ধারা বিশ্লেষণ করুন শতভাগ নিশ্চয়তায়"
+                : "Analyze every clause with zero statutory hallucination."}
             </h2>
             <p className="text-xs sm:text-[13px] leading-relaxed" style={{ color: "var(--text-muted)" }}>
               {language === "bn"
-                ? "সংবিধিবদ্ধ আইনের যাচাইকৃত ধারা এবং শূন্য-হ্যালুসিনেশন লিগ্যাল ইন্টেলিজেন্স।"
-                : "Autonomous contract auditing, statutory verification & hallucination-free legal memoranda."}
+                ? "বাংলাদেশের সংবিধিবদ্ধ আইন (bdlaws), শ্রম আইন ও চুক্তি আইনের নির্ভরযোগ্য যাচাইকরণ প্ল্যাটফর্ম।"
+                : "Verify legal risks, align compliance with Bangladesh statutes, and audit contracts in seconds."}
             </p>
           </div>
         </div>
@@ -163,16 +179,20 @@ export default function RootAuthPage() {
             >
               {isSignUp
                 ? language === "bn"
-                  ? "নতুন অ্যাকাউন্ট তৈরি করুন"
+                  ? "নতুন অ্যাকাউন্ট খুলুন"
                   : "Create an account"
                 : language === "bn"
-                ? "অ্যাকাউন্টে প্রবেশ করুন"
+                ? "স্বাগতম, ফিরে আসার জন্য ধন্যবাদ"
                 : "Welcome back"}
             </h1>
             <p className="text-xs sm:text-[13px] leading-relaxed mb-7" style={{ color: "var(--text-muted)" }}>
-              {language === "bn"
-                ? "আপনার সমস্ত চুক্তি, ধারা এবং বিশ্লেষণ এক জায়গায় পর্যালোচনা করুন।"
-                : "Access your tasks, notes, and contracts anytime, anywhere — and keep everything flowing in one place."}
+              {isSignUp
+                ? language === "bn"
+                  ? "আপনার প্রতিষ্ঠানের চুক্তি ও আইনি ডকুমেন্টস নিরাপদে অডিট করতে শুরু করুন।"
+                  : "Start auditing contracts and checking statutory compliance seamlessly."
+                : language === "bn"
+                ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট এবং আইনি কনসাল্টেশনে প্রবেশ করুন।"
+                : "Sign in to access your audit workspace, legal memos, and verified citations."}
             </p>
 
             {/* Credentials Form */}
@@ -190,7 +210,7 @@ export default function RootAuthPage() {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder={language === "bn" ? "আপনার নাম লিখুন" : "e.g. John Doe"}
+                    placeholder={language === "bn" ? "ব্যারিস্টার / অ্যাডভোকেট / আপনার নাম" : "e.g. Tariqul Islam"}
                     className="w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors border-neutral-200 dark:border-white/10 focus:border-neutral-900 dark:focus:border-white"
                     style={{
                       backgroundColor: "transparent",
@@ -212,7 +232,7 @@ export default function RootAuthPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder={language === "bn" ? "name@company.com" : "natalia.brak@knmstudio.com"}
+                  placeholder={language === "bn" ? "advocate@supremecourt.bd" : "counsel@lawfirm.com"}
                   className="w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors border-neutral-200 dark:border-white/10 focus:border-neutral-900 dark:focus:border-white"
                   style={{
                     backgroundColor: "transparent",
