@@ -62,7 +62,7 @@ export default function RootAuthPage() {
           bulgeOnly
           gradientFrom={theme === "dark" ? "rgba(168, 85, 247, 0.45)" : "rgba(129, 140, 248, 0.55)"}
           gradientTo={theme === "dark" ? "rgba(216, 180, 254, 0.25)" : "rgba(192, 132, 252, 0.4)"}
-          glowColor={theme === "dark" ? "#2e1065" : "#e0e7ff"}
+          glowColor="transparent"
         />
       </div>
       {/* Top Floating Controls (Theme & Language Toggle) */}

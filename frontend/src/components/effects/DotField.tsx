@@ -268,31 +268,33 @@ const DotField = memo(({
           height: '100%',
         }}
       />
-      <svg
-        ref={svgRef}
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          pointerEvents: 'none',
-        }}
-      >
-        <defs>
-          <radialGradient id={glowIdRef.current}>
-            <stop offset="0%" stopColor={glowColor} />
-            <stop offset="100%" stopColor="transparent" />
-          </radialGradient>
-        </defs>
-        <circle
-          ref={glowRef}
-          cx="-9999"
-          cy="-9999"
-          r={glowRadius}
-          fill={`url(#${glowIdRef.current})`}
-          style={{ opacity: 0, willChange: 'opacity' }}
-        />
-      </svg>
+      {glowColor && glowColor !== 'transparent' && glowColor !== 'none' ? (
+        <svg
+          ref={svgRef}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+          }}
+        >
+          <defs>
+            <radialGradient id={glowIdRef.current}>
+              <stop offset="0%" stopColor={glowColor} />
+              <stop offset="100%" stopColor="transparent" />
+            </radialGradient>
+          </defs>
+          <circle
+            ref={glowRef}
+            cx="-9999"
+            cy="-9999"
+            r={glowRadius}
+            fill={`url(#${glowIdRef.current})`}
+            style={{ opacity: 0, willChange: 'opacity' }}
+          />
+        </svg>
+      ) : null}
     </div>
   );
 });
