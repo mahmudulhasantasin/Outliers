@@ -171,8 +171,8 @@ export default function ArchivePage() {
   };
 
   return (
-    <AppShell className="bg-white" mainClassName="bg-white">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans text-neutral-900 print:pt-0 print:px-0 print:max-w-none">
+    <AppShell>
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans print:pt-0 print:px-0 print:max-w-none">
         
         {/* Print-Only Official Archive Summary Header */}
         <div className="hidden print:block pb-6 mb-8 border-b-2 border-neutral-900">
@@ -187,13 +187,13 @@ export default function ArchivePage() {
         </div>
 
         {/* Page Header */}
-        <div className="pb-8 border-b border-neutral-100 print:pb-5 print:border-neutral-200">
+        <div className="pb-8 border-b print:pb-5 print:border-neutral-200" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2 print:text-neutral-600">
             <FolderClock className="w-4 h-4" />
             <span>{language === "bn" ? "অডিট সংগ্রহশালা ও রেকর্ড" : "Audit Repository"}</span>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-serif font-normal text-neutral-950 tracking-tight leading-snug mb-3">
+          <h1 className="text-3xl sm:text-4xl font-serif font-normal tracking-tight leading-snug mb-3" style={{ color: "var(--text-primary)" }}>
             {language === "bn" ? "সংরক্ষিত চুক্তি ও অডিট মেমো" : "Archived Audits & Legal Memos"}
           </h1>
 
@@ -204,19 +204,19 @@ export default function ArchivePage() {
           </p>
 
           {/* Quick Stats Strip */}
-          <div className="flex flex-wrap items-center gap-6 pt-6 mt-6 border-t border-neutral-100 print:border-neutral-200 text-xs text-neutral-500 print:text-neutral-700">
+          <div className="flex flex-wrap items-center gap-6 pt-6 mt-6 border-t print:border-neutral-200 text-xs print:text-neutral-700" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
             <div>
-              <span className="font-semibold text-neutral-900 text-sm mr-1.5">{records.length}</span>
+              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>{records.length}</span>
               <span>{language === "bn" ? "মোট অডিট" : "Total Audits"}</span>
             </div>
             <div>
-              <span className="font-semibold text-neutral-900 text-sm mr-1.5">
+              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
                 {records.filter((r) => r.riskScore >= 75).length}
               </span>
               <span>{language === "bn" ? "উচ্চ ঝুঁকিপূর্ণ চুক্তি" : "High Risk Contracts"}</span>
             </div>
             <div>
-              <span className="font-semibold text-neutral-900 text-sm mr-1.5">
+              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
                 {records.reduce((acc, r) => acc + r.compliantCount, 0)}
               </span>
               <span>{language === "bn" ? "যাচাইকৃত আইনসম্মত ধারা" : "Compliant Clauses"}</span>
@@ -225,7 +225,7 @@ export default function ArchivePage() {
         </div>
 
         {/* Search & Filter Bar (Hidden during Print) */}
-        <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b border-neutral-100 print:hidden">
+        <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b print:hidden" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           {/* Search Box */}
           <div className="relative flex-1 max-w-md">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
@@ -238,7 +238,7 @@ export default function ArchivePage() {
                   ? "চুক্তির নাম, পক্ষ বা আইন অনুযায়ী অনুসন্ধান..."
                   : "Search by title, party, or statute..."
               }
-              className="w-full pl-10 pr-4 py-2 rounded-full bg-neutral-50 hover:bg-neutral-100/80 focus:bg-white text-xs text-neutral-900 placeholder:text-neutral-400 border border-transparent focus:border-neutral-200 outline-none transition-all"
+              className="w-full pl-10 pr-4 py-2 rounded-full text-xs outline-none transition-all border border-transparent" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             />
           </div>
 
@@ -255,8 +255,8 @@ export default function ArchivePage() {
                 onClick={() => setSelectedRisk(filter.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                   selectedRisk === filter.id
-                    ? "bg-black text-white"
-                    : "text-neutral-500 hover:text-black hover:bg-neutral-50"
+                    ? ""
+                    : "opacity-50 hover:opacity-100"
                 }`}
               >
                 {language === "bn" ? filter.labelBn : filter.labelEn}
@@ -266,7 +266,7 @@ export default function ArchivePage() {
         </div>
 
         {/* Archived Records List */}
-        <div className="divide-y divide-neutral-100 print:divide-neutral-200">
+        <div className="divide-y print:divide-neutral-200" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 6%, transparent)" }}>
           {filteredRecords.length > 0 ? (
             filteredRecords.map((record) => (
               <div
@@ -297,7 +297,7 @@ export default function ArchivePage() {
 
                 {/* Contract Title */}
                 <div>
-                  <h2 className="text-xl font-serif font-medium text-neutral-950 group-hover:text-black transition-colors leading-snug">
+                  <h2 className="text-xl font-serif font-medium transition-colors leading-snug" style={{ color: "var(--text-primary)" }}>
                     {language === "bn" ? record.titleBn : record.titleEn}
                   </h2>
                   <p className="text-xs text-neutral-500 print:text-neutral-700 mt-1">
@@ -332,7 +332,7 @@ export default function ArchivePage() {
                   <div className="flex items-center gap-2 print:hidden">
                     <button
                       onClick={() => handleOpenInCopilot(record)}
-                      className="px-3 py-1.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-medium flex items-center gap-1.5 transition-colors"
+                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
                       title="Discuss in Legal Copilot"
                     >
                       <Bot className="w-3.5 h-3.5" />
@@ -341,7 +341,7 @@ export default function ArchivePage() {
 
                     <button
                       onClick={() => handleOpenInContractMind(record.contractId)}
-                      className="px-3.5 py-1.5 rounded-full bg-black hover:bg-neutral-800 text-white text-xs font-medium flex items-center gap-1.5 transition-colors"
+                      className="px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors hover:opacity-90" style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
                     >
                       <span>{language === "bn" ? "অডিট দেখুন" : "View Audit"}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -370,7 +370,7 @@ export default function ArchivePage() {
           ) : (
             <div className="py-20 text-center space-y-3">
               <FileText className="w-8 h-8 text-neutral-300 mx-auto" />
-              <p className="text-sm font-medium text-neutral-700">
+              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
               <p className="text-xs text-neutral-400 max-w-sm mx-auto">

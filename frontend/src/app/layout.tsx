@@ -41,7 +41,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className="h-full bg-white">
+    <html lang="bn" className="h-full">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -51,7 +51,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${inter.variable} ${tiroBangla.variable} font-sans h-full min-h-screen bg-white text-neutral-900 antialiased transition-colors duration-200`}
+        className={`${inter.variable} ${tiroBangla.variable} font-sans h-full min-h-screen antialiased`}
         style={{ fontFamily: "var(--font-bangla), var(--font-inter), 'Tiro Bangla', serif, sans-serif" }}
       >
         <ThemeProvider>

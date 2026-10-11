@@ -27,23 +27,24 @@ export default function LandingPage() {
 
   if (!mounted) {
     return (
-      <div className="min-h-screen w-full bg-[#FFFFFF]" />
+      <div className="min-h-screen w-full" style={{ backgroundColor: "var(--bg-primary)" }} />
     );
   }
 
   return (
     <div
       suppressHydrationWarning
-      className="relative min-h-screen w-full bg-[#FFFFFF] text-[#000000] flex flex-col justify-between overflow-hidden selection:bg-black selection:text-white font-sans"
+      className="relative min-h-screen w-full flex flex-col justify-between overflow-hidden font-sans transition-colors duration-200"
+      style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}
     >
       {/* Background Graphic: Right Geometric Network Graph */}
-      <div className="absolute right-[-60px] md:right-[-20px] top-1/2 -translate-y-1/2 w-[480px] h-[480px] md:w-[680px] md:h-[680px] pointer-events-none opacity-20 select-none">
+      <div className="absolute right-[-60px] md:right-[-20px] top-1/2 -translate-y-1/2 w-[480px] h-[480px] md:w-[680px] md:h-[680px] pointer-events-none opacity-10 dark:opacity-[0.07] select-none">
         <svg
           viewBox="0 0 600 600"
-          className="w-full h-full stroke-black fill-black"
+          className="w-full h-full"
+          style={{ stroke: "var(--text-primary)", fill: "var(--text-primary)" }}
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Network Connections */}
           <g strokeWidth="0.8">
             <line x1="280" y1="120" x2="380" y2="180" />
             <line x1="380" y1="180" x2="480" y2="130" />
@@ -68,8 +69,6 @@ export default function LandingPage() {
             <line x1="370" y1="440" x2="360" y2="550" />
             <line x1="500" y1="480" x2="480" y2="570" />
           </g>
-
-          {/* Network Nodes */}
           <circle cx="280" cy="120" r="4" />
           <circle cx="380" cy="180" r="5" />
           <circle cx="480" cy="130" r="4.5" />
@@ -90,21 +89,26 @@ export default function LandingPage() {
 
       {/* Top Navigation */}
       <header className="relative z-10 w-full max-w-6xl mx-auto px-8 md:px-12 pt-8 md:pt-10">
-        <div className="flex items-center justify-between pb-4 border-b border-black/10">
-          <div className="text-lg md:text-xl font-semibold tracking-tight text-black">
+        <div
+          className="flex items-center justify-between pb-4 border-b"
+          style={{ borderColor: "color-mix(in srgb, var(--text-primary) 10%, transparent)" }}
+        >
+          <div className="text-lg md:text-xl font-semibold tracking-tight" style={{ color: "var(--text-primary)" }}>
             Legal Copilot
           </div>
 
-          <nav className="flex items-center gap-6 md:gap-9 text-xs md:text-sm font-normal text-neutral-600">
+          <nav className="flex items-center gap-6 md:gap-9 text-xs md:text-sm font-normal">
             <button
               onClick={handleStartContractMind}
-              className="hover:text-black transition-colors"
+              className="transition-opacity opacity-60 hover:opacity-100"
+              style={{ color: "var(--text-primary)" }}
             >
               ContractMind
             </button>
             <button
               onClick={handleStartCopilot}
-              className="hover:text-black transition-colors"
+              className="transition-opacity opacity-60 hover:opacity-100"
+              style={{ color: "var(--text-primary)" }}
             >
               Copilot Q&amp;A
             </button>
@@ -113,13 +117,15 @@ export default function LandingPage() {
                 loginAsDemoUser();
                 router.push("/archive");
               }}
-              className="hover:text-black transition-colors"
+              className="transition-opacity opacity-60 hover:opacity-100"
+              style={{ color: "var(--text-primary)" }}
             >
               {language === "en" ? "Archive" : "আর্কাইভ"}
             </button>
             <button
               onClick={() => setLanguage(language === "en" ? "bn" : "en")}
-              className="hover:text-black transition-colors font-medium text-black"
+              className="font-medium transition-opacity"
+              style={{ color: "var(--text-primary)" }}
             >
               {language === "en" ? "বাং" : "EN"}
             </button>
@@ -130,26 +136,33 @@ export default function LandingPage() {
       {/* Hero Section */}
       <main className="relative z-10 w-full max-w-6xl mx-auto px-8 md:px-12 flex-1 flex flex-col justify-center py-16 md:py-24">
         <div className="max-w-2xl">
-          <h1 className="text-4xl sm:text-5xl md:text-[58px] font-serif font-normal leading-[1.12] text-black tracking-tight mb-5">
+          <h1
+            className="text-4xl sm:text-5xl md:text-[58px] font-serif font-normal leading-[1.12] tracking-tight mb-5"
+            style={{ color: "var(--text-primary)" }}
+          >
             {language === "en"
-              ? "‘Precision Legal Intelligence for the Age of AI’"
-              : "‘এআই যুগের নির্ভুল ও দায়িত্বশীল আইনি বুদ্ধিমত্তা’"}
+              ? "'Precision Legal Intelligence for the Age of AI'"
+              : "'এআই যুগের নির্ভুল ও দায়িত্বশীল আইনি বুদ্ধিমত্তা'"}
           </h1>
 
-          <p className="text-sm sm:text-base md:text-[17px] text-neutral-600 leading-relaxed mb-9 max-w-lg font-sans">
+          <p
+            className="text-sm sm:text-base md:text-[17px] leading-relaxed mb-9 max-w-lg font-sans"
+            style={{ color: "var(--text-muted)" }}
+          >
             {language === "en"
               ? "Autonomous contract auditing, statutory verification, and hallucination-free legal memoranda."
-              : "স্বয়ংক্রিয় চুক্তি পর্যালোচনা, আইনি ধারা ম্যাপিং এবং নির্ভরযোগ্য মেমো প্রস্তুতকরণ।"}
+              : "স্বয়ংক্রিয় চুক্তি পর্যালোচনা, আইনি ধারা ম্যাপিং এবং নির্ভরযোগ্য মেমো প্রস্তুতকরণ।"}
           </p>
 
-          {/* Action Buttons: Sign In & Sign Up */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-3.5">
             <button
               onClick={() => {
                 loginAsDemoUser();
                 router.push("/copilot");
               }}
-              className="px-7 py-2.5 rounded-xl bg-black hover:bg-neutral-800 text-white text-xs md:text-sm font-medium transition-colors shadow-sm"
+              className="px-7 py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all shadow-sm hover:opacity-90"
+              style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
             >
               {language === "en" ? "Sign In" : "লগইন করুন"}
             </button>
@@ -158,7 +171,12 @@ export default function LandingPage() {
                 loginAsDemoUser();
                 router.push("/copilot");
               }}
-              className="px-7 py-2.5 rounded-xl border border-black/20 hover:border-black text-black text-xs md:text-sm font-medium transition-colors bg-transparent"
+              className="px-7 py-2.5 rounded-xl text-xs md:text-sm font-medium transition-all hover:opacity-80"
+              style={{
+                border: "1px solid color-mix(in srgb, var(--text-primary) 20%, transparent)",
+                color: "var(--text-primary)",
+                backgroundColor: "transparent",
+              }}
             >
               {language === "en" ? "Sign Up" : "সাইন আপ"}
             </button>
@@ -166,7 +184,6 @@ export default function LandingPage() {
         </div>
       </main>
 
-      {/* Clean Bottom Spacer */}
       <div className="w-full h-8" />
     </div>
   );

@@ -6,6 +6,7 @@ import PromptBar from "@/components/prompt/PromptBar";
 import Aurora from "@/components/effects/Aurora";
 import ThoughtLine from "@/components/effects/ThoughtLine";
 import { useLanguage } from "@/context/LanguageContext";
+import { useTheme } from "@/context/ThemeContext";
 import { STATUTORY_PROVISIONS, StatutoryProvision } from "@/data/statutoryProvisions";
 import {
   Scale,
@@ -29,6 +30,7 @@ interface ChatMessage {
 
 export default function CopilotPage() {
   const { language } = useLanguage();
+  const { theme } = useTheme();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);
@@ -151,35 +153,39 @@ export default function CopilotPage() {
   const hasMessages = messages.length > 0;
 
   return (
-    <AppShell className="bg-transparent" mainClassName="bg-transparent">
+    <AppShell className="bg-transparent" mainClassName="!bg-transparent">
       {/* Background Animated Aurora - Smart Modern Subtle Glow */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <Aurora
-          colorStops={["#5227FF", "#7cff67", "#00d2ff"]}
-          blend={0.7}
+          colorStops={
+            theme === "dark"
+              ? ["#4f46e5", "#06b6d4", "#10b981"]
+              : ["#5227FF", "#7cff67", "#00d2ff"]
+          }
+          blend={theme === "dark" ? 0.6 : 0.7}
           amplitude={1.2}
           speed={0.8}
-          lightMode={true}
+          lightMode={theme !== "dark"}
         />
       </div>
 
       <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto">
         {/* Context Bar if contract is loaded */}
         {loadedContractTitle && (
-          <div className="mb-3 px-4 py-2 rounded-2xl bg-white shadow-sm flex items-center justify-between text-xs text-neutral-800">
+          <div className="mb-3 px-4 py-2 rounded-2xl shadow-sm flex items-center justify-between text-xs" style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}>
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-black" />
-              <span className="font-semibold text-neutral-900">
+              <FileText className="w-4 h-4" style={{ color: "var(--text-primary)" }} />
+              <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
                 {language === "bn" ? "চুক্তির কনটেক্সট সক্রিয়:" : "Active Contract:"}
               </span>
-              <span className="text-neutral-600">{loadedContractTitle}</span>
+              <span style={{ color: "var(--text-muted)" }}>{loadedContractTitle}</span>
             </div>
             <button
               onClick={() => {
                 sessionStorage.removeItem("active_audit_contract");
                 setLoadedContractTitle(null);
               }}
-              className="text-neutral-400 hover:text-black transition-colors"
+              className="text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -198,11 +204,18 @@ export default function CopilotPage() {
                 <div
                   className={`max-w-[85%] sm:max-w-[78%] transition-all duration-300 ${
                     msg.sender === "user"
-                      ? "p-5 rounded-3xl bg-black text-white rounded-br-md shadow-md"
+                      ? "p-5 rounded-3xl rounded-br-md shadow-md"
                       : msg.isThinking
-                      ? "p-2 bg-transparent shadow-none"
-                      : "p-5 rounded-3xl bg-white text-neutral-950 shadow-md rounded-bl-md"
+                      ? "p-2 shadow-none"
+                      : "p-5 rounded-3xl shadow-md rounded-bl-md"
                   }`}
+                  style={
+                    msg.sender === "user"
+                      ? { backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }
+                      : msg.isThinking
+                      ? { background: "transparent" }
+                      : { backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }
+                  }
                 >
                   {/* ThoughtLine for Copilot Response */}
                   {msg.sender === "copilot" && (
@@ -222,7 +235,10 @@ export default function CopilotPage() {
                         collapsible={false}
                         collapseOnSettle={true}
                         showTimer
-                        color={msg.isThinking ? "#171717" : "#525252"}
+                        color={msg.isThinking
+                          ? (theme === "dark" ? "#E4E4E7" : "#171717")
+                          : (theme === "dark" ? "#A1A1AA" : "#525252")
+                        }
                         glyphColor="#2563eb"
                         onSettle={(seconds) => console.log(`thought for ${seconds}s`)}
                       />
@@ -246,8 +262,8 @@ export default function CopilotPage() {
                       {/* Statutory Citations Section */}
                       {msg.citations && msg.citations.length > 0 && (
                         <div className="mt-3.5 flex flex-wrap gap-2 items-center">
-                          <span className="text-[11px] font-medium text-neutral-500 flex items-center gap-1">
-                            <Scale className="w-3 h-3 text-neutral-600" />
+                          <span className="text-[11px] font-medium flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+                            <Scale className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
                             {language === "bn" ? "যাচাইকৃত আইনি রেফারেন্স:" : "Statutory Citations:"}
                           </span>
                           {msg.citations.map((citeId) => {
@@ -257,14 +273,15 @@ export default function CopilotPage() {
                               <button
                                 key={citeId}
                                 onClick={() => setActiveCitation(provision)}
-                                className="px-3 py-1 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-900 text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                                className="px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                                style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
                               >
                                 <span>
                                   {language === "bn"
                                     ? provision.sectionBn.split(" - ")[0]
                                     : provision.sectionEn.split(" - ")[0]}
                                 </span>
-                                <BookOpen className="w-3 h-3 text-neutral-500" />
+                                <BookOpen className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
                               </button>
                             );
                           })}
@@ -282,17 +299,17 @@ export default function CopilotPage() {
           /* Initial Stage: Centered Prompt Bar */
           <div className="flex-1 flex flex-col items-center justify-center -mt-8">
             <div className="text-center mb-8">
-              <h2 className="text-3xl sm:text-4xl font-serif font-normal text-black tracking-tight mb-2.5 drop-shadow-[0_2px_12px_rgba(0,0,0,0.12)]">
+              <h2 className="text-3xl sm:text-4xl font-serif font-normal tracking-tight mb-2.5" style={{ color: "var(--text-primary)" }}>
                 {language === "bn" ? "লিগ্যাল কোপাইলট" : "Legal Copilot"}
               </h2>
-              <p className="text-sm sm:text-[15px] text-neutral-600 font-sans drop-shadow-[0_1px_6px_rgba(0,0,0,0.08)]">
+              <p className="text-sm sm:text-[15px] font-sans" style={{ color: "var(--text-muted)" }}>
                 {language === "bn"
                   ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
                   : "Ask statutory questions with verifiable citations"}
               </p>
             </div>
 
-            <div className="w-full max-w-[620px] shadow-[0_20px_50px_rgba(0,0,0,0.14)] rounded-[22px]">
+            <div className="w-full max-w-[620px] shadow-[0_20px_50px_rgba(0,0,0,0.14)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)] rounded-[22px]">
               <PromptBar
                 placeholder={
                   language === "bn"
@@ -326,62 +343,76 @@ export default function CopilotPage() {
 
         {/* Side Slide-Over Citation Reader Panel */}
         {activeCitation && (
-          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] bg-white shadow-2xl p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200">
+          <div
+            className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] shadow-2xl p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200"
+            style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}
+          >
             <div className="space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-black/10">
-                <div className="flex items-center gap-2 text-xs font-semibold text-neutral-900">
-                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <div
+                className="flex items-center justify-between pb-3 border-b"
+                style={{ borderColor: "color-mix(in srgb, var(--text-primary) 10%, transparent)" }}
+              >
+                <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
                   <span>
                     {language === "bn" ? "সরকারি bdlaws আইনভাণ্ডার" : "Verified Official Statute"}
                   </span>
                 </div>
                 <button
                   onClick={() => setActiveCitation(null)}
-                  className="p-1 rounded-lg hover:bg-neutral-100 text-neutral-500 hover:text-black transition-colors"
+                  className="p-1 rounded-lg transition-colors"
+                  style={{ color: "var(--text-muted)" }}
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               <div>
-                <span className="text-[11px] font-semibold tracking-wider uppercase text-neutral-400 block mb-1">
+                <span className="text-[11px] font-semibold tracking-wider uppercase block mb-1" style={{ color: "var(--text-muted)" }}>
                   {language === "bn" ? activeCitation.actTitleBn : activeCitation.actTitleEn}
                 </span>
-                <h3 className="text-lg font-bold text-neutral-950 leading-snug">
+                <h3 className="text-lg font-bold leading-snug" style={{ color: "var(--text-primary)" }}>
                   {language === "bn" ? activeCitation.sectionBn : activeCitation.sectionEn}
                 </h3>
               </div>
 
               {/* Legal Summary Card */}
-              <div className="p-4 rounded-2xl bg-neutral-100 text-xs text-neutral-700 leading-relaxed space-y-1">
-                <span className="font-bold text-neutral-950 block">
+              <div className="p-4 rounded-2xl text-xs leading-relaxed space-y-1" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}>
+                <span className="font-bold block">
                   {language === "bn" ? "সহজ আইনি ব্যাখ্যা:" : "Key Takeaway:"}
                 </span>
-                <p>
+                <p style={{ color: "var(--text-muted)" }}>
                   {language === "bn" ? activeCitation.summaryBn : activeCitation.summaryEn}
                 </p>
               </div>
 
               {/* Exact Statutory Verbatim Text */}
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 block mb-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>
                   {language === "bn"
                     ? "আইনের হুবহু ধারা (Statutory Verbatim):"
                     : "Statutory Provision Text:"}
                 </span>
-                <div className="p-4 rounded-2xl bg-neutral-50 font-serif text-xs leading-relaxed text-neutral-800 whitespace-pre-line border-l-2 border-neutral-300">
+                <div
+                  className="p-4 rounded-2xl font-serif text-xs leading-relaxed whitespace-pre-line border-l-2"
+                  style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)", borderColor: "color-mix(in srgb, var(--text-primary) 15%, transparent)" }}
+                >
                   {language === "bn" ? activeCitation.fullTextBn : activeCitation.fullTextEn}
                 </div>
               </div>
             </div>
 
             {/* External Government Link */}
-            <div className="pt-6 border-t border-black/10 mt-6">
+            <div
+              className="pt-6 border-t mt-6"
+              style={{ borderColor: "color-mix(in srgb, var(--text-primary) 10%, transparent)" }}
+            >
               <a
                 href={activeCitation.bdlawsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full py-3 px-4 rounded-xl bg-black text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-neutral-800 transition-colors shadow-sm"
+                className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm hover:opacity-90"
+                style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
               >
                 <span>
                   {language === "bn"

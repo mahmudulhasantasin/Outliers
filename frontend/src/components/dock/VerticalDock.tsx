@@ -90,8 +90,8 @@ function VerticalDockItem({
       onKeyDown={handleKeyDown}
       className={`relative inline-flex items-center justify-center rounded-2xl cursor-pointer transition-colors duration-150 border-0 outline-none bg-transparent ${
         isActive
-          ? 'text-black font-bold scale-110 drop-shadow-sm'
-          : 'text-neutral-800 hover:text-black hover:scale-105'
+          ? 'font-bold scale-110 drop-shadow-sm'
+          : 'opacity-60 hover:opacity-100 hover:scale-105'
       } ${className}`}
       tabIndex={0}
       role="button"
@@ -132,7 +132,8 @@ function DockLabel({ children, className = '', isHovered }: DockLabelProps) {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -8 }}
           transition={{ duration: 0.15 }}
-          className={`${className} absolute left-full ml-3 top-1/2 -translate-y-1/2 w-fit whitespace-nowrap rounded-xl bg-neutral-900 px-3 py-1.5 text-xs font-medium text-white shadow-xl dark:bg-neutral-100 dark:text-neutral-900 z-50 pointer-events-none border-0`}
+          className={`${className} absolute left-full ml-3 top-1/2 -translate-y-1/2 w-fit whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-medium shadow-xl z-50 pointer-events-none border-0`}
+          style={{ backgroundColor: "var(--text-primary)", color: "var(--bg-primary)" }}
           role="tooltip"
         >
           {children}
@@ -169,7 +170,7 @@ export default function VerticalDock({
         onMouseLeave={() => {
           mouseY.set(Infinity);
         }}
-        className="flex flex-col items-center gap-3 rounded-3xl bg-white/85 p-2.5 shadow-[0_12px_40px_rgba(0,0,0,0.12)] backdrop-blur-2xl border-0"
+        className="flex flex-col items-center gap-3 rounded-3xl p-2.5 backdrop-blur-2xl border-0 minimal-dock"
         style={{ width: panelWidth }}
         role="toolbar"
       >

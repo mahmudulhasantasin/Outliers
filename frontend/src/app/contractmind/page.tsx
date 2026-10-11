@@ -119,8 +119,8 @@ export default function ContractMindPage() {
   };
 
   return (
-    <AppShell className="bg-white" mainClassName="bg-white">
-      <div className="w-full min-h-screen bg-white text-neutral-900 pb-32 font-sans">
+    <AppShell>
+      <div className="w-full min-h-screen pb-32 font-sans" style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
         
         {/* Hidden File Input */}
         <input
@@ -152,9 +152,9 @@ export default function ContractMindPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full bg-neutral-50 hover:bg-neutral-100/80 transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-12"
+              className="w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-12" style={{ backgroundColor: "var(--bg-surface)" }}
             >
-              <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center text-neutral-700 group-hover:scale-105 transition-transform mb-4">
+              <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4" style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}>
                 <Upload className="w-6 h-6 stroke-[2]" />
               </div>
 
@@ -169,7 +169,7 @@ export default function ContractMindPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-base font-semibold text-neutral-900 mb-1">
+                  <p className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
                     {language === "bn"
                       ? "চুক্তির ফাইল এখানে ড্রপ করুন অথবা ব্রাউজ করুন"
                       : "Drop contract PDF or DOCX here, or browse"}
@@ -202,10 +202,10 @@ export default function ContractMindPage() {
                   <button
                     key={contract.id}
                     onClick={() => handleLoadContract(contract.id)}
-                    className="p-4 rounded-2xl bg-neutral-50 hover:bg-neutral-100 transition-colors text-left flex flex-col justify-between h-28 group"
+                    className="p-4 rounded-2xl transition-colors text-left flex flex-col justify-between h-28 group" style={{ backgroundColor: "var(--bg-surface)" }}
                   >
                     <div>
-                      <p className="text-xs font-bold text-neutral-900 leading-snug line-clamp-2">
+                      <p className="text-xs font-bold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>
                         {language === "bn" ? contract.titleBn : contract.titleEn}
                       </p>
                       <p className="text-[11px] text-neutral-400 mt-1 line-clamp-1">
@@ -243,7 +243,7 @@ export default function ContractMindPage() {
             <div className="flex items-center justify-between mb-8 print:hidden">
               <button
                 onClick={() => setIsLoaded(false)}
-                className="text-xs font-medium text-neutral-500 hover:text-black flex items-center gap-1.5 transition-colors"
+                className="text-xs font-medium flex items-center gap-1.5 transition-colors opacity-50 hover:opacity-100" style={{ color: "var(--text-primary)" }}
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>{language === "bn" ? "অন্য চুক্তিপত্র আপলোড করুন" : "Upload another agreement"}</span>
@@ -277,11 +277,11 @@ export default function ContractMindPage() {
             </div>
 
             {/* Contract Title & Meta (Clean Editorial Header) */}
-            <div className="pb-8 border-b border-neutral-100 print:pb-5 print:border-neutral-200">
+            <div className="pb-8 border-b print:pb-5 print:border-neutral-200" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
               <div className="text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2 print:text-neutral-600">
                 {language === "bn" ? currentContract.categoryBn : currentContract.categoryEn}
               </div>
-              <h2 className="text-2xl sm:text-3xl font-serif font-normal text-neutral-950 tracking-tight leading-snug mb-3">
+              <h2 className="text-2xl sm:text-3xl font-serif font-normal tracking-tight leading-snug mb-3" style={{ color: "var(--text-primary)" }}>
                 {language === "bn" ? currentContract.titleBn : currentContract.titleEn}
               </h2>
               <p className="text-xs text-neutral-500 print:text-neutral-700">
@@ -292,10 +292,10 @@ export default function ContractMindPage() {
             </div>
 
             {/* Executive Legal Audit Summary (Borderless Minimal Section) */}
-            <div className="py-8 border-b border-neutral-100 print:py-5 print:border-neutral-200 space-y-4 break-inside-avoid print-avoid-break">
+            <div className="py-8 border-b print:py-5 print:border-neutral-200 space-y-4 break-inside-avoid print-avoid-break" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
               <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                 <div className="flex items-baseline gap-2">
-                  <h3 className="text-lg font-serif font-semibold text-neutral-950">
+                  <h3 className="text-lg font-serif font-semibold" style={{ color: "var(--text-primary)" }}>
                     {language === "bn" ? currentAudit.riskGradeBn : currentAudit.riskGradeEn}
                   </h3>
                   <span className="text-xs text-neutral-400 print:text-neutral-600 font-sans font-medium">
@@ -318,7 +318,7 @@ export default function ContractMindPage() {
             </div>
 
             {/* Clauses List (Pure Natural Document Flow - Zero Page Breaks Mid-Clause) */}
-            <div className="divide-y divide-neutral-100 print:divide-neutral-200">
+            <div className="divide-y print:divide-neutral-200" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 6%, transparent)" }}>
               {currentAudit.clauses.map((clause) => {
                 const statProvision = clause.statutoryReferenceId
                   ? STATUTORY_PROVISIONS[clause.statutoryReferenceId]
@@ -338,7 +338,7 @@ export default function ContractMindPage() {
                         <span className="text-xs font-semibold text-neutral-400 print:text-neutral-600">
                           § {clause.clauseNumber}
                         </span>
-                        <h4 className="text-base sm:text-lg font-serif font-medium text-neutral-950">
+                        <h4 className="text-base sm:text-lg font-serif font-medium" style={{ color: "var(--text-primary)" }}>
                           {language === "bn" ? clause.titleBn : clause.titleEn}
                         </h4>
                       </div>
@@ -371,8 +371,8 @@ export default function ContractMindPage() {
                     </div>
 
                     {/* Original Contract Verbatim (Styled as a clean legal quote) */}
-                    <div className="pl-4 border-l-2 border-neutral-200 print:border-neutral-400">
-                      <p className="font-serif text-sm leading-relaxed text-neutral-800 whitespace-pre-wrap">
+                    <div className="pl-4 border-l-2 print:border-neutral-400" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 15%, transparent)" }}>
+                      <p className="font-serif text-sm leading-relaxed whitespace-pre-wrap" style={{ color: "var(--text-primary)" }}>
                         {piiMasked
                           ? maskPii(clause.originalText, true).redactedText
                           : clause.originalText}
@@ -405,13 +405,13 @@ export default function ContractMindPage() {
                         )}
 
                         {/* Analysis Body */}
-                        <p className="text-xs sm:text-[13px] text-neutral-600 print:text-neutral-800 leading-relaxed font-sans">
+                        <p className="text-xs sm:text-[13px] leading-relaxed font-sans" style={{ color: "var(--text-muted)" }}>
                           {language === "bn" ? clause.detailedAnalysisBn : clause.detailedAnalysisEn}
                         </p>
 
                         {/* Proposed Safe Redline */}
                         {(clause.redlineSuggestionEn || clause.redlineSuggestionBn) && (
-                          <div className="p-4 rounded-xl bg-neutral-50 print:bg-neutral-50 print:border print:border-neutral-300 space-y-2">
+                          <div className="p-4 rounded-xl print:border print:border-neutral-300 space-y-2" style={{ backgroundColor: "var(--bg-surface)" }}>
                             <div className="flex items-center justify-between">
                               <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-500 print:text-neutral-700 flex items-center gap-1">
                                 <Sparkles className="w-3 h-3 text-neutral-600" />
@@ -436,7 +436,7 @@ export default function ContractMindPage() {
                               </button>
                             </div>
 
-                            <p className="text-xs sm:text-[13px] leading-relaxed text-neutral-800 font-sans font-medium">
+                            <p className="text-xs sm:text-[13px] leading-relaxed font-sans font-medium" style={{ color: "var(--text-primary)" }}>
                               {language === "bn"
                                 ? clause.redlineSuggestionBn || clause.redlineSuggestionEn
                                 : clause.redlineSuggestionEn}
@@ -445,7 +445,7 @@ export default function ContractMindPage() {
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-neutral-400 print:text-neutral-600 font-sans">
+                      <p className="text-xs print:text-neutral-600 font-sans" style={{ color: "var(--text-muted)" }}>
                         {language === "bn"
                           ? "✓ প্রাসঙ্গিক আইনের মানদণ্ডের সাথে সঙ্গতিপূর্ণ।"
                           : "✓ Fully compliant with statutory standards."}

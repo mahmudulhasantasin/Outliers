@@ -181,9 +181,9 @@ export default function PromptBar({
   onStop,
   onAttach,
   onDictate,
-  background = '#FFFFFF',
-  color = '#111111',
-  menuBackground = '#FFFFFF',
+  background = 'var(--bg-card)',
+  color = 'var(--text-primary)',
+  menuBackground = 'var(--bg-card)',
   width = 640,
   radius = 20,
   maxRows = 5,
@@ -380,13 +380,13 @@ export default function PromptBar({
       <style>{STYLE}</style>
       {open ? (
         <div
-          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 origin-bottom rounded-2xl p-1.5 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.18)] [animation:prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] motion-reduce:[animation:none] border-0"
+          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 origin-bottom rounded-2xl p-1.5 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_36px_-8px_rgba(0,0,0,0.5)] dark:border dark:border-white/10 [animation:prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] motion-reduce:[animation:none] border-0"
           role="listbox"
           aria-label={open === 'at' ? 'Sources' : 'Commands'}
         >
           <span
             ref={glowRef}
-            className="pointer-events-none absolute inset-x-1.5 rounded-xl opacity-0 [background:rgba(0,0,0,0.05)] [transition:top_220ms_cubic-bezier(0.23,1,0.32,1),height_220ms_cubic-bezier(0.23,1,0.32,1),opacity_150ms_ease] motion-reduce:[transition:opacity_150ms_ease]"
+            className="pointer-events-none absolute inset-x-1.5 rounded-xl opacity-0 [background:rgba(0,0,0,0.05)] dark:[background:rgba(255,255,255,0.08)] [transition:top_220ms_cubic-bezier(0.23,1,0.32,1),height_220ms_cubic-bezier(0.23,1,0.32,1),opacity_150ms_ease] motion-reduce:[transition:opacity_150ms_ease]"
             aria-hidden="true"
           />
           {list.map((row, i) => (
@@ -425,7 +425,7 @@ export default function PromptBar({
       ) : null}
 
       <div
-        className="relative isolate flex cursor-text flex-col gap-2 p-3.5 [background:var(--pb-bg)] [border-radius:var(--pb-radius)] shadow-[0_8px_30px_rgba(0,0,0,0.08)] border-0"
+        className="relative isolate flex cursor-text flex-col gap-2 p-3.5 [background:var(--pb-bg)] [border-radius:var(--pb-radius)] shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] dark:border dark:border-white/10 border-0"
         role="presentation"
         onPointerDown={e => {
           if (e.target === e.currentTarget || e.target === inputRef.current) closeMenus();
@@ -437,13 +437,13 @@ export default function PromptBar({
             {attachments.map((file, i) => (
               <span
                 key={`${file}-${i}`}
-                className="inline-flex h-[26px] items-center gap-1.5 rounded-lg pr-1.5 pl-2 text-[12px] bg-neutral-100 text-neutral-800"
+                className="inline-flex h-[26px] items-center gap-1.5 rounded-lg pr-1.5 pl-2 text-[12px] bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
               >
                 <HugeiconsIcon icon={File02Icon} size={12} strokeWidth={2} />
                 <span className="max-w-[160px] truncate font-medium">{file}</span>
                 <button
                   type="button"
-                  className="inline-grid h-[18px] w-[18px] cursor-pointer place-items-center rounded-md border-0 bg-transparent p-0 text-inherit opacity-60 hover:opacity-100 hover:bg-neutral-200"
+                  className="inline-grid h-[18px] w-[18px] cursor-pointer place-items-center rounded-md border-0 bg-transparent p-0 text-inherit opacity-60 hover:opacity-100 hover:bg-neutral-200 dark:hover:bg-neutral-700"
                   aria-label={`Remove ${file}`}
                   onClick={() => setAttachments(a => a.filter((_, j) => j !== i))}
                 >
@@ -456,7 +456,7 @@ export default function PromptBar({
 
         <textarea
           ref={inputRef}
-          className="block w-full resize-none border-0 bg-transparent p-1 text-[15px] leading-[22px] text-neutral-900 outline-none font-sans placeholder:text-neutral-400"
+          className="block w-full resize-none border-0 bg-transparent p-1 text-[15px] leading-[22px] text-neutral-900 dark:text-neutral-100 outline-none font-sans placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
           rows={1}
           value={draft}
           placeholder={listening ? 'Listening…' : placeholder}
@@ -474,7 +474,8 @@ export default function PromptBar({
         <div className="flex items-center gap-1.5 pt-1">
           <button
             type="button"
-            className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 outline-none transition-colors"
+            className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors"
+            style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             aria-label="Add files and sources"
             aria-expanded={plusOpen}
             onMouseDown={e => e.preventDefault()}
@@ -492,7 +493,8 @@ export default function PromptBar({
           {onDictate ? (
             <button
               type="button"
-              className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 outline-none transition-colors"
+              className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors"
+              style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
               aria-label={listening ? 'Stop dictation' : 'Dictate'}
               aria-pressed={listening}
               onMouseDown={e => e.preventDefault()}
@@ -512,7 +514,8 @@ export default function PromptBar({
 
           <button
             type="button"
-            className="relative inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 bg-black text-white hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-black transition-colors shadow-sm outline-none"
+            className="relative inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 disabled:opacity-30 transition-colors shadow-sm outline-none hover:opacity-90"
+            style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
             disabled={!armed}
             aria-label={busy ? 'Stop' : 'Send'}
             onMouseDown={e => e.preventDefault()}
