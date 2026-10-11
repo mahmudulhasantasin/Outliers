@@ -154,10 +154,10 @@ export default function CopilotPage() {
 
   return (
     <AppShell className="bg-transparent" mainClassName="!bg-transparent">
-      {/* Background Animated Aurora - Smooth fade out once first response is ready */}
+      {/* Background Animated Aurora - Only on initial landing screen, completely disappears once messages start */}
       <div
-        className={`fixed inset-0 pointer-events-none z-0 overflow-hidden transition-opacity duration-[2500ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
-          !hasMessages || isTyping ? "opacity-100" : "opacity-0"
+        className={`fixed inset-0 pointer-events-none z-0 overflow-hidden transition-opacity duration-1000 ease-in-out ${
+          !hasMessages ? "opacity-100" : "opacity-0"
         }`}
       >
         <Aurora

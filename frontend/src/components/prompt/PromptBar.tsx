@@ -170,6 +170,10 @@ function SendGlyph({ busy, morphDuration, squash, tilt }: SendGlyphProps) {
 const STYLE = `
 @keyframes prompt-bar-pop { from { opacity: 0; transform: translateY(4px) scale(0.98); } }
 @keyframes prompt-bar-eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+@keyframes prompt-bar-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
 .prompt-bar-input::placeholder {
   color: var(--text-muted);
   opacity: 0.8;
@@ -428,14 +432,32 @@ export default function PromptBar({
         </div>
       ) : null}
 
+      {/* Rotating Conic Gradient Border Container (User button structure) */}
       <div
-        className="relative isolate flex cursor-text flex-col gap-2 p-3.5 [background:var(--pb-bg)] [border-radius:var(--pb-radius)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
-        role="presentation"
-        onPointerDown={e => {
-          if (e.target === e.currentTarget || e.target === inputRef.current) closeMenus();
-        }}
-        onClick={focusInput}
+        className="relative w-full p-[2px] overflow-hidden transition-all duration-300"
+        style={{ borderRadius: 'calc(var(--pb-radius) + 2px)' }}
       >
+        {/* ১. রোটেটিং কনিক গ্রেডিয়েন্ট বর্ডার */}
+        <div
+          className={`pointer-events-none absolute inset-[-200%] animate-[prompt-bar-spin_4s_linear_infinite] transition-opacity duration-500 ${
+            busy ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{
+            background:
+              'conic-gradient(from 0deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb923c, #38bdf8)'
+          }}
+        />
+
+        {/* ২. ভেতরের মূল বডি (Inner Content) */}
+        <div
+          className="relative isolate flex cursor-text flex-col gap-2 p-3.5 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
+          style={{ borderRadius: 'var(--pb-radius)' }}
+          role="presentation"
+          onPointerDown={e => {
+            if (e.target === e.currentTarget || e.target === inputRef.current) closeMenus();
+          }}
+          onClick={focusInput}
+        >
         {attachments.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
             {attachments.map((file, i) => (
@@ -539,6 +561,7 @@ export default function PromptBar({
             <SendGlyph busy={busy} morphDuration={morphDuration} squash={squash} tilt={tilt} />
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
