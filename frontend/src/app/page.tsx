@@ -6,6 +6,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
 import { Eye, EyeOff, Sparkles, Sun, Moon, Scale } from "lucide-react";
+import DotField from "@/components/effects/DotField";
 
 export default function RootAuthPage() {
   const router = useRouter();
@@ -44,9 +45,26 @@ export default function RootAuthPage() {
   return (
     <div
       suppressHydrationWarning
-      className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-10 font-sans transition-colors duration-200"
+      className="relative min-h-screen w-full flex items-center justify-center p-4 sm:p-6 md:p-10 font-sans transition-colors duration-200 overflow-hidden"
       style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}
     >
+      {/* Background Interactive DotField */}
+      <div className="fixed inset-0 pointer-events-auto z-0 overflow-hidden">
+        <DotField
+          dotRadius={1.5}
+          dotSpacing={14}
+          bulgeStrength={67}
+          glowRadius={160}
+          sparkle={false}
+          waveAmplitude={0}
+          cursorRadius={500}
+          cursorForce={0.1}
+          bulgeOnly
+          gradientFrom={theme === "dark" ? "rgba(168, 85, 247, 0.45)" : "rgba(129, 140, 248, 0.55)"}
+          gradientTo={theme === "dark" ? "rgba(216, 180, 254, 0.25)" : "rgba(192, 132, 252, 0.4)"}
+          glowColor={theme === "dark" ? "#2e1065" : "#e0e7ff"}
+        />
+      </div>
       {/* Top Floating Controls (Theme & Language Toggle) */}
       <div className="fixed top-5 right-6 z-20 flex items-center gap-3">
         <button
