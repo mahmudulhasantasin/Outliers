@@ -154,8 +154,12 @@ export default function CopilotPage() {
 
   return (
     <AppShell className="bg-transparent" mainClassName="!bg-transparent">
-      {/* Background Animated Aurora - Smart Modern Subtle Glow */}
-      <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+      {/* Background Animated Aurora - Smooth fade out once first response is ready */}
+      <div
+        className={`fixed inset-0 pointer-events-none z-0 overflow-hidden transition-opacity duration-[2500ms] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          !hasMessages || isTyping ? "opacity-100" : "opacity-0"
+        }`}
+      >
         <Aurora
           colorStops={
             theme === "dark"
@@ -299,17 +303,22 @@ export default function CopilotPage() {
           /* Initial Stage: Centered Prompt Bar */
           <div className="flex-1 flex flex-col items-center justify-center -mt-8">
             <div className="text-center mb-8">
-              <h2 className="text-3xl sm:text-4xl font-serif font-normal tracking-tight mb-2.5" style={{ color: "var(--text-primary)" }}>
+              <h2
+                className="text-3xl sm:text-4xl font-serif font-normal tracking-tight mb-2.5 [text-shadow:0_1px_2px_rgba(0,0,0,0.1)] dark:[text-shadow:0_2px_10px_rgba(255,255,255,0.2)]"
+                style={{ color: "var(--text-primary)" }}
+              >
                 {language === "bn" ? "লিগ্যাল কোপাইলট" : "Legal Copilot"}
               </h2>
-              <p className="text-sm sm:text-[15px] font-sans" style={{ color: "var(--text-muted)" }}>
+              <p
+                className="text-sm sm:text-[15px] font-sans text-neutral-600 dark:text-neutral-400 font-normal tracking-normal"
+              >
                 {language === "bn"
                   ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
                   : "Ask statutory questions with verifiable citations"}
               </p>
             </div>
 
-            <div className="w-full max-w-[620px] shadow-[0_20px_50px_rgba(0,0,0,0.14)] dark:shadow-[0_20px_50px_rgba(0,0,0,0.45)] rounded-[22px]">
+            <div className="w-full max-w-[620px] shadow-[0_12px_32px_-6px_rgba(79,70,229,0.06),0_4px_16px_-2px_rgba(15,23,42,0.03)] dark:shadow-[0_12px_32px_-4px_rgba(0,0,0,0.35)] rounded-[22px]">
               <PromptBar
                 placeholder={
                   language === "bn"

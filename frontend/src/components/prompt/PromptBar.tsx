@@ -170,6 +170,10 @@ function SendGlyph({ busy, morphDuration, squash, tilt }: SendGlyphProps) {
 const STYLE = `
 @keyframes prompt-bar-pop { from { opacity: 0; transform: translateY(4px) scale(0.98); } }
 @keyframes prompt-bar-eq { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1); } }
+.prompt-bar-input::placeholder {
+  color: var(--text-muted);
+  opacity: 0.8;
+}
 `;
 
 export default function PromptBar({
@@ -425,7 +429,7 @@ export default function PromptBar({
       ) : null}
 
       <div
-        className="relative isolate flex cursor-text flex-col gap-2 p-3.5 [background:var(--pb-bg)] [border-radius:var(--pb-radius)] shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.35)] dark:border dark:border-white/10 border-0"
+        className="relative isolate flex cursor-text flex-col gap-2 p-3.5 [background:var(--pb-bg)] [border-radius:var(--pb-radius)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
         role="presentation"
         onPointerDown={e => {
           if (e.target === e.currentTarget || e.target === inputRef.current) closeMenus();
@@ -456,7 +460,11 @@ export default function PromptBar({
 
         <textarea
           ref={inputRef}
-          className="block w-full resize-none border-0 bg-transparent p-1 text-[15px] leading-[22px] text-neutral-900 dark:text-neutral-100 outline-none font-sans placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+          className="prompt-bar-input block w-full resize-none border-0 bg-transparent p-1 text-[15px] leading-[22px] outline-none font-sans"
+          style={{
+            color: "var(--text-primary)",
+            caretColor: "var(--text-primary)"
+          }}
           rows={1}
           value={draft}
           placeholder={listening ? 'Listening…' : placeholder}
