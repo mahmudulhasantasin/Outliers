@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&display=swap');
 
 @theme {
   --font-serif: var(--font-bangla), "Tiro Bangla", Georgia, Cambria, "Times New Roman", Times, serif;
