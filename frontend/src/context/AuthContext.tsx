@@ -13,6 +13,7 @@ interface UserProfile {
 
 interface AuthContextType {
   isAuthenticated: boolean;
+  isLoading: boolean;
   user: UserProfile | null;
   loginAsDemoUser: () => void;
   loginAsDemoAdmin: () => void;
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
   const [user, setUser] = useState<UserProfile | null>(null);
 
   useEffect(() => {
@@ -36,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("app_auth");
       }
     }
+    setIsLoading(false);
   }, []);
 
   const loginAsDemoUser = () => {
@@ -72,6 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider
       value={{
         isAuthenticated,
+        isLoading,
         user,
         loginAsDemoUser,
         loginAsDemoAdmin,

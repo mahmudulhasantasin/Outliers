@@ -35,6 +35,8 @@ export const metadata: Metadata = {
   description: "Enterprise-grade contract intelligence, statutory clause verification, and hallucination-free legal advisory mapped to Bangladesh statutes.",
 };
 
+import SmoothScrollProvider from "@/components/effects/SmoothScrollProvider";
+
 export default function RootLayout({
   children,
 }: {
@@ -58,7 +60,9 @@ export default function RootLayout({
           <LanguageProvider>
             <PersonaProvider>
               <AuthProvider>
-                {children}
+                <SmoothScrollProvider>
+                  {children}
+                </SmoothScrollProvider>
               </AuthProvider>
             </PersonaProvider>
           </LanguageProvider>
