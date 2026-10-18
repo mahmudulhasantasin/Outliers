@@ -54,10 +54,14 @@ async function request<T>(
   console.log(`[API Call] ${method} ${fullUrl}`, body);
 
   let res: Response;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 35000);
+
   try {
     res = await fetch(fullUrl, {
       method,
       headers: reqHeaders,
+      signal: controller.signal,
       body:
         body !== undefined
           ? isFormData
@@ -65,9 +69,15 @@ async function request<T>(
             : JSON.stringify(body)
           : undefined,
     });
-  } catch (netErr) {
+  } catch (netErr: any) {
+    if (netErr?.name === "AbortError") {
+      console.error(`[API Timeout] ${method} ${fullUrl} exceeded 35s`);
+      throw new ApiError(408, "Request timed out after 35s. AI model might be busy.");
+    }
     console.error(`[API Network Error] ${method} ${fullUrl}:`, netErr);
     throw new ApiError(0, "Network connection error. Please verify backend connectivity.");
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   if (res.status === 401) {
@@ -82,7 +92,20 @@ async function request<T>(
     let detail = `HTTP ${res.status}`;
     try {
       const json = await res.json();
-      detail = json?.detail ?? json?.message ?? detail;
+      const rawDetail = json?.detail ?? json?.message;
+      if (typeof rawDetail === "string") {
+        detail = rawDetail;
+      } else if (Array.isArray(rawDetail)) {
+        // Format Pydantic 422 errors: [{ loc: ['body', 'field'], msg: '...' }]
+        detail = rawDetail
+          .map((d: any) => {
+            const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : "";
+            return field ? `${field}: ${d.msg}` : d.msg || JSON.stringify(d);
+          })
+          .join("; ");
+      } else if (rawDetail && typeof rawDetail === "object") {
+        detail = JSON.stringify(rawDetail);
+      }
     } catch {
       /* noop */
     }

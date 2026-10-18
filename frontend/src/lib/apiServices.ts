@@ -20,30 +20,46 @@ export interface ContractHistoryItem {
 }
 
 export interface ContractAuditResult {
-  contract_id: string;
-  file_name: string;
-  status: string;
+  contract_id: string | number;
+  memo_id?: string | number;
+  file_name?: string;
+  title?: string;
+  status?: string;
+  overall_risk?: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
   risk_score: number;
-  risk_grade: string;
-  summary: string;
-  high_risk_count: number;
-  medium_risk_count: number;
-  compliant_count: number;
+  risk_grade?: string;
+  summary?: string;
+  executive_summary?: string;
+  high_risk_count?: number;
+  medium_risk_count?: number;
+  compliant_count?: number;
+  counts?: {
+    CRITICAL?: number;
+    HIGH?: number;
+    MODERATE?: number;
+    LOW?: number;
+  };
   clauses: ContractClause[];
-  created_at: string;
+  hitl_status?: string;
+  created_at?: string;
 }
 
 export interface ContractClause {
-  id: string;
-  clause_number: number;
-  title: string;
-  risk_level: "HIGH" | "MEDIUM" | "LOW" | "COMPLIANT";
+  id?: string;
+  clause_number: string | number;
+  title?: string;
+  clause_title?: string;
+  risk_level: "CRITICAL" | "HIGH" | "MEDIUM" | "MODERATE" | "LOW" | "COMPLIANT";
   original_text: string;
-  issue_summary: string;
-  detailed_analysis: string;
+  issue_summary?: string;
+  detailed_analysis?: string;
+  legal_explanation?: string;
   redline_suggestion?: string;
-  key_obligations: string[];
+  proposed_safe_redline?: string;
+  statute_reference?: string;
   statute_citation?: string;
+  is_compliant?: boolean;
+  key_obligations?: string[];
 }
 
 export interface DownloadUrlResponse {
@@ -61,25 +77,33 @@ export interface VerificationRequestResponse {
 // ────────────────────────────────────────────────────────────────────────────
 
 /** Upload a contract file for AI audit */
-export async function uploadContract(file: File): Promise<ContractAuditResult> {
+export async function uploadContract(
+  file: File,
+  title?: string
+): Promise<ContractAuditResult> {
   const formData = new FormData();
+  const fileTitle = title || file.name.replace(/\.[^/.]+$/, "") || "Contract Document";
+  formData.append("title", fileTitle);
   formData.append("file", file);
   return api.upload<ContractAuditResult>("/api/contracts/upload", formData);
 }
 
 /** Get user's contract audit history */
-export async function getContractHistory(): Promise<ContractHistoryItem[]> {
-  return api.get<ContractHistoryItem[]>("/api/contracts/history");
+export async function getContractHistory(
+  limit: number = 20,
+  offset: number = 0
+): Promise<ContractHistoryItem[]> {
+  return api.get<ContractHistoryItem[]>(`/api/contracts/history?limit=${limit}&offset=${offset}`);
 }
 
 /** Get a signed download URL for a contract */
-export async function getContractDownloadUrl(contractId: string): Promise<DownloadUrlResponse> {
+export async function getContractDownloadUrl(contractId: string | number): Promise<DownloadUrlResponse> {
   return api.get<DownloadUrlResponse>(`/api/contracts/${contractId}/download`);
 }
 
 /** Request lawyer verification for a contract */
 export async function requestLawyerVerification(
-  contractId: string
+  contractId: string | number
 ): Promise<VerificationRequestResponse> {
   return api.post<VerificationRequestResponse>(
     `/api/contracts/${contractId}/request-verification`
@@ -91,47 +115,66 @@ export async function requestLawyerVerification(
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface ChatSession {
-  id: string;
+  id: string | number;
+  session_id?: string | number;
   title: string;
-  status: "active" | "closed";
-  message_count: number;
-  created_at: string;
-  updated_at: string;
+  mode?: string;
+  status?: "active" | "closed";
+  message_count?: number;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface ChatMessage {
-  id: string;
+  id: string | number;
   role: "user" | "assistant";
   content: string;
   cited_sections?: CitedSection[];
-  created_at: string;
+  created_at?: string;
 }
 
 export interface CitedSection {
-  act_title: string;
-  section: string;
+  act?: string;
+  act_title?: string;
+  section?: string;
+  section_number?: string;
+  title?: string;
+  provision_summary?: string;
+  relevance?: string;
+  relevance_summary?: string;
   url?: string;
-  relevance_summary: string;
+}
+
+export interface DetailedChatResponse {
+  detailed_answer: string;
+  cited_sections?: CitedSection[];
+  suggested_next_steps?: string[];
 }
 
 export interface ChatQueryRequest {
-  session_id: string;
-  message: string;
-  contract_id?: string;
+  session_id: string | number;
+  query: string;
+  contract_id?: string | number;
 }
 
 export interface ChatQueryResponse {
-  message_id: string;
-  response: string;
-  cited_sections: CitedSection[];
-  session_id: string;
+  session_id: string | number;
+  user_query?: string;
+  response: DetailedChatResponse | string;
+  credits_remaining?: number;
+  credits_source?: string;
+  language_detected?: string;
+  cited_sections?: CitedSection[];
 }
 
 export interface CreateSessionResponse {
-  id: string;
+  session_id: string | number;
+  id?: string | number;
+  mode?: string;
+  message_limit?: number;
   title: string;
-  status: string;
-  created_at: string;
+  status?: string;
+  created_at?: string;
 }
 
 /** List all chat sessions for the current user */
@@ -140,26 +183,43 @@ export async function listChatSessions(): Promise<ChatSession[]> {
 }
 
 /** Create a new chat session */
-export async function createChatSession(title?: string): Promise<CreateSessionResponse> {
-  return api.post<CreateSessionResponse>("/api/chat/sessions", { title: title ?? "New Session" });
+export async function createChatSession(
+  title?: string,
+  mode: "GENERAL" | "LAWYER_RESEARCH" | "USER_CONTRACT" = "GENERAL",
+  contract_id?: string | number
+): Promise<CreateSessionResponse> {
+  const data = await api.post<Record<string, unknown>>("/api/chat/sessions", {
+    title: title ?? "Legal Consultation",
+    mode,
+    ...(contract_id ? { contract_id } : {}),
+  });
+  const sid = (data.session_id ?? data.id ?? "") as string | number;
+  return {
+    session_id: sid,
+    id: sid,
+    mode: (data.mode as string) ?? mode,
+    message_limit: (data.message_limit as number) ?? 5,
+    title: (data.title as string) ?? title ?? "Legal Consultation",
+  };
 }
 
 /** Get message history for a session */
-export async function getChatSessionHistory(sessionId: string): Promise<ChatMessage[]> {
+export async function getChatSessionHistory(sessionId: string | number): Promise<ChatMessage[]> {
   return api.get<ChatMessage[]>(`/api/chat/sessions/${sessionId}`);
 }
 
 /** Send a query message */
 export async function sendChatQuery(req: ChatQueryRequest): Promise<ChatQueryResponse> {
-  return api.post<ChatQueryResponse>("/api/chat/query", {
-    session_id: req.session_id,
-    message: req.message,
-    ...(req.contract_id ? { contract_id: req.contract_id } : {}),
+  const sid = typeof req.session_id === "string" ? parseInt(req.session_id, 10) || req.session_id : req.session_id;
+  const data = await api.post<ChatQueryResponse>("/api/chat/query", {
+    session_id: sid,
+    query: req.query,
   });
+  return data;
 }
 
 /** Close a chat session */
-export async function closeChatSession(sessionId: string): Promise<void> {
+export async function closeChatSession(sessionId: string | number): Promise<void> {
   await api.post(`/api/chat/sessions/${sessionId}/close`);
 }
 
@@ -266,14 +326,16 @@ export async function listWithdrawals(): Promise<WithdrawalRequest[]> {
   return api.get<WithdrawalRequest[]>("/api/lawyer/withdrawals");
 }
 
-/** Request a withdrawal */
+/** Request a withdrawal (BDT via bKash) */
 export async function requestWithdrawal(
-  amountCredits: number,
-  bkashNumber: string
+  amountBdt: number,
+  bkashNumber: string,
+  accountHolderName: string = "Advocate"
 ): Promise<WithdrawalRequest> {
   return api.post<WithdrawalRequest>("/api/lawyer/withdrawals/request", {
-    amount_credits: amountCredits,
+    amount_bdt: amountBdt,
     bkash_number: bkashNumber,
+    account_holder_name: accountHolderName,
   });
 }
 
@@ -366,17 +428,20 @@ export async function reactivateMember(userId: string): Promise<void> {
   await api.post(`/api/company/members/${userId}/reactivate`);
 }
 
-/** Adjust member credit quota */
+/** Adjust member credit quota (delta: +/- credits) */
 export async function adjustMemberQuota(
   userId: string,
-  creditsCap: number
+  delta: number,
+  reason: string = "Admin quota adjustment"
 ): Promise<void> {
-  await api.post(`/api/company/members/${userId}/quota`, { credits_cap: creditsCap });
+  await api.post(`/api/company/members/${userId}/quota`, { delta, reason });
 }
 
 /** Upload a company playbook (JSON or PDF) */
-export async function uploadPlaybook(file: File): Promise<Playbook> {
+export async function uploadPlaybook(file: File, title?: string): Promise<Playbook> {
   const formData = new FormData();
+  formData.append("title", title || file.name.replace(/\.[^/.]+$/, "") || "Corporate Playbook");
+  formData.append("file", file);
   formData.append("file", file);
   return api.upload<Playbook>("/api/company/playbook/upload", formData);
 }
@@ -454,12 +519,18 @@ export async function getMySettings(): Promise<UserSettings> {
 
 /** Update profile */
 export async function updateProfile(req: UpdateProfileRequest): Promise<UserSettings> {
-  return api.patch<UserSettings>("/api/settings/profile", req as unknown as Record<string, unknown>);
+  return api.patch<UserSettings>("/api/settings/profile", {
+    full_name: req.full_name,
+    phone: req.phone,
+  });
 }
 
 /** Change password */
 export async function changePassword(req: ChangePasswordRequest): Promise<{ message: string }> {
-  return api.post<{ message: string }>("/api/settings/change-password", req as unknown as Record<string, unknown>);
+  return api.post<{ message: string }>("/api/settings/change-password", {
+    current_password: req.current_password,
+    new_password: req.new_password,
+  });
 }
 
 /** Update lawyer-specific settings */
@@ -526,11 +597,13 @@ export async function initiatePayment(
 
 /** Submit bKash TRX ID for a payment */
 export async function submitTrxId(
-  paymentId: string,
-  bkashTrxId: string
+  paymentId: string | number,
+  trxId: string,
+  senderNumber: string = "01700000000"
 ): Promise<Payment> {
   return api.post<Payment>(`/api/payments/${paymentId}/submit-trx`, {
-    bkash_trx_id: bkashTrxId,
+    trx_id: trxId,
+    sender_number: senderNumber,
   });
 }
 

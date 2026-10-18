@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
+import { useAuth } from "@/context/AuthContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 import {
@@ -97,6 +98,7 @@ const SAMPLE_ARCHIVE: ArchivedVerification[] = [
 
 export default function LawyerArchivePage() {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const isBn = language === "bn";
   const [activeTab, setActiveTab] = useState<"archive" | "earnings">("archive");
   const [search, setSearch] = useState("");
@@ -158,7 +160,11 @@ export default function LawyerArchivePage() {
     try {
       setIsSubmittingWithdrawal(true);
       setWithdrawalSuccess(null);
-      const res = await requestWithdrawal(withdrawAmount, bkashNumber);
+      const res = await requestWithdrawal(
+        withdrawAmount,
+        bkashNumber,
+        user?.name || "Advocate"
+      );
       setWithdrawalSuccess(
         isBn
           ? `উইথড্রয়াল রিকোয়েস্ট সফল হয়েছে! রেফারেন্স আইডি: ${res.id}`

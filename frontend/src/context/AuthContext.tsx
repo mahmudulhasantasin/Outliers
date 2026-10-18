@@ -82,18 +82,26 @@ interface OtpRequest {
 }
 
 interface OnboardLawyerRequest {
-  bar_council_no: string;
-  field_of_law: string;
+  bar_council_id?: string;
+  bar_council_no?: string;
+  experience_years?: number;
+  specializations?: string[];
+  field_of_law?: string;
   bar_association?: string;
   chamber_name?: string;
 }
 
 interface OnboardEnterpriseRequest {
   company_name: string;
-  company_type: string;
-  registration_no: string;
-  tin_no: string;
-  admin_name: string;
+  company_type?: string;
+  registration_no?: string;
+  tin_no?: string;
+  member_limit?: number;
+  admin_name?: string;
+  billing_email?: string;
+  billing_phone?: string;
+  email?: string;
+  phone?: string;
 }
 
 interface RegisterEnterpriseMemberRequest {
@@ -101,8 +109,11 @@ interface RegisterEnterpriseMemberRequest {
   password: string;
   confirm_password: string;
   full_name: string;
-  refer_code: string;
+  referral_code?: string;
+  refer_code?: string;
   phone?: string;
+  date_of_birth?: string;
+  gender?: string;
 }
 
 // ─── Context Type ─────────────────────────────────────────────────────────
@@ -409,13 +420,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Real API: Onboard Lawyer ──
   const onboardLawyer = async (req: OnboardLawyerRequest): Promise<void> => {
-    await api.post("/api/auth/onboard/lawyer", req as unknown as Record<string, unknown>);
+    await api.post("/api/auth/onboard/lawyer", {
+      bar_council_id: req.bar_council_id || req.bar_council_no || "BC-2024",
+      experience_years: req.experience_years ?? 3,
+      specializations: req.specializations || (req.field_of_law ? [req.field_of_law] : ["Corporate & Commercial Law"]),
+    });
     await refreshUser();
   };
 
   // ── Real API: Onboard Enterprise ──
   const onboardEnterprise = async (req: OnboardEnterpriseRequest): Promise<void> => {
-    await api.post("/api/auth/onboard/enterprise", req as unknown as Record<string, unknown>);
+    await api.post("/api/auth/onboard/enterprise", {
+      company_name: req.company_name,
+      company_type: req.company_type || "Private Limited",
+      registration_no: req.registration_no || "C-148920/2021",
+      tin_no: req.tin_no || "582910482912",
+      member_limit: req.member_limit || 10,
+      billing_email: req.billing_email || req.email,
+      billing_phone: req.billing_phone || req.phone,
+    });
     await refreshUser();
   };
 
@@ -425,7 +448,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   ): Promise<{ email: string }> => {
     const data = await api.post<{ message: string; email: string }>(
       "/api/auth/register/enterprise-member",
-      req as unknown as Record<string, unknown>
+      {
+        email: req.email,
+        password: req.password,
+        confirm_password: req.confirm_password,
+        full_name: req.full_name,
+        referral_code: req.referral_code || req.refer_code || "APX-8821",
+        phone: req.phone || undefined,
+        date_of_birth: req.date_of_birth || undefined,
+        gender: req.gender || undefined,
+      }
     );
     return { email: data.email };
   };

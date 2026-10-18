@@ -90,7 +90,7 @@ export default function ContractMindPage() {
     setUploadError(null);
     try {
       const result = await uploadContract(file);
-      setApiContractId(result.contract_id);
+      setApiContractId(String(result.contract_id));
       // Fall back to demo audit data display for now (UI renders from local data)
       setIsAnalyzing(false);
       setIsLoaded(true);
@@ -112,7 +112,7 @@ export default function ContractMindPage() {
       setUploadError(null);
       try {
         const result = await uploadContract(file);
-        setApiContractId(result.contract_id);
+        setApiContractId(String(result.contract_id));
         setIsAnalyzing(false);
         setIsLoaded(true);
       } catch {

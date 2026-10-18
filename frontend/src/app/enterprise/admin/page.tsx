@@ -183,8 +183,10 @@ export default function EnterpriseAdminPage() {
   };
 
   const handleSaveMemberCreditCap = async (memberId: string) => {
+    const currentMember = members.find((m) => m.id === memberId);
+    const delta = tempCreditCap - (currentMember?.monthlyCreditCap ?? 200);
     try {
-      await adjustMemberQuota(memberId, tempCreditCap);
+      await adjustMemberQuota(memberId, delta, "Quota adjustment via Admin panel");
     } catch (e) {
       console.warn("Backend quota update error:", e);
     }

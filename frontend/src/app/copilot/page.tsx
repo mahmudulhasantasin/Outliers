@@ -15,6 +15,7 @@ import {
   type ChatSession,
   type CitedSection,
 } from "@/lib/apiServices";
+import { useAuth } from "@/context/AuthContext";
 import {
   Scale,
   ShieldCheck,
@@ -32,6 +33,7 @@ interface ChatMessage {
   textBn: string;
   citations?: string[];
   apiCitations?: CitedSection[];
+  nextSteps?: string[];
   isThinking?: boolean;
   thoughtSeconds?: number;
 }
@@ -39,6 +41,7 @@ interface ChatMessage {
 export default function CopilotPage() {
   const { language } = useLanguage();
   const { theme } = useTheme();
+  const { updateUser } = useAuth();
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);
@@ -102,8 +105,8 @@ export default function CopilotPage() {
         const session = await createChatSession(
           text.length > 40 ? text.slice(0, 40) + "..." : text
         );
-        sessionId = session.id;
-        setActiveSessionId(session.id);
+        sessionId = String(session.session_id || session.id);
+        setActiveSessionId(sessionId);
       }
 
       // Get loaded contract context from sessionStorage
@@ -115,36 +118,54 @@ export default function CopilotPage() {
 
       const result = await sendChatQuery({
         session_id: sessionId,
-        message: text,
+        query: text,
         contract_id: contractId,
       });
 
-      const apiCitations = result.cited_sections ?? [];
+      // Extract answer, live statutory citations, and suggested next steps
+      let answerText = "";
+      let apiCitations: CitedSection[] = [];
+      let nextSteps: string[] = [];
+
+      if (typeof result.response === "string") {
+        answerText = result.response;
+      } else if (result.response && typeof result.response === "object") {
+        answerText = result.response.detailed_answer || "";
+        apiCitations = result.response.cited_sections || [];
+        nextSteps = result.response.suggested_next_steps || [];
+      }
+
+      // Update credit balance in context if returned
+      if (typeof result.credits_remaining === "number" && updateUser) {
+        updateUser({ creditBalance: result.credits_remaining });
+      }
 
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === copilotMsgId
             ? {
                 ...msg,
-                textEn: result.response,
-                textBn: result.response,
+                textEn: answerText || "Analysis complete.",
+                textBn: answerText || "বিশ্লেষণ সম্পন্ন হয়েছে।",
                 citations: [],
                 apiCitations,
+                nextSteps,
                 isThinking: false,
                 thoughtSeconds: 1.5
               }
             : msg
         )
       );
-    } catch {
+    } catch (err: any) {
+      console.error("Chat Query failed:", err);
       // Fallback: show an error message
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === copilotMsgId
             ? {
                 ...msg,
-                textEn: "Sorry, I encountered an error connecting to the legal knowledge base. Please try again.",
-                textBn: "\u09a6\u09c1\u0983\u0996\u09bf\u09a4, \u0986\u0987\u09a8\u09bf \u099c\u09cd\u099e\u09be\u09a8 \u09ad\u09be\u09a3\u09cd\u09a1\u09be\u09b0\u09c7 \u09b8\u0982\u09af\u09cb\u0997 \u0995\u09b0\u09a4\u09c7 \u09b8\u09ae\u09b8\u09cd\u09af\u09be \u09b9\u09af\u09bc\u09c7\u099b\u09c7\u0964 \u0986\u09ac\u09be\u09b0 \u099a\u09c7\u09b7\u09cd\u099f\u09be \u0995\u09b0\u09c1\u09a8\u0964",
+                textEn: err?.message || "Sorry, I encountered an error connecting to the legal knowledge base. Please try again.",
+                textBn: err?.message || "দুঃখিত, আইনি জ্ঞান ভাণ্ডারে সংযোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।",
                 citations: [],
                 isThinking: false,
               }
@@ -268,7 +289,7 @@ export default function CopilotPage() {
                         {language === "bn" ? msg.textBn : msg.textEn}
                       </p>
 
-                      {/* Statutory Citations Section */}
+                      {/* Statutory Citations Section (Local) */}
                       {msg.citations && msg.citations.length > 0 && (
                         <div className="mt-3.5 flex flex-wrap gap-2 items-center">
                           <span className="text-[11px] font-medium flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
@@ -282,7 +303,7 @@ export default function CopilotPage() {
                               <button
                                 key={citeId}
                                 onClick={() => setActiveCitation(provision)}
-                                className="px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+                                className="px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
                                 style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
                               >
                                 <span>
@@ -294,6 +315,62 @@ export default function CopilotPage() {
                               </button>
                             );
                           })}
+                        </div>
+                      )}
+
+                      {/* Live Backend RAG Statutory Citations Section */}
+                      {msg.apiCitations && msg.apiCitations.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-[var(--text-primary)]/10 space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                            <Scale className="w-3.5 h-3.5" />
+                            <span>{language === "bn" ? "সংবিধিবদ্ধ আইনের ধারা ও সাইটেশন (Live RAG Citations):" : "Statutory Citations (Live RAG):"}</span>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {msg.apiCitations.map((cite, cIdx) => (
+                              <div
+                                key={cIdx}
+                                className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)] text-xs space-y-1 shadow-sm"
+                              >
+                                <div className="flex items-center justify-between font-bold text-[var(--text-primary)]">
+                                  <span className="text-indigo-600 dark:text-indigo-400">{cite.section_number || cite.section || "Section"}</span>
+                                  {cite.act && (
+                                    <span className="text-[10px] text-[var(--text-muted)] truncate max-w-[140px]" title={cite.act}>
+                                      {cite.act}
+                                    </span>
+                                  )}
+                                </div>
+                                {(cite.title || cite.act_title) && (
+                                  <p className="font-semibold text-[11px] text-[var(--text-primary)]">
+                                    {cite.title || cite.act_title}
+                                  </p>
+                                )}
+                                {(cite.provision_summary || cite.relevance || cite.relevance_summary) && (
+                                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                    {cite.provision_summary || cite.relevance || cite.relevance_summary}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Suggested Next Steps Chips */}
+                      {msg.nextSteps && msg.nextSteps.length > 0 && (
+                        <div className="mt-3.5 pt-2 border-t border-[var(--text-primary)]/10 flex flex-wrap gap-1.5 items-center">
+                          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] mr-1">
+                            {language === "bn" ? "পরবর্তী পদক্ষেপ:" : "Suggested:"}
+                          </span>
+                          {msg.nextSteps.map((step, sIdx) => (
+                            <button
+                              key={sIdx}
+                              type="button"
+                              onClick={() => handleSendPrompt(step)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--text-primary)]/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-[var(--bg-surface)] text-[var(--text-primary)] cursor-pointer transition-all shadow-xs"
+                            >
+                              💡 {step}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </>

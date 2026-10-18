@@ -70,6 +70,7 @@ export default function PricingPage() {
   // bKash Modal State
   const [activeInitiate, setActiveInitiate] = useState<InitiatePaymentResponse | null>(null);
   const [trxId, setTrxId] = useState("");
+  const [senderNumber, setSenderNumber] = useState("");
   const [isSubmittingTrx, setIsSubmittingTrx] = useState(false);
   const [trxSuccessMessage, setTrxSuccessMessage] = useState<string | null>(null);
   const [copiedNumber, setCopiedNumber] = useState(false);
@@ -111,6 +112,7 @@ export default function PricingPage() {
       const res = await initiatePayment(pkg.id);
       setActiveInitiate(res);
       setTrxId("");
+      setSenderNumber(user?.mobile || "");
       setTrxSuccessMessage(null);
     } catch (err: any) {
       alert(err.message || "Failed to initiate payment");
@@ -124,7 +126,7 @@ export default function PricingPage() {
     if (!activeInitiate || !trxId.trim()) return;
     try {
       setIsSubmittingTrx(true);
-      await submitTrxId(activeInitiate.payment_id, trxId.trim());
+      await submitTrxId(activeInitiate.payment_id, trxId.trim(), senderNumber.trim() || user?.mobile || "01700000000");
       setTrxSuccessMessage(
         isBn
           ? "ট্রানজেকশন সফলভাবে সাবমিট হয়েছে! অ্যাডমিন অনুমোদন করার সাথে সাথে আপনার ব্যালেন্সে ক্রেডিট যুক্ত হবে।"
@@ -384,6 +386,20 @@ export default function PricingPage() {
                     </p>
 
                     <form onSubmit={handleTrxSubmit} className="space-y-4">
+                      <div>
+                        <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1 uppercase tracking-wider">
+                          {isBn ? "প্রেরকের বিকাশ নম্বর (Sender bKash No)" : "Sender bKash Number"}
+                        </label>
+                        <input
+                          type="tel"
+                          required
+                          value={senderNumber}
+                          onChange={(e) => setSenderNumber(e.target.value)}
+                          placeholder="017XXXXXXXX"
+                          className={`w-full px-4 py-2.5 rounded-xl text-sm border font-mono outline-none ${borderClass} bg-[var(--bg-surface)] text-[var(--text-primary)]`}
+                        />
+                      </div>
+
                       <div>
                         <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1 uppercase tracking-wider">
                           {isBn ? "বিকাশ ট্রানজেকশন আইডি (TrxID)" : "bKash Transaction ID (TrxID)"}
