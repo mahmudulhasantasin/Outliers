@@ -203,13 +203,23 @@ export default function LandingAndAuthPage() {
       setOtpError("");
       setRegStep("otp");
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Registration notice: please proceed to OTP verification.";
+      const msg =
+        err instanceof Error
+          ? err.message
+          : language === "bn"
+          ? "নিবন্ধন ব্যর্থ হয়েছে। ইনপুটগুলো পুনরায় চেক করুন।"
+          : "Registration failed. Please check your inputs.";
       setAuthError(msg);
-      // Auto-advance to OTP screen so the user is never blocked from finishing registration
-      setPendingOtpEmail(regEmail);
-      setOtpInput("");
-      setOtpError("");
-      setRegStep("otp");
+      if (
+        msg.toLowerCase().includes("exists") ||
+        msg.toLowerCase().includes("already") ||
+        msg.toLowerCase().includes("registered")
+      ) {
+        setPendingOtpEmail(regEmail);
+        setOtpInput("");
+        setOtpError("");
+        setRegStep("otp");
+      }
     } finally {
       setAuthLoading(false);
     }
@@ -270,14 +280,34 @@ export default function LandingAndAuthPage() {
   const [googleChooserMode, setGoogleChooserMode] = useState<"login" | "register">("login");
   const [googleAccounts, setGoogleAccounts] = useState<GoogleAccountItem[]>([
     {
+      email: "cybocronnoreply@gmail.com",
+      name: "Cybocron Noreply",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=CybocronNoreply",
+    },
+    {
       email: "smsayemhossain1@gmail.com",
-      name: "Sayem Hossain",
+      name: "SM SAYEM HOSSAIN",
       avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sayem",
     },
     {
-      email: "sayem.hossain@gmail.com",
-      name: "Sayem Hossain (Personal)",
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=SayemPersonal",
+      email: "hossainsmsayem@gmail.com",
+      name: "SM Sayem Hossain",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=HossainSMSayem",
+    },
+    {
+      email: "cybocron@gmail.com",
+      name: "Cybocron",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cybocron",
+    },
+    {
+      email: "sm.sayem.hossain.extra@gmail.com",
+      name: "SM Sayem Hossain (Extra)",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=SayemExtra",
+    },
+    {
+      email: "hossainsmsayem2@gmail.com",
+      name: "SM Sayem Hossain 2",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sayem2",
     },
     {
       email: "saakaza3@gmail.com",
@@ -296,7 +326,7 @@ export default function LandingAndAuthPage() {
   const [newGoogleName, setNewGoogleName] = useState("");
 
   const isAccountRegistered = (email: string): boolean => {
-    const known = ["smsayemhossain1@gmail.com", "saakaza3@gmail.com"];
+    const known = ["smsayemhossain1@gmail.com", "cybocronnoreply@gmail.com", "saakaza3@gmail.com"];
     if (typeof window !== "undefined") {
       try {
         const stored = JSON.parse(localStorage.getItem("contractmind_known_registered") || "[]");
