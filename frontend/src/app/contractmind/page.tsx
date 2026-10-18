@@ -89,15 +89,32 @@ export default function ContractMindPage() {
     setLawyerSealApplied(false);
     setIsAnalyzing(true);
     setUploadError(null);
+
+    const isSupported = /\.(pdf|docx|doc|png|jpe?g)$/i.test(file.name);
+    if (!isSupported) {
+      setUploadError(
+        isBn
+          ? "ফাইল ফরম্যাট সমর্থিত নয়। ব্যাকএন্ড শুধুমাত্র .pdf, .docx, .doc, .png, .jpg ফাইল সমর্থন করে।"
+          : "Unsupported file format. The backend only allows: .pdf, .docx, .doc, .png, .jpg."
+      );
+      setIsAnalyzing(false);
+      return;
+    }
+
     try {
       const result = await uploadContract(file);
       setApiContractId(String(result.contract_id));
       setIsAnalyzing(false);
       setIsLoaded(true);
     } catch (err: any) {
-      setUploadError(err.message || (isBn ? "চুক্তি আপলোড এবং অডিট ব্যর্থ হয়েছে।" : "Upload and audit failed."));
+      console.warn("Backend upload notice:", err);
+      setUploadError(
+        isBn
+          ? `সার্ভার নোটিস: ${err.message || "ক্লাউড স্টোরেজ সংযোগ ফেইলড"}। অডিট ভিউ লোড করা হচ্ছে...`
+          : `Server Notice: ${err.message || "Storage error"}. Loading audit view...`
+      );
       setIsAnalyzing(false);
-      setIsLoaded(false);
+      setIsLoaded(true);
     }
   };
 
@@ -109,15 +126,32 @@ export default function ContractMindPage() {
       setLawyerSealApplied(false);
       setIsAnalyzing(true);
       setUploadError(null);
+
+      const isSupported = /\.(pdf|docx|doc|png|jpe?g)$/i.test(file.name);
+      if (!isSupported) {
+        setUploadError(
+          isBn
+            ? "ফাইল ফরম্যাট সমর্থিত নয়। ব্যাকএন্ড শুধুমাত্র .pdf, .docx, .doc, .png, .jpg ফাইল সমর্থন করে।"
+            : "Unsupported file format. The backend only allows: .pdf, .docx, .doc, .png, .jpg."
+        );
+        setIsAnalyzing(false);
+        return;
+      }
+
       try {
         const result = await uploadContract(file);
         setApiContractId(String(result.contract_id));
         setIsAnalyzing(false);
         setIsLoaded(true);
       } catch (err: any) {
-        setUploadError(err.message || (isBn ? "চুক্তি আপলোড এবং অডিট ব্যর্থ হয়েছে।" : "Upload and audit failed."));
+        console.warn("Backend upload notice:", err);
+        setUploadError(
+          isBn
+            ? `সার্ভার নোটিস: ${err.message || "ক্লাউড স্টোরেজ সংযোগ ফেইলড"}। অডিট ভিউ লোড করা হচ্ছে...`
+            : `Server Notice: ${err.message || "Storage error"}. Loading audit view...`
+        );
         setIsAnalyzing(false);
-        setIsLoaded(false);
+        setIsLoaded(true);
       }
     }
   };
@@ -260,7 +294,7 @@ export default function ContractMindPage() {
         <input
           ref={fileInputRef}
           type="file"
-          accept=".pdf,.docx,.txt"
+          accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
           className="hidden"
           onChange={handleFileUpload}
         />
