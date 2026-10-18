@@ -1,93 +1,179 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import VerticalDock, { VerticalDockItemData } from "./VerticalDock";
 import { useLanguage } from "@/context/LanguageContext";
-import { usePersona, PERSONAS } from "@/context/PersonaContext";
-import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import {
   Bot,
   FileText,
   FolderClock,
-  Globe,
-  UserCheck,
-  Moon,
-  Sun,
-  LogOut,
-  Sparkles,
+  Inbox,
+  Archive,
+  Users,
+  Settings,
+  User,
+  Building2,
 } from "lucide-react";
 
 export default function AppDock() {
   const router = useRouter();
   const pathname = usePathname();
-  const { language, setLanguage, t } = useLanguage();
-  const { persona, setPersona, currentPersonaInfo } = usePersona();
-  const { theme, toggleTheme } = useTheme();
-  const { isAuthenticated, logout, user } = useAuth();
+  const { language } = useLanguage();
+  const { user } = useAuth();
 
-  const [showPersonaMenu, setShowPersonaMenu] = useState(false);
+  const isBn = language === "bn";
+  const role = user?.role ?? "general";
 
-  const toggleLanguage = () => {
-    setLanguage(language === "bn" ? "en" : "bn");
-  };
-
-  const cyclePersona = () => {
-    const currentIndex = PERSONAS.findIndex((p) => p.id === persona);
-    const nextIndex = (currentIndex + 1) % PERSONAS.length;
-    setPersona(PERSONAS[nextIndex].id);
-  };
-
-  const items: VerticalDockItemData[] = [
+  // ── General User Dock ──
+  const generalItems: VerticalDockItemData[] = [
     {
       icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
-      label: language === "bn" ? "লিগ্যাল কোপাইলট (Q&A)" : "Legal Copilot",
+      label: isBn ? "লিগ্যাল কোপাইলট (Q&A)" : "Legal Copilot",
       isActive: pathname === "/copilot" || pathname === "/app",
       onClick: () => router.push("/copilot"),
     },
     {
       icon: <FileText className="w-5 h-5 stroke-[2.4]" />,
-      label: language === "bn" ? "কন্ট্রাক্টমাইন্ড (চুক্তি বিশ্লেষণ)" : "ContractMind Audit",
+      label: isBn ? "কন্ট্রাক্টমাইন্ড (চুক্তি বিশ্লেষণ)" : "ContractMind Audit",
       isActive: pathname === "/contractmind",
       onClick: () => router.push("/contractmind"),
     },
     {
       icon: <FolderClock className="w-5 h-5 stroke-[2.4]" />,
-      label: language === "bn" ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
+      label: isBn ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
       isActive: pathname === "/archive",
       onClick: () => router.push("/archive"),
     },
     {
-      icon: (
-        <span className="text-xs font-semibold tracking-wider">
-          {language === "bn" ? "বাং" : "EN"}
-        </span>
-      ),
-      label: language === "bn" ? "Switch to English" : "বাংলা ভাষায় পরিবর্তন",
-      onClick: toggleLanguage,
-      className: "hover:text-amber-400 dark:hover:text-amber-300",
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
     },
     {
-      icon: <UserCheck className="w-5 h-5" />,
-      label: `${t(currentPersonaInfo.nameKey)} (${language === "bn" ? "ক্লিক করে পরিবর্তন" : "Click to Switch"})`,
-      onClick: cyclePersona,
-      className: "hover:text-indigo-400 dark:hover:text-indigo-300",
-    },
-    {
-      icon: theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />,
-      label: theme === "dark" ? (language === "bn" ? "লাইট মোড" : "Light Mode") : (language === "bn" ? "ডার্ক মোড" : "Dark Mode"),
-      onClick: toggleTheme,
-    },
-    {
-      icon: <LogOut className="w-4 h-4 text-rose-500" />,
-      label: language === "bn" ? "লগআউট / পাবলিক পেজ" : "Sign Out to Landing",
-      onClick: () => {
-        logout();
-        router.push("/");
-      },
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও ক্রেডিট" : "Profile & Credits",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
     },
   ];
+
+  // ── Lawyer Dock ──
+  const lawyerItems: VerticalDockItemData[] = [
+    {
+      icon: <Inbox className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "পেন্ডিং চুক্তি রিভিউ" : "Pending Contracts",
+      isActive: pathname === "/lawyer/pending",
+      onClick: () => router.push("/lawyer/pending"),
+    },
+    {
+      icon: <Archive className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "আর্কাইভ চুক্তি" : "Archive Contracts",
+      isActive: pathname === "/lawyer/archive",
+      onClick: () => router.push("/lawyer/archive"),
+    },
+    {
+      icon: <Users className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "সমস্ত চুক্তি / ক্লায়েন্ট" : "All Contracts / Clients",
+      isActive: pathname === "/lawyer/contracts",
+      onClick: () => router.push("/lawyer/contracts"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও ভেরিফিকেশন" : "Profile & Verification",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
+  // ── Enterprise Admin Dock ──
+  const enterpriseAdminItems: VerticalDockItemData[] = [
+    {
+      icon: <Building2 className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "এন্টারপ্রাইজ অ্যাডমিন পোর্টাল" : "Enterprise Admin Portal",
+      isActive: pathname.startsWith("/enterprise/admin"),
+      onClick: () => router.push("/enterprise/admin"),
+    },
+    {
+      icon: <FileText className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "কন্ট্রাক্টমাইন্ড (চুক্তি বিশ্লেষণ)" : "ContractMind Audit",
+      isActive: pathname === "/contractmind",
+      onClick: () => router.push("/contractmind"),
+    },
+    {
+      icon: <FolderClock className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
+      isActive: pathname === "/archive",
+      onClick: () => router.push("/archive"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও প্রতিষ্ঠান" : "Profile & Organization",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
+  // ── Enterprise Member Dock ──
+  const enterpriseMemberItems: VerticalDockItemData[] = [
+    {
+      icon: <Building2 className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "মেম্বার ওয়ার্কস্পেস" : "Enterprise Workspace",
+      isActive: pathname.startsWith("/enterprise/member"),
+      onClick: () => router.push("/enterprise/member"),
+    },
+    {
+      icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "লিগ্যাল কোপাইলট (Q&A)" : "Legal Copilot",
+      isActive: pathname === "/copilot" || pathname === "/app",
+      onClick: () => router.push("/copilot"),
+    },
+    {
+      icon: <FileText className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "কন্ট্রাক্টমাইন্ড (প্লেবুক সহ)" : "ContractMind Audit",
+      isActive: pathname === "/contractmind",
+      onClick: () => router.push("/contractmind"),
+    },
+    {
+      icon: <FolderClock className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
+      isActive: pathname === "/archive",
+      onClick: () => router.push("/archive"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও কোটা" : "Profile & Quota",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
+  const items =
+    role === "lawyer"
+      ? lawyerItems
+      : role === "enterprise_admin"
+      ? enterpriseAdminItems
+      : role === "enterprise_member"
+      ? enterpriseMemberItems
+      : role === "enterprise" && user?.enterpriseProfile?.isTeamMember
+      ? enterpriseMemberItems
+      : role === "enterprise"
+      ? enterpriseAdminItems
+      : generalItems;
 
   return <VerticalDock items={items} panelWidth={60} baseItemSize={42} magnification={54} />;
 }

@@ -13,85 +13,276 @@ import {
   Moon,
   Eye,
   EyeOff,
-  Sparkles,
   X,
   Globe2,
   Star,
   Quote,
   ChevronDown,
+  User,
+  Scale as ScaleIcon,
+  Building2,
+  CheckCircle2,
+  ChevronLeft,
+  Phone,
+  Gavel,
+  Mail,
+  Users,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
+
+type RegistrationStep = "role" | "form" | "otp";
+type SelectedRole = "general" | "lawyer" | "enterprise" | null;
+type EnterpriseTab = "company" | "member";
 
 export default function LandingAndAuthPage() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  const { isAuthenticated, isLoading, loginAsDemoUser, loginAsDemoAdmin } = useAuth();
+  const {
+    isAuthenticated,
+    isLoading,
+    loginAsDemoGeneral,
+    loginAsDemoLawyer,
+    loginAsDemoEnterprise,
+    loginAsDemoEnterpriseAdmin,
+    loginAsDemoEnterpriseMember,
+    registerNewUser,
+    user,
+  } = useAuth();
 
   const [mounted, setMounted] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [activeTestimonial, setActiveTestimonial] = useState(0);
 
-  // Auto redirect if already logged in
+  // ── Registration multi-step state ──
+  const [regStep, setRegStep] = useState<RegistrationStep>("role");
+  const [selectedRole, setSelectedRole] = useState<SelectedRole>(null);
+
+  // ── Diagram Common Fields ──
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [dob, setDob] = useState("");
+  const [gender, setGender] = useState("male");
+  const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+
+  // ── Lawyer Specific Fields ──
+  const [barCouncilNo, setBarCouncilNo] = useState("");
+  const [fieldOfLaw, setFieldOfLaw] = useState("Corporate & Commercial Law");
+
+  // ── Enterprise Specific Fields ──
+  const [entTab, setEntTab] = useState<EnterpriseTab>("company");
+  const [companyName, setCompanyName] = useState("");
+  const [companyType, setCompanyType] = useState("Private Limited");
+  const [registrationNo, setRegistrationNo] = useState("");
+  const [tinNo, setTinNo] = useState("");
+  const [adminName, setAdminName] = useState("");
+  const [memberCount, setMemberCount] = useState(10);
+  const [companyReferCode, setCompanyReferCode] = useState("");
+
+  // ── Email OTP State ──
+  const [otpInput, setOtpInput] = useState("");
+  const [otpError, setOtpError] = useState("");
+
+  // ── Login fields ──
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+
   useEffect(() => {
     setMounted(true);
-    if (!isLoading && isAuthenticated) {
-      router.replace("/copilot");
-    }
-  }, [isAuthenticated, isLoading, router]);
+  }, []);
 
   // ESC key to close modal
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && showAuthModal) setShowAuthModal(false);
+      if (e.key === "Escape" && showAuthModal) closeModal();
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [showAuthModal]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    loginAsDemoUser();
+  const closeModal = () => {
     setShowAuthModal(false);
-    router.push("/copilot");
-  };
-
-  const handleSocialAuth = () => {
-    loginAsDemoUser();
-    setShowAuthModal(false);
-    router.push("/copilot");
-  };
-
-  const handleAdminDemo = () => {
-    loginAsDemoAdmin();
-    setShowAuthModal(false);
-    router.push("/copilot");
+    setRegStep("role");
+    setSelectedRole(null);
+    setPasswordError("");
+    setOtpInput("");
+    setOtpError("");
   };
 
   const openLoginModal = (signUp = false) => {
     setIsSignUp(signUp);
+    setRegStep("role");
+    setSelectedRole(null);
+    setPasswordError("");
+    setOtpInput("");
+    setOtpError("");
     setShowAuthModal(true);
   };
 
-  if (!mounted || (isAuthenticated && !isLoading)) {
-    return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-[var(--bg-primary)] text-[var(--text-primary)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl flex items-center justify-center animate-pulse bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-            <Scale className="w-5 h-5" />
-          </div>
-          <span className="text-xs text-[var(--text-muted)] font-mono">
-            {language === "bn" ? "লোড হচ্ছে..." : "Loading workspace..."}
-          </span>
-        </div>
-      </div>
-    );
-  }
+  // Login submit (demo)
+  const handleLoginSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    loginAsDemoGeneral();
+    closeModal();
+    router.push("/copilot");
+  };
+
+  // Triggered when manual registration form is submitted with email -> leads to "OTP on mail"
+  const handleStartFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (regPassword !== regConfirmPassword) {
+      setPasswordError(
+        language === "bn"
+          ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।"
+          : "Passwords do not match."
+      );
+      return;
+    }
+    setPasswordError("");
+    setOtpInput("");
+    setOtpError("");
+    setRegStep("otp");
+  };
+
+  // Triggered when OTP is entered -> creates user account and finishes registration
+  const handleVerifyOtpAndComplete = () => {
+    if (!otpInput.trim() || otpInput.trim().length < 4) {
+      setOtpError(
+        language === "bn"
+          ? "সঠিক ওটিপি কোডটি লিখুন (ডেমো কোড: 123456)"
+          : "Enter valid OTP code (Demo: 123456)"
+      );
+      return;
+    }
+
+    if (selectedRole === "lawyer") {
+      registerNewUser({
+        name: `${firstName} ${lastName}`.trim() || "Advocate",
+        firstName,
+        lastName,
+        dateOfBirth: dob,
+        gender,
+        email: regEmail,
+        role: "lawyer",
+        isEmailVerified: true,
+        isPhoneVerified: false,
+        lawyerProfile: {
+          barCouncilNo,
+          fieldOfLaw,
+          verificationStatus: "pending",
+        },
+      });
+      closeModal();
+      router.push("/lawyer/pending");
+    } else if (selectedRole === "enterprise") {
+      registerNewUser({
+        name: entTab === "company" ? (adminName || `${firstName} ${lastName}`.trim()) : `${firstName} ${lastName}`.trim(),
+        firstName,
+        lastName,
+        dateOfBirth: dob,
+        gender,
+        email: regEmail,
+        role: "enterprise",
+        isEmailVerified: true,
+        isPhoneVerified: false,
+        enterpriseProfile: {
+          companyName,
+          companyType: entTab === "company" ? companyType : "Corporate Member",
+          registrationNo: entTab === "company" ? registrationNo : "",
+          tinNo: entTab === "company" ? tinNo : "",
+          adminName: entTab === "company" ? adminName : "",
+          memberCount: entTab === "company" ? Number(memberCount) : 1,
+          referCode: entTab === "company" ? `REF-${Math.floor(1000 + Math.random() * 9000)}` : companyReferCode,
+          verificationStatus: "pending",
+          isTeamMember: entTab === "member",
+        },
+      });
+      closeModal();
+      router.push("/copilot");
+    } else {
+      registerNewUser({
+        name: `${firstName} ${lastName}`.trim() || "General User",
+        firstName,
+        lastName,
+        dateOfBirth: dob,
+        gender,
+        email: regEmail,
+        role: "general",
+        isEmailVerified: true,
+        isPhoneVerified: false,
+      });
+      closeModal();
+      router.push("/copilot");
+    }
+  };
+
+  // Google Direct Auth (no OTP needed)
+  const handleGoogleDirectAuth = () => {
+    if (selectedRole === "lawyer") {
+      registerNewUser({
+        name: "Advocate Shireen Akhter (Google)",
+        firstName: "Shireen",
+        lastName: "Akhter",
+        dateOfBirth: "1988-11-20",
+        gender: "female",
+        email: "shireen.google@supremecourt.bd",
+        role: "lawyer",
+        isEmailVerified: true,
+        isPhoneVerified: false,
+        lawyerProfile: {
+          barCouncilNo: "BC-48291/2019",
+          fieldOfLaw: "Corporate & Labour Law",
+          verificationStatus: "pending",
+        },
+      });
+      closeModal();
+      router.push("/lawyer/pending");
+    } else if (selectedRole === "enterprise") {
+      registerNewUser({
+        name: "Rahim Chowdhury (Google)",
+        firstName: "Rahim",
+        lastName: "Chowdhury",
+        dateOfBirth: "1982-04-10",
+        gender: "male",
+        email: "rahim.google@apexholdings.bd",
+        role: "enterprise",
+        isEmailVerified: true,
+        isPhoneVerified: false,
+        enterpriseProfile: {
+          companyName: "Apex Holdings Ltd.",
+          companyType: "Private Limited",
+          registrationNo: "C-148920/2021",
+          tinNo: "582910482912",
+          adminName: "Rahim Chowdhury",
+          memberCount: 15,
+          referCode: "APX-8821",
+          verificationStatus: "pending",
+        },
+      });
+      closeModal();
+      router.push("/copilot");
+    } else {
+      registerNewUser({
+        name: "Tariqul Islam (Google)",
+        firstName: "Tariqul",
+        lastName: "Islam",
+        dateOfBirth: "1994-06-15",
+        gender: "male",
+        email: "tariqul.google@dhakatech.com",
+        role: "general",
+        isEmailVerified: true,
+        isPhoneVerified: false,
+      });
+      closeModal();
+      router.push("/copilot");
+    }
+  };
+
 
   const isBn = language === "bn";
 
@@ -194,15 +385,26 @@ export default function LandingAndAuthPage() {
               )}
             </button>
 
-            {/* Sign In Button */}
-            <button
-              type="button"
-              onClick={() => openLoginModal(false)}
-              className="px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
-            >
-              <span>{isBn ? "লগইন" : "Sign In"}</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
-            </button>
+            {/* Auth Action */}
+            {mounted && isAuthenticated ? (
+              <button
+                type="button"
+                onClick={() => router.push(user?.role === "lawyer" ? "/lawyer/pending" : "/copilot")}
+                className="px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+              >
+                <span>{isBn ? "ওয়ার্কস্পেস" : "Workspace"}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openLoginModal(false)}
+                className="px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+              >
+                <span>{isBn ? "লগইন" : "Sign In"}</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -508,7 +710,7 @@ export default function LandingAndAuthPage() {
                 </div>
                 <button
                   type="button"
-                  onClick={handleAdminDemo}
+                  onClick={() => { loginAsDemoLawyer(); router.push("/lawyer/pending"); }}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border ${borderClass} hover:border-[var(--text-primary)]/40 transition-colors bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer`}
                 >
                   {isBn ? "অ্যাডভোকেট ডেমো চালান" : "Run Advocate Demo"}
@@ -522,7 +724,7 @@ export default function LandingAndAuthPage() {
                 Legal Copilot.
               </div>
               <div className="text-xs text-[var(--text-muted)]">
-                © {new Date().getFullYear()} Outliers. {isBn ? "সর্বস্বত্ব সংরক্ষিত।" : "All Rights Reserved."}
+                © 2026 Outliers. {isBn ? "সর্বস্বত্ব সংরক্ষিত।" : "All Rights Reserved."}
               </div>
             </div>
           </div>
@@ -537,7 +739,7 @@ export default function LandingAndAuthPage() {
           {/* Backdrop */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
-            onClick={() => setShowAuthModal(false)}
+            onClick={closeModal}
           />
 
           {/* Modal */}
@@ -548,7 +750,7 @@ export default function LandingAndAuthPage() {
             {/* Close */}
             <button
               type="button"
-              onClick={() => setShowAuthModal(false)}
+              onClick={closeModal}
               className="absolute top-5 right-5 z-30 p-2 rounded-full text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer"
               aria-label="Close modal"
             >
@@ -556,173 +758,577 @@ export default function LandingAndAuthPage() {
             </button>
 
             {/* Left visual hero */}
-            <div className="relative w-full md:w-[48%] rounded-[24px] p-8 md:p-12 flex flex-col justify-between overflow-hidden shrink-0 min-h-[280px] md:min-h-auto bg-[var(--bg-surface)]">
-              {/* GradientWaves WebGL background */}
+            <div className="relative w-full md:w-[46%] rounded-[24px] p-8 md:p-10 flex flex-col justify-between overflow-hidden shrink-0 min-h-[280px] md:min-h-auto bg-[var(--bg-surface)]">
               <div className="absolute inset-0 pointer-events-auto z-0 overflow-hidden">
                 <GradientWaves
                   horizonColor={theme === "dark" ? "#1e1b4b" : "#5227FF"}
                   waveColor={theme === "dark" ? "#818cf8" : "#FF9FFC"}
                   crestColor={theme === "dark" ? "#e0e7ff" : "#FFFFFF"}
-                  speed={0.4}
-                  amplitude={2.5}
-                  waveScale={0.6}
-                  waveRatio={0.9}
-                  swell={35}
-                  turbulence={20}
-                  tilt={1.11}
-                  zoom={1}
-                  height={5.5}
-                  fogDepth={15}
-                  detail="medium"
-                  brightness={1}
+                  speed={0.4} amplitude={2.5} waveScale={0.6} waveRatio={0.9}
+                  swell={35} turbulence={20} tilt={1.11} zoom={1} height={5.5}
+                  fogDepth={15} detail="medium" brightness={1}
                   opacity={theme === "dark" ? 0.85 : 0.9}
-                  mouseInteraction
-                  parallaxStrength={0.5}
-                  grain
-                  grainIntensity={0.05}
+                  mouseInteraction parallaxStrength={0.5} grain grainIntensity={0.05}
                 />
               </div>
-
-              {/* Brand logo */}
               <div className="relative z-10 flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
                   <Scale className="w-4 h-4" />
                 </div>
                 <span className="font-semibold text-base tracking-tight text-[var(--text-primary)]">Legal Copilot</span>
               </div>
-
-              {/* Headline */}
-              <div className="relative z-10 pt-12 md:pt-0">
+              <div className="relative z-10 pt-8 md:pt-0">
                 <span className="text-xs font-semibold uppercase tracking-wider block mb-2 text-[var(--text-muted)]">
                   {isBn ? "আইনি নিশ্চয়তা ও প্রফেশনাল বুদ্ধিমত্তা" : "Sovereign Contract Intelligence"}
                 </span>
-                <h2 className="text-2xl sm:text-3xl font-serif font-normal leading-[1.22] tracking-tight mb-3 text-[var(--text-primary)]">
+                <h2 className="text-xl sm:text-2xl font-serif font-normal leading-[1.25] tracking-tight mb-2 text-[var(--text-primary)]">
                   {isBn ? "চুক্তির প্রতিটি ধারা বিশ্লেষণ করুন শতভাগ নিশ্চয়তায়" : "Analyze every clause with zero statutory hallucination."}
                 </h2>
-                <p className="text-xs sm:text-[13px] leading-relaxed text-[var(--text-muted)]">
-                  {isBn
-                    ? "বাংলাদেশের সংবিধিবদ্ধ আইন (bdlaws), শ্রম আইন ও চুক্তি আইনের নির্ভরযোগ্য যাচাইকরণ প্ল্যাটফর্ম।"
-                    : "Verify legal risks, align compliance with Bangladesh statutes, and audit contracts in seconds."}
+                <p className="text-xs leading-relaxed text-[var(--text-muted)] mb-6">
+                  {isBn ? "বাংলাদেশের সংবিধিবদ্ধ আইন, শ্রম আইন ও চুক্তি আইনের নির্ভরযোগ্য যাচাইকরণ।" : "Verify legal risks against Bangladesh statutes. Zero hallucination guaranteed."}
                 </p>
+                <div className="flex flex-col gap-2">
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-muted)] mb-1">
+                    {isBn ? "জাজ / ডেমো কুইক একসেস" : "Judge / Demo Quick Access"}
+                  </p>
+                  <button type="button" onClick={() => { loginAsDemoGeneral(); closeModal(); router.push("/copilot"); }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
+                    <User className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    {isBn ? "সাধারণ ইউজার হিসেবে প্রবেশ করুন" : "Enter as Demo General User"}
+                  </button>
+                  <button type="button" onClick={() => { loginAsDemoLawyer(); closeModal(); router.push("/lawyer/pending"); }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
+                    <Gavel className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    {isBn ? "আইনজীবী হিসেবে প্রবেশ করুন" : "Enter as Demo Lawyer"}
+                  </button>
+                  <button type="button" onClick={() => { loginAsDemoEnterpriseAdmin(); closeModal(); router.push("/enterprise/admin"); }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
+                    <Building2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
+                    {isBn ? "এন্টারপ্রাইজ অ্যাডমিন (Apex Holdings)" : "Demo Enterprise Admin (Apex Holdings)"}
+                  </button>
+                  <button type="button" onClick={() => { loginAsDemoEnterpriseMember(); closeModal(); router.push("/enterprise/member"); }}
+                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
+                    <Users className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                    {isBn ? "এন্টারপ্রাইজ সদস্য (HR Lead)" : "Demo Enterprise Member (HR Lead)"}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Right auth form */}
-            <div className="flex-1 flex flex-col justify-center px-6 sm:px-10 md:px-12 py-8 md:py-10">
-              <div className="w-full max-w-[380px] mx-auto">
-                <div className="mb-4">
-                  <span className="inline-block text-xl text-amber-500 font-serif leading-none select-none">✱</span>
-                </div>
+            {/* Right panel */}
+            <div className="flex-1 flex flex-col justify-start px-6 sm:px-8 md:px-10 py-8 overflow-y-auto max-h-[80vh] md:max-h-none">
+              <div className="w-full max-w-[400px] mx-auto">
 
-                <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-2 text-[var(--text-primary)]">
-                  {isSignUp ? (isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create an account") : (isBn ? "স্বাগতম, ফিরে আসার জন্য ধন্যবাদ" : "Welcome back")}
-                </h2>
-                <p className="text-xs sm:text-[13px] leading-relaxed mb-6 text-[var(--text-muted)]">
-                  {isSignUp
-                    ? isBn ? "আপনার প্রতিষ্ঠানের চুক্তি ও আইনি ডকুমেন্টস নিরাপদে অডিট করতে শুরু করুন।" : "Start auditing contracts and checking statutory compliance seamlessly."
-                    : isBn ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট এবং আইনি কনসাল্টেশনে প্রবেশ করুন।" : "Sign in to access your audit workspace, legal memos, and verified citations."}
-                </p>
-
-                <form onSubmit={handleSubmit} className="space-y-3.5">
-                  {isSignUp && (
-                    <div>
-                      <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পুরো নাম" : "Full name"}</label>
-                      <input type="text" required value={name} onChange={(e) => setName(e.target.value)} placeholder={isBn ? "ব্যারিস্টার / অ্যাডভোকেট / আপনার নাম" : "e.g. Tariqul Islam"} className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`} />
+                {/* ── SIGN IN ── */}
+                {!isSignUp && (
+                  <>
+                    <span className="inline-block text-xl text-amber-500 font-serif leading-none select-none mb-3">✱</span>
+                    <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
+                      {isBn ? "স্বাগতম ফিরে আসার জন্য" : "Welcome back"}
+                    </h2>
+                    <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
+                      {isBn ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট ও আইনি কনসাল্টেশনে প্রবেশ করুন।" : "Sign in to access your audit workspace, legal memos, and verified citations."}
+                    </p>
+                    <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                      <div>
+                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email address"}</label>
+                        <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder={isBn ? "আপনার ইমেইল" : "your@email.com"} className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`} />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"}</label>
+                        <div className="relative">
+                          <input type={showPassword ? "text" : "password"} required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••••••" className={`w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`} />
+                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="pt-1">
+                        <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                          {isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace"}
+                        </button>
+                      </div>
+                    </form>
+                    <div className={`relative my-5 flex items-center justify-center`}>
+                      <div className={`w-full border-t ${borderClass}`} />
+                      <span className={`absolute px-3 text-[11px] uppercase tracking-wider font-semibold bg-[var(--bg-card)] text-[var(--text-muted)]`}>{isBn ? "অথবা" : "or continue with"}</span>
                     </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Your email"}</label>
-                    <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder={isBn ? "advocate@supremecourt.bd" : "counsel@lawfirm.com"} className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`} />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                      {isSignUp ? (isBn ? "পাসওয়ার্ড দিন" : "Create password") : (isBn ? "পাসওয়ার্ড" : "Password")}
-                    </label>
-                    <div className="relative">
-                      <input type={showPassword ? "text" : "password"} required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••••••" className={`w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`} />
-                      <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors" aria-label={showPassword ? "Hide password" : "Show password"}>
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {[
+                        { label: "Google", icon: (<svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" /></svg>) },
+                        { label: "GitHub", icon: (<svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" /></svg>) },
+                        { label: "Apple", icon: (<svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8.92-2.85-.9.04-1.97.6-2.61 1.35-.57.65-1.06 1.71-.93 2.73.99.08 2.01-.5 2.62-1.23z" /></svg>) },
+                      ].map((s) => (
+                        <button key={s.label} type="button" onClick={() => { loginAsDemoGeneral(); closeModal(); router.push("/copilot"); }} className={`py-2 px-3 rounded-xl border ${borderClass} flex items-center justify-center transition-all hover:bg-[var(--bg-surface)] active:scale-95 cursor-pointer text-[var(--text-primary)]`} aria-label={`Continue with ${s.label}`}>
+                          {s.icon}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
+                      <span>{isBn ? "অ্যাকাউন্ট নেই? " : "Don't have an account? "}</span>
+                      <button type="button" onClick={() => { setIsSignUp(true); setRegStep("role"); }} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                        {isBn ? "নিবন্ধন করুন" : "Register"}
                       </button>
                     </div>
-                  </div>
+                  </>
+                )}
 
-                  <div className="pt-2">
-                    <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                      {isSignUp ? (isBn ? "অ্যাকাউন্ট খুলুন ও অ্যাপে প্রবেশ করুন" : "Create account & launch app") : (isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace")}
-                    </button>
-                  </div>
-                </form>
+                {/* ── SIGN UP ── */}
+                {isSignUp && (
+                  <>
+                    {/* STEP 1: Role Selection */}
+                    {regStep === "role" && (
+                      <>
+                        <span className="inline-block text-xl text-amber-500 font-serif leading-none select-none mb-3">✱</span>
+                        <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
+                          {isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create your account"}
+                        </h2>
+                        <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
+                          {isBn ? "আপনার ব্যবহারকারী ধরন বেছে নিন।" : "Choose your account type to get started."}
+                        </p>
+                        <div className="flex flex-col gap-3">
+                          {/* General */}
+                          <button type="button" onClick={() => { setSelectedRole("general"); setRegStep("form"); }}
+                            className={`group w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${borderClass} hover:border-blue-400/70 hover:bg-blue-50/20 dark:hover:bg-blue-950/20`}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
+                                <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm text-[var(--text-primary)]">{isBn ? "সাধারণ ব্যবহারকারী" : "General User"}</div>
+                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "SME, ফ্রিল্যান্সার, HR — চুক্তি ও আইনি প্রশ্নের জন্য" : "SME, Freelancer, HR — contracts & legal queries"}</div>
+                              </div>
+                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-blue-500 shrink-0 transition-colors" />
+                            </div>
+                          </button>
+                          {/* Lawyer */}
+                          <button type="button" onClick={() => { setSelectedRole("lawyer"); setRegStep("form"); }}
+                            className={`group w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${borderClass} hover:border-amber-400/70 hover:bg-amber-50/20 dark:hover:bg-amber-950/20`}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                                <Gavel className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm text-[var(--text-primary)]">
+                                  {isBn ? "আইনজীবী / অ্যাডভোকেট" : "Lawyer / Advocate"}
+                                </div>
+                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "বার কাউন্সিল ভেরিফিকেশনসহ পেশাদার ওয়ার্কস্পেস" : "Professional workspace with Bar Council verification"}</div>
+                              </div>
+                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-amber-500 shrink-0 transition-colors" />
+                            </div>
+                          </button>
+                          {/* Enterprise */}
+                          <button type="button" onClick={() => { setSelectedRole("enterprise"); setRegStep("form"); }}
+                            className={`group w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${borderClass} hover:border-purple-400/70 hover:bg-purple-50/20 dark:hover:bg-purple-950/20`}>
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
+                                <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm text-[var(--text-primary)]">
+                                  {isBn ? "কোম্পানি / এন্টারপ্রাইজ" : "Company / Enterprise"}
+                                </div>
+                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "কর্পোরেট প্রতিষ্ঠান ও টিম রেফারাল ওয়ার্কস্পেস" : "Corporate entities & team referral workspace"}</div>
+                              </div>
+                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-purple-500 shrink-0 transition-colors" />
+                            </div>
+                          </button>
+                        </div>
+                        <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
+                          <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
+                          <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                            {isBn ? "লগইন করুন" : "Sign in"}
+                          </button>
+                        </div>
+                      </>
+                    )}
 
-                {/* Divider */}
-                <div className="relative my-5 flex items-center justify-center">
-                  <div className={`w-full border-t ${borderClass}`} />
-                  <span className={`absolute px-3 text-[11px] uppercase tracking-wider font-semibold bg-[var(--bg-card)] text-[var(--text-muted)]`}>
-                    {isBn ? "অথবা" : "or continue with"}
-                  </span>
-                </div>
+                    {/* STEP 2: Registration Form */}
+                    {regStep === "form" && selectedRole && (
+                      <>
+                        <button type="button" onClick={() => setRegStep("role")}
+                          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                          {isBn ? "ফিরে যান" : "Back to role selection"}
+                        </button>
+                        <div className="flex items-center gap-2 mb-4">
+                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedRole === "general" ? "bg-blue-100 dark:bg-blue-900/40" : selectedRole === "lawyer" ? "bg-amber-100 dark:bg-amber-900/40" : "bg-purple-100 dark:bg-purple-900/40"}`}>
+                            {selectedRole === "general" ? <User className="w-4 h-4 text-blue-600 dark:text-blue-400" /> : selectedRole === "lawyer" ? <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" /> : <Building2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                          </div>
+                          <span className="text-sm font-semibold text-[var(--text-primary)]">
+                            {selectedRole === "general" ? (isBn ? "সাধারণ ব্যবহারকারী নিবন্ধন" : "General User Registration") : selectedRole === "lawyer" ? (isBn ? "আইনজীবী নিবন্ধন আবেদন" : "Lawyer Registration") : (isBn ? "কোম্পানি ও টিম নিবন্ধন" : "Enterprise Registration")}
+                          </span>
+                        </div>
 
-                {/* Social auth */}
-                <div className="grid grid-cols-3 gap-2.5">
-                  {[
-                    {
-                      label: "Google",
-                      icon: (
-                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
-                          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" />
-                          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      label: "GitHub",
-                      icon: (
-                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                          <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
-                        </svg>
-                      ),
-                    },
-                    {
-                      label: "Apple",
-                      icon: (
-                        <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8 0.92-2.85-.9.04-1.97.6-2.61 1.35-.57.65-1.06 1.71-.93 2.73.99.08 2.01-.5 2.62-1.23z" />
-                        </svg>
-                      ),
-                    },
-                  ].map((s) => (
-                    <button
-                      key={s.label}
-                      type="button"
-                      onClick={handleSocialAuth}
-                      className={`py-2 px-3 rounded-xl border ${borderClass} flex items-center justify-center transition-all hover:bg-[var(--bg-surface)] active:scale-95 cursor-pointer text-[var(--text-primary)]`}
-                      aria-label={`Continue with ${s.label}`}
-                    >
-                      {s.icon}
-                    </button>
-                  ))}
-                </div>
+                        {/* Direct Google Signup (No OTP) */}
+                        <button type="button" onClick={handleGoogleDirectAuth} className={`w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border-2 ${borderClass} hover:border-[var(--accent-solid)]/60 hover:bg-[var(--bg-surface)] transition-all text-sm font-semibold text-[var(--text-primary)] mb-3 cursor-pointer`}>
+                          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" /></svg>
+                          {isBn ? "Google দিয়ে সরাসরি নিবন্ধন (নো ওটিপি)" : "Continue with Google (Direct, No OTP)"}
+                        </button>
 
-                {/* Toggle sign in / sign up */}
-                <div className="mt-6 text-center text-xs text-[var(--text-muted)]">
-                  <span>
-                    {isSignUp
-                      ? isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "
-                      : isBn ? "অ্যাকাউন্ট নেই? " : "Don't have an account? "}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => setIsSignUp(!isSignUp)}
-                    className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]"
-                  >
-                    {isSignUp
-                      ? isBn ? "লগইন করুন" : "Sign in"
-                      : isBn ? "নিবন্ধন করুন" : "Register"}
-                  </button>
-                </div>
+                        <div className={`relative my-3 flex items-center justify-center`}>
+                          <div className={`w-full border-t ${borderClass}`} />
+                          <span className={`absolute px-3 text-[11px] uppercase tracking-wider font-semibold bg-[var(--bg-card)] text-[var(--text-muted)]`}>
+                            {isBn ? "অথবা ইমেইল দিয়ে (ওটিপি লাগবে)" : "or with email (requires OTP)"}
+                          </span>
+                        </div>
+
+                        {/* ── GENERAL FORM ── */}
+                        {selectedRole === "general" && (
+                          <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
+                                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Tariqul" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
+                                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Islam" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
+                                <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
+                                <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                  <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
+                                  <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
+                                  <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
+                              <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="your@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                            </div>
+                            {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                            <div className="pt-1">
+                              <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                                {isBn ? "সাইন আপ (ইমেইল ওটিপি যাচাই)" : "Sign up (Verify via Email OTP)"}
+                              </button>
+                            </div>
+                          </form>
+                        )}
+
+                        {/* ── LAWYER FORM ── */}
+                        {selectedRole === "lawyer" && (
+                          <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
+                                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Shireen" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
+                                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Akhter" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
+                                <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
+                                <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                  <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
+                                  <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
+                                  <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
+                              <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="advocate@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 pt-1">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "বার কাউন্সিল নম্বর" : "Ber council num"} <span className="text-red-500">*</span></label>
+                                <input type="text" required value={barCouncilNo} onChange={(e) => setBarCouncilNo(e.target.value)} placeholder="BC-48291/2019" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "আইন শাখা" : "Field of law"} <span className="text-red-500">*</span></label>
+                                <select value={fieldOfLaw} onChange={(e) => setFieldOfLaw(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                  <option value="Corporate & Commercial Law">{isBn ? "কর্পোরেট ও বাণিজ্যিক" : "Corporate & Commercial"}</option>
+                                  <option value="Labour & Employment Law">{isBn ? "শ্রম ও চাকরি আইন" : "Labour & Employment"}</option>
+                                  <option value="Property & Land Law">{isBn ? "সম্পত্তি ও ভূমি আইন" : "Property & Land"}</option>
+                                  <option value="Civil & Contract Litigation">{isBn ? "দেওয়ানি ও চুক্তি" : "Civil & Contract"}</option>
+                                  <option value="ICT & FinTech Law">{isBn ? "আইসিটি ও ফিনটেক" : "ICT & FinTech"}</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40">
+                              <span className="text-amber-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
+                              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                                {isBn
+                                  ? "আবেদনের পর সিস্টেম অ্যাডমিন (System Admin) দ্বারা আপনার বার কাউন্সিল সনদ যাচাই করা হবে।"
+                                  : "Verification by System Admin — your credentials will be manually verified by System Admin."}
+                              </p>
+                            </div>
+                            {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                            <div className="pt-1">
+                              <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                                {isBn ? "আইনজীবী হিসেবে আবেদন (Request as lawyer)" : "Request as lawyer (Verify via OTP)"}
+                              </button>
+                            </div>
+                          </form>
+                        )}
+
+                        {/* ── ENTERPRISE FORM ── */}
+                        {selectedRole === "enterprise" && (
+                          <div className="space-y-3">
+                            <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-surface)] mb-2">
+                              <button type="button" onClick={() => setEntTab("company")}
+                                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "company" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
+                                {isBn ? "কোম্পানি রেজিস্ট্রেশন" : "Company / Enterprise"}
+                              </button>
+                              <button type="button" onClick={() => setEntTab("member")}
+                                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "member" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
+                                {isBn ? "টিম মেম্বার জয়েন" : "Join as Member"}
+                              </button>
+                            </div>
+
+                            {entTab === "company" ? (
+                              <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির ধরন" : "Company type"} <span className="text-red-500">*</span></label>
+                                    <select value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                      <option value="Private Limited">{isBn ? "প্রাইভেট লিমিটেড" : "Private Limited"}</option>
+                                      <option value="Public Limited">{isBn ? "পাবলিক লিমিটেড" : "Public Limited"}</option>
+                                      <option value="Partnership">{isBn ? "অংশীদারি কারবার" : "Partnership"}</option>
+                                      <option value="Proprietorship">{isBn ? "একমালিকানা" : "Proprietorship"}</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "রেজিস্ট্রেশন নং" : "Registrasion no."} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} placeholder="C-148920/2021" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "TIN নম্বর" : "Tin no."} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={tinNo} onChange={(e) => setTinNo(e.target.value)} placeholder="582910482912" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিনের নাম" : "Name of Admin"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Rahim Chowdhury" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিম মেম্বার সংখ্যা" : "Member count"} <span className="text-red-500">*</span></label>
+                                    <input type="number" min={1} required value={memberCount} onChange={(e) => setMemberCount(Number(e.target.value))} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিন ইমেইল" : "Admin Email"} <span className="text-red-500">*</span></label>
+                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="admin@apexholdings.bd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
+                                  <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
+                                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                                    {isBn
+                                      ? "সিস্টেম অ্যাডমিন অনুমোদনের পর মেম্বার অ্যাপ্রুভালের জন্য রেফারেল কোড পাবেন। অ্যাডমিন যেকোনো মেম্বার রিমুভ করতে পারবেন।"
+                                      : "Verification by System Admin — after verified, a refer num will be issued for member approvals."}
+                                  </p>
+                                </div>
+                                {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                <div className="pt-1">
+                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                                    {isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন (Request for registration)" : "Request for registration (Verify OTP)"}
+                                  </button>
+                                </div>
+                              </form>
+                            ) : (
+                              <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Member" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Name" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
+                                    <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
+                                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                      <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
+                                      <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
+                                      <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানি রেফার কোড" : "Company Refer code"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={companyReferCode} onChange={(e) => setCompanyReferCode(e.target.value)} placeholder="APX-8821" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "মেম্বার ইমেইল" : "Email"} <span className="text-red-500">*</span></label>
+                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="member@company.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
+                                  <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
+                                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                                    {isBn
+                                      ? "কোম্পানি অ্যাডমিন (Company Admin) আপনার মেম্বারশিপ আবেদন যাচাই ও অনুমোদন করবেন।"
+                                      : "Verification by Company Admin — company admin will review and approve your membership."}
+                                  </p>
+                                </div>
+                                {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                <div className="pt-1">
+                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                                    {isBn ? "কোম্পানিতে যুক্ত হতে আবেদন (Request for to add company)" : "Request to add company (Verify OTP)"}
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+                          </div>
+                        )}
+
+                        <div className="mt-4 text-center text-xs text-[var(--text-muted)]">
+                          <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
+                          <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                            {isBn ? "লগইন করুন" : "Sign in"}
+                          </button>
+                        </div>
+                      </>
+                    )}
+
+                    {/* STEP 3: OTP on Mail */}
+                    {regStep === "otp" && (
+                      <div className="py-2">
+                        <button type="button" onClick={() => setRegStep("form")}
+                          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
+                          <ChevronLeft className="w-3.5 h-3.5" />
+                          {isBn ? "ফর্মে ফিরে যান" : "Back to form"}
+                        </button>
+                        <div className="text-center mb-6">
+                          <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-3 shadow-inner">
+                            <Mail className="w-6 h-6 animate-pulse" />
+                          </div>
+                          <h3 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-1">
+                            {isBn ? "ইমেইল ওটিপি যাচাই (OTP on Mail)" : "Verify Email (OTP on Mail)"}
+                          </h3>
+                          <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
+                            {isBn ? (
+                              <>আমরা <b>{regEmail || "আপনার ইমেইলে"}</b> একটি ৬-সংখ্যার ওটিপি কোড পাঠিয়েছি।</>
+                            ) : (
+                              <>We sent a 6-digit verification OTP code to <b>{regEmail || "your email"}</b>.</>
+                            )}
+                          </p>
+                        </div>
+
+                        <div className="space-y-4 max-w-xs mx-auto">
+                          <div>
+                            <label className="block text-xs font-semibold mb-1 text-center text-[var(--text-primary)]">
+                              {isBn ? "৬-সংখ্যার ওটিপি কোড লিখুন" : "Enter 6-digit OTP Code"}
+                            </label>
+                            <input
+                              type="text"
+                              maxLength={6}
+                              value={otpInput}
+                              onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
+                              placeholder="123456"
+                              className={`w-full text-center text-2xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none transition-colors ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
+                            />
+                            {otpError && (
+                              <p className="text-[11px] text-rose-500 text-center mt-1.5">{otpError}</p>
+                            )}
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => { setOtpInput("123456"); setOtpError(""); }}
+                            className="w-full py-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-center block"
+                          >
+                            {isBn ? "⚡ টেস্ট কোড বসান (123456)" : "⚡ Quick Fill Demo OTP (123456)"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleVerifyOtpAndComplete}
+                            className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                          >
+                            {isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓"}
+                          </button>
+
+                          <div className="text-center text-xs text-[var(--text-muted)] pt-1">
+                            <span>{isBn ? "কোড পাননি? " : "Didn't receive code? "}</span>
+                            <button
+                              type="button"
+                              onClick={() => alert(isBn ? "নতুন ওটিপি কোড পাঠানো হয়েছে: 123456" : "New OTP code sent: 123456")}
+                              className="font-semibold text-[var(--text-primary)] hover:underline ml-1 cursor-pointer"
+                            >
+                              {isBn ? "পুনরায় কোড পাঠান" : "Resend OTP"}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
               </div>
             </div>
           </div>

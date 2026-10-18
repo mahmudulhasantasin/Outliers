@@ -15,8 +15,12 @@ import {
   Trash2,
   FileText,
   ShieldCheck,
-  Filter
+  Filter,
+  FileCode2,
+  X
 } from "lucide-react";
+import MarkdownViewer from "@/components/markdown/MarkdownViewer";
+import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 
 interface ArchivedRecord {
   id: string;
@@ -123,6 +127,7 @@ export default function ArchivePage() {
   const [records, setRecords] = useState<ArchivedRecord[]>(INITIAL_ARCHIVE);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRisk, setSelectedRisk] = useState<string>("ALL");
+  const [previewRecord, setPreviewRecord] = useState<ArchivedRecord | null>(null);
 
   // Filter records
   const filteredRecords = useMemo(() => {
@@ -331,6 +336,15 @@ export default function ArchivePage() {
                   {/* Actions (Hidden during Print) */}
                   <div className="flex items-center gap-2 print:hidden">
                     <button
+                      onClick={() => setPreviewRecord(record)}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-[var(--text-primary)]/10" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                      title="View Full Audit Report"
+                    >
+                      <FileText className="w-3.5 h-3.5 text-sky-500" />
+                      <span>{language === "bn" ? "অডিট রিপোর্ট দেখুন" : "View Full Audit"}</span>
+                    </button>
+
+                    <button
                       onClick={() => handleOpenInCopilot(record)}
                       className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
                       title="Discuss in Legal Copilot"
@@ -381,6 +395,36 @@ export default function ArchivePage() {
             </div>
           )}
         </div>
+
+        {/* Markdown Audit Modal */}
+        {previewRecord && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl overflow-hidden">
+              <div className="p-4 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
+                <div className="min-w-0 pr-4">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                    {previewRecord.id}
+                  </span>
+                  <h3 className="text-base font-serif font-bold text-[var(--text-primary)] truncate mt-1">
+                    {language === "bn" ? previewRecord.titleBn : previewRecord.titleEn}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPreviewRecord(null)}
+                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+                <MarkdownViewer
+                  content={generateContractAuditMarkdown(previewRecord.contractId, language as "en" | "bn")}
+                />
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
     </AppShell>
