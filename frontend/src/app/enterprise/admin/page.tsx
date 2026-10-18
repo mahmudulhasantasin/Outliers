@@ -17,6 +17,19 @@ import {
   EnterpriseOrganization,
 } from "@/data/enterpriseData";
 import {
+  getCompanyDashboard,
+  listMembers,
+  listPendingMembers,
+  approveMember,
+  rejectMember,
+  suspendMember,
+  adjustMemberQuota,
+  uploadPlaybook,
+  listPlaybooks,
+  deletePlaybook,
+  activatePlaybook,
+} from "@/lib/apiServices";
+import {
   Building2,
   Users,
   BookOpen,
@@ -41,6 +54,8 @@ import {
   X,
   Plus,
   Sparkles,
+  Upload,
+  Loader2,
 } from "lucide-react";
 
 type AdminTab = "overview" | "members" | "playbook" | "vault";
@@ -78,6 +93,54 @@ export default function EnterpriseAdminPage() {
   const [newRuleReq, setNewRuleReq] = useState("");
   const [newRuleTemplate, setNewRuleTemplate] = useState("");
 
+  const [isUploadingPlaybook, setIsUploadingPlaybook] = useState(false);
+
+  // Fetch real Enterprise dashboard and members from backend
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBackendData() {
+      try {
+        const [dash, mems] = await Promise.allSettled([
+          getCompanyDashboard(),
+          listMembers(),
+        ]);
+        if (!isMounted) return;
+        if (dash.status === "fulfilled" && dash.value) {
+          setOrganization((prev) => ({
+            ...prev,
+            name: dash.value.company_name || prev.name,
+            referCode: dash.value.refer_code || prev.referCode,
+            usedSeats: dash.value.active_member_count ?? prev.usedSeats,
+            creditPoolTotal: dash.value.quota_summary?.total_allocated ?? prev.creditPoolTotal,
+            creditPoolRemaining: dash.value.quota_summary?.total_allocated
+              ? dash.value.quota_summary.total_allocated - (dash.value.total_credits_used ?? 0)
+              : prev.creditPoolRemaining,
+          }));
+        }
+        if (mems.status === "fulfilled" && Array.isArray(mems.value) && mems.value.length > 0) {
+          const mapped: EnterpriseMember[] = mems.value.map((m: any) => ({
+            id: m.user_id || m.id,
+            name: m.full_name || m.name || "Member",
+            email: m.email,
+            department: m.department || "Operations",
+            role: m.role === "admin" ? "admin" : "member",
+            status: m.status === "suspended" ? "suspended" : "active",
+            monthlyCreditCap: m.credits_cap ?? m.monthly_credit_cap ?? 200,
+            creditsUsedThisMonth: m.credits_used ?? m.credits_used_this_month ?? 0,
+            joinedAt: m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Active",
+          }));
+          setMembers(mapped);
+        }
+      } catch (err) {
+        console.warn("Could not load company dashboard:", err);
+      }
+    }
+    loadBackendData();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   const borderClass = "border-[var(--text-primary)]/10";
   const isAdmin =
     user?.role === "enterprise_admin" ||
@@ -102,7 +165,12 @@ export default function EnterpriseAdminPage() {
     );
   };
 
-  const handleToggleMemberStatus = (memberId: string) => {
+  const handleToggleMemberStatus = async (memberId: string) => {
+    try {
+      await suspendMember(memberId);
+    } catch (e) {
+      console.warn("Backend suspend error:", e);
+    }
     setMembers((prev) =>
       prev.map((m) => {
         if (m.id === memberId) {
@@ -114,11 +182,30 @@ export default function EnterpriseAdminPage() {
     );
   };
 
-  const handleSaveMemberCreditCap = (memberId: string) => {
+  const handleSaveMemberCreditCap = async (memberId: string) => {
+    try {
+      await adjustMemberQuota(memberId, tempCreditCap);
+    } catch (e) {
+      console.warn("Backend quota update error:", e);
+    }
     setMembers((prev) =>
       prev.map((m) => (m.id === memberId ? { ...m, monthlyCreditCap: tempCreditCap } : m))
     );
     setEditingCreditMemberId(null);
+  };
+
+  const handlePlaybookUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      setIsUploadingPlaybook(true);
+      await uploadPlaybook(file);
+      alert(isBn ? "প্লেবুক সফলভাবে আপলোড হয়েছে!" : "Playbook uploaded successfully!");
+    } catch (err: any) {
+      alert(err.message || "Failed to upload playbook");
+    } finally {
+      setIsUploadingPlaybook(false);
+    }
   };
 
   const handleInviteSubmit = (e: React.FormEvent) => {
@@ -655,6 +742,22 @@ export default function EnterpriseAdminPage() {
               </div>
 
               <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                <label className="px-3.5 py-2 rounded-xl text-xs font-bold border border-[var(--text-primary)]/15 text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5">
+                  {isUploadingPlaybook ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5 text-sky-500" />
+                  )}
+                  <span>{isUploadingPlaybook ? (isBn ? "আপলোড হচ্ছে..." : "Uploading...") : (isBn ? "প্লেবুক ফাইল আপলোড" : "Upload Playbook")}</span>
+                  <input
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    className="hidden"
+                    onChange={handlePlaybookUpload}
+                    disabled={isUploadingPlaybook}
+                  />
+                </label>
+
                 <button
                   type="button"
                   onClick={handleTogglePlaybookEnforce}

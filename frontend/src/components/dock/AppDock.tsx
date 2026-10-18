@@ -15,6 +15,7 @@ import {
   Settings,
   User,
   Building2,
+  Coins,
 } from "lucide-react";
 
 export default function AppDock() {
@@ -45,6 +46,12 @@ export default function AppDock() {
       label: isBn ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
       isActive: pathname === "/archive",
       onClick: () => router.push("/archive"),
+    },
+    {
+      icon: <Coins className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "প্যাকেজ ও বিলিং" : "Pricing & Packages",
+      isActive: pathname === "/pricing",
+      onClick: () => router.push("/pricing"),
     },
     {
       icon: <Settings className="w-5 h-5" />,

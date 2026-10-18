@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { SAMPLE_CONTRACTS } from "@/data/sampleContracts";
 import { CONTRACT_AUDITS } from "@/data/contractAudits";
+import { getContractHistory, getContractDownloadUrl } from "@/lib/apiServices";
 import {
   FolderClock,
   Search,
@@ -17,6 +18,8 @@ import {
   ShieldCheck,
   Filter,
   FileCode2,
+  Download,
+  Loader2,
   X
 } from "lucide-react";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
@@ -128,6 +131,72 @@ export default function ArchivePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRisk, setSelectedRisk] = useState<string>("ALL");
   const [previewRecord, setPreviewRecord] = useState<ArchivedRecord | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [isLoadingApi, setIsLoadingApi] = useState(false);
+
+  // Fetch real contract history from backend on mount
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchHistory() {
+      try {
+        setIsLoadingApi(true);
+        const data = await getContractHistory();
+        if (isMounted && Array.isArray(data) && data.length > 0) {
+          const mapped: ArchivedRecord[] = data.map((item) => ({
+            id: item.id,
+            contractId: item.id,
+            titleEn: item.file_name,
+            titleBn: item.file_name,
+            categoryEn: `Status: ${item.status}`,
+            categoryBn: `স্ট্যাটাস: ${item.status}`,
+            firstPartyEn: "User Contract",
+            firstPartyBn: "ব্যবহারকারীর চুক্তি",
+            secondPartyEn: "Legal Copilot AI",
+            secondPartyBn: "লিগ্যাল কোপাইলট এআই",
+            auditDateEn: new Date(item.created_at).toLocaleDateString("en-US", {
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            }),
+            auditDateBn: new Date(item.created_at).toLocaleDateString("bn-BD"),
+            riskScore: item.risk_score ?? 50,
+            riskGradeEn: item.risk_grade ?? "Audited",
+            riskGradeBn: item.risk_grade ?? "মূল্যায়িত",
+            highRiskCount: item.risk_grade === "HIGH" ? 2 : 0,
+            mediumRiskCount: item.risk_grade === "MEDIUM" ? 1 : 0,
+            compliantCount: 1,
+            summaryEn: `Audited on ${new Date(item.created_at).toLocaleDateString()}. Status: ${item.status}.`,
+            summaryBn: `অডিট সম্পন্ন হয়েছে: ${new Date(item.created_at).toLocaleDateString("bn-BD")}। স্ট্যাটাস: ${item.status}।`,
+          }));
+          // Put live contracts on top, keep demo contracts below
+          setRecords([...mapped, ...INITIAL_ARCHIVE]);
+        }
+      } catch (err) {
+        console.warn("Could not fetch backend contract history, using local archive:", err);
+      } finally {
+        if (isMounted) setIsLoadingApi(false);
+      }
+    }
+    fetchHistory();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleDownload = async (contractId: string) => {
+    try {
+      setDownloadingId(contractId);
+      const res = await getContractDownloadUrl(contractId);
+      if (res?.download_url) {
+        window.open(res.download_url, "_blank");
+      }
+    } catch (err: any) {
+      console.error("Download failed:", err);
+      alert(err.message || "Failed to download contract file.");
+    } finally {
+      setDownloadingId(null);
+    };
+  };
 
   // Filter records
   const filteredRecords = useMemo(() => {
@@ -359,6 +428,19 @@ export default function ArchivePage() {
                     >
                       <span>{language === "bn" ? "অডিট দেখুন" : "View Audit"}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
+                    </button>
+
+                    <button
+                      onClick={() => handleDownload(record.contractId)}
+                      disabled={downloadingId === record.contractId}
+                      className="p-1.5 rounded-full text-neutral-400 hover:text-emerald-500 transition-colors disabled:opacity-50"
+                      title={language === "bn" ? "চুক্তি ডাউনলোড করুন" : "Download Contract File"}
+                    >
+                      {downloadingId === record.contractId ? (
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Download className="w-3.5 h-3.5" />
+                      )}
                     </button>
 
                     <button

@@ -1,14 +1,25 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import api, { ApiError } from "@/lib/api";
+import {
+  saveTokenResponse,
+  getToken,
+  getStoredUser,
+  clearAuth,
+  TokenResponse,
+  StoredUser,
+} from "@/lib/auth";
 
+// ─── Role & Verification Types ─────────────────────────────────────────────
 export type UserRole =
   | "general"
   | "lawyer"
   | "enterprise"
   | "enterprise_admin"
   | "enterprise_member";
-export type LawyerVerificationStatus = "pending" | "verified" | "rejected";
+
+export type LawyerVerificationStatus = "pending" | "verified" | "rejected" | "suspended";
 export type EnterpriseVerificationStatus = "pending" | "verified" | "rejected";
 
 export interface LawyerProfile {
@@ -28,11 +39,11 @@ export interface EnterpriseProfile {
   memberCount: number;
   referCode?: string;
   verificationStatus: EnterpriseVerificationStatus;
-  // If user registered as a member with refer code
   isTeamMember?: boolean;
 }
 
 export interface UserProfile {
+  id: string;
   name: string;
   firstName?: string;
   lastName?: string;
@@ -44,33 +55,148 @@ export interface UserProfile {
   avatarUrl?: string;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
-  // Role-specific profiles
+  creditBalance: number;
   lawyerProfile?: LawyerProfile;
   enterpriseProfile?: EnterpriseProfile;
 }
 
+// ─── Auth Request / Response types (matching backend) ────────────────────
+interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+interface RegisterEmailRequest {
+  email: string;
+  password: string;
+  confirm_password: string;
+  full_name: string;
+  phone?: string;
+  date_of_birth?: string;
+  gender?: string;
+}
+
+interface OtpRequest {
+  email: string;
+  otp: string;
+}
+
+interface OnboardLawyerRequest {
+  bar_council_no: string;
+  field_of_law: string;
+  bar_association?: string;
+  chamber_name?: string;
+}
+
+interface OnboardEnterpriseRequest {
+  company_name: string;
+  company_type: string;
+  registration_no: string;
+  tin_no: string;
+  admin_name: string;
+}
+
+interface RegisterEnterpriseMemberRequest {
+  email: string;
+  password: string;
+  confirm_password: string;
+  full_name: string;
+  refer_code: string;
+  phone?: string;
+}
+
+// ─── Context Type ─────────────────────────────────────────────────────────
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: UserProfile | null;
-  // Auth actions
+
+  // Real API actions
+  login: (req: LoginRequest) => Promise<void>;
+  registerEmail: (req: RegisterEmailRequest) => Promise<{ email: string }>;
+  verifyOtp: (req: OtpRequest) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
+  onboardLawyer: (req: OnboardLawyerRequest) => Promise<void>;
+  onboardEnterprise: (req: OnboardEnterpriseRequest) => Promise<void>;
+  registerEnterpriseMember: (req: RegisterEnterpriseMemberRequest) => Promise<{ email: string }>;
+  logout: () => void;
+  refreshUser: () => Promise<void>;
+  updateUser: (partial: Partial<UserProfile>) => void;
+
+  // ── Demo/Judge & Social shortcuts ──
+  loginWithGoogle: (role?: UserRole, customEmail?: string, customName?: string) => void;
+  persistDemoUser: (u: UserProfile) => void;
   loginAsDemoGeneral: () => void;
   loginAsDemoLawyer: () => void;
   loginAsDemoEnterprise: () => void;
   loginAsDemoEnterpriseAdmin: () => void;
   loginAsDemoEnterpriseMember: () => void;
-  registerNewUser: (profile: UserProfile) => void;
-  logout: () => void;
-  // For demo/judge testing
   simulateLawyerVerification: () => void;
   simulateEnterpriseVerification: () => void;
   simulatePhoneVerification: () => void;
-  updateUser: (partial: Partial<UserProfile>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ─── Helper: map backend StoredUser → UserProfile ────────────────────────
+function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserProfile {
+  return {
+    id: u.id,
+    name: u.full_name,
+    email: u.email,
+    role: u.role as UserRole,
+    isEmailVerified: u.is_verified,
+    isPhoneVerified: u.is_phone_verified,
+    creditBalance: u.credit_balance,
+    ...extra,
+  };
+}
+
+// ─── Helper: map backend /auth/me response → UserProfile ─────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function meResponseToProfile(data: any): UserProfile {
+  return {
+    id: data.id ?? data.user_id ?? "",
+    name: data.full_name ?? data.name ?? "",
+    firstName: data.first_name,
+    lastName: data.last_name,
+    dateOfBirth: data.date_of_birth,
+    gender: data.gender,
+    email: data.email,
+    mobile: data.phone,
+    role: (data.role ?? "general") as UserRole,
+    avatarUrl: data.avatar_url,
+    isEmailVerified: data.is_verified ?? false,
+    isPhoneVerified: data.is_phone_verified ?? false,
+    creditBalance: data.credit_balance ?? 0,
+    lawyerProfile: data.lawyer_profile
+      ? {
+          barCouncilNo: data.lawyer_profile.bar_council_no,
+          fieldOfLaw: data.lawyer_profile.field_of_law,
+          barAssociation: data.lawyer_profile.bar_association,
+          chamberName: data.lawyer_profile.chamber_name,
+          verificationStatus: data.lawyer_profile.verification_status,
+        }
+      : undefined,
+    enterpriseProfile: data.enterprise_profile
+      ? {
+          companyName: data.enterprise_profile.company_name,
+          companyType: data.enterprise_profile.company_type,
+          registrationNo: data.enterprise_profile.registration_no,
+          tinNo: data.enterprise_profile.tin_no,
+          adminName: data.enterprise_profile.admin_name,
+          memberCount: data.enterprise_profile.member_count ?? 0,
+          referCode: data.enterprise_profile.refer_code,
+          verificationStatus: data.enterprise_profile.verification_status,
+          isTeamMember: data.enterprise_profile.is_team_member,
+        }
+      : undefined,
+  };
+}
+
+// ─── Demo profiles (for hackathon judges) ────────────────────────────────
 const DEMO_GENERAL: UserProfile = {
+  id: "demo-general",
   name: "Tariqul Islam",
   firstName: "Tariqul",
   lastName: "Islam",
@@ -82,9 +208,11 @@ const DEMO_GENERAL: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: false,
+  creditBalance: 500,
 };
 
 const DEMO_LAWYER: UserProfile = {
+  id: "demo-lawyer",
   name: "Advocate Shireen Akhter",
   firstName: "Shireen",
   lastName: "Akhter",
@@ -96,6 +224,7 @@ const DEMO_LAWYER: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: true,
+  creditBalance: 0,
   lawyerProfile: {
     barCouncilNo: "BC-48291/2019",
     fieldOfLaw: "Corporate & Labour Law",
@@ -106,6 +235,7 @@ const DEMO_LAWYER: UserProfile = {
 };
 
 const DEMO_ENTERPRISE_ADMIN: UserProfile = {
+  id: "demo-ent-admin",
   name: "Rahim Chowdhury",
   firstName: "Rahim",
   lastName: "Chowdhury",
@@ -117,6 +247,7 @@ const DEMO_ENTERPRISE_ADMIN: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: true,
+  creditBalance: 2000,
   enterpriseProfile: {
     companyName: "Apex Holdings Ltd.",
     companyType: "Private Limited",
@@ -131,6 +262,7 @@ const DEMO_ENTERPRISE_ADMIN: UserProfile = {
 };
 
 const DEMO_ENTERPRISE_MEMBER: UserProfile = {
+  id: "demo-ent-member",
   name: "Nusrat Jahan",
   firstName: "Nusrat",
   lastName: "Jahan",
@@ -142,6 +274,7 @@ const DEMO_ENTERPRISE_MEMBER: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: true,
+  creditBalance: 250,
   enterpriseProfile: {
     companyName: "Apex Holdings Ltd.",
     companyType: "Private Limited",
@@ -155,91 +288,204 @@ const DEMO_ENTERPRISE_MEMBER: UserProfile = {
   },
 };
 
+// ─── Provider ─────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
 
+  // ── On mount: restore session from localStorage ──
+  const refreshUser = useCallback(async () => {
+    const token = getToken();
+    if (!token) {
+      setIsLoading(false);
+      return;
+    }
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const data = await api.get<any>("/api/auth/me");
+      const profile = meResponseToProfile(data);
+      setUser(profile);
+      setIsAuthenticated(true);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        clearAuth();
+        setIsAuthenticated(false);
+        setUser(null);
+      } else {
+        // Network error: use cached user from localStorage
+        const stored = getStoredUser();
+        if (stored) {
+          setUser(storedUserToProfile(stored));
+          setIsAuthenticated(true);
+        }
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
-    const saved = localStorage.getItem("app_auth_v2");
-    if (saved) {
+    // Check if this is a demo session (stored in old key)
+    const demoSession = localStorage.getItem("app_auth_v2");
+    if (demoSession) {
       try {
-        const parsed = JSON.parse(saved);
-        setIsAuthenticated(true);
+        const parsed = JSON.parse(demoSession);
         setUser(parsed);
+        setIsAuthenticated(true);
+        setIsLoading(false);
+        return;
       } catch {
         localStorage.removeItem("app_auth_v2");
       }
     }
-    setIsLoading(false);
-  }, []);
+    refreshUser();
+  }, [refreshUser]);
 
-  const persist = (u: UserProfile) => {
+  // ── Persist demo session ──
+  const persistDemo = (u: UserProfile) => {
     setIsAuthenticated(true);
     setUser(u);
     localStorage.setItem("app_auth_v2", JSON.stringify(u));
   };
 
-  const loginAsDemoGeneral = () => persist(DEMO_GENERAL);
-  const loginAsDemoLawyer = () => persist(DEMO_LAWYER);
-  const loginAsDemoEnterpriseAdmin = () => persist(DEMO_ENTERPRISE_ADMIN);
-  const loginAsDemoEnterpriseMember = () => persist(DEMO_ENTERPRISE_MEMBER);
-  const loginAsDemoEnterprise = () => persist(DEMO_ENTERPRISE_ADMIN);
-
-  const registerNewUser = (profile: UserProfile) => {
-    persist(profile);
+  // ── Real API: Login ──
+  const login = async (req: LoginRequest): Promise<void> => {
+    const data = await api.post<TokenResponse>("/api/auth/login", {
+      email: req.email,
+      password: req.password,
+    });
+    saveTokenResponse(data);
+    const profile = storedUserToProfile({
+      id: data.user_id,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      credit_balance: data.credit_balance,
+      is_verified: data.is_verified,
+      is_phone_verified: data.is_phone_verified,
+    });
+    setUser(profile);
+    setIsAuthenticated(true);
+    // Fetch full profile in background
+    api.get<Record<string, unknown>>("/api/auth/me").then((me) => {
+      setUser(meResponseToProfile(me));
+    }).catch(() => {/* noop */});
   };
 
+  // ── Real API: Register ──
+  const registerEmail = async (req: RegisterEmailRequest): Promise<{ email: string }> => {
+    const data = await api.post<{ message: string; email: string }>(
+      "/api/auth/register/email",
+      req as unknown as Record<string, unknown>
+    );
+    return { email: data.email };
+  };
+
+  // ── Real API: Verify OTP ──
+  const verifyOtp = async (req: OtpRequest): Promise<void> => {
+    const data = await api.post<TokenResponse>("/api/auth/verify-otp", {
+      email: req.email,
+      otp_code: req.otp,
+    });
+    saveTokenResponse(data);
+    const profile = storedUserToProfile({
+      id: data.user_id,
+      email: data.email,
+      full_name: data.full_name,
+      role: data.role,
+      credit_balance: data.credit_balance,
+      is_verified: data.is_verified,
+      is_phone_verified: data.is_phone_verified,
+    });
+    setUser(profile);
+    setIsAuthenticated(true);
+  };
+
+  // ── Real API: Resend OTP ──
+  const resendOtp = async (email: string): Promise<void> => {
+    await api.post("/api/auth/resend-otp", { email });
+  };
+
+  // ── Real API: Onboard Lawyer ──
+  const onboardLawyer = async (req: OnboardLawyerRequest): Promise<void> => {
+    await api.post("/api/auth/onboard/lawyer", req as unknown as Record<string, unknown>);
+    await refreshUser();
+  };
+
+  // ── Real API: Onboard Enterprise ──
+  const onboardEnterprise = async (req: OnboardEnterpriseRequest): Promise<void> => {
+    await api.post("/api/auth/onboard/enterprise", req as unknown as Record<string, unknown>);
+    await refreshUser();
+  };
+
+  // ── Real API: Register Enterprise Member ──
+  const registerEnterpriseMember = async (
+    req: RegisterEnterpriseMemberRequest
+  ): Promise<{ email: string }> => {
+    const data = await api.post<{ message: string; email: string }>(
+      "/api/auth/register/enterprise-member",
+      req as unknown as Record<string, unknown>
+    );
+    return { email: data.email };
+  };
+
+  // ── Logout ──
   const logout = () => {
+    clearAuth();
     setIsAuthenticated(false);
     setUser(null);
-    localStorage.removeItem("app_auth_v2");
   };
 
-  // Simulate backend admin manually verifying a lawyer
-  const simulateLawyerVerification = () => {
-    if (!user || user.role !== "lawyer" || !user.lawyerProfile) return;
-    const updated: UserProfile = {
-      ...user,
-      lawyerProfile: {
-        ...user.lawyerProfile,
-        verificationStatus: "verified",
-      },
-    };
-    persist(updated);
-  };
-
-  // Simulate backend admin manually verifying an enterprise
-  const simulateEnterpriseVerification = () => {
-    if (
-      !user ||
-      (user.role !== "enterprise" &&
-        user.role !== "enterprise_admin" &&
-        user.role !== "enterprise_member") ||
-      !user.enterpriseProfile
-    )
-      return;
-    const updated: UserProfile = {
-      ...user,
-      enterpriseProfile: {
-        ...user.enterpriseProfile,
-        verificationStatus: "verified",
-      },
-    };
-    persist(updated);
-  };
-
-  // Simulate OTP phone verification success
-  const simulatePhoneVerification = () => {
-    if (!user) return;
-    const updated: UserProfile = { ...user, isPhoneVerified: true };
-    persist(updated);
-  };
-
+  // ── Local update ──
   const updateUser = (partial: Partial<UserProfile>) => {
     if (!user) return;
     const updated = { ...user, ...partial };
-    persist(updated);
+    setUser(updated);
+    // Update demo session if active
+    if (localStorage.getItem("app_auth_v2")) {
+      localStorage.setItem("app_auth_v2", JSON.stringify(updated));
+    }
+  };
+
+  // ── Demo & Social shortcuts ──
+  const persistDemoUser = (u: UserProfile) => persistDemo(u);
+
+  const loginWithGoogle = (role: UserRole = "general", customEmail?: string, customName?: string) => {
+    const googleUser: UserProfile = {
+      id: "usr-google-" + Date.now().toString().slice(-4),
+      name: customName || "Sayem Hossain (Google)",
+      email: customEmail || "sayem.hossain@gmail.com",
+      role: role,
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sayem",
+      isEmailVerified: true,
+      isPhoneVerified: true,
+      creditBalance: 250,
+      lawyerProfile: role === "lawyer" ? DEMO_LAWYER.lawyerProfile : undefined,
+      enterpriseProfile: role === "enterprise" || role === "enterprise_admin" ? DEMO_ENTERPRISE_ADMIN.enterpriseProfile : undefined,
+    };
+    persistDemo(googleUser);
+  };
+
+  const loginAsDemoGeneral = () => persistDemo(DEMO_GENERAL);
+  const loginAsDemoLawyer = () => persistDemo(DEMO_LAWYER);
+  const loginAsDemoEnterpriseAdmin = () => persistDemo(DEMO_ENTERPRISE_ADMIN);
+  const loginAsDemoEnterpriseMember = () => persistDemo(DEMO_ENTERPRISE_MEMBER);
+  const loginAsDemoEnterprise = () => persistDemo(DEMO_ENTERPRISE_ADMIN);
+
+  const simulateLawyerVerification = () => {
+    if (!user || user.role !== "lawyer" || !user.lawyerProfile) return;
+    updateUser({ lawyerProfile: { ...user.lawyerProfile, verificationStatus: "verified" } });
+  };
+
+  const simulateEnterpriseVerification = () => {
+    if (!user || !user.enterpriseProfile) return;
+    updateUser({ enterpriseProfile: { ...user.enterpriseProfile, verificationStatus: "verified" } });
+  };
+
+  const simulatePhoneVerification = () => {
+    if (!user) return;
+    updateUser({ isPhoneVerified: true });
   };
 
   return (
@@ -248,17 +494,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAuthenticated,
         isLoading,
         user,
+        login,
+        registerEmail,
+        verifyOtp,
+        resendOtp,
+        onboardLawyer,
+        onboardEnterprise,
+        registerEnterpriseMember,
+        logout,
+        refreshUser,
+        updateUser,
+        loginWithGoogle,
+        persistDemoUser,
         loginAsDemoGeneral,
         loginAsDemoLawyer,
         loginAsDemoEnterprise,
         loginAsDemoEnterpriseAdmin,
         loginAsDemoEnterpriseMember,
-        registerNewUser,
-        logout,
         simulateLawyerVerification,
         simulateEnterpriseVerification,
         simulatePhoneVerification,
-        updateUser,
       }}
     >
       {children}

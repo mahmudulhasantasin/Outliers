@@ -1,17 +1,28 @@
 "use client";
 
 import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
-import { Bell, Globe, Moon, Sun, Shield, Trash2 } from "lucide-react";
+import { Bell, Globe, Moon, Sun, Shield, Trash2, Key, Check, Coins, ArrowUpRight } from "lucide-react";
+import { changePassword, updateProfile } from "@/lib/apiServices";
 
 export default function SettingsPage() {
-  const { user, logout } = useAuth();
+  const router = useRouter();
+  const { user, logout, updateUser } = useAuth();
   const { language, setLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
   const isBn = language === "bn";
+
+  // Change password state
+  const [currentPw, setCurrentPw] = useState("");
+  const [newPw, setNewPw] = useState("");
+  const [confirmPw, setConfirmPw] = useState("");
+  const [pwLoading, setPwLoading] = useState(false);
+  const [pwError, setPwError] = useState("");
+  const [pwSuccess, setPwSuccess] = useState(false);
 
   const borderClass = "border-[var(--text-primary)]/10";
 
@@ -98,6 +109,61 @@ export default function SettingsPage() {
               checked={false}
               onChange={() => {}}
             />
+          </div>
+        </Section>
+
+        {/* ── Change Password ── */}
+        <Section title={isBn ? "পাসওয়ার্ড পরিবর্তন" : "Change Password"}>
+          <form onSubmit={async (e) => {
+            e.preventDefault();
+            if (newPw !== confirmPw) { setPwError(isBn ? "নতুন পাসওয়ার্ড মিলছে না" : "Passwords do not match"); return; }
+            setPwLoading(true); setPwError(""); setPwSuccess(false);
+            try {
+              await changePassword({ current_password: currentPw, new_password: newPw, confirm_new_password: confirmPw });
+              setPwSuccess(true); setCurrentPw(""); setNewPw(""); setConfirmPw("");
+            } catch (err: unknown) {
+              setPwError(err instanceof Error ? err.message : "Failed to change password");
+            } finally { setPwLoading(false); }
+          }} className="space-y-3">
+            <input type="password" required value={currentPw} onChange={(e) => setCurrentPw(e.target.value)}
+              placeholder={isBn ? "বর্তমান পাসওয়ার্ড" : "Current password"}
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/10 bg-transparent text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/30" />
+            <input type="password" required value={newPw} onChange={(e) => setNewPw(e.target.value)}
+              placeholder={isBn ? "নতুন পাসওয়ার্ড" : "New password"}
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/10 bg-transparent text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/30" />
+            <input type="password" required value={confirmPw} onChange={(e) => setConfirmPw(e.target.value)}
+              placeholder={isBn ? "নতুন পাসওয়ার্ড নিশ্চিত করুন" : "Confirm new password"}
+              className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/10 bg-transparent text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/30" />
+            {pwError && <p className="text-xs text-red-500">{pwError}</p>}
+            {pwSuccess && <p className="text-xs text-emerald-500 flex items-center gap-1"><Check className="w-3 h-3" />{isBn ? "পাসওয়ার্ড পরিবর্তন সফল" : "Password changed successfully"}</p>}
+            <button type="submit" disabled={pwLoading}
+              className="w-full py-2.5 rounded-xl text-sm font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity disabled:opacity-60 cursor-pointer">
+              <Key className="w-3.5 h-3.5 inline mr-1.5" />
+              {pwLoading ? (isBn ? "অপেক্ষা..." : "Updating...") : (isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password")}
+            </button>
+          </form>
+        </Section>
+
+        {/* ── Credits & Billing ── */}
+        <Section title={isBn ? "ক্রেডিট ও বিলিং" : "Credits & Billing"}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <p className="text-xs text-[var(--text-muted)] mb-1">
+                {isBn ? "বর্তমান উপলব্ধ ক্রেডিট ব্যালেন্স:" : "Available Credit Balance:"}
+              </p>
+              <p className="text-2xl font-mono font-bold text-emerald-500">
+                {user?.creditBalance ?? 0} {isBn ? "ক্রেডিট" : "Credits"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => router.push("/pricing")}
+              className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[#E2136E] text-white hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+            >
+              <Coins className="w-4 h-4" />
+              <span>{isBn ? "প্যাকেজ কিনুন (বিকাশ)" : "Buy Packages (bKash)"}</span>
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         </Section>
 

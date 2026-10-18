@@ -9,6 +9,13 @@ import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
 import { STATUTORY_PROVISIONS, StatutoryProvision } from "@/data/statutoryProvisions";
 import {
+  createChatSession,
+  sendChatQuery,
+  listChatSessions,
+  type ChatSession,
+  type CitedSection,
+} from "@/lib/apiServices";
+import {
   Scale,
   ShieldCheck,
   ExternalLink,
@@ -24,6 +31,7 @@ interface ChatMessage {
   textEn: string;
   textBn: string;
   citations?: string[];
+  apiCitations?: CitedSection[];
   isThinking?: boolean;
   thoughtSeconds?: number;
 }
@@ -36,6 +44,8 @@ export default function CopilotPage() {
   const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);
   const [loadedContractTitle, setLoadedContractTitle] = useState<string | null>(null);
   const [isTyping, setIsTyping] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -51,11 +61,16 @@ export default function CopilotPage() {
     }
   }, [language]);
 
+  // Load previous sessions on mount
+  useEffect(() => {
+    listChatSessions().then(setSessions).catch(() => {/* noop - not authenticated yet */});
+  }, []);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const handleSendPrompt = (text: string) => {
+  const handleSendPrompt = async (text: string) => {
     if (!text.trim()) return;
 
     const userMessage: ChatMessage = {
@@ -80,76 +95,66 @@ export default function CopilotPage() {
     setMessages((prev) => [...prev, userMessage, pendingCopilotMessage]);
     setIsTyping(true);
 
-    setTimeout(() => {
-      const lower = text.toLowerCase();
-      let responseEn = "";
-      let responseBn = "";
-      let relevantCitations: string[] = [];
-
-      if (
-        lower.includes("notice") ||
-        lower.includes("terminate") ||
-        lower.includes("labour") ||
-        lower.includes("শ্রম") ||
-        lower.includes("নোটিশ") ||
-        lower.includes("চাকরি")
-      ) {
-        responseEn =
-          "Under Section 26 of the Bangladesh Labour Act 2006, unilateral termination of a permanent worker requires a minimum of 120 days' written notice for monthly-rated employees (or wages in lieu thereof), along with statutory compensation of 30 days' wages per year of service. Any clause mandating sudden termination or forfeiture of accrued salary is unlawful and unenforceable.";
-        responseBn =
-          "বাংলাদেশ শ্রম আইন ২০০৬ এর ধারা ২৬ অনুযায়ী, মাসিক বেতনের স্থায়ী কর্মীর চাকরি অবসানের ক্ষেত্রে কমপক্ষে ১২০ দিনের লিখিত নোটিশ (বা সমপরিমাণ মজুরি) এবং প্রতি পূর্ণ বছরের চাকরির জন্য ৩০ দিনের মজুরি ক্ষতিপূরণ বাধ্যতামূলক। নোটিশ ছাড়া তাৎক্ষণিক বরখাস্ত বা বকেয়া বেতন বাজেয়াপ্ত করার শর্ত আইনত বাতিল ও অবৈধ।";
-        relevantCitations = ["labour-act-26"];
-      } else if (
-        lower.includes("non-compete") ||
-        lower.includes("restraint") ||
-        lower.includes("নন-কম্পিট") ||
-        lower.includes("বাধা") ||
-        lower.includes("startup")
-      ) {
-        responseEn =
-          "Under Section 27 of The Contract Act 1872, agreements that restrain any person from exercising a lawful trade, business, or profession are void ab initio. A post-employment clause preventing you or a freelancer from working in your domain or launching a competitive startup in Bangladesh cannot be enforced in a court of law.";
-        responseBn =
-          "চুক্তি আইন ১৮৭২-এর ধারা ২৭ অনুযায়ী, কাউকে বৈধ পেশা, ব্যবসা বা বাণিজ্য পরিচালনায় বিরত রাখা সংক্রান্ত যেকোনো শর্ত সম্পূর্ণ বাতিল ও অকার্যকর। চাকরি বা প্রজেক্ট শেষ হওয়ার পর অনুরূপ প্রযুক্তি খাতে কাজ করতে বা স্টার্টআপ করতে নিষেধাজ্ঞা আরোপের শর্ত বাংলাদেশের আদালতে বলবৎযোগ্য নয়।";
-        relevantCitations = ["contract-act-27"];
-      } else if (
-        lower.includes("penalty") ||
-        lower.includes("damages") ||
-        lower.includes("ক্ষতিপূরণ") ||
-        lower.includes("জরিমানা") ||
-        lower.includes("73") ||
-        lower.includes("74")
-      ) {
-        responseEn =
-          "Under Sections 73 and 74 of The Contract Act 1872, parties are only entitled to reasonable compensation for actual, direct losses naturally arising from a breach. Disproportionate or unlimited penalty clauses (e.g., extortionate daily fines) are not awarded as pure punishment by civil courts.";
-        responseBn =
-          "চুক্তি আইন ১৮৭২ এর ধারা ৭৩ ও ৭৪ অনুযায়ী, চুক্তিভঙ্গের ক্ষেত্রে কেবল প্রত্যক্ষ ও যৌক্তিক ক্ষতির ক্ষতিপূরণ দাবি করা যায়। চুক্তিতে অতিরিক্ত বা একতরফা অমানবিক জরিমানার শর্ত থাকলেও আদালত কেবল ন্যায্য ও প্রমাণিত ক্ষতির ক্ষতিপূরণ মঞ্জুর করেন, শাস্তিমূলক জরিমানা নয়।";
-        relevantCitations = ["contract-act-73", "contract-act-74"];
-      } else {
-        responseEn =
-          "Your query has been evaluated against the statutory knowledge base. To maintain zero hallucination, every finding must link directly to an existing law in bdlaws. If this pertains to contractual risk, review Sections 73 and 74 (liability capping) or Section 27 (trade restraint).";
-        responseBn =
-          "আপনার প্রশ্নটি পরীক্ষা করা হয়েছে। তথ্যের শতভাগ নির্ভুলতা নিশ্চিত করতে প্রতিটি উত্তর সরকারি bdlaws-এর বিধানের সাথে সংযুক্ত করা হয়। বাণিজ্যিক চুক্তির ক্ষেত্রে ধারা ৭৩ ও ৭৪ (ক্ষতিপূরণ ও জরিমানা) অথবা ধারা ২৭ (বাণিজ্য স্বাধীনতা) পর্যালোচনা করুন।";
-        relevantCitations = ["contract-act-73", "contract-act-27"];
+    try {
+      // Create a session if we don't have one yet
+      let sessionId = activeSessionId;
+      if (!sessionId) {
+        const session = await createChatSession(
+          text.length > 40 ? text.slice(0, 40) + "..." : text
+        );
+        sessionId = session.id;
+        setActiveSessionId(session.id);
       }
+
+      // Get loaded contract context from sessionStorage
+      const contractData = sessionStorage.getItem("active_audit_contract");
+      let contractId: string | undefined;
+      if (contractData) {
+        try { contractId = JSON.parse(contractData).id; } catch { /* noop */ }
+      }
+
+      const result = await sendChatQuery({
+        session_id: sessionId,
+        message: text,
+        contract_id: contractId,
+      });
+
+      const apiCitations = result.cited_sections ?? [];
 
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === copilotMsgId
             ? {
                 ...msg,
-                textEn: responseEn,
-                textBn: responseBn,
-                citations: relevantCitations,
+                textEn: result.response,
+                textBn: result.response,
+                citations: [],
+                apiCitations,
                 isThinking: false,
                 thoughtSeconds: 1.5
               }
             : msg
         )
       );
+    } catch {
+      // Fallback: show an error message
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === copilotMsgId
+            ? {
+                ...msg,
+                textEn: "Sorry, I encountered an error connecting to the legal knowledge base. Please try again.",
+                textBn: "\u09a6\u09c1\u0983\u0996\u09bf\u09a4, \u0986\u0987\u09a8\u09bf \u099c\u09cd\u099e\u09be\u09a8 \u09ad\u09be\u09a3\u09cd\u09a1\u09be\u09b0\u09c7 \u09b8\u0982\u09af\u09cb\u0997 \u0995\u09b0\u09a4\u09c7 \u09b8\u09ae\u09b8\u09cd\u09af\u09be \u09b9\u09af\u09bc\u09c7\u099b\u09c7\u0964 \u0986\u09ac\u09be\u09b0 \u099a\u09c7\u09b7\u09cd\u099f\u09be \u0995\u09b0\u09c1\u09a8\u0964",
+                citations: [],
+                isThinking: false,
+              }
+            : msg
+        )
+      );
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
-
   const hasMessages = messages.length > 0;
 
   return (

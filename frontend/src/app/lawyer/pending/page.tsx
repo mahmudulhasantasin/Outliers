@@ -7,6 +7,12 @@ import { useAuth } from "@/context/AuthContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 import {
+  getLawyerQueue,
+  acceptOffer,
+  declineOffer,
+  submitReview,
+} from "@/lib/apiServices";
+import {
   Inbox,
   Clock,
   User,
@@ -109,15 +115,45 @@ export default function LawyerPendingPage() {
   const [isSealing, setIsSealing] = useState(false);
   const [sealedSuccess, setSealedSuccess] = useState(false);
 
-  // Load any dispatched contracts from localStorage
+  // Load any dispatched contracts from localStorage and backend queue
   useEffect(() => {
+    let isMounted = true;
+    async function loadQueue() {
+      try {
+        const queue = await getLawyerQueue();
+        if (isMounted && Array.isArray(queue) && queue.length > 0) {
+          const mapped: PendingContract[] = queue.map((item) => ({
+            id: item.memo_id,
+            clientName: "Enterprise Client",
+            clientPhone: "+880 1700-000000",
+            titleEn: item.file_name,
+            titleBn: item.file_name,
+            submittedAtEn: new Date(item.offered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            submittedAtBn: new Date(item.offered_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            statuteEn: "Bangladesh Law Audit Queue",
+            statuteBn: "বাংলাদেশ আইন অডিট কিউ",
+            riskCount: 3,
+            priority: "high",
+            contractId: item.memo_id,
+          }));
+          setPendingList((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const additions = mapped.filter((p) => !existingIds.has(p.id));
+            return [...additions, ...prev];
+          });
+        }
+      } catch (err) {
+        console.warn("Could not fetch lawyer queue from backend:", err);
+      }
+    }
+    loadQueue();
+
     if (typeof window !== "undefined") {
       try {
         const stored = JSON.parse(
           localStorage.getItem("dispatched_pending_contracts") || "[]"
         );
         if (Array.isArray(stored) && stored.length > 0) {
-          // Merge avoiding duplicate IDs
           const existingIds = new Set(DEFAULT_PENDING.map((p) => p.id));
           const additions = stored.filter((p: PendingContract) => !existingIds.has(p.id));
           setPendingList([...additions, ...DEFAULT_PENDING]);
@@ -126,6 +162,9 @@ export default function LawyerPendingPage() {
         console.error("Error reading dispatched contracts:", err);
       }
     }
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const borderClass = "border-[var(--text-primary)]/10";
@@ -143,9 +182,36 @@ export default function LawyerPendingPage() {
     setSealedSuccess(false);
   };
 
-  const handleApproveAndSeal = () => {
+  const handleAccept = async (id: string) => {
+    try {
+      await acceptOffer(id);
+      alert(isBn ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে!" : "Contract offer accepted!");
+    } catch (err: any) {
+      console.warn("Accept offer error:", err);
+    }
+  };
+
+  const handleDecline = async (id: string) => {
+    try {
+      await declineOffer(id);
+      setPendingList((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: any) {
+      console.warn("Decline offer error:", err);
+    }
+  };
+
+  const handleApproveAndSeal = async () => {
     if (!selectedContract) return;
     setIsSealing(true);
+
+    try {
+      await submitReview(selectedContract.id, {
+        notes: advocateNotes,
+        verified: true,
+      });
+    } catch (err) {
+      console.warn("Backend submitReview error:", err);
+    }
 
     setTimeout(() => {
       setIsSealing(false);
@@ -315,10 +381,19 @@ export default function LawyerPendingPage() {
               <div className="shrink-0 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => handleOpenReview(contract)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5"
+                  onClick={() => handleDecline(contract.id)}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                  title={isBn ? "প্রস্তাব প্রত্যাখ্যান করুন" : "Decline offer"}
                 >
-                  {isBn ? "অডিট ও ভেরিফাই করুন" : "Review & Verify"}
+                  {isBn ? "প্রত্যাখ্যান" : "Decline"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleOpenReview(contract)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5 shadow-sm"
+                >
+                  {isBn ? "অডিট ও ভেরিফাই" : "Review & Verify"}
                   <ArrowUpRight className="w-3.5 h-3.5" />
                 </button>
               </div>

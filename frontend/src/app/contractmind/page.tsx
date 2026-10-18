@@ -11,6 +11,7 @@ import { maskPii } from "@/lib/piiMasker";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 import { runDispatchAlgorithm, INITIAL_DEMO_LAWYERS, DispatchDecision } from "@/lib/dispatcher";
+import { uploadContract, requestLawyerVerification } from "@/lib/apiServices";
 import {
   FileText,
   Upload,
@@ -47,6 +48,9 @@ export default function ContractMindPage() {
   const [lawyerSealApplied, setLawyerSealApplied] = useState<boolean>(false);
 
   // Check URL query parameter (e.g. ?id=vendor-sla)
+  const [apiContractId, setApiContractId] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
@@ -76,36 +80,63 @@ export default function ContractMindPage() {
     }, 500);
   };
 
-  // Handle file drop or selection
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle file drop or selection - real API upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setDispatchedDecision(null);
-      setLawyerSealApplied(false);
-      setIsAnalyzing(true);
-      setTimeout(() => {
-        setIsAnalyzing(false);
-        setIsLoaded(true);
-      }, 700);
+    if (!file) return;
+    setDispatchedDecision(null);
+    setLawyerSealApplied(false);
+    setIsAnalyzing(true);
+    setUploadError(null);
+    try {
+      const result = await uploadContract(file);
+      setApiContractId(result.contract_id);
+      // Fall back to demo audit data display for now (UI renders from local data)
+      setIsAnalyzing(false);
+      setIsLoaded(true);
+    } catch {
+      // If not authenticated or API fails, show demo audit
+      setUploadError("Upload failed (demo mode). Showing sample audit.");
+      setIsAnalyzing(false);
+      setIsLoaded(true);
     }
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
       setDispatchedDecision(null);
       setLawyerSealApplied(false);
       setIsAnalyzing(true);
-      setTimeout(() => {
+      setUploadError(null);
+      try {
+        const result = await uploadContract(file);
+        setApiContractId(result.contract_id);
         setIsAnalyzing(false);
         setIsLoaded(true);
-      }, 700);
+      } catch {
+        setUploadError("Upload failed (demo mode). Showing sample audit.");
+        setIsAnalyzing(false);
+        setIsLoaded(true);
+      }
     }
   };
 
-  // Dispatch to advocate via matching algorithm
-  const handleSendToAdvocate = () => {
+  // Dispatch to advocate via matching algorithm + real API
+  const handleSendToAdvocate = async () => {
     setIsDispatching(true);
+    
+    // Try real API first (if user has uploaded a contract)
+    if (apiContractId) {
+      try {
+        await requestLawyerVerification(apiContractId);
+      } catch {
+        // API failed - continue with demo dispatch
+      }
+    }
+
+    // Always run local demo dispatch for UI feedback
     setTimeout(() => {
       const domainMap: Record<string, string> = {
         "employment-agreement": "LABOUR_EMPLOYMENT",
