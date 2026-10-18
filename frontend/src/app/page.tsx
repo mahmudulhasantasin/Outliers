@@ -275,6 +275,11 @@ export default function LandingAndAuthPage() {
       avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sayem",
     },
     {
+      email: "sayem.hossain@gmail.com",
+      name: "Sayem Hossain (Personal)",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=SayemPersonal",
+    },
+    {
       email: "saakaza3@gmail.com",
       name: "Saakaza User",
       avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Saakaza",
@@ -455,6 +460,25 @@ export default function LandingAndAuthPage() {
     }
     setIsAddingNewGoogleAccount(false);
     handleSelectGoogleAccount(newAcc);
+  };
+
+  const handleOpenNativeGoogleAccountPicker = () => {
+    const width = 500;
+    const height = 620;
+    const left = typeof window !== "undefined" ? window.screenX + (window.outerWidth - width) / 2 : 100;
+    const top = typeof window !== "undefined" ? window.screenY + (window.outerHeight - height) / 2 : 100;
+
+    try {
+      window.open(
+        "https://accounts.google.com/AccountChooser?service=lso&continue=https://accounts.google.com",
+        "google_browser_accounts",
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no,location=no,status=no`
+      );
+    } catch (e) {
+      console.warn("Popup blocked:", e);
+    }
+
+    setIsAddingNewGoogleAccount(true);
   };
 
   const handleGoogleDirectAuth = () => {
@@ -1740,28 +1764,47 @@ export default function LandingAndAuthPage() {
               })}
             </div>
 
-            {/* Add Another Google Account Section */}
-            <div className="mt-3 pt-3 border-t border-[var(--text-primary)]/10">
-              {!isAddingNewGoogleAccount ? (
-                <button
-                  type="button"
-                  onClick={() => setIsAddingNewGoogleAccount(true)}
-                  className="w-full py-2.5 px-3 rounded-2xl hover:bg-[var(--bg-surface)] transition-colors flex items-center gap-3 text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
-                >
-                  <div className="w-8 h-8 rounded-full border border-dashed border-[var(--text-primary)]/30 flex items-center justify-center text-[var(--text-muted)]">
-                    <Plus className="w-4 h-4" />
+            {/* Add / Choose Another Google Account Section */}
+            <div className="mt-3 pt-3 border-t border-[var(--text-primary)]/10 space-y-2.5">
+              <button
+                type="button"
+                onClick={handleOpenNativeGoogleAccountPicker}
+                className="w-full py-2.5 px-3 rounded-2xl hover:bg-[var(--bg-surface)] border-2 border-dashed border-blue-400/40 hover:border-blue-500 transition-all flex items-center justify-between text-xs font-semibold text-[var(--text-primary)] cursor-pointer group active:scale-[0.99]"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                    <Globe2 className="w-4 h-4" />
                   </div>
-                  <span>{isBn ? "অন্য একটি অ্যাকাউন্ট ব্যবহার করুন" : "Use another account"}</span>
-                </button>
-              ) : (
-                <form onSubmit={handleAddNewGoogleAccount} className="space-y-2.5 p-3 rounded-2xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 animate-in fade-in duration-150">
-                  <div className="text-xs font-semibold text-[var(--text-primary)]">
-                    {isBn ? "নতুন Google অ্যাকাউন্ট যোগ করুন" : "Add new Google account"}
+                  <div className="text-left">
+                    <div className="text-xs font-bold text-[var(--text-primary)]">
+                      {isBn ? "ব্রাউজারের সকল Google অ্যাকাউন্ট দেখুন" : "View all browser Google accounts"}
+                    </div>
+                    <div className="text-[10px] text-[var(--text-muted)] font-normal">
+                      {isBn ? "Chrome / ব্রাউজারের সাইন-ইন উইন্ডো খুলবে" : "Opens native Chrome / browser Google selector"}
+                    </div>
+                  </div>
+                </div>
+                <ArrowUpRight className="w-4 h-4 text-blue-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              </button>
+
+              {isAddingNewGoogleAccount && (
+                <form onSubmit={handleAddNewGoogleAccount} className="space-y-2.5 p-3.5 rounded-2xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-[var(--text-primary)]">
+                      {isBn ? "ব্রাউজার থেকে যে অ্যাকাউন্টটি বেছে নিয়েছেন তার ইমেইল দিন:" : "Enter your selected Google account email:"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingNewGoogleAccount(false)}
+                      className="text-[11px] text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                    >
+                      {isBn ? "লুকান" : "Close"}
+                    </button>
                   </div>
                   <input
                     type="email"
                     required
-                    placeholder="example@gmail.com"
+                    placeholder="your.email@gmail.com"
                     value={newGoogleEmail}
                     onChange={(e) => setNewGoogleEmail(e.target.value)}
                     className={`w-full px-3 py-2 rounded-xl text-xs border outline-none bg-[var(--bg-card)] ${borderClass} focus:border-blue-500 text-[var(--text-primary)]`}
@@ -1785,7 +1828,7 @@ export default function LandingAndAuthPage() {
                       type="submit"
                       className="px-3.5 py-1.5 rounded-lg bg-[var(--accent-solid)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-90 shadow-sm cursor-pointer"
                     >
-                      {isBn ? "যুক্ত করে প্রবেশ করুন" : "Add & Proceed"}
+                      {isBn ? "এই অ্যাকাউন্ট দিয়ে চালিয়ে যান" : "Proceed with this Account"}
                     </button>
                   </div>
                 </form>
