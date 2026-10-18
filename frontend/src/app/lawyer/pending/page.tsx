@@ -187,7 +187,7 @@ export default function LawyerPendingPage() {
       await acceptOffer(id);
       alert(isBn ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে!" : "Contract offer accepted!");
     } catch (err: any) {
-      console.warn("Accept offer error:", err);
+      alert(err.message || (isBn ? "চুক্তি গ্রহণ ব্যর্থ হয়েছে।" : "Failed to accept offer"));
     }
   };
 
@@ -196,7 +196,7 @@ export default function LawyerPendingPage() {
       await declineOffer(id);
       setPendingList((prev) => prev.filter((p) => p.id !== id));
     } catch (err: any) {
-      console.warn("Decline offer error:", err);
+      alert(err.message || (isBn ? "চুক্তি বাতিল ব্যর্থ হয়েছে।" : "Failed to decline offer"));
     }
   };
 
@@ -209,8 +209,10 @@ export default function LawyerPendingPage() {
         notes: advocateNotes,
         verified: true,
       });
-    } catch (err) {
-      console.warn("Backend submitReview error:", err);
+    } catch (err: any) {
+      setIsSealing(false);
+      alert(err.message || (isBn ? "রিভিউ সাবমিট ব্যর্থ হয়েছে।" : "Failed to submit review"));
+      return;
     }
 
     setTimeout(() => {

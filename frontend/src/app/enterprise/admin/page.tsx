@@ -168,8 +168,9 @@ export default function EnterpriseAdminPage() {
   const handleToggleMemberStatus = async (memberId: string) => {
     try {
       await suspendMember(memberId);
-    } catch (e) {
-      console.warn("Backend suspend error:", e);
+    } catch (e: any) {
+      alert(e.message || (isBn ? "মেম্বার স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে।" : "Failed to update member status."));
+      return;
     }
     setMembers((prev) =>
       prev.map((m) => {
@@ -187,8 +188,9 @@ export default function EnterpriseAdminPage() {
     const delta = tempCreditCap - (currentMember?.monthlyCreditCap ?? 200);
     try {
       await adjustMemberQuota(memberId, delta, "Quota adjustment via Admin panel");
-    } catch (e) {
-      console.warn("Backend quota update error:", e);
+    } catch (e: any) {
+      alert(e.message || (isBn ? "কোটা পরিবর্তন ব্যর্থ হয়েছে।" : "Failed to adjust member quota."));
+      return;
     }
     setMembers((prev) =>
       prev.map((m) => (m.id === memberId ? { ...m, monthlyCreditCap: tempCreditCap } : m))

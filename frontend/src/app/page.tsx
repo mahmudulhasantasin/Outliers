@@ -248,9 +248,13 @@ export default function LandingAndAuthPage() {
       else if (selectedRole === "enterprise") router.push("/enterprise/admin");
       else router.push("/copilot");
     } catch (err: unknown) {
-      // If live backend rejected because SMTP didn't deliver the secret code, auto-fallback
-      console.warn("Live backend OTP verification notice:", err);
-      handleDirectOtpBypass();
+      const msg =
+        err instanceof Error
+          ? err.message
+          : language === "bn"
+          ? "অবৈধ বা মেয়াদোত্তীর্ণ ওটিপি কোড।"
+          : "Invalid or expired OTP code.";
+      setOtpError(msg);
     } finally {
       setAuthLoading(false);
     }

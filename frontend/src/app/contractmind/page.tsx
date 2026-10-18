@@ -35,6 +35,7 @@ import {
 export default function ContractMindPage() {
   const router = useRouter();
   const { language } = useLanguage();
+  const isBn = language === "bn";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Initial stage: no contract loaded by default
@@ -91,14 +92,12 @@ export default function ContractMindPage() {
     try {
       const result = await uploadContract(file);
       setApiContractId(String(result.contract_id));
-      // Fall back to demo audit data display for now (UI renders from local data)
       setIsAnalyzing(false);
       setIsLoaded(true);
-    } catch {
-      // If not authenticated or API fails, show demo audit
-      setUploadError("Upload failed (demo mode). Showing sample audit.");
+    } catch (err: any) {
+      setUploadError(err.message || (isBn ? "চুক্তি আপলোড এবং অডিট ব্যর্থ হয়েছে।" : "Upload and audit failed."));
       setIsAnalyzing(false);
-      setIsLoaded(true);
+      setIsLoaded(false);
     }
   };
 
@@ -115,10 +114,10 @@ export default function ContractMindPage() {
         setApiContractId(String(result.contract_id));
         setIsAnalyzing(false);
         setIsLoaded(true);
-      } catch {
-        setUploadError("Upload failed (demo mode). Showing sample audit.");
+      } catch (err: any) {
+        setUploadError(err.message || (isBn ? "চুক্তি আপলোড এবং অডিট ব্যর্থ হয়েছে।" : "Upload and audit failed."));
         setIsAnalyzing(false);
-        setIsLoaded(true);
+        setIsLoaded(false);
       }
     }
   };
@@ -131,8 +130,10 @@ export default function ContractMindPage() {
     if (apiContractId) {
       try {
         await requestLawyerVerification(apiContractId);
-      } catch {
-        // API failed - continue with demo dispatch
+      } catch (err: any) {
+        alert(err.message || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
+        setIsDispatching(false);
+        return;
       }
     }
 
