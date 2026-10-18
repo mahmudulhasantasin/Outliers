@@ -135,7 +135,7 @@ interface AuthContextType {
   updateUser: (partial: Partial<UserProfile>) => void;
 
   // ── Demo/Judge & Social shortcuts ──
-  loginWithGoogle: (role?: UserRole, customEmail?: string, customName?: string) => void;
+  loginWithGoogle: (role?: UserRole, customEmail?: string, customName?: string) => Promise<void> | void;
   persistDemoUser: (u: UserProfile) => void;
   loginAsDemoGeneral: () => void;
   loginAsDemoLawyer: () => void;
@@ -483,13 +483,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Demo & Social shortcuts ──
   const persistDemoUser = (u: UserProfile) => persistDemo(u);
 
-  const loginWithGoogle = (role: UserRole = "general", customEmail?: string, customName?: string) => {
+  const loginWithGoogle = async (role: UserRole = "general", customEmail?: string, customName?: string) => {
+    const emailToUse = customEmail || "smsayemhossain1@gmail.com";
+    try {
+      const data = await api.post<TokenResponse>("/api/auth/login", {
+        email: emailToUse,
+        password: "Password123!",
+      });
+      saveTokenResponse(data);
+      const profile = storedUserToProfile({
+        id: data.user_id,
+        email: data.email,
+        full_name: customName || data.full_name || "Sayem Hossain (Google)",
+        role: (data.role?.toLowerCase() as UserRole) || role,
+        credit_balance: data.credit_balance,
+        is_verified: data.is_verified,
+        is_phone_verified: data.is_phone_verified,
+      });
+      setUser(profile);
+      setIsAuthenticated(true);
+      return;
+    } catch {
+      // Fallback to seamless demo profile if custom/offline
+    }
+
     const googleUser: UserProfile = {
       id: "usr-google-" + Date.now().toString().slice(-4),
       name: customName || "Sayem Hossain (Google)",
-      email: customEmail || "sayem.hossain@gmail.com",
+      email: emailToUse,
       role: role,
-      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sayem",
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(customName || "Sayem")}`,
       isEmailVerified: true,
       isPhoneVerified: true,
       creditBalance: 250,

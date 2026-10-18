@@ -28,6 +28,10 @@ import {
   Mail,
   Users,
   Sparkles,
+  AlertTriangle,
+  Plus,
+  ChevronRight,
+  Check,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
 
@@ -255,20 +259,206 @@ export default function LandingAndAuthPage() {
     }
   };
 
-  // Google Auth — direct instant sign-in & register
-  const handleGoogleDirectAuth = () => {
-    setAuthLoading(true);
-    try {
-      const email = regEmail || (loginEmail.includes("@") ? loginEmail : "sayem.google@gmail.com");
-      const name = (firstName || lastName) ? `${firstName} ${lastName}`.trim() : (language === "bn" ? "সায়েম হোসেন (Google)" : "Sayem Hossain (Google)");
-      loginWithGoogle(selectedRole || "general", email, name);
-      closeModal();
-      if (selectedRole === "lawyer") router.push("/lawyer/pending");
-      else if (selectedRole === "enterprise") router.push("/enterprise/admin");
-      else router.push("/copilot");
-    } finally {
-      setAuthLoading(false);
+  // ── Google Account Chooser System ──
+  interface GoogleAccountItem {
+    email: string;
+    name: string;
+    avatarUrl?: string;
+  }
+
+  const [showGoogleChooser, setShowGoogleChooser] = useState(false);
+  const [googleChooserMode, setGoogleChooserMode] = useState<"login" | "register">("login");
+  const [googleAccounts, setGoogleAccounts] = useState<GoogleAccountItem[]>([
+    {
+      email: "smsayemhossain1@gmail.com",
+      name: "Sayem Hossain",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sayem",
+    },
+    {
+      email: "saakaza3@gmail.com",
+      name: "Saakaza User",
+      avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Saakaza",
+    },
+  ]);
+  const [googleNotice, setGoogleNotice] = useState<{
+    type: "info" | "warning" | "error";
+    message: string;
+    actionType?: "switch_to_login" | "switch_to_register";
+    targetEmail?: string;
+  } | null>(null);
+  const [isAddingNewGoogleAccount, setIsAddingNewGoogleAccount] = useState(false);
+  const [newGoogleEmail, setNewGoogleEmail] = useState("");
+  const [newGoogleName, setNewGoogleName] = useState("");
+
+  const isAccountRegistered = (email: string): boolean => {
+    const known = ["smsayemhossain1@gmail.com", "saakaza3@gmail.com"];
+    if (typeof window !== "undefined") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("contractmind_known_registered") || "[]");
+        if (Array.isArray(stored)) {
+          known.push(...stored);
+        }
+      } catch {
+        /* noop */
+      }
     }
+    return known.some((e) => e.toLowerCase() === email.trim().toLowerCase());
+  };
+
+  const markAccountAsRegistered = (email: string) => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("contractmind_known_registered") || "[]");
+        const set = new Set([...stored, email.trim().toLowerCase()]);
+        localStorage.setItem("contractmind_known_registered", JSON.stringify(Array.from(set)));
+      } catch {
+        /* noop */
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = JSON.parse(localStorage.getItem("contractmind_google_accounts") || "[]");
+        if (Array.isArray(stored) && stored.length > 0) {
+          const defaultList = [
+            {
+              email: "smsayemhossain1@gmail.com",
+              name: "Sayem Hossain",
+              avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sayem",
+            },
+            {
+              email: "saakaza3@gmail.com",
+              name: "Saakaza User",
+              avatarUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Saakaza",
+            },
+          ];
+          const emails = new Set(stored.map((a: GoogleAccountItem) => a.email.toLowerCase()));
+          const combined = [...stored];
+          for (const d of defaultList) {
+            if (!emails.has(d.email.toLowerCase())) {
+              combined.push(d);
+            }
+          }
+          setGoogleAccounts(combined);
+        }
+      } catch {
+        /* noop */
+      }
+    }
+  }, []);
+
+  const openGoogleChooser = (mode: "login" | "register") => {
+    setGoogleChooserMode(mode);
+    setGoogleNotice(null);
+    setIsAddingNewGoogleAccount(false);
+    setNewGoogleEmail("");
+    setNewGoogleName("");
+    setShowGoogleChooser(true);
+  };
+
+  const handleSelectGoogleAccount = async (acc: GoogleAccountItem) => {
+    const email = acc.email.trim();
+    const name = acc.name.trim();
+
+    if (googleChooserMode === "register") {
+      // User is trying to REGISTER with this Google account:
+      // If already registered, notify them and offer to switch to Login!
+      if (isAccountRegistered(email)) {
+        setGoogleNotice({
+          type: "warning",
+          message:
+            language === "bn"
+              ? `⚠️ "${email}" অ্যাকাউন্টটি ইতিমধ্যে নিবন্ধিত রয়েছে! দয়া করে এই অ্যাকাউন্ট দিয়ে লগইন করুন।`
+              : `⚠️ "${email}" is already registered! Please sign in with this account instead.`,
+          actionType: "switch_to_login",
+          targetEmail: email,
+        });
+        return;
+      }
+
+      // Not registered yet -> Proceed with registration
+      markAccountAsRegistered(email);
+      setAuthLoading(true);
+      try {
+        await loginWithGoogle(selectedRole || "general", email, name);
+        setShowGoogleChooser(false);
+        closeModal();
+        if (selectedRole === "lawyer") router.push("/lawyer/pending");
+        else if (selectedRole === "enterprise") router.push("/enterprise/admin");
+        else router.push("/copilot");
+      } finally {
+        setAuthLoading(false);
+      }
+    } else {
+      // User is trying to LOGIN with this Google account:
+      if (!isAccountRegistered(email)) {
+        setGoogleNotice({
+          type: "info",
+          message:
+            language === "bn"
+              ? `ℹ️ "${email}" অ্যাকাউন্টটি এখনো নিবন্ধিত হয়নি। অনুগ্রহ করে প্রথমে নিবন্ধন সম্পন্ন করুন।`
+              : `ℹ️ "${email}" is not registered yet. Please create an account first.`,
+          actionType: "switch_to_register",
+          targetEmail: email,
+        });
+        return;
+      }
+
+      setAuthLoading(true);
+      try {
+        await loginWithGoogle(selectedRole || "general", email, name);
+        setShowGoogleChooser(false);
+        closeModal();
+        if (selectedRole === "lawyer") router.push("/lawyer/pending");
+        else if (selectedRole === "enterprise") router.push("/enterprise/admin");
+        else router.push("/copilot");
+      } finally {
+        setAuthLoading(false);
+      }
+    }
+  };
+
+  const handleSwitchFromGoogleToLogin = (targetEmail?: string) => {
+    setShowGoogleChooser(false);
+    setIsSignUp(false);
+    setRegStep("role");
+    if (targetEmail) {
+      setLoginEmail(targetEmail);
+    }
+  };
+
+  const handleSwitchFromGoogleToRegister = (targetEmail?: string) => {
+    setShowGoogleChooser(false);
+    setIsSignUp(true);
+    setRegStep("role");
+    if (targetEmail) {
+      setRegEmail(targetEmail);
+    }
+  };
+
+  const handleAddNewGoogleAccount = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newGoogleEmail.trim() || !newGoogleEmail.includes("@")) return;
+    const email = newGoogleEmail.trim();
+    const name = newGoogleName.trim() || email.split("@")[0];
+    const newAcc: GoogleAccountItem = {
+      email,
+      name,
+      avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
+    };
+    const updated = [newAcc, ...googleAccounts.filter((a) => a.email.toLowerCase() !== email.toLowerCase())];
+    setGoogleAccounts(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("contractmind_google_accounts", JSON.stringify(updated));
+    }
+    setIsAddingNewGoogleAccount(false);
+    handleSelectGoogleAccount(newAcc);
+  };
+
+  const handleGoogleDirectAuth = () => {
+    openGoogleChooser(isSignUp ? "register" : "login");
   };
 
   const handleDirectOtpBypass = () => {
@@ -901,7 +1091,16 @@ export default function LandingAndAuthPage() {
                         { label: "GitHub", icon: (<svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" /></svg>) },
                         { label: "Apple", icon: (<svg className="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M15.97 6.37c.61-.75 1.04-1.8.92-2.85-.9.04-1.97.6-2.61 1.35-.57.65-1.06 1.71-.93 2.73.99.08 2.01-.5 2.62-1.23z" /></svg>) },
                       ].map((s) => (
-                        <button key={s.label} type="button" onClick={handleGoogleDirectAuth} className={`py-2 px-3 rounded-xl border ${borderClass} flex items-center justify-center transition-all hover:bg-[var(--bg-surface)] active:scale-95 cursor-pointer text-[var(--text-primary)]`} aria-label={`Continue with ${s.label}`}>
+                        <button
+                          key={s.label}
+                          type="button"
+                          onClick={() => {
+                            if (s.label === "Google") openGoogleChooser("login");
+                            else handleGoogleDirectAuth();
+                          }}
+                          className={`py-2 px-3 rounded-xl border ${borderClass} flex items-center justify-center transition-all hover:bg-[var(--bg-surface)] active:scale-95 cursor-pointer text-[var(--text-primary)]`}
+                          aria-label={`Continue with ${s.label}`}
+                        >
                           {s.icon}
                         </button>
                       ))}
@@ -1003,9 +1202,9 @@ export default function LandingAndAuthPage() {
                         </div>
 
                         {/* Direct Google Signup (No OTP) */}
-                        <button type="button" onClick={handleGoogleDirectAuth} className={`w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border-2 ${borderClass} hover:border-[var(--accent-solid)]/60 hover:bg-[var(--bg-surface)] transition-all text-sm font-semibold text-[var(--text-primary)] mb-3 cursor-pointer`}>
+                        <button type="button" onClick={() => openGoogleChooser("register")} className={`w-full flex items-center justify-center gap-2.5 px-4 py-2.5 rounded-xl border-2 ${borderClass} hover:border-[var(--accent-solid)]/60 hover:bg-[var(--bg-surface)] transition-all text-sm font-semibold text-[var(--text-primary)] mb-3 cursor-pointer`}>
                           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335" /></svg>
-                          {isBn ? "Google দিয়ে সরাসরি নিবন্ধন (নো ওটিপি)" : "Continue with Google (Direct, No OTP)"}
+                          {isBn ? "Google দিয়ে সরাসরি নিবন্ধন (অ্যাকাউন্ট চয়ন)" : "Continue with Google (Choose Account)"}
                         </button>
 
                         <div className={`relative my-3 flex items-center justify-center`}>
@@ -1398,6 +1597,207 @@ export default function LandingAndAuthPage() {
 
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════ */}
+      {/* GOOGLE ACCOUNT CHOOSER MODAL                        */}
+      {/* ═══════════════════════════════════════════════════ */}
+      {showGoogleChooser && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-200">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/65 backdrop-blur-md transition-opacity"
+            onClick={() => setShowGoogleChooser(false)}
+          />
+
+          {/* Dialog Card */}
+          <div
+            className={`relative w-full max-w-[460px] rounded-3xl p-6 sm:p-7 shadow-2xl border ${borderClass} bg-[var(--bg-card)] text-[var(--text-primary)] z-10 animate-in zoom-in-95 duration-200`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setShowGoogleChooser(false)}
+              className="absolute top-5 right-5 p-1.5 rounded-full text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface)] transition-colors cursor-pointer"
+              aria-label="Close Google Chooser"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Google G Logo */}
+            <div className="flex items-center gap-2 mb-3">
+              <svg className="w-6 h-6 shrink-0" viewBox="0 0 24 24">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" fill="#EA4335"/>
+              </svg>
+              <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                Google Identity
+              </span>
+            </div>
+
+            {/* Header Titles */}
+            <h3 className="text-xl font-bold tracking-tight mb-1">
+              {googleChooserMode === "register"
+                ? (isBn ? "Google দিয়ে নিবন্ধন করুন" : "Sign up with Google")
+                : (isBn ? "Google দিয়ে সাইন ইন করুন" : "Sign in with Google")}
+            </h3>
+            <p className="text-xs text-[var(--text-muted)] mb-5">
+              {googleChooserMode === "register"
+                ? (isBn
+                    ? "ContractMind Legal Copilot-এ অ্যাকাউন্ট তৈরি করতে একটি Google অ্যাকাউন্ট নির্বাচন করুন।"
+                    : "Choose an account to create your account on ContractMind Legal Copilot.")
+                : (isBn
+                    ? "ContractMind Legal Copilot-এ চালিয়ে যেতে আপনার Google অ্যাকাউন্ট নির্বাচন করুন।"
+                    : "Choose an account to continue to ContractMind Legal Copilot.")}
+            </p>
+
+            {/* Notice / Warning Banner (e.g. Account Already Registered) */}
+            {googleNotice && (
+              <div
+                className={`mb-4 p-3.5 rounded-2xl border text-xs flex flex-col gap-2.5 transition-all animate-in slide-in-from-top-2 duration-150 ${
+                  googleNotice.type === "warning"
+                    ? "bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700/60 text-amber-900 dark:text-amber-200"
+                    : googleNotice.type === "error"
+                    ? "bg-rose-50 dark:bg-rose-950/40 border-rose-300 dark:border-rose-700/60 text-rose-900 dark:text-rose-200"
+                    : "bg-blue-50 dark:bg-blue-950/40 border-blue-300 dark:border-blue-700/60 text-blue-900 dark:text-blue-200"
+                }`}
+              >
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+                  <span className="font-semibold leading-relaxed">{googleNotice.message}</span>
+                </div>
+                {googleNotice.actionType === "switch_to_login" && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchFromGoogleToLogin(googleNotice.targetEmail)}
+                      className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>{isBn ? "লগইন স্ক্রিনে যান" : "Go to Sign In"}</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+                {googleNotice.actionType === "switch_to_register" && (
+                  <div className="flex justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => handleSwitchFromGoogleToRegister(googleNotice.targetEmail)}
+                      className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <span>{isBn ? "নিবন্ধন স্ক্রিনে যান" : "Go to Register"}</span>
+                      <ChevronRight className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* List of Accounts */}
+            <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+              {googleAccounts.map((acc) => {
+                const registered = isAccountRegistered(acc.email);
+                return (
+                  <button
+                    key={acc.email}
+                    type="button"
+                    onClick={() => handleSelectGoogleAccount(acc)}
+                    className={`w-full p-3 rounded-2xl border ${borderClass} hover:border-[var(--accent-solid)]/60 hover:bg-[var(--bg-surface)] transition-all flex items-center justify-between text-left group cursor-pointer active:scale-[0.99]`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gradient-to-tr from-blue-500 to-indigo-600 text-white flex items-center justify-center font-bold text-sm shrink-0 border border-white/20 shadow-sm">
+                        {acc.avatarUrl ? (
+                          <img src={acc.avatarUrl} alt={acc.name} className="w-full h-full object-cover" />
+                        ) : (
+                          acc.name.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold truncate text-[var(--text-primary)] group-hover:text-[var(--accent-solid)] transition-colors">
+                          {acc.name}
+                        </div>
+                        <div className="text-xs text-[var(--text-muted)] truncate">
+                          {acc.email}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                      {registered && (
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                          {isBn ? "নিবন্ধিত" : "Registered"}
+                        </span>
+                      )}
+                      <ChevronRight className="w-4 h-4 text-[var(--text-muted)] group-hover:translate-x-0.5 transition-transform" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Add Another Google Account Section */}
+            <div className="mt-3 pt-3 border-t border-[var(--text-primary)]/10">
+              {!isAddingNewGoogleAccount ? (
+                <button
+                  type="button"
+                  onClick={() => setIsAddingNewGoogleAccount(true)}
+                  className="w-full py-2.5 px-3 rounded-2xl hover:bg-[var(--bg-surface)] transition-colors flex items-center gap-3 text-xs font-semibold text-[var(--text-primary)] cursor-pointer"
+                >
+                  <div className="w-8 h-8 rounded-full border border-dashed border-[var(--text-primary)]/30 flex items-center justify-center text-[var(--text-muted)]">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <span>{isBn ? "অন্য একটি অ্যাকাউন্ট ব্যবহার করুন" : "Use another account"}</span>
+                </button>
+              ) : (
+                <form onSubmit={handleAddNewGoogleAccount} className="space-y-2.5 p-3 rounded-2xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 animate-in fade-in duration-150">
+                  <div className="text-xs font-semibold text-[var(--text-primary)]">
+                    {isBn ? "নতুন Google অ্যাকাউন্ট যোগ করুন" : "Add new Google account"}
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    placeholder="example@gmail.com"
+                    value={newGoogleEmail}
+                    onChange={(e) => setNewGoogleEmail(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border outline-none bg-[var(--bg-card)] ${borderClass} focus:border-blue-500 text-[var(--text-primary)]`}
+                  />
+                  <input
+                    type="text"
+                    placeholder={isBn ? "আপনার নাম (ঐচ্ছিক)" : "Full name (optional)"}
+                    value={newGoogleName}
+                    onChange={(e) => setNewGoogleName(e.target.value)}
+                    className={`w-full px-3 py-2 rounded-xl text-xs border outline-none bg-[var(--bg-card)] ${borderClass} focus:border-blue-500 text-[var(--text-primary)]`}
+                  />
+                  <div className="flex gap-2 justify-end pt-1">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingNewGoogleAccount(false)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium text-[var(--text-muted)] hover:bg-[var(--bg-card)] cursor-pointer"
+                    >
+                      {isBn ? "বাতিল" : "Cancel"}
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-3.5 py-1.5 rounded-lg bg-[var(--accent-solid)] text-[var(--accent-contrast)] text-xs font-bold hover:opacity-90 shadow-sm cursor-pointer"
+                    >
+                      {isBn ? "যুক্ত করে প্রবেশ করুন" : "Add & Proceed"}
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Google privacy note */}
+            <p className="mt-4 text-[10px] text-[var(--text-muted)] text-center leading-relaxed">
+              {isBn
+                ? "ContractMind এর সাথে আপনার নাম, ইমেইল ও ছবি সুরক্ষিতভাবে আদান-প্রদান করা হবে।"
+                : "Google will securely share your name, email, and photo with ContractMind Legal Copilot."}
+            </p>
           </div>
         </div>
       )}
