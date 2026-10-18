@@ -82,10 +82,7 @@ async function request<T>(
 
   if (res.status === 401) {
     clearAuth();
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
-    throw new ApiError(401, "Session expired. Please log in again.");
+    throw new ApiError(401, "Session expired or unauthorized. Please log in.");
   }
 
   if (!res.ok) {
