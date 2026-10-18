@@ -48,57 +48,14 @@ interface PendingContract {
   contractId?: string;
 }
 
-const DEFAULT_PENDING: PendingContract[] = [
-  {
-    id: "cnt-102",
-    clientName: "Nusrat Jahan (HR Lead)",
-    clientPhone: "+880 1819-876543",
-    titleEn: "Senior Software Engineer Employment & Non-Compete",
-    titleBn: "নিয়োগ ও নন-কম্পিট চুক্তিপত্র (সিনিয়র ডেভেলপার)",
-    submittedAtEn: "20 mins ago",
-    submittedAtBn: "২০ মিনিট আগে",
-    statuteEn: "Bangladesh Labour Act 2006 (Sec 27 Contract Act)",
-    statuteBn: "বাংলাদেশ শ্রম আইন ২০০৬ ও চুক্তি আইন ধারা ২৭",
-    riskCount: 4,
-    priority: "high",
-    contractId: "employment-agreement"
-  },
-  {
-    id: "cnt-101",
-    clientName: "Mahmud Hasan",
-    clientPhone: "+880 1712-345678",
-    titleEn: "Commercial Property Lease Agreement (Gulshan-2)",
-    titleBn: "বাণিজ্যিক ভবন ভাড়া চুক্তিপত্র (গুলশান-২)",
-    submittedAtEn: "2 hours ago",
-    submittedAtBn: "২ ঘণ্টা আগে",
-    statuteEn: "Premises Rent Control Act, 1991",
-    statuteBn: "বাড়ি ভাড়া নিয়ন্ত্রণ আইন, ১৯৯১",
-    riskCount: 3,
-    priority: "high",
-    contractId: "commercial-lease"
-  },
-  {
-    id: "cnt-103",
-    clientName: "Tanvir Rahman",
-    clientPhone: "+880 1911-223344",
-    titleEn: "Software Development & IP Assignment Agreement",
-    titleBn: "সফটওয়্যার নির্মাণ ও আইপি স্বত্ব হস্তান্তর চুক্তি",
-    submittedAtEn: "5 hours ago",
-    submittedAtBn: "৫ ঘণ্টা আগে",
-    statuteEn: "Copyright Act 2000 & ICT Act 2006",
-    statuteBn: "কপিরাইট আইন ২০০০ ও আইসিটি আইন ২০০৬",
-    riskCount: 2,
-    priority: "medium",
-    contractId: "vendor-sla"
-  },
-];
+const DEFAULT_PENDING: PendingContract[] = [];
 
 export default function LawyerPendingPage() {
   const { language } = useLanguage();
   const { user } = useAuth();
   const isBn = language === "bn";
 
-  const [pendingList, setPendingList] = useState<PendingContract[]>(DEFAULT_PENDING);
+  const [pendingList, setPendingList] = useState<PendingContract[]>([]);
   const [search, setSearch] = useState("");
   const [selectedContract, setSelectedContract] = useState<PendingContract | null>(null);
   const [modalTab, setModalTab] = useState<"markdown" | "signoff">("markdown");
@@ -154,9 +111,11 @@ export default function LawyerPendingPage() {
           localStorage.getItem("dispatched_pending_contracts") || "[]"
         );
         if (Array.isArray(stored) && stored.length > 0) {
-          const existingIds = new Set(DEFAULT_PENDING.map((p) => p.id));
-          const additions = stored.filter((p: PendingContract) => !existingIds.has(p.id));
-          setPendingList([...additions, ...DEFAULT_PENDING]);
+          setPendingList((prev) => {
+            const existingIds = new Set(prev.map((p) => p.id));
+            const additions = stored.filter((p: PendingContract) => !existingIds.has(p.id));
+            return [...additions, ...prev];
+          });
         }
       } catch (err) {
         console.error("Error reading dispatched contracts:", err);

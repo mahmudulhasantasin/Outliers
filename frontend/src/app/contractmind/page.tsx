@@ -9,9 +9,16 @@ import { CONTRACT_AUDITS, ContractAudit, ClauseAudit } from "@/data/contractAudi
 import { STATUTORY_PROVISIONS } from "@/data/statutoryProvisions";
 import { maskPii } from "@/lib/piiMasker";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
-import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
+import {
+  generateContractAuditMarkdown,
+  generateRealContractAuditMarkdown,
+} from "@/lib/markdownContractGenerator";
 import { runDispatchAlgorithm, INITIAL_DEMO_LAWYERS, DispatchDecision } from "@/lib/dispatcher";
-import { uploadContract, requestLawyerVerification } from "@/lib/apiServices";
+import {
+  uploadContract,
+  requestLawyerVerification,
+  ContractAuditResult,
+} from "@/lib/apiServices";
 import {
   FileText,
   Upload,
@@ -30,6 +37,7 @@ import {
   Download,
   ArrowRight,
   ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
 
 export default function ContractMindPage() {
@@ -50,6 +58,7 @@ export default function ContractMindPage() {
 
   // Check URL query parameter (e.g. ?id=vendor-sla)
   const [apiContractId, setApiContractId] = useState<string | null>(null);
+  const [apiAuditResult, setApiAuditResult] = useState<ContractAuditResult | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -69,7 +78,7 @@ export default function ContractMindPage() {
   const currentAudit: ContractAudit =
     CONTRACT_AUDITS[selectedContractId] || CONTRACT_AUDITS["employment-agreement"];
 
-  // Load a contract (dummy data until backend is ready)
+  // Load a contract
   const handleLoadContract = (contractId: string) => {
     setSelectedContractId(contractId);
     setDispatchedDecision(null);
@@ -104,17 +113,18 @@ export default function ContractMindPage() {
     try {
       const result = await uploadContract(file);
       setApiContractId(String(result.contract_id));
+      setApiAuditResult(result);
       setIsAnalyzing(false);
       setIsLoaded(true);
     } catch (err: any) {
-      console.warn("Backend upload notice:", err);
+      console.error("Backend upload error:", err);
       setUploadError(
         isBn
-          ? `সার্ভার নোটিস: ${err.message || "ক্লাউড স্টোরেজ সংযোগ ফেইলড"}। অডিট ভিউ লোড করা হচ্ছে...`
-          : `Server Notice: ${err.message || "Storage error"}. Loading audit view...`
+          ? `সার্ভার ত্রুটি: ${err.message || "ডকুমেন্ট ক্লাউড স্টোরেজে আপলোড করা যায়নি"}`
+          : `Server Error: ${err.message || "Failed to upload document to secure storage"}`
       );
       setIsAnalyzing(false);
-      setIsLoaded(true);
+      setIsLoaded(false);
     }
   };
 
@@ -141,17 +151,18 @@ export default function ContractMindPage() {
       try {
         const result = await uploadContract(file);
         setApiContractId(String(result.contract_id));
+        setApiAuditResult(result);
         setIsAnalyzing(false);
         setIsLoaded(true);
       } catch (err: any) {
-        console.warn("Backend upload notice:", err);
+        console.error("Backend upload error:", err);
         setUploadError(
           isBn
-            ? `সার্ভার নোটিস: ${err.message || "ক্লাউড স্টোরেজ সংযোগ ফেইলড"}। অডিট ভিউ লোড করা হচ্ছে...`
-            : `Server Notice: ${err.message || "Storage error"}. Loading audit view...`
+            ? `সার্ভার ত্রুটি: ${err.message || "ডকুমেন্ট ক্লাউড স্টোরেজে আপলোড করা যায়নি"}`
+            : `Server Error: ${err.message || "Failed to upload document to secure storage"}`
         );
         setIsAnalyzing(false);
-        setIsLoaded(true);
+        setIsLoaded(false);
       }
     }
   };
@@ -270,21 +281,37 @@ export default function ContractMindPage() {
   };
 
   // Generate markdown audit representation
-  const markdownAuditContent = generateContractAuditMarkdown(
-    currentContract.id,
-    language as "en" | "bn",
-    dispatchedDecision
-      ? {
-          advocateName: dispatchedDecision.lawyer.name,
-          barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
-          verifiedAt: "18 Oct 2026, 4:52 PM",
-          sealApplied: lawyerSealApplied,
-          advocateNotes: lawyerSealApplied
-            ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful."
-            : undefined,
-        }
-      : undefined
-  );
+  const markdownAuditContent = apiAuditResult
+    ? generateRealContractAuditMarkdown(
+        apiAuditResult,
+        language as "en" | "bn",
+        dispatchedDecision
+          ? {
+              advocateName: dispatchedDecision.lawyer.name,
+              barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
+              verifiedAt: "18 Oct 2026, 4:52 PM",
+              sealApplied: lawyerSealApplied,
+              advocateNotes: lawyerSealApplied
+                ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful."
+                : undefined,
+            }
+          : undefined
+      )
+    : generateContractAuditMarkdown(
+        currentContract.id,
+        language as "en" | "bn",
+        dispatchedDecision
+          ? {
+              advocateName: dispatchedDecision.lawyer.name,
+              barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
+              verifiedAt: "18 Oct 2026, 4:52 PM",
+              sealApplied: lawyerSealApplied,
+              advocateNotes: lawyerSealApplied
+                ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful."
+                : undefined,
+            }
+          : undefined
+      );
 
   return (
     <AppShell>
@@ -306,21 +333,34 @@ export default function ContractMindPage() {
           <div className="max-w-3xl mx-auto pt-16 sm:pt-24 px-4 flex flex-col items-center text-center">
             
             {/* Header */}
-            <h1 className="text-4xl sm:text-5xl font-serif font-normal text-black tracking-tight mb-3">
+            <h1 className="text-4xl sm:text-5xl font-serif font-normal text-black dark:text-white tracking-tight mb-3">
               {language === "bn" ? "কন্ট্রাক্টমাইন্ড" : "ContractMind"}
             </h1>
-            <p className="text-base sm:text-lg text-neutral-500 max-w-xl mx-auto font-sans leading-relaxed mb-12">
+            <p className="text-base sm:text-lg text-neutral-500 max-w-xl mx-auto font-sans leading-relaxed mb-8">
               {language === "bn"
                 ? "চুক্তিপত্র আপলোড করে বাংলাদেশ শ্রম ও চুক্তি আইনের আলোকে স্বয়ংক্রিয় অডিট ও নিরাপদ রেডলাইন প্রস্তুত করুন।"
                 : "Upload any contract to audit statutory violations and generate compliant redlines under Bangladesh law."}
             </p>
+
+            {/* Error Banner if upload fails */}
+            {uploadError && (
+              <div className="w-full max-w-xl mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 flex items-start gap-3 text-left animate-in fade-in">
+                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold mb-0.5">
+                    {language === "bn" ? "সার্ভার আপলোড ত্রুটি" : "Server Upload Error"}
+                  </p>
+                  <p className="text-xs opacity-90 leading-relaxed">{uploadError}</p>
+                </div>
+              </div>
+            )}
 
             {/* Expansive Clean Drag & Drop Area */}
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-12" style={{ backgroundColor: "var(--bg-surface)" }}
+              className="w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-6" style={{ backgroundColor: "var(--bg-surface)" }}
             >
               <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4" style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}>
                 <Upload className="w-6 h-6 stroke-[2]" />
@@ -328,11 +368,11 @@ export default function ContractMindPage() {
 
               {isAnalyzing ? (
                 <div className="space-y-2 text-center py-2">
-                  <div className="w-5 h-5 rounded-full border-2 border-neutral-300 border-t-black animate-spin mx-auto" />
-                  <p className="text-sm font-medium text-neutral-800">
+                  <div className="w-5 h-5 rounded-full border-2 border-neutral-300 border-t-black dark:border-t-white animate-spin mx-auto" />
+                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
                     {language === "bn"
-                      ? "চুক্তি বিশ্লেষণ ও ধারা পরীক্ষা করা হচ্ছে..."
-                      : "Evaluating clauses against statutory provisions..."}
+                      ? "চুক্তি আপলোড ও বিশ্লেষণ করা হচ্ছে..."
+                      : "Uploading and evaluating contract against statutory provisions..."}
                   </p>
                 </div>
               ) : (
@@ -344,48 +384,17 @@ export default function ContractMindPage() {
                   </p>
                   <p className="text-xs text-neutral-400">
                     {language === "bn"
-                      ? "সর্বোচ্চ ১৫ মেগাবাইট · ক্লায়েন্ট-সাইড PII প্রটেকশন"
-                      : "Supports PDF, DOCX, TXT · Client-side PII privacy"}
+                      ? "সমর্থিত ফরম্যাট: .PDF, .DOCX, .DOC, .PNG, .JPG (সর্বোচ্চ ১৫ মেগাবাইট)"
+                      : "Supported formats: .PDF, .DOCX, .DOC, .PNG, .JPG (Max 15MB)"}
                   </p>
                   <button
                     type="button"
-                    className="mt-6 px-5 py-2.5 rounded-full bg-black text-white text-xs font-semibold hover:bg-neutral-800 transition-colors shadow-sm"
+                    className="mt-6 px-5 py-2.5 rounded-full bg-black dark:bg-white text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-opacity shadow-sm"
                   >
                     {language === "bn" ? "ফাইল নির্বাচন করুন" : "Browse Files"}
                   </button>
                 </>
               )}
-            </div>
-
-            {/* Sample Contract Test Cards */}
-            <div className="w-full max-w-2xl text-left">
-              <span className="text-xs font-semibold uppercase tracking-wider text-neutral-400 block mb-3 text-center sm:text-left">
-                {language === "bn"
-                  ? "অথবা একটি নমুনা চুক্তিপত্র নির্বাচন করুন:"
-                  : "Or test with a sample Bangladesh agreement:"}
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {SAMPLE_CONTRACTS.map((contract) => (
-                  <button
-                    key={contract.id}
-                    onClick={() => handleLoadContract(contract.id)}
-                    className="p-4 rounded-2xl transition-colors text-left flex flex-col justify-between h-28 group" style={{ backgroundColor: "var(--bg-surface)" }}
-                  >
-                    <div>
-                      <p className="text-xs font-bold leading-snug line-clamp-2" style={{ color: "var(--text-primary)" }}>
-                        {language === "bn" ? contract.titleBn : contract.titleEn}
-                      </p>
-                      <p className="text-[11px] text-neutral-400 mt-1 line-clamp-1">
-                        {language === "bn" ? contract.categoryBn : contract.categoryEn}
-                      </p>
-                    </div>
-                    <span className="text-[11px] font-semibold text-neutral-600 group-hover:text-black transition-colors flex items-center gap-1">
-                      {language === "bn" ? "অডিট শুরু করুন →" : "Run audit →"}
-                    </span>
-                  </button>
-                ))}
-              </div>
             </div>
 
           </div>

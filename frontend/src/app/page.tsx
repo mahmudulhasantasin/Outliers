@@ -32,6 +32,8 @@ import {
   Plus,
   ChevronRight,
   Check,
+  Shield,
+  Lock,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
 
@@ -46,13 +48,7 @@ export default function LandingAndAuthPage() {
   const {
     isAuthenticated,
     isLoading,
-    loginAsDemoGeneral,
-    loginAsDemoLawyer,
-    loginAsDemoEnterprise,
-    loginAsDemoEnterpriseAdmin,
-    loginAsDemoEnterpriseMember,
     loginWithGoogle,
-    persistDemoUser,
     login,
     registerEmail,
     verifyOtp,
@@ -238,10 +234,6 @@ export default function LandingAndAuthPage() {
     setOtpError("");
     setAuthLoading(true);
     try {
-      if (otpInput.trim() === "123456" || otpInput.trim() === "000000") {
-        handleDirectOtpBypass();
-        return;
-      }
       await verifyOtp({ email: pendingOtpEmail || regEmail, otp: otpInput.trim() });
       closeModal();
       if (selectedRole === "lawyer") router.push("/lawyer/pending");
@@ -518,40 +510,6 @@ export default function LandingAndAuthPage() {
   const handleGoogleDirectAuth = () => {
     openGoogleChooser(isSignUp ? "register" : "login");
   };
-
-  const handleDirectOtpBypass = () => {
-    const role = selectedRole || "general";
-    persistDemoUser({
-      id: "usr-" + Date.now().toString().slice(-4),
-      name: `${firstName} ${lastName}`.trim() || "Verified User",
-      email: pendingOtpEmail || regEmail,
-      role: role,
-      isEmailVerified: true,
-      isPhoneVerified: true,
-      creditBalance: 150,
-      lawyerProfile: selectedRole === "lawyer" ? {
-        barCouncilNo: barCouncilNo || "SC-DH-48912/2016",
-        fieldOfLaw: "Supreme Court Advocate",
-        verificationStatus: "verified"
-      } : undefined,
-      enterpriseProfile: selectedRole === "enterprise" ? {
-        companyName: companyName || "Enterprise Client Ltd",
-        companyType: "Private Limited",
-        registrationNo: "C-148920/2021",
-        tinNo: "582910482912",
-        adminName: `${firstName} ${lastName}`.trim() || "Admin",
-        memberCount: 10,
-        referCode: "ENT-8821",
-        verificationStatus: "verified",
-        isTeamMember: false
-      } : undefined,
-    });
-    closeModal();
-    if (selectedRole === "lawyer") router.push("/lawyer/pending");
-    else if (selectedRole === "enterprise") router.push("/enterprise/admin");
-    else router.push("/copilot");
-  };
-
 
   const isBn = language === "bn";
 
@@ -973,17 +931,10 @@ export default function LandingAndAuthPage() {
               {/* Col 4 */}
               <div>
                 <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">{isBn ? "যোগাযোগ" : "Contact Info"}</div>
-                <div className="text-xs text-[var(--text-muted)] space-y-1.5 mb-4">
+                <div className="text-xs text-[var(--text-muted)] space-y-1.5">
                   <div>info@legalcopilot.bd</div>
                   <div>Dhaka Chamber, Bangladesh</div>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => { loginAsDemoLawyer(); router.push("/lawyer/pending"); }}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold border ${borderClass} hover:border-[var(--text-primary)]/40 transition-colors bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer`}
-                >
-                  {isBn ? "অ্যাডভোকেট ডেমো চালান" : "Run Advocate Demo"}
-                </button>
               </div>
             </div>
 
@@ -1056,30 +1007,40 @@ export default function LandingAndAuthPage() {
                 <p className="text-xs leading-relaxed text-[var(--text-muted)] mb-6">
                   {isBn ? "বাংলাদেশের সংবিধিবদ্ধ আইন, শ্রম আইন ও চুক্তি আইনের নির্ভরযোগ্য যাচাইকরণ।" : "Verify legal risks against Bangladesh statutes. Zero hallucination guaranteed."}
                 </p>
-                <div className="flex flex-col gap-2">
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-muted)] mb-1">
-                    {isBn ? "জাজ / ডেমো কুইক একসেস" : "Judge / Demo Quick Access"}
-                  </p>
-                  <button type="button" onClick={() => { loginAsDemoGeneral(); closeModal(); router.push("/copilot"); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
-                    <User className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    {isBn ? "সাধারণ ইউজার হিসেবে প্রবেশ করুন" : "Enter as Demo General User"}
-                  </button>
-                  <button type="button" onClick={() => { loginAsDemoLawyer(); closeModal(); router.push("/lawyer/pending"); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
-                    <Gavel className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-                    {isBn ? "আইনজীবী হিসেবে প্রবেশ করুন" : "Enter as Demo Lawyer"}
-                  </button>
-                  <button type="button" onClick={() => { loginAsDemoEnterpriseAdmin(); closeModal(); router.push("/enterprise/admin"); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
-                    <Building2 className="w-3.5 h-3.5 text-purple-500 shrink-0" />
-                    {isBn ? "এন্টারপ্রাইজ অ্যাডমিন (Apex Holdings)" : "Demo Enterprise Admin (Apex Holdings)"}
-                  </button>
-                  <button type="button" onClick={() => { loginAsDemoEnterpriseMember(); closeModal(); router.push("/enterprise/member"); }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold border ${borderClass} bg-[var(--bg-card)]/70 hover:bg-[var(--bg-card)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer`}>
-                    <Users className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-                    {isBn ? "এন্টারপ্রাইজ সদস্য (HR Lead)" : "Demo Enterprise Member (HR Lead)"}
-                  </button>
+                <div className="flex flex-col gap-3 mt-4">
+                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
+                    <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">
+                        {isBn ? "বাংলাদেশ সংবিধিবদ্ধ আইন সংহিতা" : "Codified BD Statutes"}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                        {isBn ? "শ্রম আইন ২০০৬ ও চুক্তি আইন ১৮৭২ এর ওপর ভিত্তি করে প্রস্তুত।" : "Zero statutory hallucination under Bangladesh Labour & Contract Acts."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
+                    <Gavel className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">
+                        {isBn ? "আইনজীবী ভেরিফিকেশন নেটওয়ার্ক" : "Advocate Verification Network"}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                        {isBn ? "বাংলাদেশ বার কাউন্সিল তালিকাভুক্ত আইনজীবীদের দ্বারা আইনগত অনুমোদন।" : "Bar Council enrolled advocates for statutory review and digital signoff."}
+                      </p>
+                    </div>
+                  </div>
+                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
+                    <Lock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">
+                        {isBn ? "এন্টারপ্রাইজ নিরাপত্তা ও PII গোপনীয়তা" : "Enterprise Privacy & Security"}
+                      </p>
+                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                        {isBn ? "সংবেদনশীল তথ্য ও ব্যক্তিগত উপাত্তের ক্লায়েন্ট-সাইড মাস্কিং।" : "Automated client-side sensitive PII masking with bank-grade encryption."}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1609,27 +1570,10 @@ export default function LandingAndAuthPage() {
 
                           <button
                             type="button"
-                            onClick={() => { setOtpInput("123456"); setOtpError(""); }}
-                            className="w-full py-1.5 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer text-center block"
-                          >
-                            {isBn ? "⚡ টেস্ট কোড বসান (123456)" : "⚡ Quick Fill Demo OTP (123456)"}
-                          </button>
-
-                          <button
-                            type="button"
                             onClick={handleVerifyOtpAndComplete}
-                            className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                            className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2"
                           >
                             {isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓"}
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={handleDirectOtpBypass}
-                            className="w-full py-2.5 px-4 rounded-xl text-xs font-bold transition-all border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 cursor-pointer text-[var(--text-primary)] flex items-center justify-center gap-1.5"
-                          >
-                            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-                            <span>{isBn ? "⚡ ওটিপি ছাড়া সরাসরি প্রবেশ করুন (Instant Pass)" : "⚡ Instant Pass (No OTP Required)"}</span>
                           </button>
 
                           <div className="text-center text-xs text-[var(--text-muted)] pt-1 space-y-1">

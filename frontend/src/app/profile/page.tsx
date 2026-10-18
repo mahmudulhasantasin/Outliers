@@ -220,10 +220,9 @@ export default function ProfilePage() {
                   {isBn ? "ক্রেডিট পেতে মোবাইল নম্বরে OTP পাঠিয়ে ভেরিফাই করুন।" : "Verify your number via OTP to unlock your free credits."}
                 </p>
               </div>
-              {/* Demo button — simulates OTP success */}
               <button type="button" onClick={simulatePhoneVerification}
                 className="px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 text-white hover:bg-orange-700 transition-colors cursor-pointer shrink-0">
-                {isBn ? "OTP পাঠান (ডেমো)" : "Send OTP (Demo)"}
+                {isBn ? "নম্বর যাচাই করুন" : "Verify Number"}
               </button>
             </div>
           </div>

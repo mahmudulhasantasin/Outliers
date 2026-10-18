@@ -48,86 +48,13 @@ interface ArchivedRecord {
   summaryBn: string;
 }
 
-const INITIAL_ARCHIVE: ArchivedRecord[] = [
-  {
-    id: "arch-1",
-    contractId: "employment-agreement",
-    titleEn: "Standard Employment & Confidentiality Agreement",
-    titleBn: "চাকরি ও নিয়োগ চুক্তিপত্র (নমুনা)",
-    categoryEn: "Labour Act 2006 Compliance",
-    categoryBn: "বাংলাদেশ শ্রম আইন ২০০৬",
-    firstPartyEn: "Nexus Technologies Ltd.",
-    firstPartyBn: "নেক্সাস টেকনোলজিস লিমিটেড",
-    secondPartyEn: "Mr. Shamim Ahmed",
-    secondPartyBn: "জনাব শামীম আহমেদ",
-    auditDateEn: "Oct 6, 2026",
-    auditDateBn: "৬ অক্টোবর ২০২৬",
-    riskScore: 78,
-    riskGradeEn: "High Risk",
-    riskGradeBn: "উচ্চ ঝুঁকি",
-    highRiskCount: 2,
-    mediumRiskCount: 1,
-    compliantCount: 2,
-    summaryEn:
-      "Direct violation of Section 26 of Bangladesh Labour Act 2006 (unlawful 90-day forfeiture) and Section 27 Contract Act 1872 (void 3-year non-compete restraint).",
-    summaryBn:
-      "শ্রম আইন ২০০৬ এর ধারা ২৬ (বকেয়া বেতন বাজেয়াপ্তকরণ) এবং চুক্তি আইন ১৮৭২ এর ধারা ২৭ (৩ বছরের অন্যায্য ট্রেড রেস্ট্রেইন্ট) এর সুনির্দিষ্ট লঙ্ঘন।"
-  },
-  {
-    id: "arch-2",
-    contractId: "vendor-sla",
-    titleEn: "Software Development & Vendor SLA Agreement",
-    titleBn: "আইটি সফটওয়্যার সার্ভিস ও ভেন্ডর চুক্তি",
-    categoryEn: "The Contract Act 1872",
-    categoryBn: "চুক্তি আইন ১৮৭২",
-    firstPartyEn: "Prime Trading Corporation",
-    firstPartyBn: "প্রাইম ট্রেডিং কর্পোরেশন",
-    secondPartyEn: "CloudSolve Bangladesh",
-    secondPartyBn: "ক্লাউডসলভ বাংলাদেশ",
-    auditDateEn: "Oct 2, 2026",
-    auditDateBn: "২ অক্টোবর ২০২৬",
-    riskScore: 84,
-    riskGradeEn: "High Risk",
-    riskGradeBn: "উচ্চ ঝুঁকি",
-    highRiskCount: 2,
-    mediumRiskCount: 1,
-    compliantCount: 1,
-    summaryEn:
-      "Includes non-compensatory penal liquidated damages violating Section 74 and unreciprocated unlimited liability without dispute arbitration provisions.",
-    summaryBn:
-      "চুক্তি আইনের ধারা ৭৪ বিরোধী শাস্তিমূলক ক্ষতিপূরণ দাবি এবং একতরফা অসীম দায়বদ্ধতার ধারা বিদ্যমান।"
-  },
-  {
-    id: "arch-3",
-    contractId: "freelance-consulting",
-    titleEn: "Freelance Consulting & Deliverables Contract",
-    titleBn: "ফ্রিল্যান্স কনসালটেন্সি ও আইপি চুক্তি",
-    categoryEn: "IP Transfer & Retainer",
-    categoryBn: "কমন ল ও আইপি সুরক্ষা",
-    firstPartyEn: "Global Creative Agency",
-    firstPartyBn: "গ্লোবাল ক্রিয়েটিভ এজেন্সী",
-    secondPartyEn: "Mr. Asif Iqbal",
-    secondPartyBn: "জনাব আসিফ ইকবাল",
-    auditDateEn: "Sep 28, 2026",
-    auditDateBn: "২৮ সেপ্টেম্বর ২০২৬",
-    riskScore: 65,
-    riskGradeEn: "Medium Risk",
-    riskGradeBn: "মাঝারি ঝুঁকি",
-    highRiskCount: 1,
-    mediumRiskCount: 1,
-    compliantCount: 1,
-    summaryEn:
-      "Deferred payment schedule of 120 days with unconditioned copyright vesting prior to financial compensation clearance.",
-    summaryBn:
-      "মূল্য পরিশোধের আগেই সম্পূর্ণ বৌদ্ধিক সম্পত্তি স্বত্বাধিকার হস্তান্তর সংক্রান্ত আইনি জটিলতা।"
-  }
-];
+const INITIAL_ARCHIVE: ArchivedRecord[] = [];
 
 export default function ArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
 
-  const [records, setRecords] = useState<ArchivedRecord[]>(INITIAL_ARCHIVE);
+  const [records, setRecords] = useState<ArchivedRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedRisk, setSelectedRisk] = useState<string>("ALL");
   const [previewRecord, setPreviewRecord] = useState<ArchivedRecord | null>(null);
@@ -141,7 +68,7 @@ export default function ArchivePage() {
       try {
         setIsLoadingApi(true);
         const data = await getContractHistory();
-        if (isMounted && Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data)) {
           const mapped: ArchivedRecord[] = data.map((item) => ({
             id: item.id,
             contractId: item.id,
@@ -168,11 +95,10 @@ export default function ArchivePage() {
             summaryEn: `Audited on ${new Date(item.created_at).toLocaleDateString()}. Status: ${item.status}.`,
             summaryBn: `অডিট সম্পন্ন হয়েছে: ${new Date(item.created_at).toLocaleDateString("bn-BD")}। স্ট্যাটাস: ${item.status}।`,
           }));
-          // Put live contracts on top, keep demo contracts below
-          setRecords([...mapped, ...INITIAL_ARCHIVE]);
+          setRecords(mapped);
         }
       } catch (err) {
-        console.warn("Could not fetch backend contract history, using local archive:", err);
+        console.warn("Could not fetch backend contract history:", err);
       } finally {
         if (isMounted) setIsLoadingApi(false);
       }

@@ -170,3 +170,130 @@ export function generateContractAuditMarkdown(
 
   return md;
 }
+
+export function generateRealContractAuditMarkdown(
+  result: any,
+  language: "en" | "bn" = "en",
+  advocateVerification?: {
+    advocateName: string;
+    barCouncilNo: string;
+    verifiedAt: string;
+    sealApplied: boolean;
+    advocateNotes?: string;
+  }
+): string {
+  const isBn = language === "bn";
+  const title = result.title || result.file_name || (isBn ? "চুক্তিপত্র অডিট" : "Contract Audit");
+  const riskScore = result.risk_score ?? 50;
+  const riskGrade = result.risk_grade || (riskScore > 70 ? (isBn ? "উচ্চ ঝুঁকি" : "High Risk") : (isBn ? "মাঝারি ঝুঁকি" : "Moderate Risk"));
+  const summary = result.summary || result.executive_summary || (isBn ? "চুক্তিপত্রের ধারাগুলো বাংলাদেশ আইনের অধীনে পরীক্ষা করা হয়েছে।" : "Clauses evaluated under codified statutes of Bangladesh.");
+  const clauses = result.clauses || [];
+  const highRiskCount = result.high_risk_count ?? clauses.filter((c: any) => c.risk_level === "CRITICAL" || c.risk_level === "HIGH").length;
+
+  let md = `# ${title}\n\n`;
+  md += `> **SOVEREIGN STATUTORY AUDIT REPORT · BANGLADESH LAW JURISDICTION**\n`;
+  md += `> **Contract ID:** \`${result.contract_id || result.id || "LIVE"}\` | **Jurisdiction:** Laws of Bangladesh\n\n`;
+
+  md += `| Statutory Risk Grade | Risk Score | High Risk Violations | Review Status |\n`;
+  md += `| :--- | :---: | :---: | :--- |\n`;
+  md += `| **${riskGrade}** | **${riskScore}/100** | **${highRiskCount} Clauses** | ${
+    advocateVerification?.sealApplied
+      ? "✅ **Advocate Verified & Sealed**"
+      : "⏳ **AI Audit Completed (Awaiting Advocate Seal)**"
+  } |\n\n`;
+
+  md += `## 1. Executive Statutory Risk Summary\n\n`;
+  if (riskScore >= 60) {
+    md += `> [!CAUTION]\n`;
+    md += `> **HIGH STATUTORY RISK DETECTED**\n`;
+    md += `> ${summary}\n\n`;
+  } else {
+    md += `> [!NOTE]\n`;
+    md += `> **STATUTORY ASSESSMENT**\n`;
+    md += `> ${summary}\n\n`;
+  }
+
+  md += `## 2. Statutory Compliance Matrix\n\n`;
+  md += `| Clause # | Provision Title | Risk Level | Statutory Citation (Bangladesh) | Legal Enforceability |\n`;
+  md += `| :---: | :--- | :---: | :--- | :--- |\n`;
+  for (const cl of clauses) {
+    const clTitle = cl.title || cl.clause_title || `Clause ${cl.clause_number}`;
+    const citation = cl.statute_citation || cl.statute_reference || (isBn ? "বাংলাদেশ সংবিধিবদ্ধ আইন" : "Statutes of Bangladesh");
+    const statusLabel =
+      cl.risk_level === "CRITICAL" || cl.risk_level === "HIGH"
+        ? "🔴 **VOID / UNLAWFUL**"
+        : cl.risk_level === "MEDIUM" || cl.risk_level === "MODERATE"
+        ? "🟡 **AMBIGUOUS**"
+        : "🟢 **COMPLIANT**";
+
+    md += `| §${cl.clause_number} | ${clTitle} | \`${cl.risk_level}\` | ${citation} | ${statusLabel} |\n`;
+  }
+  md += `\n`;
+
+  md += `## 3. Clause-by-Clause Statutory Audit & Redlines\n\n`;
+  for (const cl of clauses) {
+    const clTitle = cl.title || cl.clause_title || `Clause ${cl.clause_number}`;
+    const issue = cl.issue_summary || cl.legal_explanation || (isBn ? "ধারাটি পর্যবেক্ষণ প্রয়োজন" : "Review required");
+    const analysis = cl.detailed_analysis || cl.legal_explanation || "";
+    const citation = cl.statute_citation || cl.statute_reference;
+    const redline = cl.proposed_safe_redline || cl.redline_suggestion;
+
+    md += `### §${cl.clause_number}. ${clTitle}\n\n`;
+
+    if (cl.risk_level === "CRITICAL" || cl.risk_level === "HIGH") {
+      md += `> [!WARNING]\n`;
+      md += `> **Statutory Violation:** ${issue}\n`;
+      if (citation) md += `> **Statute:** ${citation}\n`;
+      md += `\n`;
+    } else if (cl.risk_level === "MEDIUM" || cl.risk_level === "MODERATE") {
+      md += `> [!NOTE]\n`;
+      md += `> **Review Recommendation:** ${issue}\n`;
+      if (citation) md += `> **Statute:** ${citation}\n`;
+      md += `\n`;
+    }
+
+    if (cl.original_text) {
+      md += `**Original Clause Text:**\n`;
+      md += `> "${cl.original_text}"\n\n`;
+    }
+
+    if (analysis) {
+      md += `**Statutory Legal Analysis:**\n`;
+      md += `${analysis}\n\n`;
+    }
+
+    if (redline) {
+      md += `**Recommended Sovereign Redline (Compliant under Bangladesh Law):**\n\n`;
+      md += `\`\`\`diff\n`;
+      if (cl.original_text) {
+        md += `- [ORIGINAL CLAUSE]\n`;
+        md += `- ${cl.original_text.slice(0, 140)}...\n`;
+      }
+      md += `+ [STATUTORY COMPLIANT DRAFT]\n`;
+      md += `+ ${redline}\n`;
+      md += `\`\`\`\n\n`;
+    }
+
+    md += `---\n\n`;
+  }
+
+  md += `## 4. Advocate Statutory Verification & Digital Seal\n\n`;
+  if (advocateVerification?.sealApplied) {
+    md += `> [!TIP]\n`;
+    md += `> **STATUTORY ADVOCATE SIGN-OFF COMPLETED**\n`;
+    md += `> This contract has been reviewed and approved by an Advocate of the Supreme Court / District Bar of Bangladesh.\n\n`;
+    md += `- **Assigned Advocate:** ${advocateVerification.advocateName}\n`;
+    md += `- **Bangladesh Bar Council Enrollment No:** \`${advocateVerification.barCouncilNo}\`\n`;
+    md += `- **Verification Timestamp:** ${advocateVerification.verifiedAt}\n`;
+    md += `- **Advocate Seal Status:** \`APPROVED & DIGITALLY SEALED\`\n`;
+  } else {
+    md += `> [!IMPORTANT]\n`;
+    md += `> **PENDING ADVOCATE REVIEW**\n`;
+    md += `> Dispatched to Advocate Workspace for statutory verification.\n`;
+  }
+
+  md += `\n---\n`;
+  md += `*Generated automatically by Legal Copilot Sovereign Contract Intelligence Engine.*  \n`;
+  return md;
+}
+
