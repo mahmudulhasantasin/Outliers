@@ -51,6 +51,7 @@ export default function RootLayout({
         />
       </head>
       <body
+        suppressHydrationWarning
         className={`${inter.variable} ${tiroBangla.variable} font-sans h-full min-h-screen antialiased`}
         style={{ fontFamily: "var(--font-bangla), var(--font-inter), 'Tiro Bangla', serif, sans-serif" }}
       >
