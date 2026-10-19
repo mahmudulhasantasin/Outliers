@@ -598,19 +598,19 @@ export default function LandingAndAuthPage() {
                 </div>
               </div>
 
-              {/* ── Bottom-Right Floating Glassmorphic Card: "Case Closure Statistics" ── */}
-              <div className="absolute -bottom-2 right-2 sm:right-4 z-30 p-4 sm:p-5 rounded-2xl bg-[var(--bg-card)]/95 backdrop-blur-xl border border-[var(--text-primary)]/15 shadow-2xl w-[240px] sm:w-[270px] transition-all hover:scale-[1.02]">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-[11px] font-bold tracking-tight text-[var(--text-primary)]">
+              {/* ── Bottom-Right Floating Glassmorphic Card: "Case Closure Statistics" (+50% Width, +30% Height) ── */}
+              <div className="absolute -bottom-2 right-2 sm:right-4 z-30 p-5 sm:p-6 rounded-3xl bg-[var(--bg-card)]/95 backdrop-blur-xl border border-[var(--text-primary)]/15 shadow-2xl w-[360px] sm:w-[405px] transition-all hover:scale-[1.02]">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="text-xs sm:text-sm font-bold tracking-tight text-[var(--text-primary)]">
                     {isBn ? "কেস নিষ্পত্তি পরিসংখ্যান" : "Case Closure Statistics"}
                   </div>
-                  <span className="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                  <span className="px-2.5 py-1 rounded-md text-[10px] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 cursor-pointer">
                     Yearly ▾
                   </span>
                 </div>
 
-                {/* Bar Chart Visualization */}
-                <div className="flex items-end justify-between gap-1.5 h-20 pt-2 px-1">
+                {/* Bar Chart Visualization (+30% taller: h-26) */}
+                <div className="flex items-end justify-between gap-2.5 sm:gap-3 h-26 sm:h-28 pt-2 px-1">
                   {[
                     { m: "Jan", h: "45%" },
                     { m: "Feb", h: "60%" },
@@ -629,7 +629,7 @@ export default function LandingAndAuthPage() {
                           opacity: idx === 4 ? 1 : 0.25 + idx * 0.1,
                         }}
                       />
-                      <span className="text-[8px] font-mono text-[var(--text-muted)]">{bar.m}</span>
+                      <span className="text-[9px] sm:text-[10px] font-mono text-[var(--text-muted)] font-medium">{bar.m}</span>
                     </div>
                   ))}
                 </div>
