@@ -38,6 +38,7 @@ import {
 import GradientWaves from "@/components/effects/GradientWaves";
 import DitherVeil from "@/components/effects/DitherVeil";
 import FadeContent from "@/components/effects/FadeContent";
+import CountUp from "@/components/effects/CountUp";
 
 type RegistrationStep = "role" | "form" | "otp";
 type SelectedRole = "general" | "lawyer" | "enterprise" | null;
@@ -553,8 +554,8 @@ export default function LandingAndAuthPage() {
               
               {/* Top-Right Badge: "28K" + Avatars */}
               <div className="absolute top-2 right-2 sm:right-6 z-30 flex flex-col items-end text-right">
-                <div className="text-3xl sm:text-4xl font-black font-sans tracking-tight text-[var(--text-primary)]">
-                  28K+
+                <div className="text-3xl sm:text-4xl font-black font-sans tracking-tight text-[var(--text-primary)] tabular-nums">
+                  <CountUp to={28} suffix="K+" duration={1.0} />
                 </div>
                 <div className="flex items-center gap-1.5 mt-1">
                   <div className="flex -space-x-2">
@@ -957,14 +958,14 @@ export default function LandingAndAuthPage() {
           <FadeContent effect="focus" duration={0.9} threshold={0.15}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               {[
-                { val: "99.4%", label: isBn ? "সংবিধিবদ্ধ ধারা নিশ্চয়তা" : "Statutory Accuracy", sub: "Grounded in bdlaws" },
-                { val: "1,200+", label: isBn ? "চুক্তি সফলভাবে অডিট" : "Contracts Audited", sub: "Commercial & Civil" },
-                { val: "98%", label: isBn ? "আইনজীবী ও ক্লায়েন্ট সন্তুষ্টি" : "Counsel Satisfaction", sub: "Supreme Court Verified" },
-                { val: "100%", label: isBn ? "সার্বভৌম ডেটা গোপনীয়তা" : "PII Redaction", sub: "Client-Side Zero Leakage" },
+                { to: 99.4, decimals: 1, suffix: "%", label: isBn ? "সংবিধিবদ্ধ ধারা নিশ্চয়তা" : "Statutory Accuracy", sub: "Grounded in bdlaws" },
+                { to: 1200, decimals: 0, suffix: "+", label: isBn ? "চুক্তি সফলভাবে অডিট" : "Contracts Audited", sub: "Commercial & Civil" },
+                { to: 98, decimals: 0, suffix: "%", label: isBn ? "আইনজীবী ও ক্লায়েন্ট সন্তুষ্টি" : "Counsel Satisfaction", sub: "Supreme Court Verified" },
+                { to: 100, decimals: 0, suffix: "%", label: isBn ? "সার্বভৌম ডেটা গোপনীয়তা" : "PII Redaction", sub: "Client-Side Zero Leakage" },
               ].map((s, idx) => (
-                <div key={idx} className={`p-6 rounded-2xl bg-[var(--bg-card)] border ${borderClass} shadow-xs`}>
-                  <div className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-2 text-[var(--text-primary)]">
-                    {s.val}
+                <div key={idx} className={`p-6 rounded-2xl bg-[var(--bg-card)] border ${borderClass} shadow-xs hover:border-[var(--text-primary)]/20 transition-all`}>
+                  <div className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-2 text-[var(--text-primary)] tabular-nums">
+                    <CountUp to={s.to} decimals={s.decimals} suffix={s.suffix} duration={1.2} />
                   </div>
                   <div className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-1">
                     {s.label}
