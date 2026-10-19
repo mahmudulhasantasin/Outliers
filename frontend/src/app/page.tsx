@@ -588,18 +588,18 @@ export default function LandingAndAuthPage() {
                     src="/Firefly.png"
                     pattern="floyd"
                     pixelSize={2}
-                    inkColor={theme === "dark" ? "#1d1d1b" : "#120f17"}
-                    paperColor={theme === "dark" ? "#d97706" : "#f4f1ea"}
-                    revealRadius={220}
-                    softness={0.6}
-                    linger={1.2}
+                    inkColor={theme === "dark" ? "#1d1d1b" : "#1a1816"}
+                    paperColor={theme === "dark" ? "#c8a97e" : "#b8976a"}
+                    revealRadius={120}
+                    softness={0.5}
+                    linger={0.9}
                     fit="contain"
-                    rimColor="#f2591f"
+                    rimColor={theme === "dark" ? "#e0b168" : "#818cf8"}
                     palette="duotone"
                     levels={2}
-                    contrast={1.2}
-                    brightness={0.05}
-                    rim={0.15}
+                    contrast={1.25}
+                    brightness={0.02}
+                    rim={0.12}
                     reverse={false}
                     wander={false}
                     clickBurst={true}
