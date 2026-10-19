@@ -453,178 +453,217 @@ export default function LandingAndAuthPage() {
       {/* ═══════════════════════════════════════════════════ */}
       <main className="relative z-10 flex-1 flex flex-col">
 
-        {/* ── SECTION 1: HERO (MODERN, ANIMATED & INTERACTIVE) ── */}
-        <section className="relative pt-12 sm:pt-20 pb-20 px-6 lg:px-10 overflow-hidden">
-          {/* Subtle Ambient Background Glows */}
-          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-tr from-indigo-500/10 via-purple-500/10 to-amber-500/10 rounded-full blur-3xl pointer-events-none -z-10" />
+        {/* ── SECTION 1: EDITORIAL LUXURY HERO (MATCHING REFERENCE DESIGN WITH VIDEO) ── */}
+        <section className="relative min-h-[90vh] lg:min-h-[94vh] w-full max-w-7xl mx-auto px-6 lg:px-12 pt-6 sm:pt-10 pb-16 flex flex-col justify-between overflow-hidden">
+          
+          {/* Subtle Ambient Studio Light Gradients */}
+          <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-gradient-to-b from-amber-500/10 via-amber-700/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
+          <div className="absolute bottom-10 left-10 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
 
-          <div className="max-w-6xl mx-auto flex flex-col items-center text-center">
-            {/* Pill Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-[var(--text-primary)]/15 bg-[var(--bg-card)] shadow-xs mb-6 text-xs font-semibold tracking-wide uppercase text-[var(--text-muted)] animate-fade-in">
-              <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              <span>{isBn ? "বাংলাদেশের প্রথম এআই লিগ্যাল ও কন্ট্রাক্ট প্ল্যাটফর্ম" : "Next-Gen Legal Intelligence & Contract Automation"}</span>
-            </div>
+          {/* Central Hero Composition Grid */}
+          <div className="relative w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center pt-4 lg:pt-8 flex-1">
 
-            {/* Hero Main Headline */}
-            <h1 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-serif font-medium tracking-tight leading-[1.12] mb-6 text-[var(--text-primary)] max-w-4xl">
-              {isBn ? (
-                <>
-                  বাংলাদেশের সংবিধিবদ্ধ আইনে <br className="hidden sm:inline" />
-                  <span className="italic font-serif underline decoration-amber-500/50 decoration-wavy underline-offset-8">স্মার্ট আইনি সমাধান</span> ও চুক্তি সুরক্ষা
-                </>
-              ) : (
-                <>
-                  Empowering Bangladesh with <br className="hidden sm:inline" />
-                  <span className="italic font-serif underline decoration-amber-500/50 decoration-wavy underline-offset-8">Statutory Legal AI</span> & Contract Intelligence
-                </>
-              )}
-            </h1>
+            {/* ── Left Column: Editorial Headline & Actions (lg:col-span-6) ── */}
+            <div className="lg:col-span-6 flex flex-col justify-center text-left z-20">
+              
+              {/* Category Pill */}
+              <div className="inline-flex items-center gap-2 mb-4">
+                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                <span className="text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase text-[var(--text-muted)]">
+                  {isBn ? "বাংলাদেশের সংবিধিবদ্ধ লিগ্যাল প্ল্যাটফর্ম" : "Sovereign Legal Intelligence"}
+                </span>
+              </div>
 
-            {/* Subtitle */}
-            <p className="text-sm sm:text-base md:text-lg max-w-2xl leading-relaxed text-[var(--text-muted)] mb-8">
-              {isBn
-                ? "জটিল বাণিজ্যিক চুক্তি থেকে তাৎক্ষণিক আইনি পরামর্শ—Legal Copilot এবং ContractMind নিয়ে এসেছে জিরো-হ্যালুসিনেশন আইনি নির্ভুলতা ও সর্বোচ্চ ডেটা গোপনীয়তা।"
-                : "From instant statutory case research to comprehensive autonomous contract audit. Grounded in gazetted BD statutes with client-side PII protection."}
-            </p>
+              {/* Massive Bold Architectural Typography */}
+              <h1 className="text-4xl sm:text-6xl lg:text-[72px] font-sans font-black tracking-tight leading-[1.04] uppercase text-[var(--text-primary)] mb-6">
+                {isBn ? (
+                  <>
+                    সমাধান করুন <br />
+                    আইনি বিষয় <br />
+                    <span className="text-[var(--text-muted)] font-light">শতভাগ নিশ্চিন্তে</span>
+                  </>
+                ) : (
+                  <>
+                    SOLVING LEGAL <br />
+                    MATTERS WITH <br />
+                    <span className="text-[var(--text-muted)] font-light">CONFIDENCE</span>
+                  </>
+                )}
+              </h1>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-center gap-4 mb-14">
-              <button
-                type="button"
-                onClick={() => openLoginModal(false)}
-                className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-lg active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
-              >
-                <span>{isBn ? "ফ্রিতে ব্যবহার শুরু করুন" : "Get Started for Free"}</span>
-                <ArrowUpRight className="w-4 h-4" />
-              </button>
+              {/* Subtitle */}
+              <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-md leading-relaxed mb-8">
+                {isBn
+                  ? "আপনার অধিকার সুরক্ষা ও ভবিষ্যৎ চুক্তি নিরাপত্তায় নিবেদিত বাংলাদেশের প্রথম সংবিধিবদ্ধ এআই লিগ্যাল প্ল্যাটফর্ম।"
+                  : "A Dedicated Legal & AI Platform Committed to Protecting Your Rights, Reviewing Contracts, and Securing Your Future."}
+              </p>
 
-              <a
-                href="#features"
-                className={`w-full sm:w-auto px-6 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all border ${borderClass} hover:border-[var(--text-primary)]/40 flex items-center justify-center gap-2 cursor-pointer bg-[var(--bg-card)] text-[var(--text-primary)]`}
-              >
-                <span>{isBn ? "ফিচারসমূহ দেখুন" : "Explore Capabilities"}</span>
-                <ChevronDown className="w-4 h-4 text-[var(--text-muted)]" />
-              </a>
-            </div>
+              {/* Action Buttons (Orange Primary + Modern Secondary) */}
+              <div className="flex items-center gap-4 mb-10">
+                <button
+                  type="button"
+                  onClick={() => openLoginModal(false)}
+                  className="px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-95 hover:opacity-95 flex items-center gap-2 cursor-pointer bg-[#f2591f] text-white hover:bg-[#e04f18]"
+                >
+                  <span>{isBn ? "পরামর্শ নিন" : "Contact Us"}</span>
+                  <ArrowUpRight className="w-4 h-4" />
+                </button>
 
-            {/* ── Interactive Live Preview Mockup Widget ── */}
-            <div className={`w-full max-w-5xl rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden p-2 sm:p-4 text-left transition-all duration-300`}>
-              {/* Mockup Header Bar */}
-              <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--text-primary)]/10 mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-rose-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-amber-500/80" />
-                  <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
-                  <span className="text-[11px] font-mono text-[var(--text-muted)] ml-2">legal-intelligence-terminal.v2</span>
+                <a
+                  href="#features"
+                  className={`px-6 py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all border ${borderClass} hover:border-[var(--text-primary)]/40 flex items-center gap-2 cursor-pointer bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs`}
+                >
+                  <span>{isBn ? "বিস্তারিত জানুন" : "Learn More"}</span>
+                </a>
+              </div>
+
+              {/* Floating Mini Feature: "PROTECTING EVERY DEAL YOU MAKE" */}
+              <div className="inline-flex items-center gap-3.5 p-2.5 pr-5 rounded-2xl bg-[var(--bg-card)]/90 backdrop-blur-md border border-[var(--text-primary)]/10 shadow-lg max-w-xs transition-all hover:scale-[1.02]">
+                <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 relative border border-[var(--text-primary)]/10">
+                  <Image
+                    src="/avatar_2.jpg"
+                    alt="Verified Lawyer"
+                    fill
+                    className="object-cover"
+                  />
+                  <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-black/60 backdrop-blur-xs flex items-center justify-center text-white">
+                    <ArrowUpRight className="w-2.5 h-2.5" />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-[11px] font-medium text-[var(--text-muted)]">
-                  <span className="inline-block w-2 h-2 rounded-full bg-emerald-500"></span>
-                  <span>BDLaws 1872–2026 Sync Active</span>
+                <div>
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)] leading-tight">
+                    {isBn ? "প্রতিটি চুক্তির সুরক্ষা" : "PROTECTING EVERY DEAL YOU MAKE"}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => openLoginModal(false)}
+                    className="text-[10px] uppercase font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer mt-0.5"
+                  >
+                    {isBn ? "শুরু করুন" : "GET STARTED"}
+                  </button>
                 </div>
               </div>
 
-              {/* Mockup Split Screen */}
-              <div className="grid grid-cols-1 md:grid-cols-12 gap-4 p-2 sm:p-3">
-                {/* Left: Legal Copilot Query Preview */}
-                <div className="md:col-span-6 rounded-2xl bg-[var(--bg-surface)] p-4 sm:p-5 flex flex-col justify-between border border-[var(--text-primary)]/5">
-                  <div>
-                    <div className="flex items-center gap-2 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center">
-                        <Scale className="w-4 h-4" />
-                      </div>
-                      <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                        {isBn ? "লিগ্যাল কোপাইলট লাইভ অ্যাসিস্ট্যান্ট" : "Legal Copilot Chat"}
-                      </span>
+            </div>
+
+            {/* ── Right Column: Video & Floating Glass Cards (lg:col-span-6) ── */}
+            <div className="lg:col-span-6 relative flex items-center justify-center min-h-[460px] sm:min-h-[560px] lg:min-h-[620px]">
+              
+              {/* Top-Right Badge: "28K" + Avatars */}
+              <div className="absolute top-2 right-2 sm:right-6 z-30 flex flex-col items-end text-right">
+                <div className="text-3xl sm:text-4xl font-black font-sans tracking-tight text-[var(--text-primary)]">
+                  28K+
+                </div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <div className="flex -space-x-2">
+                    <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-card)] overflow-hidden relative">
+                      <Image src="/avatar_1.jpg" alt="user" fill className="object-cover" />
                     </div>
-
-                    <div className="space-y-3">
-                      <div className="p-3 rounded-xl bg-[var(--bg-card)] text-xs text-[var(--text-primary)] border border-[var(--text-primary)]/10">
-                        <span className="text-[10px] uppercase font-bold text-indigo-600 dark:text-indigo-400 block mb-1">
-                          {isBn ? "ব্যবহারকারীর প্রশ্ন" : "User Query"}
-                        </span>
-                        {isBn 
-                          ? "চুক্তিতে Non-Compete শর্ত ৩ বছর দেওয়া হলে তা কি বাংলাদেশের আইনে বৈধ?"
-                          : "Is a 3-year non-compete clause legally enforceable in Bangladesh?"}
-                      </div>
-
-                      <div className="p-3.5 rounded-xl bg-[var(--accent-solid)] text-[var(--accent-contrast)] text-xs leading-relaxed shadow-sm">
-                        <div className="flex items-center gap-1.5 font-bold mb-1 text-emerald-400">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
-                          <span>The Contract Act, 1872 • Section 27</span>
-                        </div>
-                        <p className="opacity-90">
-                          {isBn
-                            ? "চুক্তি আইন ১৮৭২ এর ধারা ২৭ অনুযায়ী যেকোনো ব্যবসা বা পেশায় বাধা প্রদানকারী শর্ত (Restraint of Trade) সরাসরি বাতিল (Void ab initio)।"
-                            : "Under Section 27 of The Contract Act 1872, any agreement restraining profession, trade, or lawful business is void to that extent."}
-                        </p>
-                      </div>
+                    <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-card)] overflow-hidden relative">
+                      <Image src="/avatar_2.jpg" alt="user" fill className="object-cover" />
+                    </div>
+                    <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-card)] overflow-hidden relative">
+                      <Image src="/avatar_3.jpg" alt="user" fill className="object-cover" />
                     </div>
                   </div>
-
-                  <div className="mt-4 pt-3 border-t border-[var(--text-primary)]/10 flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-                    <span>Statutory Citation #BD-ACT-IX-1872</span>
-                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">100% Grounded</span>
+                  <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] text-[var(--bg-card)] flex items-center justify-center">
+                    <ArrowUpRight className="w-2.5 h-2.5" />
                   </div>
                 </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-[130px] leading-tight text-right">
+                  {isBn ? "বিশ্বস্ত পার্টনার হিসেবে সুরক্ষিত" : "Partner with us as we protect your rights"}
+                </p>
+              </div>
 
-                {/* Right: ContractMind Audit Preview */}
-                <div className="md:col-span-6 rounded-2xl bg-[var(--bg-surface)] p-4 sm:p-5 flex flex-col justify-between border border-[var(--text-primary)]/5">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
-                          <Shield className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-primary)]">
-                          {isBn ? "কন্ট্রাক্টমাইন্ড রিস্ক অডিট" : "ContractMind Audit"}
-                        </span>
-                      </div>
-                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">
-                        Risk Score: 78/100
-                      </span>
-                    </div>
+              {/* ── Central Character Container: High-End WebM Transparent Video ── */}
+              <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
+                
+                {/* Backlight halo glow */}
+                <div className="absolute inset-8 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-2xl pointer-events-none" />
 
-                    <div className="space-y-2.5">
-                      <div className="p-3 rounded-xl bg-[var(--bg-card)] border border-rose-500/30 text-xs">
-                        <div className="flex items-center justify-between font-semibold text-rose-600 dark:text-rose-400 mb-1">
-                          <div className="flex items-center gap-1.5">
-                            <AlertTriangle className="w-3.5 h-3.5" />
-                            <span>Unilateral Termination Clause</span>
-                          </div>
-                          <span className="text-[10px] uppercase font-bold">High Risk</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
-                          {isBn 
-                            ? "দ্বিতীয় পক্ষকে কোনো নোটিশ ব্যতীত তাৎক্ষণিক বাতিলের ধারা। বাংলাদেশ শ্রম আইন ২০০৬ এর ২৬ ধারার সাথে সাংঘর্ষিক।"
-                            : "Immediate termination without notice period violates Section 26 of Bangladesh Labour Act 2006."}
-                        </p>
-                      </div>
+                {/* Looping Smooth Video */}
+                <video
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  className="w-full h-full object-contain filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.25)] select-none pointer-events-none transform hover:scale-105 transition-transform duration-700"
+                >
+                  <source src="/hero-statue.webm" type="video/webm" />
+                  <source src="/From Klickpin,com- Bedroom Decor Ideas That Look So Expensive 32388-pin-id-316026098874858134-Picsart-BackgroundRemover.webm" type="video/webm" />
+                </video>
+              </div>
 
-                      <div className="p-3 rounded-xl bg-[var(--bg-card)] border border-emerald-500/30 text-xs">
-                        <div className="flex items-center justify-between font-semibold text-emerald-600 dark:text-emerald-400 mb-1">
-                          <div className="flex items-center gap-1.5">
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Client-Side PII Masking</span>
-                          </div>
-                          <span className="text-[10px] uppercase font-bold text-emerald-500">Secure</span>
-                        </div>
-                        <p className="text-[11px] text-[var(--text-muted)]">
-                          {isBn ? "নাম, এনআইডি ও পেমেন্ট বিবরণ ক্লাউডে যাওয়ার পূর্বেই এনক্রিপ্টেড।" : "NID, names, and bank accounts sanitized prior to AI analysis."}
-                        </p>
-                      </div>
-                    </div>
+              {/* ── Bottom-Right Floating Glassmorphic Card: "Case Closure Statistics" ── */}
+              <div className="absolute -bottom-2 right-2 sm:right-4 z-30 p-4 sm:p-5 rounded-2xl bg-[var(--bg-card)]/95 backdrop-blur-xl border border-[var(--text-primary)]/15 shadow-2xl w-[240px] sm:w-[270px] transition-all hover:scale-[1.02]">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-[11px] font-bold tracking-tight text-[var(--text-primary)]">
+                    {isBn ? "কেস নিষ্পত্তি পরিসংখ্যান" : "Case Closure Statistics"}
                   </div>
+                  <span className="px-2 py-0.5 rounded-md text-[9px] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                    Yearly ▾
+                  </span>
+                </div>
 
-                  <div className="mt-4 pt-3 border-t border-[var(--text-primary)]/10 flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-                    <span>Audit Time: 3.4 seconds</span>
-                    <span className="font-medium text-amber-600 dark:text-amber-400">2 Critical Fixes Suggested</span>
-                  </div>
+                {/* Bar Chart Visualization */}
+                <div className="flex items-end justify-between gap-1.5 h-20 pt-2 px-1">
+                  {[
+                    { m: "Jan", h: "45%" },
+                    { m: "Feb", h: "60%" },
+                    { m: "Mar", h: "85%" },
+                    { m: "Apr", h: "70%" },
+                    { m: "May", h: "92%" },
+                    { m: "Jun", h: "78%" },
+                    { m: "Jul", h: "88%" },
+                  ].map((bar, idx) => (
+                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                      <div
+                        className="w-full rounded-t-sm transition-all duration-500 hover:opacity-80"
+                        style={{
+                          height: bar.h,
+                          backgroundColor: idx === 4 ? "#f2591f" : "var(--text-primary)",
+                          opacity: idx === 4 ? 1 : 0.25 + idx * 0.1,
+                        }}
+                      />
+                      <span className="text-[8px] font-mono text-[var(--text-muted)]">{bar.m}</span>
+                    </div>
+                  ))}
                 </div>
               </div>
+
             </div>
           </div>
+
+          {/* ── Bottom Strip: Minimal Social Icons & Scroll cue ── */}
+          <div className="w-full pt-8 flex items-center justify-between text-xs text-[var(--text-muted)] z-20 border-t border-[var(--text-primary)]/5 mt-4">
+            <div className="flex items-center gap-2">
+              <span className="w-7 h-7 rounded-lg bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
+                📷
+              </span>
+              <span className="w-7 h-7 rounded-lg bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer font-bold">
+                f
+              </span>
+              <span className="w-7 h-7 rounded-lg bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer font-bold">
+                𝕏
+              </span>
+            </div>
+
+            <div className="text-[11px] font-mono tracking-wider text-[var(--text-muted)] uppercase hidden sm:block">
+              Dhaka, Bangladesh • Codified Statutory AI
+            </div>
+
+            <a
+              href="#features"
+              className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+            >
+              <span>{isBn ? "নিচে স্ক্রোল করুন" : "Scroll to explore"}</span>
+              <ChevronDown className="w-3.5 h-3.5 animate-bounce" />
+            </a>
+          </div>
+
         </section>
+
+
 
         {/* ── SECTION 2: APP ER MAIN DUITA FEATURE (LEGAL COPILOT & CONTRACTMIND) ── */}
         <section id="features" className="py-20 px-6 lg:px-10 max-w-6xl mx-auto w-full">
