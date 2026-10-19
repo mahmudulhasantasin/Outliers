@@ -613,6 +613,7 @@ export default function LandingAndAuthPage() {
                     reverse={false}
                     wander={false}
                     clickBurst={true}
+                    fullRevealOnHover={true}
                     className="w-full h-full"
                   />
                 </div>

@@ -29,6 +29,7 @@ export interface DitherVeilProps {
   reverse?: boolean;
   wander?: boolean;
   clickBurst?: boolean;
+  fullRevealOnHover?: boolean;
   className?: string;
   style?: CSSProperties;
 }
@@ -310,6 +311,7 @@ uniform float uKey;
 uniform vec2 uSize;
 uniform vec4 uBursts[4];
 uniform float uBurstWidth;
+uniform float uHoverProgress;
 
 in vec2 vUv;
 out vec4 fragColor;
@@ -394,11 +396,11 @@ void main() {
 
   vec2 point = vec2(cellUv.x, 1.0 - cellUv.y) * uSize;
   float mask = max(clamp(texture(tMask, cellUv).r * uHold, 0.0, 1.0), shockwave(point));
-  float shown = mix(mask, 1.0 - mask, uReverse);
+  float shown = max(mix(mask, 1.0 - mask, uReverse), uHoverProgress);
   float order = bayer(cell.yx);
   float low = order * (1.0 - uRim);
   color = mix(color, uRimColor, step(low, shown) * step(0.001, uRim));
-  color = mix(color, photo, step(low + uRim, shown));
+  color = mix(color, photo, clamp(step(low + uRim, shown) + uHoverProgress, 0.0, 1.0));
 
   vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
   float spread = length((cellUv - 0.5) * aspect) / length(aspect * 0.5);
@@ -434,6 +436,7 @@ const DitherVeil = ({
   reverse = false,
   wander = false,
   clickBurst = true,
+  fullRevealOnHover = false,
   className = '',
   style
 }: DitherVeilProps) => {
@@ -459,7 +462,8 @@ const DitherVeil = ({
       rim,
       reverse,
       wander,
-      clickBurst
+      clickBurst,
+      fullRevealOnHover
     };
     wakeRef.current();
   });
@@ -555,7 +559,8 @@ const DitherVeil = ({
       uKey: { value: 0 },
       uSize: { value: [1, 1] },
       uBursts: { value: Array.from({ length: MAX_BURSTS * 4 }, () => 0) },
-      uBurstWidth: { value: 60 }
+      uBurstWidth: { value: 60 },
+      uHoverProgress: { value: 0 }
     };
     const program = (fragment: string, uniforms: Record<string, { value: unknown }>) =>
       new Program(gl, { vertex, fragment, uniforms, depthTest: false, depthWrite: false });
@@ -576,6 +581,7 @@ const DitherVeil = ({
     let last = performance.now();
     let trailUntil = 0;
     let presence = 0;
+    let hoverProgress = 0;
     let drift = 0;
     const pointer = { x: 0, y: 0, inside: false, fresh: true, placed: false };
     const brush = { x: 0, y: 0, px: 0, py: 0 };
@@ -677,6 +683,9 @@ const DitherVeil = ({
 
       presence += ((pointer.inside || wanderOn ? 1 : 0) - presence) * (1 - Math.exp(-dt / 0.16));
 
+      const targetHover = (s.fullRevealOnHover && pointer.inside) ? 1 : 0;
+      hoverProgress += (targetHover - hoverProgress) * (1 - Math.exp(-dt / 0.22));
+
       if (pointer.fresh) {
         brush.x = brush.px = targetX;
         brush.y = brush.py = targetY;
@@ -762,12 +771,13 @@ const DitherVeil = ({
       viewUniforms.uContrast.value = s.contrast;
       viewUniforms.uBrightness.value = s.brightness;
       viewUniforms.uReverse.value = s.reverse ? 1 : 0;
+      viewUniforms.uHoverProgress.value = hoverProgress;
       const intro = image ? Math.min(1, (now - introStart) / INTRO_MS) : 0;
       viewUniforms.uIntro.value = 1 - Math.pow(1 - intro, 2);
       renderer.render({ scene: viewMesh });
 
       const busy =
-        pointer.inside || wanderOn || presence > 0.002 || bursts.length > 0 || now < trailUntil || (image && intro < 1);
+        pointer.inside || wanderOn || presence > 0.002 || hoverProgress > 0.002 || bursts.length > 0 || now < trailUntil || (image && intro < 1);
       if (busy && visible) raf = requestAnimationFrame(frame);
     };
 
