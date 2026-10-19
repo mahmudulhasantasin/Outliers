@@ -387,7 +387,8 @@ void main() {
   vec3 color = mix(uInk, mix(uInk, uPaper, level), max(framed, uKey));
   vec3 backdrop = mix(uInk, uPaper, toned(uMatte));
   vec2 photoUv = imageUv(vUv);
-  vec3 raw = texture(tImage, photoUv).rgb;
+  vec4 rawTex = texture(tImage, photoUv);
+  vec3 raw = rawTex.rgb;
   float plain = uKey * (1.0 - smoothstep(0.05, 0.22, distance(raw, uMatte)));
   vec3 photo = mix(mix(uInk, backdrop, uKey), mix(raw, backdrop, plain), within(photoUv));
 
@@ -402,7 +403,14 @@ void main() {
   vec2 aspect = vec2(uResolution.x / uResolution.y, 1.0);
   float spread = length((cellUv - 0.5) * aspect) / length(aspect * 0.5);
   float appear = step(spread * 0.72 + bayer(cell + vec2(3.0, 5.0)) * 0.28, uIntro * 1.001);
-  fragColor = vec4(mix(uInk, color, appear), 1.0);
+
+  // Sample alpha from image texture at cell position to preserve PNG transparency
+  vec4 sampleTex = texture(tImage, sampleUv);
+  float cellAlpha = sampleTex.a * framed;
+  // If image was encoded with black background instead of alpha, detect brightness
+  float subjectAlpha = max(cellAlpha, smoothstep(0.04, 0.12, max(sampleTex.r, max(sampleTex.g, sampleTex.b))) * framed);
+
+  fragColor = vec4(mix(uInk, color, appear), subjectAlpha);
 }
 `;
 
