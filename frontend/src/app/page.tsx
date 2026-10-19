@@ -1171,27 +1171,13 @@ export default function LandingAndAuthPage() {
                   </form>
                 </div>
 
-                {/* Right Visual Card */}
+                {/* Right Visual Card: Ready for new image */}
                 <div className="lg:col-span-5 flex flex-col gap-6">
-                  <div className={`relative w-full h-[320px] sm:h-[380px] rounded-3xl overflow-hidden border ${borderClass} shadow-xl group`}>
-                    <Image
-                      src="/consultation.jpg"
-                      alt="Lawyer and client discussing legal contract"
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent" />
-                    <div className="absolute bottom-6 left-6 right-6 text-white">
-                      <div className="inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-black mb-2">
-                        {isBn ? "চেম্বার ও এআই কনসাল্টেশন" : "Verified Advocates"}
-                      </div>
-                      <div className="text-base sm:text-lg font-serif font-medium leading-snug mb-1">
-                        {isBn ? "সুপ্রিম কোর্টের অ্যাডভোকেট প্যানেলের সরাসরি পর্যবেক্ষণ" : "Backed by Senior Advocates & Autonomous Intelligence"}
-                      </div>
-                      <div className="text-xs text-neutral-300">
-                        {isBn ? "ঢাকা চেম্বার ও ডিজিটাল পোর্টালের মাধ্যমে ২৪/৭ সেবা" : "Available in-chamber in Dhaka and digitally online."}
-                      </div>
-                    </div>
+                  <div
+                    id="consultation-image-slot"
+                    className={`relative w-full h-[320px] sm:h-[380px] rounded-3xl overflow-hidden border ${borderClass} shadow-xl flex items-center justify-center bg-[var(--bg-card)]`}
+                  >
+                    {/* New image container */}
                   </div>
 
                   <div className={`p-4 rounded-2xl bg-[var(--bg-card)] border ${borderClass} flex items-center gap-3.5 shadow-xs`}>
