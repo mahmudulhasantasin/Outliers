@@ -81,17 +81,16 @@ html, body {
   box-shadow: 0 16px 50px rgba(0, 0, 0, 0.5);
 }
 
-/* Custom scrollbars */
+/* Hidden Scrollbars while preserving scrolling */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
 }
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--bg-surface);
-  border-radius: 9999px;
+
+* {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
 }
 
 /* ==================================================================== */
