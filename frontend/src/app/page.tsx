@@ -575,27 +575,27 @@ export default function LandingAndAuthPage() {
                 </p>
               </div>
 
-              {/* ── Central Character Container: High-End WebM Transparent Video ── */}
+              {/* ── Central Character Container: Firefly Transparent Statue ── */}
               <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
                 
                 {/* Backlight halo glow */}
                 <div className="absolute inset-8 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-2xl pointer-events-none" />
 
-                {/* Looping Smooth Video with Adaptive Subject Contour Stroke */}
-                <video
-                  autoPlay
-                  loop
-                  muted
-                  playsInline
-                  style={{
-                    filter:
-                      "drop-shadow(1px 0px 0px var(--bg-primary)) drop-shadow(-1px 0px 0px var(--bg-primary)) drop-shadow(0px 1px 0px var(--bg-primary)) drop-shadow(0px -1px 0px var(--bg-primary)) drop-shadow(0 25px 35px rgba(0,0,0,0.25))",
-                  }}
-                  className="w-full h-full object-contain select-none pointer-events-none transform hover:scale-105 transition-transform duration-700"
-                >
-                  <source src="/hero-statue.webm" type="video/webm" />
-                  <source src="/From Klickpin,com- Bedroom Decor Ideas That Look So Expensive 32388-pin-id-316026098874858134-Picsart-BackgroundRemover.webm" type="video/webm" />
-                </video>
+                {/* Central Statue / Character Image */}
+                <div className="relative w-full h-full transform hover:scale-105 transition-transform duration-700 ease-out">
+                  <Image
+                    src="/Firefly.png"
+                    alt="Lady Justice Bronze Statue with Scales"
+                    fill
+                    priority
+                    sizes="(max-width: 768px) 100vw, 540px"
+                    className="object-contain select-none pointer-events-none"
+                    style={{
+                      filter:
+                        "drop-shadow(1px 0px 0px var(--bg-primary)) drop-shadow(-1px 0px 0px var(--bg-primary)) drop-shadow(0px 1px 0px var(--bg-primary)) drop-shadow(0px -1px 0px var(--bg-primary)) drop-shadow(0 25px 35px rgba(0,0,0,0.25))",
+                    }}
+                  />
+                </div>
               </div>
 
               {/* ── Bottom-Right Floating Glassmorphic Card: "Case Closure Statistics" ── */}
