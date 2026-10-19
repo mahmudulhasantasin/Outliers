@@ -1603,7 +1603,6 @@ export default function LandingAndAuthPage() {
                 {/* ── SIGN IN ── */}
                 {!isSignUp && (
                   <>
-                    <span className="inline-block text-xl text-amber-500 font-serif leading-none select-none mb-3">✱</span>
                     <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
                       {isBn ? "স্বাগতম ফিরে আসার জন্য" : "Welcome back"}
                     </h2>
@@ -1648,7 +1647,6 @@ export default function LandingAndAuthPage() {
                     {/* STEP 1: Role Selection */}
                     {regStep === "role" && (
                       <>
-                        <span className="inline-block text-xl text-amber-500 font-serif leading-none select-none mb-3">✱</span>
                         <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
                           {isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create your account"}
                         </h2>
