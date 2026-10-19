@@ -407,10 +407,11 @@ void main() {
   // Sample alpha from image texture at cell position to preserve PNG transparency
   vec4 sampleTex = texture(tImage, sampleUv);
   float cellAlpha = sampleTex.a * framed;
-  // If image was encoded with black background instead of alpha, detect brightness
-  float subjectAlpha = max(cellAlpha, smoothstep(0.04, 0.12, max(sampleTex.r, max(sampleTex.g, sampleTex.b))) * framed);
+  if (cellAlpha < 0.05) {
+    discard;
+  }
 
-  fragColor = vec4(mix(uInk, color, appear), subjectAlpha);
+  fragColor = vec4(mix(uInk, color, appear), cellAlpha);
 }
 `;
 
@@ -468,12 +469,20 @@ const DitherVeil = ({
     if (!container) return undefined;
 
     const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-    const renderer = new Renderer({ dpr: Math.min(window.devicePixelRatio || 1, 2), alpha: true, antialias: false });
+    const renderer = new Renderer({
+      dpr: Math.min(window.devicePixelRatio || 1, 2),
+      alpha: true,
+      premultipliedAlpha: false,
+      antialias: false
+    });
     const gl = renderer.gl;
+    gl.enable(gl.BLEND);
+    gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     const canvas = gl.canvas;
     canvas.style.display = 'block';
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+    canvas.style.background = 'transparent';
     container.appendChild(canvas);
 
     const gl2 = gl as WebGL2RenderingContext;
@@ -616,9 +625,7 @@ const DitherVeil = ({
       sampler.height = rows;
       samplerContext.imageSmoothingEnabled = true;
       samplerContext.imageSmoothingQuality = 'high';
-      const [mr, mg, mb] = viewUniforms.uMatte.value;
-      samplerContext.fillStyle = `rgb(${mr * 255}, ${mg * 255}, ${mb * 255})`;
-      samplerContext.fillRect(0, 0, cols, rows);
+      samplerContext.clearRect(0, 0, cols, rows);
       const sx = (0.5 - 0.5 * cx) * iw;
       const sy = (0.5 - 0.5 * cy) * ih;
       const sw = ((cols * cell) / canvas.width) * cx * iw;
