@@ -1002,25 +1002,35 @@ export default function LandingAndAuthPage() {
           <FadeContent effect="focus" duration={1} threshold={0.15}>
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
               {/* Left selectors */}
-              <div className="lg:col-span-4 flex lg:flex-col gap-3 justify-between sm:justify-start overflow-x-auto pb-2 lg:pb-0">
+              <div className="lg:col-span-5 flex lg:flex-col gap-3.5 justify-between sm:justify-start overflow-visible p-2 -m-2">
                 {testimonials.map((t, idx) => (
                   <button
                     key={idx}
                     type="button"
                     onClick={() => setActiveTestimonial(idx)}
                     onMouseEnter={() => setActiveTestimonial(idx)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 text-left cursor-pointer border ${
+                    className={`group flex items-center gap-4 p-4 sm:p-4.5 rounded-2xl transition-all duration-300 text-left cursor-pointer border relative ${
                       activeTestimonial === idx
-                        ? "border-[var(--text-primary)]/60 bg-[var(--bg-card)] shadow-md translate-x-1 sm:translate-x-2"
-                        : "border-transparent hover:bg-[var(--bg-card)]/60 opacity-70 hover:opacity-100"
+                        ? "border-[var(--text-primary)]/40 bg-[var(--bg-card)] shadow-lg shadow-black/5 translate-x-1 sm:translate-x-2.5"
+                        : "border-transparent hover:bg-[var(--bg-card)]/50 opacity-60 hover:opacity-100 hover:translate-x-1"
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-transform duration-300 ${activeTestimonial === idx ? "scale-105" : ""}`}>
+                    {/* Active accent pill indicator */}
+                    {activeTestimonial === idx && (
+                      <div className="absolute left-0 top-3 bottom-3 w-1 bg-amber-500 rounded-r-full" />
+                    )}
+
+                    <div className={`w-13 h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${activeTestimonial === idx ? "scale-105 shadow-md ring-2 ring-amber-500/20" : "grayscale-[40%] group-hover:grayscale-0"}`}>
                       <Image src={t.avatar} alt={t.name} fill className="object-cover" />
                     </div>
-                    <div>
-                      <div className="font-semibold text-sm text-[var(--text-primary)]">{t.name}</div>
-                      <div className="text-xs text-[var(--text-muted)] line-clamp-1">{t.role}</div>
+                    
+                    <div className="flex-1 min-w-0 pr-2">
+                      <div className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                        {t.name}
+                      </div>
+                      <div className="text-xs text-[var(--text-muted)] line-clamp-1 mt-0.5">
+                        {t.role}
+                      </div>
                     </div>
                   </button>
                 ))}
@@ -1028,25 +1038,31 @@ export default function LandingAndAuthPage() {
 
               {/* Right featured testimonial card with smooth vertical slide effect */}
               <div
-                className="lg:col-span-8 rounded-3xl p-8 sm:p-12 border border-[#333] text-white shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[340px]"
+                className="lg:col-span-7 rounded-3xl p-8 sm:p-12 border border-[#333] text-white shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[350px]"
                 style={{ backgroundColor: "#1c1917" }}
               >
+                {/* Background decorative subtle gradient */}
+                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
                 {/* Smooth Sliding Content container keyed by activeTestimonial */}
                 <div
                   key={activeTestimonial}
-                  className="relative z-10 flex flex-col justify-between h-full animate-[fadeInUp_0.35s_cubic-bezier(0.16,1,0.3,1)]"
+                  className="relative z-10 flex flex-col justify-between h-full animate-[slideUpRoll_0.4s_cubic-bezier(0.16,1,0.3,1)]"
                 >
                   <div>
-                    <Quote className="w-10 h-10 text-amber-500/40 mb-4 transition-transform duration-300 hover:scale-110" />
-                    <p className="text-base sm:text-xl font-serif font-light leading-relaxed mb-8 text-neutral-100 transition-opacity duration-300">
+                    <Quote className="w-10 h-10 text-amber-500/50 mb-5 transition-transform duration-300" />
+                    <p className="text-base sm:text-xl font-serif font-light leading-relaxed mb-8 text-neutral-100">
                       {testimonials[activeTestimonial].quote}
                     </p>
                   </div>
 
                   <div className="pt-4 border-t border-white/10 flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-sm text-white">{testimonials[activeTestimonial].name}</div>
-                      <div className="text-xs text-neutral-400">{testimonials[activeTestimonial].role}</div>
+                      <div className="font-semibold text-sm text-white flex items-center gap-2">
+                        {testimonials[activeTestimonial].name}
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                      </div>
+                      <div className="text-xs text-neutral-400 mt-0.5">{testimonials[activeTestimonial].role}</div>
                     </div>
                     <div className="flex items-center gap-1 text-amber-400">
                       {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
