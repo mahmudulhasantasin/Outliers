@@ -134,7 +134,6 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   updateUser: (partial: Partial<UserProfile>) => void;
 
-  loginWithGoogle: (googleIdToken: string) => Promise<void>;
   loginAsDemoGeneral: () => void;
   loginAsDemoLawyer: () => void;
   loginAsDemoEnterprise: () => void;
@@ -478,25 +477,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // ── Demo & Social shortcuts ──
-  const loginWithGoogle = async (googleIdToken: string) => {
-    const data = await api.post<TokenResponse>("/api/auth/login/google", {
-      token: googleIdToken,
-    });
-    saveTokenResponse(data);
-    const profile = storedUserToProfile({
-      id: data.user_id,
-      email: data.email,
-      full_name: data.full_name || "Google User",
-      role: (data.role?.toLowerCase() as UserRole) || "general",
-      credit_balance: data.credit_balance,
-      is_verified: data.is_verified,
-      is_phone_verified: data.is_phone_verified,
-    });
-    setUser(profile);
-    setIsAuthenticated(true);
-  };
-
+  // ── Demo shortcuts ──
   const loginAsDemoGeneral = () => persistDemo(DEMO_GENERAL);
   const loginAsDemoLawyer = () => persistDemo(DEMO_LAWYER);
   const loginAsDemoEnterpriseAdmin = () => persistDemo(DEMO_ENTERPRISE_ADMIN);
@@ -534,7 +515,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         refreshUser,
         updateUser,
-        loginWithGoogle,
         loginAsDemoGeneral,
         loginAsDemoLawyer,
         loginAsDemoEnterprise,
