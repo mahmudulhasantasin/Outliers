@@ -575,20 +575,20 @@ export default function LandingAndAuthPage() {
                 </p>
               </div>
 
-              {/* ── Central Character Container: Firefly Transparent Statue (Enlarged & Shifted Down with Bottom Crop) ── */}
-              <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[560px] aspect-square flex items-center justify-center z-10 overflow-hidden [mask-image:linear-gradient(to_bottom,black_85%,transparent_100%)]">
+              {/* ── Central Character Container: Firefly Transparent Statue ── */}
+              <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
                 
                 {/* Backlight halo glow */}
-                <div className="absolute inset-4 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-3xl pointer-events-none" />
+                <div className="absolute inset-8 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-2xl pointer-events-none" />
 
-                {/* Central Statue / Character Image with increased scale shifted down */}
-                <div className="relative w-full h-full scale-125 sm:scale-135 lg:scale-140 translate-y-6 sm:translate-y-10 transform hover:scale-[1.45] transition-transform duration-700 ease-out origin-bottom">
+                {/* Central Statue / Character Image */}
+                <div className="relative w-full h-full transform hover:scale-105 transition-transform duration-700 ease-out">
                   <Image
                     src="/Firefly.png"
                     alt="Lady Justice Bronze Statue with Scales"
                     fill
                     priority
-                    sizes="(max-width: 768px) 100vw, 750px"
+                    sizes="(max-width: 768px) 100vw, 540px"
                     className="object-contain select-none pointer-events-none"
                     style={{
                       filter:
