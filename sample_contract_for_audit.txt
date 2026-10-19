@@ -1,0 +1,151 @@
+================================================================================
+                    EMPLOYMENT AND CONFIDENTIALITY AGREEMENT
+                     (GOVERNED BY THE LAWS OF BANGLADESH)
+================================================================================
+
+This Employment and Confidentiality Agreement (the "Agreement") is entered into
+this 15th day of October, 2026, at Dhaka, Bangladesh, by and between:
+
+1. APEX TECH & SOFTWARE SOLUTIONS LTD., a private limited company incorporated 
+   under the Companies Act, 1994, having its corporate headquarters at House 42, 
+   Road 11, Gulshan-1, Dhaka-1212, Bangladesh (hereinafter referred to as the 
+   "Employer" or "Company");
+
+AND
+
+2. MR. RAFIQUL ISLAM, son of Md. Anwar Hossain, residing at Flat 4B, Road 7, 
+   Dhanmondi, Dhaka-1205, National ID: 1992269201928371 (hereinafter referred 
+   to as the "Employee").
+
+The Employer and Employee may collectively be referred to as the "Parties".
+
+WHEREAS the Company wishes to employ the Employee in the capacity of Senior 
+Software Architect, and the Employee desires to accept such employment under the 
+terms and conditions set forth herein:
+
+NOW, THEREFORE, the Parties mutually agree as follows:
+
+--------------------------------------------------------------------------------
+CLAUSE 1: POSITION, COMMENCEMENT AND PROBATION
+--------------------------------------------------------------------------------
+1.1 Position: The Employee is hired as Senior Software Architect.
+1.2 Commencement Date: Employment shall commence on November 1, 2026.
+1.3 Probationary Period: The Employee shall serve an initial probationary period 
+    of six (6) months, extendable at the sole discretion of the Company.
+
+--------------------------------------------------------------------------------
+CLAUSE 2: REMUNERATION AND BENEFITS
+--------------------------------------------------------------------------------
+2.1 Basic Salary: The Employee shall receive a consolidated monthly gross salary 
+    of BDT 1,80,000 (One Lac Eighty Thousand Taka), subject to standard tax 
+    deductions at source as per Income Tax Act, 2023.
+2.2 Festival Bonus: Eligible for two festival bonuses per calendar year after 
+    successful completion of confirmation.
+
+--------------------------------------------------------------------------------
+CLAUSE 3: WORKING HOURS AND OVERTIME [LEGAL ISSUE #1]
+--------------------------------------------------------------------------------
+3.1 Mandatory Hours: The Employee agrees to work a mandatory minimum of 65 
+    (sixty-five) hours per week, including alternate Fridays and public holidays 
+    whenever project deadlines require, without entitlement to any overtime pay 
+    or compensatory leave.
+3.2 Waiver of Overtime: The Employee expressly waives any right to overtime 
+    allowances under any labor statute, agreeing that the executive nature of 
+    the salary covers all extended work hours.
+    [*CONFLICT: Violates Bangladesh Labour Act 2006, Sections 100, 102 & 108 
+      (Max 48 hours/week, mandatory 2x wage rate for overtime).*]
+
+--------------------------------------------------------------------------------
+CLAUSE 4: POST-TERMINATION NON-COMPETE RESTRICTION [LEGAL ISSUE #2]
+--------------------------------------------------------------------------------
+4.1 5-Year Blanket Ban: The Employee covenants and agrees that for a period of 
+    five (5) consecutive years following the cessation of employment for any 
+    reason whatsoever, the Employee shall NOT directly or indirectly:
+    (a) Establish, advise, consult, invest in, or work for any software, tech, 
+        fintech, or IT consulting company operating anywhere within the territory 
+        of Bangladesh;
+    (b) Solicit or contact any client or business partner of the Company.
+4.2 Injunctive Relief: The Employee agrees that any breach of this non-compete 
+    restriction shall result in an immediate ex-parte injunction and liquidated 
+    damages.
+    [*CONFLICT: Violates Section 27 of The Contract Act, 1872 (Restraint of 
+      trade is void under Bangladesh sovereign law).*]
+
+--------------------------------------------------------------------------------
+CLAUSE 5: INTELLECTUAL PROPERTY AND ASSIGNMENT
+--------------------------------------------------------------------------------
+5.1 Assignment: All code, documentation, algorithms, inventions, and patentable 
+    works conceived or developed during employment shall remain the sole property 
+    of the Employer.
+
+--------------------------------------------------------------------------------
+CLAUSE 6: CONFIDENTIALITY AND TRADE SECRETS
+--------------------------------------------------------------------------------
+6.1 Non-Disclosure: The Employee shall maintain strict secrecy regarding all 
+    proprietary technical architectures, algorithms, financial records, and 
+    client identities during and after employment.
+
+--------------------------------------------------------------------------------
+CLAUSE 7: TERMINATION AND NOTICE PERIOD [LEGAL ISSUE #3]
+--------------------------------------------------------------------------------
+7.1 Unilateral Company Termination: The Company reserves the absolute right to 
+    terminate the Employee's service at any time with 24 (twenty-four) hours' 
+    verbal or electronic (WhatsApp/Email) notice without showing any cause, and 
+    without any obligation to pay severance, service compensation, or wages in 
+    lieu of notice.
+7.2 Employee Resignation: In stark contrast, if the Employee wishes to resign, 
+    the Employee MUST provide a minimum of one hundred and eighty (180) days' 
+    prior written notice. Failure to serve the full 180-day notice shall result 
+    in immediate forfeiture of all unpaid salaries, provident fund benefits, 
+    and earned leave encashment.
+    [*CONFLICT: Violates Bangladesh Labour Act 2006, Section 26 & Section 27 
+      (Mandatory 120 days' notice/wages in lieu for permanent workers; unlawful 
+      arbitrary wage forfeiture).*]
+
+--------------------------------------------------------------------------------
+CLAUSE 8: SUMMARY DISMISSAL WITHOUT INVESTIGATION [LEGAL ISSUE #4]
+--------------------------------------------------------------------------------
+8.1 Immediate Dismissal: The Employer may summarily dismiss the Employee for any 
+    alleged misconduct, insubordination, or performance shortfall without 
+    instituting any domestic inquiry, formal charge-sheet, or opportunity to 
+    show cause.
+    [*CONFLICT: Violates Bangladesh Labour Act 2006, Section 23 & 24 
+      (Mandatory disciplinary procedure, charge-sheet, and inquiry committee).*]
+
+--------------------------------------------------------------------------------
+CLAUSE 9: LIQUIDATED DAMAGES AND PENALTY BOND [LEGAL ISSUE #5]
+--------------------------------------------------------------------------------
+9.1 Fixed Penalty: In the event the Employee departs the Company prior to 
+    completing thirty-six (36) continuous months of service, or breaches any 
+    covenant in this Agreement, the Employee shall pay to the Employer a fixed 
+    punitive penalty of BDT 25,00,000 (Twenty-Five Lac Taka) as liquidated 
+    damages, irrespective of whether the Employer suffered any actual financial 
+    loss.
+    [*CONFLICT: Violates Section 74 of The Contract Act, 1872 (Stipulation 
+      by way of penalty is unenforceable; courts only grant reasonable actual 
+      compensation).*]
+
+--------------------------------------------------------------------------------
+CLAUSE 10: DISPUTE RESOLUTION AND EXCLUSION OF LOCAL COURTS [LEGAL ISSUE #6]
+--------------------------------------------------------------------------------
+10.1 Exclusion of Bangladesh Jurisdiction: Any dispute, controversy, or claim 
+     arising out of or relating to this Agreement shall be exclusively submitted 
+     to the courts of Singapore. The Parties explicitly agree to exclude the 
+     jurisdiction of all labor tribunals and civil courts in Bangladesh.
+     [*CONFLICT: Violates Section 28 of The Contract Act, 1872 (Agreements 
+       restraining legal proceedings in local courts are void).*]
+
+--------------------------------------------------------------------------------
+SIGNATURES OF THE PARTIES
+--------------------------------------------------------------------------------
+
+For and on behalf of Employer:              Employee:
+
+________________________________            ________________________________
+Md. Tanvir Ahmed                            Mr. Rafiqul Islam
+Managing Director                           Senior Software Architect
+Apex Tech Solutions Ltd.                    NID: 1992269201928371
+
+Date: October 15, 2026                      Date: October 15, 2026
+Witness 1: _____________________            Witness 2: _____________________
+================================================================================
