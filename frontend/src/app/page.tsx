@@ -690,26 +690,26 @@ export default function LandingAndAuthPage() {
 
 
 
-        {/* ── SECTION 2: APP ER MAIN DUITA FEATURE (LEGAL COPILOT & CONTRACTMIND) - PINNED / STICKY ── */}
-        <section
-          id="features"
-          className="sticky top-16 z-10 py-16 px-6 lg:px-10 max-w-6xl mx-auto w-full min-h-[90vh] flex flex-col justify-center"
-        >
-          <FadeContent effect="mist" duration={1.2} threshold={0.15}>
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
-                {isBn ? "প্রধান ফিচারসমূহ" : "Core Capabilities"}
-              </span>
-              <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-3">
-                {isBn ? "এডভোটেক কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Advotech Copilot & ContractMind"}
-              </h2>
-              <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
-                {isBn
-                  ? "বাংলাদেশের সংবিধিবদ্ধ আইনের ভিত্তিতে নির্ভুল আইনি গবেষণা ও তাৎক্ষণিক চুক্তি অডিট।"
-                  : "Codified statutory precision with verifiable legal citations & automated risk audits."}
-              </p>
-            </div>
-          </FadeContent>
+        {/* ── SECTION 2 & 3 CONTAINER WITH STRICT LAYERED STACKING SCROLL ── */}
+        <div className="relative w-full">
+          {/* Section 2 Wrapper Track: pinned strictly at top-0 */}
+          <div className="sticky top-0 z-10 w-full h-screen overflow-hidden flex items-center justify-center bg-[var(--bg-primary)]">
+            <section id="features" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+              <FadeContent effect="mist" duration={1.2} threshold={0.15}>
+                <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
+                    {isBn ? "প্রধান ফিচারসমূহ" : "Core Capabilities"}
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-2">
+                    {isBn ? "এডভোটেক কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Advotech Copilot & ContractMind"}
+                  </h2>
+                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
+                    {isBn
+                      ? "বাংলাদেশের সংবিধিবদ্ধ আইনের ভিত্তিতে নির্ভুল আইনি গবেষণা ও তাৎক্ষণিক চুক্তি অডিট।"
+                      : "Codified statutory precision with verifiable legal citations & automated risk audits."}
+                  </p>
+                </div>
+              </FadeContent>
 
           <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
@@ -815,11 +815,12 @@ export default function LandingAndAuthPage() {
             </div>
           </FadeContent>
         </section>
+      </div>
 
         {/* ── SECTION 3: WHO IS IT FOR? (USER, LAWYER & ENTERPRISE) - LAYERED COVER ── */}
         <section
           id="for-whom"
-          className="relative z-20 py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-25px_60px_rgba(0,0,0,0.18)] border-t border-[var(--text-primary)]/15"
+          className="relative z-20 py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t border-[var(--text-primary)]/15"
         >
           <div className="max-w-6xl mx-auto">
             <FadeContent effect="mist" duration={1.2} threshold={0.15}>
@@ -967,6 +968,7 @@ export default function LandingAndAuthPage() {
             </FadeContent>
           </div>
         </section>
+      </div>
 
         {/* ── SECTION 4: STATS & TRUST BAR ── */}
         <section className="py-16 px-6 lg:px-10 max-w-6xl mx-auto w-full">
