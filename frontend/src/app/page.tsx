@@ -39,6 +39,7 @@ import GradientWaves from "@/components/effects/GradientWaves";
 import DitherVeil from "@/components/effects/DitherVeil";
 import FadeContent from "@/components/effects/FadeContent";
 import CountUp from "@/components/effects/CountUp";
+import PixelSwap from "@/components/effects/PixelSwap";
 
 type RegistrationStep = "role" | "form" | "otp";
 type SelectedRole = "general" | "lawyer" | "enterprise" | null;
@@ -1171,13 +1172,40 @@ export default function LandingAndAuthPage() {
                   </form>
                 </div>
 
-                {/* Right Visual Card: Ready for new image */}
+                {/* Right Visual Card: Interactive PixelSwap between Day / Classic Courtroom and Modern Chamber */}
                 <div className="lg:col-span-5 flex flex-col gap-6">
                   <div
-                    id="consultation-image-slot"
-                    className={`relative w-full h-[320px] sm:h-[380px] rounded-3xl overflow-hidden border ${borderClass} shadow-xl flex items-center justify-center bg-[var(--bg-card)]`}
+                    className={`relative w-full h-[320px] sm:h-[400px] rounded-3xl overflow-hidden border ${borderClass} shadow-2xl bg-[var(--bg-card)] group`}
                   >
-                    {/* New image container */}
+                    <PixelSwap
+                      firstContent={
+                        <img
+                          src="/carlos-javier-yuste-jimenez-EoPb1QSkpvQ-unsplash.jpg"
+                          alt="Legal Counsel Chamber"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      }
+                      secondContent={
+                        <img
+                          src="/sasun-bughdaryan-YFz39MOmxnQ-unsplash.jpg"
+                          alt="Supreme Court Architecture"
+                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        />
+                      }
+                      pattern="pointer"
+                      pixelSize={42}
+                      pixelRadius={0}
+                      duration={400}
+                      pixelDuration={350}
+                      randomness={0.2}
+                      bounce={0.25}
+                      trigger="hover"
+                      style={{ width: "100%", height: "100%", borderRadius: "1.5rem" }}
+                      gap={0}
+                      pixelScale={0}
+                      pixelSpin={0}
+                      intro={false}
+                    />
                   </div>
 
                   <div className={`p-4 rounded-2xl bg-[var(--bg-card)] border ${borderClass} flex items-center gap-3.5 shadow-xs`}>
