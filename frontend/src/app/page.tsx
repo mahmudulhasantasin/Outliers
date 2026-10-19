@@ -114,6 +114,10 @@ export default function LandingAndAuthPage() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
 
+  // ── Footer Newsletter State ──
+  const [newsletterEmail, setNewsletterEmail] = useState("");
+  const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -372,7 +376,8 @@ export default function LandingAndAuthPage() {
   return (
     <div
       suppressHydrationWarning
-      className="relative min-h-screen w-full flex flex-col font-sans transition-colors duration-200 overflow-x-hidden bg-[var(--bg-primary)] text-[var(--text-primary)]"
+      className="relative min-h-screen w-full flex flex-col font-sans transition-colors duration-200 bg-[var(--bg-primary)] text-[var(--text-primary)]"
+      style={{ overflowX: 'clip' }}
     >
       {/* ═══════════════════════════════════════════════════ */}
       {/* TOP NAVIGATION BAR                                */}
@@ -690,10 +695,13 @@ export default function LandingAndAuthPage() {
 
 
 
-        {/* ── SECTION 2 & 3 CONTAINER WITH STRICT LAYERED STACKING SCROLL ── */}
-        <div className="relative w-full">
-          {/* Section 2 Wrapper Track: pinned strictly at top-0 */}
-          <div className="sticky top-0 z-10 w-full h-screen overflow-hidden flex items-center justify-center bg-[var(--bg-primary)]">
+        {/* ── SECTION 2 & 3: CURTAIN SCROLL — Section 2 pinned, Section 3 rolls over ── */}
+        <div className="relative w-full" style={{ zIndex: 1 }}>
+          {/* Section 2: STICKY — pinned at viewport top while parent wrapper is in view */}
+          <div
+            className="sticky top-0 w-full h-screen overflow-hidden flex items-center justify-center bg-[var(--bg-primary)]"
+            style={{ zIndex: 10 }}
+          >
             <section id="features" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
               <FadeContent effect="mist" duration={1.2} threshold={0.15}>
                 <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
@@ -815,13 +823,14 @@ export default function LandingAndAuthPage() {
             </div>
           </FadeContent>
         </section>
-      </div>
+          </div>
 
-        {/* ── SECTION 3: WHO IS IT FOR? (USER, LAWYER & ENTERPRISE) - LAYERED COVER ── */}
-        <section
-          id="for-whom"
-          className="relative z-20 py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t border-[var(--text-primary)]/15"
-        >
+          {/* Section 3: CURTAIN — scrolls up naturally over the pinned Section 2 */}
+          <section
+            id="for-whom"
+            className="relative py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t border-[var(--text-primary)]/15"
+            style={{ zIndex: 20 }}
+          >
           <div className="max-w-6xl mx-auto">
             <FadeContent effect="mist" duration={1.2} threshold={0.15}>
               <div className="text-center max-w-3xl mx-auto mb-16">
@@ -996,325 +1005,479 @@ export default function LandingAndAuthPage() {
           </FadeContent>
         </section>
 
-        {/* ── SECTION 5: REVIEWS & TESTIMONIALS ── */}
-        <section id="reviews" className="py-20 px-6 lg:px-10 max-w-6xl mx-auto w-full">
-          <FadeContent effect="mist" duration={1.2} threshold={0.15}>
-            <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-4">
-              <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
-                  {isBn ? "প্র্যাকটিশনার ও ক্লায়েন্ট অভিজ্ঞতা" : "Testimonials & Reviews"}
-                </span>
-                <h2 className="text-2xl sm:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)]">
-                  {isBn ? "বিশ্বস্ততা যা বাস্তবে প্রমাণিত" : "Proven in Bangladesh's Legal & Corporate Ecosystem"}
-                </h2>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-                <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                <span className="font-bold text-[var(--text-primary)]">4.9 / 5.0</span>
-                <span>• 450+ verified feedback</span>
-              </div>
-            </div>
-          </FadeContent>
+        {/* ── SECTION 5 & 6: CURTAIN SCROLL — Section 5 pinned, Section 6 rolls over ── */}
+        <div className="relative w-full" style={{ zIndex: 2 }}>
+          {/* Section 5: STICKY — pinned at viewport top while parent wrapper is in view */}
+          <div
+            className="sticky top-0 w-full h-screen overflow-hidden flex items-center justify-center bg-[var(--bg-primary)]"
+            style={{ zIndex: 10 }}
+          >
+            <section id="reviews" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+              <FadeContent effect="mist" duration={1.2} threshold={0.15}>
+                <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10 gap-4">
+                  <div>
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
+                      {isBn ? "প্র্যাকটিশনার ও ক্লায়েন্ট অভিজ্ঞতা" : "Testimonials & Reviews"}
+                    </span>
+                    <h2 className="text-2xl sm:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)]">
+                      {isBn ? "বিশ্বস্ততা যা বাস্তবে প্রমাণিত" : "Proven in Bangladesh's Legal & Corporate Ecosystem"}
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
+                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                    <span className="font-bold text-[var(--text-primary)]">4.9 / 5.0</span>
+                    <span>• 450+ verified feedback</span>
+                  </div>
+                </div>
+              </FadeContent>
 
-          <FadeContent effect="focus" duration={1} threshold={0.15}>
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              {/* Left selectors */}
-              <div className="lg:col-span-5 flex lg:flex-col gap-3.5 justify-between sm:justify-start overflow-visible p-2 -m-2">
-                {testimonials.map((t, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    onClick={() => handleTestimonialChange(idx)}
-                    onMouseEnter={() => handleTestimonialChange(idx)}
-                    className={`group flex items-center gap-4 p-4 sm:p-4.5 rounded-2xl transition-all duration-300 text-left cursor-pointer border relative ${
-                      activeTestimonial === idx
-                        ? "border-[var(--text-primary)]/40 bg-[var(--bg-card)] shadow-lg shadow-black/5 translate-x-1 sm:translate-x-2.5"
-                        : "border-transparent hover:bg-[var(--bg-card)]/50 opacity-60 hover:opacity-100 hover:translate-x-1"
-                    }`}
-                  >
-                    {/* Active accent pill indicator */}
-                    {activeTestimonial === idx && (
-                      <div className="absolute left-0 top-3 bottom-3 w-1 bg-amber-500 rounded-r-full" />
-                    )}
+              <FadeContent effect="focus" duration={1} threshold={0.15}>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  {/* Left selectors */}
+                  <div className="lg:col-span-5 flex lg:flex-col gap-3.5 justify-between sm:justify-start overflow-visible p-2 -m-2">
+                    {testimonials.map((t, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => handleTestimonialChange(idx)}
+                        onMouseEnter={() => handleTestimonialChange(idx)}
+                        className={`group flex items-center gap-4 p-4 sm:p-4.5 rounded-2xl transition-all duration-300 text-left cursor-pointer border relative ${
+                          activeTestimonial === idx
+                            ? "border-[var(--text-primary)]/40 bg-[var(--bg-card)] shadow-lg shadow-black/5 translate-x-1 sm:translate-x-2.5"
+                            : "border-transparent hover:bg-[var(--bg-card)]/50 opacity-60 hover:opacity-100 hover:translate-x-1"
+                        }`}
+                      >
+                        {/* Active accent pill indicator */}
+                        {activeTestimonial === idx && (
+                          <div className="absolute left-0 top-3 bottom-3 w-1 bg-amber-500 rounded-r-full" />
+                        )}
 
-                    <div className={`w-13 h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${activeTestimonial === idx ? "scale-105 shadow-md ring-2 ring-amber-500/20" : "grayscale-[40%] group-hover:grayscale-0"}`}>
-                      <Image src={t.avatar} alt={t.name} fill className="object-cover" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0 pr-2">
-                      <div className="font-semibold text-sm text-[var(--text-primary)] truncate">
-                        {t.name}
-                      </div>
-                      <div className="text-xs text-[var(--text-muted)] line-clamp-1 mt-0.5">
-                        {t.role}
-                      </div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Right featured testimonial card with smooth vertical slide effect */}
-              <div
-                className="lg:col-span-7 rounded-3xl p-8 sm:p-12 border border-[#333] text-white shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[350px]"
-                style={{ backgroundColor: "#1c1917" }}
-              >
-                {/* Background decorative subtle gradient */}
-                <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
-
-                {/* Vertical ticker animated content container */}
-                <div
-                  key={activeTestimonial}
-                  className={`relative z-10 flex flex-col justify-between h-full ${
-                    slideDirection === "down"
-                      ? "animate-[rollDownIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
-                      : "animate-[rollUpIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
-                  }`}
-                >
-                  <div className="overflow-hidden">
-                    <Quote className="w-10 h-10 text-amber-500/50 mb-5 transition-transform duration-300" />
-                    <p className="text-base sm:text-xl font-serif font-light leading-relaxed mb-8 text-neutral-100">
-                      {testimonials[activeTestimonial].quote}
-                    </p>
+                        <div className={`w-13 h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${activeTestimonial === idx ? "scale-105 shadow-md ring-2 ring-amber-500/20" : "grayscale-[40%] group-hover:grayscale-0"}`}>
+                          <Image src={t.avatar} alt={t.name} fill className="object-cover" />
+                        </div>
+                        
+                        <div className="flex-1 min-w-0 pr-2">
+                          <div className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                            {t.name}
+                          </div>
+                          <div className="text-xs text-[var(--text-muted)] line-clamp-1 mt-0.5">
+                            {t.role}
+                          </div>
+                        </div>
+                      </button>
+                    ))}
                   </div>
 
-                  <div className="pt-4 border-t border-white/10 flex items-center justify-between">
-                    <div>
-                      <div className="font-semibold text-sm text-white flex items-center gap-2">
-                        {testimonials[activeTestimonial].name}
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                  {/* Right featured testimonial card with smooth vertical slide effect */}
+                  <div
+                    className="lg:col-span-7 rounded-3xl p-6 sm:p-10 border border-[#333] text-white shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[320px]"
+                    style={{ backgroundColor: "#1c1917" }}
+                  >
+                    {/* Background decorative subtle gradient */}
+                    <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
+                    {/* Vertical ticker animated content container */}
+                    <div
+                      key={activeTestimonial}
+                      className={`relative z-10 flex flex-col justify-between h-full ${
+                        slideDirection === "down"
+                          ? "animate-[rollDownIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
+                          : "animate-[rollUpIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
+                      }`}
+                    >
+                      <div className="overflow-hidden">
+                        <Quote className="w-9 h-9 text-amber-500/50 mb-4 transition-transform duration-300" />
+                        <p className="text-sm sm:text-lg font-serif font-light leading-relaxed mb-6 text-neutral-100">
+                          {testimonials[activeTestimonial].quote}
+                        </p>
                       </div>
-                      <div className="text-xs text-neutral-400 mt-0.5">{testimonials[activeTestimonial].role}</div>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-400">
-                      {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
+
+                      <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                        <div>
+                          <div className="font-semibold text-sm text-white flex items-center gap-2">
+                            {testimonials[activeTestimonial].name}
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+                          </div>
+                          <div className="text-xs text-neutral-400 mt-0.5">{testimonials[activeTestimonial].role}</div>
+                        </div>
+                        <div className="flex items-center gap-1 text-amber-400">
+                          {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-          </FadeContent>
-        </section>
+              </FadeContent>
+            </section>
+          </div>
 
-        {/* ── SECTION 6: LEGAL ADVICE / Q&A FORM ── */}
-        <section id="consultation" className="py-20 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] border-t border-[var(--text-primary)]/10">
-          <div className="max-w-6xl mx-auto">
-            <FadeContent effect="focus" duration={1.1} threshold={0.12}>
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-                {/* Left Form */}
-                <div className="lg:col-span-7">
-                  <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
-                    {isBn ? "আইনি পরামর্শ ও প্রশ্নোত্তর" : "Legal Advice & Inquiry"}
-                  </span>
-                  <h2 className="text-2xl sm:text-4xl font-serif font-medium tracking-tight mb-4 text-[var(--text-primary)]">
-                    {isBn ? "আপনার চুক্তি বা আইনি প্রশ্ন জিজ্ঞাসা করুন" : "Have a Contract or Legal Question? Ask Our Specialists"}
-                  </h2>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] mb-8 leading-relaxed">
-                    {isBn
-                      ? "আপনার আইনি জিজ্ঞাসা বা অডিট করতে চাওয়া চুক্তির বিবরণ নিচে জমা দিন। আমাদের প্ল্যাটফর্ম ও সুপ্রিম কোর্ট আইনজীবী প্যানেল আপনাকে দ্রুত ও সঠিক সমাধান প্রদান করবে।"
-                      : "Submit your query or contract brief. Our legal intelligence pipeline and panel of enrolled advocates provide precise statutory guidance."}
-                  </p>
+          {/* Section 6: CURTAIN — scrolls up naturally over the pinned Section 5 */}
+          <section
+            id="consultation"
+            className="relative py-20 sm:py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t border-[var(--text-primary)]/15"
+            style={{ zIndex: 20 }}
+          >
+            <div className="max-w-6xl mx-auto">
+              <FadeContent effect="focus" duration={1.1} threshold={0.12}>
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                  {/* Left Form */}
+                  <div className="lg:col-span-7">
+                    <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
+                      {isBn ? "আইনি পরামর্শ ও প্রশ্নোত্তর" : "Legal Advice & Inquiry"}
+                    </span>
+                    <h2 className="text-2xl sm:text-4xl font-serif font-medium tracking-tight mb-4 text-[var(--text-primary)]">
+                      {isBn ? "আপনার চুক্তি বা আইনি প্রশ্ন জিজ্ঞাসা করুন" : "Have a Contract or Legal Question? Ask Our Specialists"}
+                    </h2>
+                    <p className="text-xs sm:text-sm text-[var(--text-muted)] mb-8 leading-relaxed">
+                      {isBn
+                        ? "আপনার আইনি জিজ্ঞাসা বা অডিট করতে চাওয়া চুক্তির বিবরণ নিচে জমা দিন। আমাদের প্ল্যাটফর্ম ও সুপ্রিম কোর্ট আইনজীবী প্যানেল আপনাকে দ্রুত ও সঠিক সমাধান প্রদান করবে।"
+                        : "Submit your query or contract brief. Our legal intelligence pipeline and panel of enrolled advocates provide precise statutory guidance."}
+                    </p>
 
-                  <form onSubmit={(e) => { e.preventDefault(); openLoginModal(false); }} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <form onSubmit={(e) => { e.preventDefault(); openLoginModal(false); }} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "আপনার নাম" : "Your Name"}
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder={isBn ? "যেমন: তানভীর আহমেদ" : "e.g., Tanvir Ahmed"}
+                            className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "ইমেইল বা ফোন নম্বর" : "Email or Phone"}
+                          </label>
+                          <input
+                            type="text"
+                            required
+                            placeholder={isBn ? "017XXXXXXXX বা email@domain.com" : "contact@domain.com"}
+                            className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
+                          />
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                          {isBn ? "আপনার নাম" : "Your Name"}
+                          {isBn ? "আইনি বিষয় বা সেবার ক্ষেত্র" : "Legal Matter Category"}
                         </label>
-                        <input
-                          type="text"
+                        <select className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                          <option value="contract">{isBn ? "বাণিজ্যিক চুক্তি অডিট ও রিভিউ (Commercial Contract)" : "Commercial Contract Audit & Redline"}</option>
+                          <option value="labor">{isBn ? "চাকরি ও বাংলাদেশ শ্রম আইন ২০০৬ (Employment / Labour Law)" : "Employment & Labour Law 2006 Compliance"}</option>
+                          <option value="corporate">{isBn ? "কোম্পানি আইন ও পার্টনারশিপ বিরোধ (Corporate / Partnership)" : "Corporate Governance & Partnership Disputes"}</option>
+                          <option value="property">{isBn ? "ভূমি ও সম্পত্তি দলিল যাচাই (Property / Land Title)" : "Property & Land Title Vetting"}</option>
+                          <option value="general">{isBn ? "সাধারণ দেওয়ানি ও অন্যান্য আইনি পরামর্শ (General Legal Query)" : "General Legal Advice / Other Inquiries"}</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                          {isBn ? "আপনার প্রশ্ন বা চুক্তির সংক্ষিপ্ত বিবরণ" : "Describe Your Query or Contract Detail"}
+                        </label>
+                        <textarea
+                          rows={4}
                           required
-                          placeholder={isBn ? "যেমন: তানভীর আহমেদ" : "e.g., Tanvir Ahmed"}
+                          placeholder={isBn ? "চুক্তির ধারা, বিরোধের বিবরণ বা আইনি প্রশ্নটি বিস্তারিত লিখুন..." : "Outline your specific clauses, concerns, or legal query..."}
                           className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                         />
                       </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                          {isBn ? "ইমেইল বা ফোন নম্বর" : "Email or Phone"}
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder={isBn ? "017XXXXXXXX বা email@domain.com" : "contact@domain.com"}
-                          className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
-                        />
+
+                      <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <button
+                          type="submit"
+                          className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-md active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                        >
+                          <span>{isBn ? "পরামর্শের জন্য অনুরোধ পাঠান" : "Submit Consultation Request"}</span>
+                          <ArrowUpRight className="w-4 h-4" />
+                        </button>
+                        <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
+                          <Shield className="w-3.5 h-3.5 text-emerald-500" />
+                          <span>{isBn ? "আপনার তথ্য সম্পূর্ণ সুরক্ষিত ও গোপনীয়" : "Encrypted & 100% Confidential"}</span>
+                        </span>
                       </div>
-                    </div>
+                    </form>
+                  </div>
 
-                    <div>
-                      <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                        {isBn ? "আইনি বিষয় বা সেবার ক্ষেত্র" : "Legal Matter Category"}
-                      </label>
-                      <select className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                        <option value="contract">{isBn ? "বাণিজ্যিক চুক্তি অডিট ও রিভিউ (Commercial Contract)" : "Commercial Contract Audit & Redline"}</option>
-                        <option value="labor">{isBn ? "চাকরি ও বাংলাদেশ শ্রম আইন ২০০৬ (Employment / Labour Law)" : "Employment & Labour Law 2006 Compliance"}</option>
-                        <option value="corporate">{isBn ? "কোম্পানি আইন ও পার্টনারশিপ বিরোধ (Corporate / Partnership)" : "Corporate Governance & Partnership Disputes"}</option>
-                        <option value="property">{isBn ? "ভূমি ও সম্পত্তি দলিল যাচাই (Property / Land Title)" : "Property & Land Title Vetting"}</option>
-                        <option value="general">{isBn ? "সাধারণ দেওয়ানি ও অন্যান্য আইনি পরামর্শ (General Legal Query)" : "General Legal Advice / Other Inquiries"}</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                        {isBn ? "আপনার প্রশ্ন বা চুক্তির সংক্ষিপ্ত বিবরণ" : "Describe Your Query or Contract Detail"}
-                      </label>
-                      <textarea
-                        rows={4}
-                        required
-                        placeholder={isBn ? "চুক্তির ধারা, বিরোধের বিবরণ বা আইনি প্রশ্নটি বিস্তারিত লিখুন..." : "Outline your specific clauses, concerns, or legal query..."}
-                        className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
+                  {/* Right Visual Card: Interactive PixelSwap between Day / Classic Courtroom and Modern Chamber */}
+                  <div className="lg:col-span-5 flex flex-col gap-6">
+                    <div
+                      className={`relative w-full h-[320px] sm:h-[400px] rounded-3xl overflow-hidden border ${borderClass} shadow-2xl bg-[var(--bg-card)] group`}
+                    >
+                      <PixelSwap
+                        firstContent={
+                          <img
+                            src="/carlos-javier-yuste-jimenez-EoPb1QSkpvQ-unsplash.jpg"
+                            alt="Legal Counsel Chamber"
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        }
+                        secondContent={
+                          <img
+                            src="/sasun-bughdaryan-YFz39MOmxnQ-unsplash.jpg"
+                            alt="Supreme Court Architecture"
+                            style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                          />
+                        }
+                        pattern="pointer"
+                        pixelSize={42}
+                        pixelRadius={0}
+                        duration={400}
+                        pixelDuration={350}
+                        randomness={0.2}
+                        bounce={0.25}
+                        trigger="hover"
+                        style={{ width: "100%", height: "100%", borderRadius: "1.5rem" }}
+                        gap={0}
+                        pixelScale={0}
+                        pixelSpin={0}
+                        intro={false}
                       />
                     </div>
 
-                    <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className={`p-4 rounded-2xl bg-[var(--bg-card)] border ${borderClass} flex items-center gap-3.5 shadow-xs`}>
+                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                        <Phone className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold text-[var(--text-primary)]">{isBn ? "জরুরি আইনি সহায়তা ডেস্ক" : "Urgent Legal Helpline"}</div>
+                        <div className="text-[11px] text-[var(--text-muted)]">+880 1700-000000 • support@legalcopilot.bd</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </FadeContent>
+            </div>
+          </section>
+        </div>
+
+        {/* ── SECTION 7: EDITORIAL TABBED HANGING-CARD FOOTER (Our Native Theme Palette) ── */}
+        <footer className="relative bg-[var(--bg-surface)] text-[var(--text-primary)] overflow-visible">
+          {/* Main Container */}
+          <div className="max-w-7xl mx-auto px-6 lg:px-10">
+            {/* Desktop 3-part layout / Mobile stacked layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
+              
+              {/* Left Column Group: 2 Sub-Columns */}
+              <div className="order-2 lg:order-1 lg:col-span-4 grid grid-cols-2 gap-6 pt-6 lg:pt-14 pb-4">
+                {/* Col 1: Platform & Capabilities */}
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)] flex items-center gap-1.5">
+                    <span>{isBn ? "প্রোডাক্ট ফিচার" : "Core Products"}</span>
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-[var(--text-muted)]">
+                    <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">Advotech Copilot Chat</a></li>
+                    <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">ContractMind Audit</a></li>
+                    <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রিস্ক স্কোরিং ইঞ্জিন" : "Risk Scoring Engine"}</a></li>
+                    <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রেডলাইন ক্লজ ড্রাফট" : "Redline Clause Drafting"}</a></li>
+                    <li><a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "এন্টারপ্রাইজ পোর্টাল" : "Enterprise Portal"}</a></li>
+                  </ul>
+                </div>
+
+                {/* Col 2: Statutory Acts */}
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
+                    {isBn ? "আইনগত ক্ষেত্র" : "Statutory Acts"}
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-[var(--text-muted)]">
+                    <li>The Contract Act, 1872</li>
+                    <li>Bangladesh Labour Act, 2006</li>
+                    <li>Arbitration Act, 2001</li>
+                    <li>Transfer of Property Act, 1882</li>
+                    <li>Companies Act, 1994</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Center Elevated Tabbed Hanging Card (Website's native card theme) */}
+              <div className="order-1 lg:order-2 lg:col-span-4 flex justify-center -translate-y-8 sm:-translate-y-12 z-30">
+                <div className="relative w-full max-w-md bg-[var(--bg-card)] text-[var(--text-primary)] rounded-b-[28px] sm:rounded-b-[36px] p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.6)] border-x border-b border-[var(--text-primary)]/15 text-center">
+                  
+                  {/* Left 3D Fold Ribbon Flap */}
+                  <div className="absolute top-0 -left-4 sm:-left-5 w-4 sm:w-5 h-4 sm:h-5 overflow-hidden pointer-events-none">
+                    <svg viewBox="0 0 20 20" className="w-full h-full fill-[var(--text-primary)]/20">
+                      <polygon points="20,0 0,20 20,20" />
+                    </svg>
+                  </div>
+
+                  {/* Right 3D Fold Ribbon Flap */}
+                  <div className="absolute top-0 -right-4 sm:-right-5 w-4 sm:w-5 h-4 sm:h-5 overflow-hidden pointer-events-none">
+                    <svg viewBox="0 0 20 20" className="w-full h-full fill-[var(--text-primary)]/20">
+                      <polygon points="0,0 0,20 20,20" />
+                    </svg>
+                  </div>
+
+                  {/* Brand Crest & Tagline */}
+                  <div className="flex items-center justify-center gap-2 mb-1.5">
+                    <div className="w-7 h-7 rounded-xl bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center shadow-xs">
+                      <Scale className="w-4 h-4" />
+                    </div>
+                    <span className="font-serif font-bold text-lg sm:text-xl tracking-tight text-[var(--text-primary)]">
+                      ADVOTECH COPILOT
+                    </span>
+                  </div>
+                  <div className="text-[10px] uppercase font-bold tracking-[0.2em] text-[var(--text-muted)] mb-4">
+                    {isBn ? "সার্বভৌম আইনি প্রযুক্তি • প্রতিষ্ঠিত ২০২৬" : "STATUTORY LEGAL PIONEERS SINCE 2026"}
+                  </div>
+
+                  {/* Main Pitch */}
+                  <h3 className="font-serif text-lg sm:text-xl font-medium text-[var(--text-primary)] mb-2 leading-snug">
+                    {isBn ? "আইনি রূপান্তরের অংশীদার হোন" : "Be a Part of Our Journey"}
+                  </h3>
+                  <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-5 max-w-xs mx-auto">
+                    {isBn
+                      ? "সুপ্রিম কোর্টের গুরুত্বপূর্ণ নজির ও সংবিধিবদ্ধ চুক্তির সাপ্তাহিক ব্রিফ সরাসরি আপনার ইনবক্সে পেতে যুক্ত থাকুন।"
+                      : "Sign up for landmark High Court precedents, statutory amendments, and weekly contract insights."}
+                  </p>
+
+                  {/* Clean Newsletter Input Group */}
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      if (newsletterEmail.trim()) {
+                        setNewsletterSubscribed(true);
+                      }
+                    }}
+                    className="w-full max-w-xs mx-auto"
+                  >
+                    <div className="flex flex-col sm:flex-row items-stretch rounded-xl sm:rounded-2xl overflow-hidden shadow-xs border border-[var(--text-primary)]/15 bg-[var(--bg-surface)]">
+                      <input
+                        type="text"
+                        required
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                        placeholder={isBn ? "আপনার ইমেইল বা ফোন" : "Email Address"}
+                        className="w-full px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-transparent outline-none font-medium"
+                      />
                       <button
                         type="submit"
-                        className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-md active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                        className="px-5 py-2.5 bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 active:scale-95 text-xs font-semibold tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
                       >
-                        <span>{isBn ? "পরামর্শের জন্য অনুরোধ পাঠান" : "Submit Consultation Request"}</span>
-                        <ArrowUpRight className="w-4 h-4" />
+                        <span>
+                          {newsletterSubscribed
+                            ? (isBn ? "যুক্ত হয়েছেন" : "Subscribed")
+                            : (isBn ? "সাবস্ক্রাইব" : "Subscribe")}
+                        </span>
+                        {newsletterSubscribed && <Check className="w-3.5 h-3.5 text-emerald-500" />}
                       </button>
-                      <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
-                        <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                        <span>{isBn ? "আপনার তথ্য সম্পূর্ণ সুরক্ষিত ও গোপনীয়" : "Encrypted & 100% Confidential"}</span>
-                      </span>
                     </div>
+
+                    {newsletterSubscribed && (
+                      <div className="mt-2.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5 animate-fadeIn">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{isBn ? "সফলভাবে যুক্ত হয়েছেন! ধন্যবাদ।" : "Welcome! You are on our legal digest list."}</span>
+                      </div>
+                    )}
                   </form>
                 </div>
+              </div>
 
-                {/* Right Visual Card: Interactive PixelSwap between Day / Classic Courtroom and Modern Chamber */}
-                <div className="lg:col-span-5 flex flex-col gap-6">
-                  <div
-                    className={`relative w-full h-[320px] sm:h-[400px] rounded-3xl overflow-hidden border ${borderClass} shadow-2xl bg-[var(--bg-card)] group`}
-                  >
-                    <PixelSwap
-                      firstContent={
-                        <img
-                          src="/carlos-javier-yuste-jimenez-EoPb1QSkpvQ-unsplash.jpg"
-                          alt="Legal Counsel Chamber"
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              {/* Right Column Group: Important Links & Connect With Us */}
+              <div className="order-3 lg:col-span-4 grid grid-cols-2 gap-6 pt-6 lg:pt-14 pb-4">
+                {/* Col 3: Important Links */}
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
+                    {isBn ? "প্রয়োজনীয় লিঙ্ক" : "Important Links"}
+                  </div>
+                  <ul className="space-y-2.5 text-xs text-[var(--text-muted)]">
+                    <li><a href="#" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "হোম পেজ" : "Home"}</a></li>
+                    <li><a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}</a></li>
+                    <li><a href="#reviews" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ক্লায়েন্ট রিভিউ" : "Client Reviews"}</a></li>
+                    <li><a href="#consultation" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ফর্ম" : "Consultation Form"}</a></li>
+                    <li>
+                      <button
+                        type="button"
+                        onClick={() => openLoginModal(false)}
+                        className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                      >
+                        {isBn ? "লগইন / সাইন আপ" : "Sign In / Register"}
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+
+                {/* Col 4: Connect With Us & Circular Stamp Badge */}
+                <div>
+                  <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
+                    {isBn ? "যোগাযোগ ও সোশ্যাল" : "Connect With Us"}
+                  </div>
+                  
+                  {/* Social Media Icons */}
+                  <div className="flex items-center gap-3 mb-5 text-[var(--text-muted)]">
+                    {/* Facebook */}
+                    <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                      </svg>
+                    </a>
+                    {/* Instagram */}
+                    <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
+                      <svg className="w-4 h-4 fill-none stroke-current stroke-2 stroke-linecap-round stroke-linejoin-round" viewBox="0 0 24 24">
+                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+                      </svg>
+                    </a>
+                    {/* YouTube */}
+                    <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
+                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="var(--bg-surface)" />
+                      </svg>
+                    </a>
+                    {/* X (Twitter) */}
+                    <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
+                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                      </svg>
+                    </a>
+                    {/* LinkedIn */}
+                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
+                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+                      </svg>
+                    </a>
+                  </div>
+
+                  {/* Circular Quality / Statutory Guarantee Seal Badge */}
+                  <div className="flex items-center gap-3 pt-1">
+                    <div className="relative w-13 h-13 rounded-full border border-[var(--text-primary)]/15 p-1 flex items-center justify-center bg-[var(--bg-card)] hover:border-amber-500/50 transition-all group shrink-0 shadow-xs">
+                      <svg className="w-full h-full animate-[spin_24s_linear_infinite]" viewBox="0 0 100 100">
+                        <path
+                          id="sealPath"
+                          d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0"
+                          fill="none"
                         />
-                      }
-                      secondContent={
-                        <img
-                          src="/sasun-bughdaryan-YFz39MOmxnQ-unsplash.jpg"
-                          alt="Supreme Court Architecture"
-                          style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        />
-                      }
-                      pattern="pointer"
-                      pixelSize={42}
-                      pixelRadius={0}
-                      duration={400}
-                      pixelDuration={350}
-                      randomness={0.2}
-                      bounce={0.25}
-                      trigger="hover"
-                      style={{ width: "100%", height: "100%", borderRadius: "1.5rem" }}
-                      gap={0}
-                      pixelScale={0}
-                      pixelSpin={0}
-                      intro={false}
-                    />
-                  </div>
-
-                  <div className={`p-4 rounded-2xl bg-[var(--bg-card)] border ${borderClass} flex items-center gap-3.5 shadow-xs`}>
-                    <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-                      <Phone className="w-5 h-5" />
+                        <text className="text-[9px] uppercase tracking-[0.24em] fill-[var(--text-muted)] font-medium">
+                          <textPath href="#sealPath" startOffset="0%">
+                            • STATUTORY GROUNDED • BDLAWS ACCREDITED
+                          </textPath>
+                        </text>
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
+                        <Scale className="w-3.5 h-3.5" />
+                        <span className="text-[6.5px] font-bold tracking-tighter uppercase text-[var(--text-primary)]">100%</span>
+                      </div>
                     </div>
-                    <div className="min-w-0">
-                      <div className="text-xs font-bold text-[var(--text-primary)]">{isBn ? "জরুরি আইনি সহায়তা ডেস্ক" : "Urgent Legal Helpline"}</div>
-                      <div className="text-[11px] text-[var(--text-muted)]">+880 1700-000000 • support@legalcopilot.bd</div>
+                    <div className="text-[11px] text-[var(--text-muted)] leading-tight">
+                      <div className="font-semibold text-[var(--text-primary)]">Supreme Court</div>
+                      <div className="text-[10px]">Statutory Grounded AI</div>
                     </div>
                   </div>
                 </div>
               </div>
-            </FadeContent>
-          </div>
-        </section>
 
-        {/* ── SECTION 7: MODERN COMPREHENSIVE FOOTER ── */}
-        <footer className="mt-auto pt-16 pb-12 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] border-t border-[var(--text-primary)]/10">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-10 mb-16">
-              {/* Col 1 & 2: Brand & Mission */}
-              <div className="sm:col-span-2">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-9 h-9 rounded-xl flex items-center justify-center shadow-sm bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                    <Scale className="w-5 h-5" />
-                  </div>
-                  <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-[var(--text-primary)]">
-                    Advotech Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6 max-w-sm">
-                  {isBn
-                    ? "বাংলাদেশের প্রথম সার্বভৌম ও সংবিধিবদ্ধ আইন সংহিতা (bdlaws) সমর্থিত এডভোটেক কোপাইলট ও এআই কন্ট্রাক্ট অডিট প্ল্যাটফর্ম।"
-                    : "Bangladesh's premier statutory AI platform for legal intelligence, contract risk audits, and verified dispute resolution."}
-                </p>
-                <div className="text-xs text-[var(--text-muted)] space-y-1">
-                  <div>Dhaka, Bangladesh • Supreme Court Bar Chamber</div>
-                  <div>Security Standard: 256-bit Client-Side PII Redaction</div>
-                </div>
-              </div>
-
-              {/* Col 3: Core Products */}
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
-                  {isBn ? "প্ল্যাটফর্ম ফিচার" : "Core Products"}
-                </div>
-                <ul className="space-y-2.5 text-xs text-[var(--text-muted)]">
-                  <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">Advotech Copilot Chat</a></li>
-                  <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">ContractMind Audit</a></li>
-                  <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রিস্ক স্কোরিং ইঞ্জিন" : "Risk Scoring Engine"}</a></li>
-                  <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রেডলাইন ক্লজ ড্রাফট" : "Redline Clause Drafting"}</a></li>
-                  <li><a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "এন্টারপ্রাইজ পোর্টাল" : "Enterprise Portal"}</a></li>
-                </ul>
-              </div>
-
-              {/* Col 4: Statutory Acts Covered */}
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
-                  {isBn ? "আইনগত ক্ষেত্রসমূহ" : "Statutory Coverage"}
-                </div>
-                <ul className="space-y-2.5 text-xs text-[var(--text-muted)]">
-                  <li>The Contract Act, 1872</li>
-                  <li>Bangladesh Labour Act, 2006</li>
-                  <li>Arbitration Act, 2001</li>
-                  <li>Transfer of Property Act, 1882</li>
-                  <li>Companies Act, 1994</li>
-                </ul>
-              </div>
-
-              {/* Col 5: Navigation & Auth */}
-              <div>
-                <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
-                  {isBn ? "কুইক লিঙ্কস" : "Navigation"}
-                </div>
-                <ul className="space-y-2.5 text-xs text-[var(--text-muted)]">
-                  <li><a href="#" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "হোম পেজ" : "Home"}</a></li>
-                  <li><a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}</a></li>
-                  <li><a href="#reviews" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ক্লায়েন্ট রিভিউ" : "Client Reviews"}</a></li>
-                  <li><a href="#consultation" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ফর্ম" : "Consultation Form"}</a></li>
-                  <li>
-                    <button
-                      type="button"
-                      onClick={() => openLoginModal(false)}
-                      className="font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                    >
-                      {isBn ? "লগইন / সাইন আপ" : "Sign In / Register"}
-                    </button>
-                  </li>
-                </ul>
-              </div>
             </div>
 
-            {/* Footer Bottom Bar with Giant Watermark */}
-            <div className="pt-8 border-t border-[var(--text-primary)]/10 flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div className="text-3xl sm:text-5xl md:text-6xl font-serif font-black tracking-tight text-[var(--text-primary)]/10 select-none">
-                Advotech Copilot.
+            {/* Footer Bottom Bar */}
+            <div className="mt-12 pt-6 border-t border-[var(--text-primary)]/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--text-muted)]">
+              <div>
+                © 2026, All Rights Reserved Advotech Copilot & ContractMind
               </div>
-              <div className="text-xs text-[var(--text-muted)] text-center sm:text-right">
-                © 2026 Advotech Bangladesh. {isBn ? "সর্বস্বত্ব সংরক্ষিত।" : "All Rights Reserved."}
+              <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
+                <span>Made with <span className="text-red-500">❤️</span> and ⚖️ in Dhaka, Bangladesh</span>
               </div>
             </div>
           </div>
