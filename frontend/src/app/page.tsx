@@ -160,6 +160,14 @@ export default function LandingAndAuthPage() {
   // Registration form submit → call backend, move to OTP step
   const handleStartFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (regPassword.length < 6) {
+      setPasswordError(
+        language === "bn"
+          ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।"
+          : "Password must be at least 6 characters."
+      );
+      return;
+    }
     if (regPassword !== regConfirmPassword) {
       setPasswordError(
         language === "bn"
@@ -206,16 +214,28 @@ export default function LandingAndAuthPage() {
           : language === "bn"
           ? "নিবন্ধন ব্যর্থ হয়েছে। ইনপুটগুলো পুনরায় চেক করুন।"
           : "Registration failed. Please check your inputs.";
-      setAuthError(msg);
+
       if (
         msg.toLowerCase().includes("exists") ||
         msg.toLowerCase().includes("already") ||
         msg.toLowerCase().includes("registered")
       ) {
-        setPendingOtpEmail(regEmail);
-        setOtpInput("");
-        setOtpError("");
-        setRegStep("otp");
+        // Email already registered — switch to sign-in view
+        setAuthError(
+          language === "bn"
+            ? "এই ইমেইল ইতিমধ্যে নিবন্ধিত। অনুগ্রহ করে লগইন করুন।"
+            : "This email is already registered. Please log in."
+        );
+        setLoginEmail(regEmail);
+        setIsSignUp(false);
+      } else if (msg.toLowerCase().includes("password") && msg.toLowerCase().includes("6")) {
+        setPasswordError(
+          language === "bn"
+            ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।"
+            : "Password must be at least 6 characters."
+        );
+      } else {
+        setAuthError(msg);
       }
     } finally {
       setAuthLoading(false);
