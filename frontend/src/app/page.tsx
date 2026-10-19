@@ -52,6 +52,8 @@ export default function LandingAndAuthPage() {
     registerEmail,
     verifyOtp,
     resendOtp,
+    onboardLawyer,
+    onboardEnterprise,
     user,
   } = useAuth();
 
@@ -220,7 +222,7 @@ export default function LandingAndAuthPage() {
     }
   };
 
-  // OTP verify — real API with graceful fallback
+  // OTP verify — real API, then onboard if lawyer/enterprise
   const handleVerifyOtpAndComplete = async () => {
     if (!otpInput.trim() || otpInput.trim().length < 4) {
       setOtpError(
@@ -234,6 +236,35 @@ export default function LandingAndAuthPage() {
     setAuthLoading(true);
     try {
       await verifyOtp({ email: pendingOtpEmail || regEmail, otp: otpInput.trim() });
+
+      // After OTP verification, call onboard API to upgrade role from GENERAL
+      if (selectedRole === "lawyer") {
+        try {
+          await onboardLawyer({
+            bar_council_id: barCouncilNo,
+            field_of_law: fieldOfLaw,
+            specializations: [fieldOfLaw],
+          });
+        } catch (onboardErr) {
+          console.error("Lawyer onboard failed:", onboardErr);
+          // Still proceed — user can retry onboarding from lawyer page
+        }
+      } else if (selectedRole === "enterprise" && entTab === "company") {
+        try {
+          await onboardEnterprise({
+            company_name: companyName,
+            company_type: companyType,
+            registration_no: registrationNo,
+            tin_no: tinNo,
+            member_limit: memberCount,
+            billing_email: regEmail,
+          });
+        } catch (onboardErr) {
+          console.error("Enterprise onboard failed:", onboardErr);
+          // Still proceed — user can retry onboarding from enterprise page
+        }
+      }
+
       closeModal();
       if (selectedRole === "lawyer") router.push("/lawyer/pending");
       else if (selectedRole === "enterprise") router.push("/enterprise/admin");
