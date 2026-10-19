@@ -8,11 +8,9 @@ import { getToken, clearAuth } from "@/lib/auth";
 
 const LIVE_BACKEND_URL = "https://legal-copilot-backend-npq7.onrender.com";
 
-// In the browser, prefer same-origin relative URLs (proxied by Next.js rewrites in next.config.ts)
-// to prevent CORS failures when accessing from 127.0.0.1, custom ports, or local networks.
 const BASE_URL =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-  (typeof window !== "undefined" ? "" : LIVE_BACKEND_URL);
+  LIVE_BACKEND_URL;
 
 type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -73,10 +71,10 @@ async function request<T>(
     });
   } catch (netErr: any) {
     if (netErr?.name === "AbortError") {
-      console.warn(`[API Timeout] ${method} ${fullUrl} exceeded 35s`);
+      console.error(`[API Timeout] ${method} ${fullUrl} exceeded 35s`);
       throw new ApiError(408, "Request timed out after 35s. AI model might be busy.");
     }
-    console.warn(`[API Network Notice] ${method} ${fullUrl}:`, netErr?.message || String(netErr));
+    console.error(`[API Network Error] ${method} ${fullUrl}:`, netErr);
     throw new ApiError(0, "Network connection error. Please verify backend connectivity.");
   } finally {
     clearTimeout(timeoutId);

@@ -44,7 +44,7 @@ import {
 export default function ContractMindPage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user, updateUser, refreshUser } = useAuth();
+  const { user } = useAuth();
   const isBn = language === "bn";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -141,7 +141,6 @@ export default function ContractMindPage() {
       const result = await uploadContract(file);
       setApiContractId(String(result.contract_id));
       setApiAuditResult(result);
-      if (refreshUser) refreshUser().catch(() => {});
       setIsAnalyzing(false);
       setIsLoaded(true);
     } catch (err: any) {
@@ -180,7 +179,6 @@ export default function ContractMindPage() {
         const result = await uploadContract(file);
         setApiContractId(String(result.contract_id));
         setApiAuditResult(result);
-        if (refreshUser) refreshUser().catch(() => {});
         setIsAnalyzing(false);
         setIsLoaded(true);
       } catch (err: any) {
@@ -203,12 +201,7 @@ export default function ContractMindPage() {
     // Try real API first (if user has uploaded a contract)
     if (apiContractId) {
       try {
-        const verifRes = await requestLawyerVerification(apiContractId);
-        if (verifRes?.credits_deducted && updateUser && user?.creditBalance != null) {
-          updateUser({ creditBalance: Math.max(0, user.creditBalance - verifRes.credits_deducted) });
-        } else if (refreshUser) {
-          refreshUser().catch(() => {});
-        }
+        await requestLawyerVerification(apiContractId);
       } catch (err: any) {
         alert(err.message || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
         setIsDispatching(false);
