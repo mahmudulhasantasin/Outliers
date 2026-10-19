@@ -360,10 +360,10 @@ export default function ContractMindPage() {
           <div className="max-w-3xl mx-auto pt-16 sm:pt-24 px-4 flex flex-col items-center text-center">
             
             {/* Header */}
-            <h1 className="text-4xl sm:text-5xl font-serif font-normal text-black dark:text-white tracking-tight mb-3">
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-[var(--text-primary)]">
               {language === "bn" ? "কন্ট্রাক্টমাইন্ড" : "ContractMind"}
             </h1>
-            <p className="text-base sm:text-lg text-neutral-500 max-w-xl mx-auto font-sans leading-relaxed mb-8">
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-lg mx-auto font-normal leading-relaxed mb-8">
               {language === "bn"
                 ? "চুক্তিপত্র আপলোড করে বাংলাদেশ শ্রম ও চুক্তি আইনের আলোকে স্বয়ংক্রিয় অডিট ও নিরাপদ রেডলাইন প্রস্তুত করুন।"
                 : "Upload any contract to audit statutory violations and generate compliant redlines under Bangladesh law."}
@@ -387,16 +387,16 @@ export default function ContractMindPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => fileInputRef.current?.click()}
-              className="w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-6" style={{ backgroundColor: "var(--bg-surface)" }}
+              className="w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-6 bg-[var(--bg-surface)]"
             >
-              <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4" style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}>
+              <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4 bg-[var(--bg-card)] text-[var(--text-primary)]">
                 <Upload className="w-6 h-6 stroke-[2]" />
               </div>
 
               {isAnalyzing ? (
                 <div className="space-y-2 text-center py-2">
                   <div className="w-5 h-5 rounded-full border-2 border-neutral-300 border-t-black dark:border-t-white animate-spin mx-auto" />
-                  <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200">
+                  <p className="text-sm font-medium text-[var(--text-primary)]">
                     {language === "bn"
                       ? "চুক্তি আপলোড ও বিশ্লেষণ করা হচ্ছে..."
                       : "Uploading and evaluating contract against statutory provisions..."}
@@ -404,19 +404,19 @@ export default function ContractMindPage() {
                 </div>
               ) : (
                 <>
-                  <p className="text-base font-semibold mb-1" style={{ color: "var(--text-primary)" }}>
+                  <p className="text-base font-semibold mb-1 text-[var(--text-primary)]">
                     {language === "bn"
                       ? "চুক্তির ফাইল এখানে ড্রপ করুন অথবা ব্রাউজ করুন"
                       : "Drop contract PDF or DOCX here, or browse"}
                   </p>
-                  <p className="text-xs text-neutral-400">
+                  <p className="text-xs text-[var(--text-muted)]">
                     {language === "bn"
                       ? "সমর্থিত ফরম্যাট: .PDF, .DOCX, .DOC, .PNG, .JPG (সর্বোচ্চ ১৫ মেগাবাইট)"
                       : "Supported formats: .PDF, .DOCX, .DOC, .PNG, .JPG (Max 15MB)"}
                   </p>
                   <button
                     type="button"
-                    className="mt-6 px-5 py-2.5 rounded-full bg-black dark:bg-white text-white dark:text-black text-xs font-semibold hover:opacity-90 transition-opacity shadow-sm"
+                    className="mt-6 px-5 py-2.5 rounded-full bg-[var(--accent-solid)] text-[var(--accent-contrast)] text-xs font-semibold hover:opacity-90 transition-opacity shadow-sm cursor-pointer"
                   >
                     {language === "bn" ? "ফাইল নির্বাচন করুন" : "Browse Files"}
                   </button>
