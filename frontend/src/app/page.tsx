@@ -690,8 +690,11 @@ export default function LandingAndAuthPage() {
 
 
 
-        {/* ── SECTION 2: APP ER MAIN DUITA FEATURE (LEGAL COPILOT & CONTRACTMIND) ── */}
-        <section id="features" className="py-16 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+        {/* ── SECTION 2: APP ER MAIN DUITA FEATURE (LEGAL COPILOT & CONTRACTMIND) - PINNED / STICKY ── */}
+        <section
+          id="features"
+          className="sticky top-16 z-10 py-16 px-6 lg:px-10 max-w-6xl mx-auto w-full min-h-[90vh] flex flex-col justify-center"
+        >
           <FadeContent effect="mist" duration={1.2} threshold={0.15}>
             <div className="text-center max-w-2xl mx-auto mb-12">
               <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
@@ -813,8 +816,11 @@ export default function LandingAndAuthPage() {
           </FadeContent>
         </section>
 
-        {/* ── SECTION 3: WHO IS IT FOR? (USER, LAWYER & ENTERPRISE) ── */}
-        <section id="for-whom" className="py-20 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] border-y border-[var(--text-primary)]/10">
+        {/* ── SECTION 3: WHO IS IT FOR? (USER, LAWYER & ENTERPRISE) - LAYERED COVER ── */}
+        <section
+          id="for-whom"
+          className="relative z-20 py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-25px_60px_rgba(0,0,0,0.18)] border-t border-[var(--text-primary)]/15"
+        >
           <div className="max-w-6xl mx-auto">
             <FadeContent effect="mist" duration={1.2} threshold={0.15}>
               <div className="text-center max-w-3xl mx-auto mb-16">
