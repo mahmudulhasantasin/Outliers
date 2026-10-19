@@ -36,6 +36,7 @@ import {
   Lock,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
+import DitherVeil from "@/components/effects/DitherVeil";
 
 type RegistrationStep = "role" | "form" | "otp";
 type SelectedRole = "general" | "lawyer" | "enterprise" | null;
@@ -575,25 +576,34 @@ export default function LandingAndAuthPage() {
                 </p>
               </div>
 
-              {/* ── Central Character Container: Firefly Transparent Statue ── */}
+              {/* ── Central Character Container: Firefly with Interactive DitherVeil Effect ── */}
               <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
                 
                 {/* Backlight halo glow */}
                 <div className="absolute inset-8 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-2xl pointer-events-none" />
 
-                {/* Central Statue / Character Image */}
-                <div className="relative w-full h-full transform hover:scale-105 transition-transform duration-700 ease-out">
-                  <Image
+                {/* Interactive DitherVeil Container */}
+                <div className="relative w-full h-full rounded-2xl overflow-hidden cursor-crosshair">
+                  <DitherVeil
                     src="/Firefly.png"
-                    alt="Lady Justice Bronze Statue with Scales"
-                    fill
-                    priority
-                    sizes="(max-width: 768px) 100vw, 540px"
-                    className="object-contain select-none pointer-events-none"
-                    style={{
-                      filter:
-                        "drop-shadow(1px 0px 0px var(--bg-primary)) drop-shadow(-1px 0px 0px var(--bg-primary)) drop-shadow(0px 1px 0px var(--bg-primary)) drop-shadow(0px -1px 0px var(--bg-primary)) drop-shadow(0 25px 35px rgba(0,0,0,0.25))",
-                    }}
+                    pattern="floyd"
+                    pixelSize={2}
+                    inkColor={theme === "dark" ? "#1d1d1b" : "#120f17"}
+                    paperColor={theme === "dark" ? "#d97706" : "#f4f1ea"}
+                    revealRadius={220}
+                    softness={0.6}
+                    linger={1.2}
+                    fit="contain"
+                    rimColor="#f2591f"
+                    palette="duotone"
+                    levels={2}
+                    contrast={1.2}
+                    brightness={0.05}
+                    rim={0.15}
+                    reverse={false}
+                    wander={false}
+                    clickBurst={true}
+                    className="w-full h-full"
                   />
                 </div>
               </div>
