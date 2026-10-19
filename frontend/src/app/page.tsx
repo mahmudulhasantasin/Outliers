@@ -286,9 +286,9 @@ export default function LandingAndAuthPage() {
       }
 
       closeModal();
-      if (selectedRole === "lawyer") router.push("/lawyer/pending");
-      else if (selectedRole === "enterprise") router.push("/enterprise/admin");
-      else router.push("/copilot");
+      // After registration, role is still GENERAL (admin must approve for lawyer/enterprise).
+      // Redirect everyone to /copilot after registration.
+      router.push("/copilot");
     } catch (err: unknown) {
       const msg =
         err instanceof Error

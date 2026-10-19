@@ -76,6 +76,8 @@ export default function LawyerPendingPage() {
   useEffect(() => {
     let isMounted = true;
     async function loadQueue() {
+      // Only call lawyer queue API if user actually has LAWYER role (admin-approved)
+      if (!user || user.role !== "lawyer") return;
       try {
         const queue = await getLawyerQueue();
         if (isMounted && Array.isArray(queue) && queue.length > 0) {
@@ -124,7 +126,7 @@ export default function LawyerPendingPage() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [user]);
 
   const borderClass = "border-[var(--text-primary)]/10";
 
