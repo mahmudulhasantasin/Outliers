@@ -24,13 +24,13 @@ export interface TokenResponse {
   is_phone_verified: boolean;
 }
 
-export function saveTokenResponse(data: TokenResponse): void {
+export function saveTokenResponse(data: TokenResponse, overrideRole?: string): void {
   localStorage.setItem(TOKEN_KEY, data.access_token);
   const user: StoredUser = {
     id: data.user_id,
     email: data.email,
     full_name: data.full_name,
-    role: data.role,
+    role: (overrideRole || data.role || "general").toLowerCase(),
     credit_balance: data.credit_balance,
     is_verified: data.is_verified,
     is_phone_verified: data.is_phone_verified,

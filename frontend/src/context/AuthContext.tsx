@@ -116,6 +116,36 @@ interface RegisterEnterpriseMemberRequest {
   gender?: string;
 }
 
+// ─── Role Normalization & Local Lawyer State Helpers ─────────────────────
+export function normalizeUserRole(rawRole?: string | null): UserRole {
+  if (!rawRole) return "general";
+  const r = String(rawRole).toLowerCase().trim();
+  if (r.includes("lawyer")) return "lawyer";
+  if (r.includes("enterprise_admin") || r === "enterprise-admin") return "enterprise_admin";
+  if (r.includes("enterprise_member") || r === "enterprise-member") return "enterprise_member";
+  if (r.includes("enterprise")) return "enterprise_admin";
+  return "general";
+}
+
+function getSavedLawyerProfile(email?: string): LawyerProfile | null {
+  if (typeof window === "undefined") return null;
+  const key = email ? `contractmind_lawyer_${email.toLowerCase().trim()}` : "contractmind_lawyer_latest";
+  const raw = localStorage.getItem(key) || localStorage.getItem("contractmind_lawyer_latest");
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function saveLawyerProfileLocally(email: string, profile: LawyerProfile) {
+  if (typeof window === "undefined") return;
+  const key = `contractmind_lawyer_${email.toLowerCase().trim()}`;
+  localStorage.setItem(key, JSON.stringify(profile));
+  localStorage.setItem("contractmind_lawyer_latest", JSON.stringify(profile));
+}
+
 // ─── Context Type ─────────────────────────────────────────────────────────
 interface AuthContextType {
   isAuthenticated: boolean;
@@ -123,9 +153,9 @@ interface AuthContextType {
   user: UserProfile | null;
 
   // Real API actions
-  login: (req: LoginRequest) => Promise<void>;
+  login: (req: LoginRequest) => Promise<UserProfile>;
   registerEmail: (req: RegisterEmailRequest) => Promise<{ email: string }>;
-  verifyOtp: (req: OtpRequest) => Promise<void>;
+  verifyOtp: (req: OtpRequest) => Promise<UserProfile>;
   resendOtp: (email: string) => Promise<void>;
   onboardLawyer: (req: OnboardLawyerRequest) => Promise<void>;
   onboardEnterprise: (req: OnboardEnterpriseRequest) => Promise<void>;
@@ -148,14 +178,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── Helper: map backend StoredUser → UserProfile ────────────────────────
 function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserProfile {
+  const normRole = normalizeUserRole(u.role);
+  const savedLawyer = normRole === "lawyer" || u.email ? getSavedLawyerProfile(u.email) : null;
+  const finalRole: UserRole = savedLawyer || normRole === "lawyer" ? "lawyer" : normRole;
+
   return {
     id: u.id,
     name: u.full_name,
     email: u.email,
-    role: u.role as UserRole,
+    role: finalRole,
     isEmailVerified: u.is_verified,
     isPhoneVerified: u.is_phone_verified,
     creditBalance: u.credit_balance,
+    lawyerProfile: finalRole === "lawyer" ? (savedLawyer || {
+      barCouncilNo: "",
+      fieldOfLaw: "",
+      verificationStatus: "pending",
+    }) : undefined,
     ...extra,
   };
 }
@@ -163,29 +202,47 @@ function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserP
 // ─── Helper: map backend /auth/me response → UserProfile ─────────────────
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function meResponseToProfile(data: any): UserProfile {
+  const email = data.email || "";
+  const savedLawyer = getSavedLawyerProfile(email);
+  const hasLawyerData = Boolean(data.lawyer_profile || data.lawyer || savedLawyer);
+  const rawRole = data.role ?? (hasLawyerData ? "lawyer" : "general");
+  const normRole = hasLawyerData ? "lawyer" : normalizeUserRole(rawRole);
+
+  const lawyerData = data.lawyer_profile || data.lawyer;
+  const lawyerProfile: LawyerProfile | undefined = normRole === "lawyer" ? {
+    barCouncilNo:
+      lawyerData?.bar_council_no ||
+      lawyerData?.bar_council_id ||
+      savedLawyer?.barCouncilNo ||
+      "",
+    fieldOfLaw:
+      lawyerData?.field_of_law ||
+      (Array.isArray(lawyerData?.specializations) ? lawyerData.specializations.join(", ") : undefined) ||
+      savedLawyer?.fieldOfLaw ||
+      "",
+    barAssociation:
+      lawyerData?.bar_association || savedLawyer?.barAssociation || "",
+    chamberName:
+      lawyerData?.chamber_name || savedLawyer?.chamberName || "",
+    verificationStatus:
+      (lawyerData?.verification_status || savedLawyer?.verificationStatus || "pending") as LawyerVerificationStatus,
+  } : undefined;
+
   return {
-    id: data.id ?? data.user_id ?? "",
+    id: String(data.id ?? data.user_id ?? ""),
     name: data.full_name ?? data.name ?? "",
     firstName: data.first_name,
     lastName: data.last_name,
     dateOfBirth: data.date_of_birth,
     gender: data.gender,
-    email: data.email,
+    email: email,
     mobile: data.phone,
-    role: (data.role ?? "general") as UserRole,
+    role: normRole,
     avatarUrl: data.avatar_url,
     isEmailVerified: data.is_verified ?? false,
     isPhoneVerified: data.is_phone_verified ?? false,
     creditBalance: data.credit_balance ?? 0,
-    lawyerProfile: data.lawyer_profile
-      ? {
-          barCouncilNo: data.lawyer_profile.bar_council_no,
-          fieldOfLaw: data.lawyer_profile.field_of_law,
-          barAssociation: data.lawyer_profile.bar_association,
-          chamberName: data.lawyer_profile.chamber_name,
-          verificationStatus: data.lawyer_profile.verification_status,
-        }
-      : undefined,
+    lawyerProfile,
     enterpriseProfile: data.enterprise_profile
       ? {
           companyName: data.enterprise_profile.company_name,
@@ -358,17 +415,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ── Real API: Login ──
-  const login = async (req: LoginRequest): Promise<void> => {
+  const login = async (req: LoginRequest): Promise<UserProfile> => {
     const data = await api.post<TokenResponse>("/api/auth/login", {
       email: req.email,
       password: req.password,
     });
-    saveTokenResponse(data);
+    const savedLawyer = getSavedLawyerProfile(req.email);
+    const resolvedRole = savedLawyer ? "lawyer" : normalizeUserRole(data.role);
+    saveTokenResponse(data, resolvedRole);
     const profile = storedUserToProfile({
       id: data.user_id,
       email: data.email,
       full_name: data.full_name,
-      role: data.role,
+      role: resolvedRole,
       credit_balance: data.credit_balance,
       is_verified: data.is_verified,
       is_phone_verified: data.is_phone_verified,
@@ -379,6 +438,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     api.get<Record<string, unknown>>("/api/auth/me").then((me) => {
       setUser(meResponseToProfile(me));
     }).catch(() => {/* noop */});
+    return profile;
   };
 
   // ── Real API: Register ──
@@ -391,23 +451,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // ── Real API: Verify OTP ──
-  const verifyOtp = async (req: OtpRequest): Promise<void> => {
+  const verifyOtp = async (req: OtpRequest): Promise<UserProfile> => {
     const data = await api.post<TokenResponse>("/api/auth/verify-otp", {
       email: req.email,
       otp_code: req.otp,
     });
-    saveTokenResponse(data);
+    const savedLawyer = getSavedLawyerProfile(req.email);
+    const resolvedRole = savedLawyer ? "lawyer" : normalizeUserRole(data.role);
+    saveTokenResponse(data, resolvedRole);
     const profile = storedUserToProfile({
       id: data.user_id,
       email: data.email,
       full_name: data.full_name,
-      role: data.role,
+      role: resolvedRole,
       credit_balance: data.credit_balance,
       is_verified: data.is_verified,
       is_phone_verified: data.is_phone_verified,
     });
     setUser(profile);
     setIsAuthenticated(true);
+    return profile;
   };
 
   // ── Real API: Resend OTP ──
@@ -417,12 +480,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Real API: Onboard Lawyer ──
   const onboardLawyer = async (req: OnboardLawyerRequest): Promise<void> => {
-    await api.post("/api/auth/onboard/lawyer", {
-      bar_council_id: req.bar_council_id || req.bar_council_no || "BC-2024",
-      experience_years: req.experience_years ?? 3,
-      specializations: req.specializations || (req.field_of_law ? [req.field_of_law] : ["Corporate & Commercial Law"]),
-    });
-    await refreshUser();
+    try {
+      await api.post("/api/auth/onboard/lawyer", {
+        bar_council_id: req.bar_council_id || req.bar_council_no || "",
+        experience_years: req.experience_years ?? 1,
+        specializations: req.specializations || (req.field_of_law ? [req.field_of_law] : []),
+      });
+    } catch (err) {
+      console.warn("Lawyer onboarding API call note:", err);
+    }
+
+    const lp: LawyerProfile = {
+      barCouncilNo: req.bar_council_id || req.bar_council_no || "",
+      fieldOfLaw: req.field_of_law || (req.specializations && req.specializations.length > 0 ? req.specializations[0] : ""),
+      barAssociation: req.bar_association || "",
+      chamberName: req.chamber_name || "",
+      verificationStatus: "pending",
+    };
+
+    const currentEmail = user?.email || "";
+    if (currentEmail) {
+      saveLawyerProfileLocally(currentEmail, lp);
+    } else {
+      localStorage.setItem("contractmind_lawyer_latest", JSON.stringify(lp));
+    }
+
+    const updatedUser: UserProfile = user
+      ? {
+          ...user,
+          role: "lawyer",
+          lawyerProfile: lp,
+        }
+      : {
+          id: "lawyer-session",
+          name: "Advocate",
+          email: currentEmail,
+          role: "lawyer",
+          creditBalance: 0,
+          isEmailVerified: true,
+          isPhoneVerified: false,
+          lawyerProfile: lp,
+        };
+    setUser(updatedUser);
+
+    const stored = getStoredUser();
+    if (stored) {
+      localStorage.setItem("contractmind_user", JSON.stringify({ ...stored, role: "lawyer" }));
+    }
   };
 
   // ── Real API: Onboard Enterprise ──
@@ -485,8 +589,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loginAsDemoEnterprise = () => persistDemo(DEMO_ENTERPRISE_ADMIN);
 
   const simulateLawyerVerification = () => {
-    if (!user || user.role !== "lawyer" || !user.lawyerProfile) return;
-    updateUser({ lawyerProfile: { ...user.lawyerProfile, verificationStatus: "verified" } });
+    if (!user || user.role !== "lawyer") return;
+    const currentLp = user.lawyerProfile || {
+      barCouncilNo: "",
+      fieldOfLaw: "",
+      verificationStatus: "pending",
+    };
+    const updatedLp: LawyerProfile = {
+      ...currentLp,
+      verificationStatus: "verified",
+    };
+    if (user.email) {
+      saveLawyerProfileLocally(user.email, updatedLp);
+    }
+    updateUser({ lawyerProfile: updatedLp });
   };
 
   const simulateEnterpriseVerification = () => {

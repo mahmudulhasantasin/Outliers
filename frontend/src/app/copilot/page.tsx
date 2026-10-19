@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
 import Aurora from "@/components/effects/Aurora";
@@ -39,9 +40,16 @@ interface ChatMessage {
 }
 
 export default function CopilotPage() {
+  const router = useRouter();
   const { language } = useLanguage();
   const { theme } = useTheme();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
+
+  useEffect(() => {
+    if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+      router.replace("/lawyer/pending");
+    }
+  }, [user, router]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);
@@ -176,7 +184,27 @@ export default function CopilotPage() {
       setIsTyping(false);
     }
   };
+
   const hasMessages = messages.length > 0;
+
+  if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+    return (
+      <AppShell className="bg-transparent">
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
+          <p className="text-base font-semibold text-[var(--text-primary)]">
+            {language === "bn"
+              ? "লিগ্যাল কোপাইলট সাধারণ ব্যবহারকারীদের জন্য।"
+              : "Legal Copilot is reserved for General Users."}
+          </p>
+          <p className="text-xs text-[var(--text-muted)] max-w-md">
+            {language === "bn"
+              ? "আইনজীবী হিসেবে আপনার পোর্টাল হলো পেন্ডিং চুক্তি রিভিউ। রিডাইরেক্ট করা হচ্ছে..."
+              : "As an advocate, your workspace is the Lawyer Portal. Redirecting to your lawyer portal..."}
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell className="bg-transparent" mainClassName="!bg-transparent">

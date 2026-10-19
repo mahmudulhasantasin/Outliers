@@ -141,10 +141,10 @@ export default function LandingAndAuthPage() {
     setAuthError("");
     setAuthLoading(true);
     try {
-      await login({ email: loginEmail, password: loginPassword });
+      const loggedInUser = await login({ email: loginEmail, password: loginPassword });
       closeModal();
       // Route by role
-      const role = user?.role;
+      const role = loggedInUser?.role;
       if (role === "lawyer") router.push("/lawyer/pending");
       else if (role === "enterprise_admin" || role === "enterprise") router.push("/enterprise/admin");
       else if (role === "enterprise_member") router.push("/enterprise/member");
@@ -255,20 +255,23 @@ export default function LandingAndAuthPage() {
     setOtpError("");
     setAuthLoading(true);
     try {
-      await verifyOtp({ email: pendingOtpEmail || regEmail, otp: otpInput.trim() });
+      const verifiedProfile = await verifyOtp({ email: pendingOtpEmail || regEmail, otp: otpInput.trim() });
 
-      // After OTP verification, call onboard API to upgrade role from GENERAL
+      // After OTP verification, handle lawyer / enterprise onboarding & routing
       if (selectedRole === "lawyer") {
         try {
           await onboardLawyer({
-            bar_council_id: barCouncilNo,
-            field_of_law: fieldOfLaw,
-            specializations: [fieldOfLaw],
+            bar_council_id: barCouncilNo.trim(),
+            field_of_law: fieldOfLaw.trim(),
+            specializations: [fieldOfLaw.trim()],
           });
         } catch (onboardErr) {
           console.error("Lawyer onboard failed:", onboardErr);
-          // Still proceed — user can retry onboarding from lawyer page
         }
+        closeModal();
+        // LAWYERS GO TO LAWYER PORTAL (NOT COPILOT!)
+        router.push("/lawyer/pending");
+        return;
       } else if (selectedRole === "enterprise" && entTab === "company") {
         try {
           await onboardEnterprise({
@@ -281,13 +284,18 @@ export default function LandingAndAuthPage() {
           });
         } catch (onboardErr) {
           console.error("Enterprise onboard failed:", onboardErr);
-          // Still proceed — user can retry onboarding from enterprise page
         }
+        closeModal();
+        router.push("/enterprise/admin");
+        return;
+      } else if (selectedRole === "enterprise" && entTab === "member") {
+        closeModal();
+        router.push("/enterprise/member");
+        return;
       }
 
       closeModal();
-      // After registration, role is still GENERAL (admin must approve for lawyer/enterprise).
-      // Redirect everyone to /copilot after registration.
+      // General user goes to copilot
       router.push("/copilot");
     } catch (err: unknown) {
       const msg =

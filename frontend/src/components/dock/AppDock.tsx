@@ -11,7 +11,6 @@ import {
   FolderClock,
   Inbox,
   Archive,
-  Users,
   Settings,
   User,
   Building2,
@@ -80,12 +79,6 @@ export default function AppDock() {
       label: isBn ? "আর্কাইভ চুক্তি" : "Archive Contracts",
       isActive: pathname === "/lawyer/archive",
       onClick: () => router.push("/lawyer/archive"),
-    },
-    {
-      icon: <Users className="w-5 h-5 stroke-[2.4]" />,
-      label: isBn ? "সমস্ত চুক্তি / ক্লায়েন্ট" : "All Contracts / Clients",
-      isActive: pathname === "/lawyer/contracts",
-      onClick: () => router.push("/lawyer/contracts"),
     },
     {
       icon: <Settings className="w-5 h-5" />,
@@ -169,8 +162,10 @@ export default function AppDock() {
     },
   ];
 
+  const isLawyer = role === "lawyer" || !!user?.lawyerProfile;
+
   const items =
-    role === "lawyer"
+    isLawyer
       ? lawyerItems
       : role === "enterprise_admin"
       ? enterpriseAdminItems

@@ -55,6 +55,7 @@ function VerticalDockItem({
   isActive = false
 }: VerticalDockItemProps) {
   const ref = useRef<HTMLDivElement>(null);
+  const [hovered, setHovered] = useState(false);
   const isHovered = useMotionValue(0);
 
   const mouseDistance = useTransform(mouseY, val => {
@@ -75,6 +76,16 @@ function VerticalDockItem({
     }
   };
 
+  const handleMouseEnter = () => {
+    setHovered(true);
+    isHovered.set(1);
+  };
+
+  const handleMouseLeave = () => {
+    setHovered(false);
+    isHovered.set(0);
+  };
+
   return (
     <motion.div
       ref={ref}
@@ -82,15 +93,15 @@ function VerticalDockItem({
         width: size,
         height: size
       }}
-      onHoverStart={() => isHovered.set(1)}
-      onHoverEnd={() => isHovered.set(0)}
-      onFocus={() => isHovered.set(1)}
-      onBlur={() => isHovered.set(0)}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onFocus={handleMouseEnter}
+      onBlur={handleMouseLeave}
       onClick={onClick}
       onKeyDown={handleKeyDown}
       className={`relative inline-flex items-center justify-center rounded-2xl cursor-pointer transition-colors duration-150 border-0 outline-none bg-transparent ${
         isActive
-          ? 'font-bold scale-110 drop-shadow-sm'
+          ? 'font-bold scale-110 drop-shadow-sm opacity-100'
           : 'opacity-60 hover:opacity-100 hover:scale-105'
       } ${className}`}
       tabIndex={0}
@@ -100,7 +111,7 @@ function VerticalDockItem({
     >
       {Children.map(children, child =>
         React.isValidElement(child)
-          ? cloneElement(child as React.ReactElement<{ isHovered?: MotionValue<number> }>, { isHovered })
+          ? cloneElement(child as React.ReactElement<{ isHovered?: boolean }>, { isHovered: hovered })
           : child
       )}
     </motion.div>
@@ -110,30 +121,20 @@ function VerticalDockItem({
 type DockLabelProps = {
   className?: string;
   children: React.ReactNode;
-  isHovered?: MotionValue<number>;
+  isHovered?: boolean;
 };
 
-function DockLabel({ children, className = '', isHovered }: DockLabelProps) {
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    if (!isHovered) return;
-    const unsubscribe = isHovered.on('change', latest => {
-      setIsVisible(latest === 1);
-    });
-    return () => unsubscribe();
-  }, [isHovered]);
-
+function DockLabel({ children, className = '', isHovered = false }: DockLabelProps) {
   return (
     <AnimatePresence>
-      {isVisible && (
+      {isHovered && (
         <motion.div
-          initial={{ opacity: 0, x: -8 }}
+          initial={{ opacity: 0, x: -6 }}
           animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -8 }}
-          transition={{ duration: 0.15 }}
-          className={`${className} absolute left-full ml-3 top-1/2 -translate-y-1/2 w-fit whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-medium shadow-xl z-50 pointer-events-none border-0`}
-          style={{ backgroundColor: "var(--text-primary)", color: "var(--bg-primary)" }}
+          exit={{ opacity: 0, x: -6 }}
+          transition={{ duration: 0.12 }}
+          className={`${className} absolute left-full ml-3 top-1/2 -translate-y-1/2 w-fit whitespace-nowrap rounded-lg px-2.5 py-1 text-xs font-sans font-medium shadow-lg z-50 pointer-events-none`}
+          style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
           role="tooltip"
         >
           {children}

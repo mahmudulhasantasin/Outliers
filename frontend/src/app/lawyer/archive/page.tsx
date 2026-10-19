@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
@@ -48,72 +49,53 @@ interface ArchivedVerification {
   status: "verified";
 }
 
-const SAMPLE_ARCHIVE: ArchivedVerification[] = [
-  {
-    id: "ver-901",
-    clientName: "Rahim Chowdhury",
-    titleEn: "Commercial Property Lease Agreement (Gulshan-2)",
-    titleBn: "বাণিজ্যিক ভবন ভাড়া চুক্তিপত্র (গুলশান-২)",
-    verifiedDateEn: "Oct 12, 2026",
-    verifiedDateBn: "১২ অক্টোবর ২০২৬",
-    statuteEn: "Premises Rent Control Act, 1991",
-    statuteBn: "বাড়ি ভাড়া নিয়ন্ত্রণ আইন, ১৯৯১",
-    advocateName: "Adv. Kamal Hossain, Bangladesh Bar Council",
-    barCouncilNo: "BC-REG-31045/2014",
-    notes: "Reviewed against Premises Rent Control Act 1991. The security deposit cap and fair market escalation clause comply with statutory caps.",
-    contractId: "commercial-lease",
-    status: "verified",
-  },
-  {
-    id: "ver-902",
-    clientName: "Green Agro Biotech Ltd.",
-    titleEn: "Annual Supply Agreement with Cold Storage Operators",
-    titleBn: "হিমাগার পরিচালন ও বার্ষিক সরবরাহ চুক্তি",
-    verifiedDateEn: "Sep 28, 2026",
-    verifiedDateBn: "২৮ সেপ্টেম্বর ২০২৬",
-    statuteEn: "Sale of Goods Act, 1930",
-    statuteBn: "পণ্য বিক্রয় আইন, ১৯৩০",
-    advocateName: "Adv. Tanvir Ahmed, Supreme Court of Bangladesh",
-    barCouncilNo: "SC-DH-48912/2016",
-    notes: "Delivery warranties and perishable goods damages are compliant with Section 16 of Sale of Goods Act 1930.",
-    contractId: "vendor-sla",
-    status: "verified",
-  },
-  {
-    id: "ver-903",
-    clientName: "Anisur Rahman",
-    titleEn: "Senior Software Engineer Employment & Confidentiality",
-    titleBn: "নিয়োগ ও নন-কম্পিট চুক্তিপত্র (সিনিয়র ডেভেলপার)",
-    verifiedDateEn: "Sep 15, 2026",
-    verifiedDateBn: "১৫ সেপ্টেম্বর ২০২৬",
-    statuteEn: "Bangladesh Labour Act 2006 (Sec 26/27)",
-    statuteBn: "বাংলাদেশ শ্রম আইন ২০০৬ ও চুক্তি আইন ধারা ২৭",
-    advocateName: "Adv. Tanvir Ahmed, Supreme Court of Bangladesh",
-    barCouncilNo: "SC-DH-48912/2016",
-    notes: "Notice pay statutory requirements satisfied. Liquidated damages trimmed down to reasonable compensation.",
-    contractId: "employment-agreement",
-    status: "verified",
-  },
-];
+const SAMPLE_ARCHIVE: ArchivedVerification[] = [];
 
 export default function LawyerArchivePage() {
+  const router = useRouter();
   const { language } = useLanguage();
   const { user } = useAuth();
   const isBn = language === "bn";
+
+  useEffect(() => {
+    if (user && user.role !== "lawyer" && !user.lawyerProfile) {
+      router.replace("/archive");
+    }
+  }, [user, router]);
+
   const [activeTab, setActiveTab] = useState<"archive" | "earnings">("archive");
   const [search, setSearch] = useState("");
-  const [archiveList, setArchiveList] = useState<ArchivedVerification[]>(SAMPLE_ARCHIVE);
+  const [archiveList, setArchiveList] = useState<ArchivedVerification[]>([]);
   const [selectedPreview, setSelectedPreview] = useState<ArchivedVerification | null>(null);
 
   // Earnings & Withdrawal state
   const [earnings, setEarnings] = useState<EarningsDashboard | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [withdrawAmount, setWithdrawAmount] = useState<number>(500);
-  const [bkashNumber, setBkashNumber] = useState<string>("01700000000");
+  const [bkashNumber, setBkashNumber] = useState<string>("");
   const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
   const [withdrawalSuccess, setWithdrawalSuccess] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (user?.mobile) {
+      setBkashNumber(user.mobile);
+    }
+  }, [user?.mobile]);
+
+  const isVerified = user?.lawyerProfile?.verificationStatus === "verified";
+
   const fetchEarningsData = async () => {
+    if (!isVerified) {
+      setEarnings({
+        total_earned_credits: 0,
+        pending_payout_credits: 0,
+        completed_reviews: 0,
+        avg_rating: null,
+        recent_earnings: [],
+      });
+      setWithdrawals([]);
+      return;
+    }
     try {
       const [earnRes, withRes] = await Promise.allSettled([
         getLawyerEarnings(),
@@ -131,28 +113,39 @@ export default function LawyerArchivePage() {
   };
 
   useEffect(() => {
-    fetchEarningsData();
-  }, []);
+    if (activeTab === "earnings") {
+      fetchEarningsData();
+    }
+  }, [activeTab, isVerified]);
 
-  // Load dynamically verified contracts from localStorage
+  // Load dynamically verified contracts from localStorage (scoped to this lawyer)
   useEffect(() => {
     if (typeof window !== "undefined") {
       try {
+        const userArchiveKey = user?.email
+          ? `verified_contracts_archive_${user.email}`
+          : "verified_contracts_archive";
         const stored = JSON.parse(
-          localStorage.getItem("verified_contracts_archive") || "[]"
+          localStorage.getItem(userArchiveKey) || "[]"
         );
-        if (Array.isArray(stored) && stored.length > 0) {
-          const existingIds = new Set(SAMPLE_ARCHIVE.map((a) => a.id));
-          const newEntries = stored.filter(
-            (s: ArchivedVerification) => !existingIds.has(s.id)
+        if (Array.isArray(stored)) {
+          // Exclude any legacy mock items
+          const validEntries = stored.filter(
+            (s: ArchivedVerification) =>
+              s &&
+              s.id &&
+              !["ver-901", "ver-902", "ver-903", "ver-cnt-6639"].includes(s.id)
           );
-          setArchiveList([...newEntries, ...SAMPLE_ARCHIVE]);
+          setArchiveList(validEntries);
+        } else {
+          setArchiveList([]);
         }
       } catch (err) {
         console.error("Error reading verified archive:", err);
+        setArchiveList([]);
       }
     }
-  }, []);
+  }, [user?.email]);
 
   const handleWithdrawalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -191,18 +184,17 @@ export default function LawyerArchivePage() {
     <AppShell>
       <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
-        <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 font-sans">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 mb-3">
-              <Archive className="w-3.5 h-3.5" />
+            <p className="text-[11px] uppercase tracking-wider font-medium text-[var(--text-muted)] mb-1">
               {isBn ? "ভেরিফাইড ও পে-আউট ড্যাশবোর্ড" : "Verification & Payout Hub"}
-            </div>
-            <h1 className="text-2xl md:text-3xl font-serif font-bold text-[var(--text-primary)]">
+            </p>
+            <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)]">
               {activeTab === "archive"
                 ? isBn ? "আর্কাইভকৃত চুক্তিপত্র ও সিলমোহর" : "Archived & Sealed Contracts"
                 : isBn ? "উপার্জন ও bKash পে-আউট" : "Earnings & bKash Payouts"}
             </h1>
-            <p className="text-xs md:text-sm text-[var(--text-muted)] mt-1">
+            <p className="text-xs sm:text-[13px] text-[var(--text-muted)] mt-1 max-w-xl leading-relaxed">
               {activeTab === "archive"
                 ? isBn
                   ? "আপনার দ্বারা পূর্বে যাচাই ও আইনগতভাবে সিলমোহর দেওয়া সম্পন্ন চুক্তিপত্রের রেকর্ড ও মার্কডাউন অডিট।"
@@ -214,13 +206,13 @@ export default function LawyerArchivePage() {
           </div>
 
           {/* Navigation Pill Tabs */}
-          <div className="flex items-center p-1 rounded-2xl bg-[var(--bg-card)] border border-[var(--text-primary)]/10 self-start md:self-auto">
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--bg-surface)] self-start md:self-auto">
             <button
               type="button"
               onClick={() => setActiveTab("archive")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "archive"
-                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
+                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-xs"
                   : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               }`}
             >
@@ -230,9 +222,9 @@ export default function LawyerArchivePage() {
             <button
               type="button"
               onClick={() => setActiveTab("earnings")}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                 activeTab === "earnings"
-                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
+                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-xs"
                   : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
               }`}
             >
@@ -337,7 +329,7 @@ export default function LawyerArchivePage() {
                   {isBn ? "মোট অর্জিত ক্রেডিট" : "Total Earned"}
                 </p>
                 <p className="text-xl sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
-                  ৳{earnings?.total_earned_credits ?? 1450}
+                  ৳{earnings?.total_earned_credits ?? 0}
                 </p>
                 <span className="text-[10px] text-emerald-500 font-semibold">
                   {isBn ? "ভেরিফিকেশন ফি থেকে" : "From statutory reviews"}
@@ -349,7 +341,7 @@ export default function LawyerArchivePage() {
                   {isBn ? "পেন্ডিং পে-আউট" : "Pending Payout"}
                 </p>
                 <p className="text-xl sm:text-2xl font-bold font-mono text-amber-500 mt-1">
-                  ৳{earnings?.pending_payout_credits ?? 350}
+                  ৳{earnings?.pending_payout_credits ?? 0}
                 </p>
                 <span className="text-[10px] text-[var(--text-muted)]">
                   {isBn ? "উত্তোলনযোগ্য ব্যালেন্স" : "Available to withdraw"}
@@ -361,7 +353,7 @@ export default function LawyerArchivePage() {
                   {isBn ? "সম্পন্ন অডিট" : "Reviews Sealed"}
                 </p>
                 <p className="text-xl sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
-                  {earnings?.completed_reviews ?? 4}
+                  {earnings?.completed_reviews ?? 0}
                 </p>
                 <span className="text-[10px] text-sky-500 font-semibold">
                   {isBn ? "আইনগত সিলমোহরকৃত" : "Digitally sealed"}
@@ -373,7 +365,7 @@ export default function LawyerArchivePage() {
                   {isBn ? "রেটিং ও বিশ্বাসযোগ্যতা" : "Advocate Rating"}
                 </p>
                 <p className="text-xl sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
-                  {earnings?.avg_rating ?? "5.0"} ★
+                  {earnings?.avg_rating ? `${earnings.avg_rating} ★` : (isBn ? "প্রযোজ্য নয়" : "N/A")}
                 </p>
                 <span className="text-[10px] text-[var(--text-muted)]">
                   {isBn ? "ক্লায়েন্ট সন্তুষ্টি" : "Client feedback"}

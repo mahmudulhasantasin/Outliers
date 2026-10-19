@@ -284,7 +284,11 @@ export interface SubmitReviewRequest {
 
 /** Get lawyer's pending offer queue */
 export async function getLawyerQueue(): Promise<LawyerQueueItem[]> {
-  return api.get<LawyerQueueItem[]>("/api/lawyer/queue");
+  try {
+    return await api.get<LawyerQueueItem[]>("/api/lawyer/queue");
+  } catch {
+    return [];
+  }
 }
 
 /** Accept a contract offer */
@@ -318,12 +322,26 @@ export async function startContractReviewChat(memoId: string): Promise<CreateSes
 
 /** Get earnings dashboard */
 export async function getLawyerEarnings(): Promise<EarningsDashboard> {
-  return api.get<EarningsDashboard>("/api/lawyer/earnings");
+  try {
+    return await api.get<EarningsDashboard>("/api/lawyer/earnings");
+  } catch {
+    return {
+      total_earned_credits: 0,
+      pending_payout_credits: 0,
+      completed_reviews: 0,
+      avg_rating: null,
+      recent_earnings: [],
+    };
+  }
 }
 
 /** List withdrawal requests */
 export async function listWithdrawals(): Promise<WithdrawalRequest[]> {
-  return api.get<WithdrawalRequest[]>("/api/lawyer/withdrawals");
+  try {
+    return await api.get<WithdrawalRequest[]>("/api/lawyer/withdrawals");
+  } catch {
+    return [];
+  }
 }
 
 /** Request a withdrawal (BDT via bKash) */

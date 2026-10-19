@@ -106,7 +106,11 @@ async function request<T>(
     } catch {
       /* noop */
     }
-    console.error(`[API Error] ${res.status} ${fullUrl}:`, detail);
+    if (res.status >= 500) {
+      console.error(`[API Error] ${res.status} ${fullUrl}:`, detail);
+    } else {
+      console.warn(`[API Notice ${res.status}] ${fullUrl}:`, detail);
+    }
     throw new ApiError(res.status, detail);
   }
 

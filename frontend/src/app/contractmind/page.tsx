@@ -19,6 +19,7 @@ import {
   requestLawyerVerification,
   ContractAuditResult,
 } from "@/lib/apiServices";
+import { useAuth } from "@/context/AuthContext";
 import {
   FileText,
   Upload,
@@ -43,8 +44,34 @@ import {
 export default function ContractMindPage() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { user } = useAuth();
   const isBn = language === "bn";
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+      router.replace("/lawyer/pending");
+    }
+  }, [user, router]);
+
+  if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
+          <p className="text-base font-semibold text-[var(--text-primary)]">
+            {isBn
+              ? "কন্ট্রাক্টমাইন্ড চুক্তি অডিট সাধারণ ব্যবহারকারীদের জন্য।"
+              : "ContractMind Audit is for General Users."}
+          </p>
+          <p className="text-xs text-[var(--text-muted)] max-w-md">
+            {isBn
+              ? "সাধারণ ব্যবহারকারীদের প্রেরিত চুক্তি যাচাই করতে আপনার আইনজীবী পোর্টালে প্রবেশ করুন। রিডাইরেক্ট করা হচ্ছে..."
+              : "To review and verify contracts submitted by general users, please use the Lawyer Portal. Redirecting..."}
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
 
   // Initial stage: no contract loaded by default
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
@@ -214,8 +241,8 @@ export default function ContractMindPage() {
         );
         const newEntry = {
           id: `cnt-${Date.now().toString().slice(-4)}`,
-          clientName: "Mahmud Hasan (Client)",
-          clientPhone: "+880 1712-345678",
+          clientName: user?.name ? `${user.name} (Client)` : "Client",
+          clientPhone: user?.mobile || "+880 1700-000000",
           titleEn: currentContract.titleEn,
           titleBn: currentContract.titleBn,
           submittedAtEn: "Just now",

@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
-import { SAMPLE_CONTRACTS } from "@/data/sampleContracts";
+import { useAuth } from "@/context/AuthContext";
 import { CONTRACT_AUDITS } from "@/data/contractAudits";
 import { getContractHistory, getContractDownloadUrl } from "@/lib/apiServices";
 import {
@@ -53,6 +53,13 @@ const INITIAL_ARCHIVE: ArchivedRecord[] = [];
 export default function ArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
+  const { user } = useAuth();
+
+  useEffect(() => {
+    if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+      router.replace("/lawyer/archive");
+    }
+  }, [user, router]);
 
   const [records, setRecords] = useState<ArchivedRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
