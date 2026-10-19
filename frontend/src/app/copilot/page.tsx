@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
-import Aurora from "@/components/effects/Aurora";
 import ThoughtLine from "@/components/effects/ThoughtLine";
 import { useLanguage } from "@/context/LanguageContext";
 import { useTheme } from "@/context/ThemeContext";
@@ -207,30 +206,11 @@ export default function CopilotPage() {
   }
 
   return (
-    <AppShell className="bg-transparent" mainClassName="!bg-transparent">
-      {/* Background Animated Aurora - Only on initial landing screen, completely disappears once messages start */}
-      <div
-        className={`fixed inset-0 pointer-events-none z-0 overflow-hidden transition-opacity duration-1000 ease-in-out ${
-          !hasMessages ? "opacity-100" : "opacity-0"
-        }`}
-      >
-        <Aurora
-          colorStops={
-            theme === "dark"
-              ? ["#4f46e5", "#06b6d4", "#10b981"]
-              : ["#5227FF", "#7cff67", "#00d2ff"]
-          }
-          blend={theme === "dark" ? 0.6 : 0.7}
-          amplitude={1.2}
-          speed={0.8}
-          lightMode={theme !== "dark"}
-        />
-      </div>
-
-      <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto">
+    <AppShell>
+      <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto font-sans">
         {/* Context Bar if contract is loaded */}
         {loadedContractTitle && (
-          <div className="mb-3 px-4 py-2 rounded-2xl shadow-sm flex items-center justify-between text-xs" style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}>
+          <div className="mb-3 px-4 py-2 rounded-xl shadow-xs flex items-center justify-between text-xs bg-[var(--bg-card)] border border-[var(--text-primary)]/10 text-[var(--text-primary)]">
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4" style={{ color: "var(--text-primary)" }} />
               <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
@@ -414,13 +394,13 @@ export default function CopilotPage() {
           <div className="flex-1 flex flex-col items-center justify-center -mt-8">
             <div className="text-center mb-8">
               <h2
-                className="text-3xl sm:text-4xl font-serif font-normal tracking-tight mb-2.5 [text-shadow:0_1px_2px_rgba(0,0,0,0.1)] dark:[text-shadow:0_2px_10px_rgba(255,255,255,0.2)]"
+                className="text-2xl sm:text-3xl font-medium tracking-tight mb-2"
                 style={{ color: "var(--text-primary)" }}
               >
                 {language === "bn" ? "লিগ্যাল কোপাইলট" : "Legal Copilot"}
               </h2>
               <p
-                className="text-sm sm:text-[15px] font-sans text-neutral-600 dark:text-neutral-400 font-normal tracking-normal"
+                className="text-xs sm:text-sm font-normal text-neutral-500 dark:text-neutral-400"
               >
                 {language === "bn"
                   ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
@@ -428,7 +408,7 @@ export default function CopilotPage() {
               </p>
             </div>
 
-            <div className="w-full max-w-[620px] shadow-[0_12px_32px_-6px_rgba(79,70,229,0.06),0_4px_16px_-2px_rgba(15,23,42,0.03)] dark:shadow-[0_12px_32px_-4px_rgba(0,0,0,0.35)] rounded-[22px]">
+            <div className="w-full max-w-[620px] shadow-sm rounded-[22px]">
               <PromptBar
                 placeholder={
                   language === "bn"
