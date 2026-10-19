@@ -165,7 +165,7 @@ export function generateContractAuditMarkdown(
   }
 
   md += `\n---\n`;
-  md += `*Generated automatically by Legal Copilot Sovereign Contract Intelligence Engine (v2.4).*  \n`;
+  md += `*Generated automatically by Advotech Copilot Sovereign Contract Intelligence Engine (v2.4).*  \n`;
   md += `*Statutes referenced: Laws of Bangladesh (Legislative and Parliamentary Affairs Division).*  \n`;
 
   return md;
@@ -293,7 +293,7 @@ export function generateRealContractAuditMarkdown(
   }
 
   md += `\n---\n`;
-  md += `*Generated automatically by Legal Copilot Sovereign Contract Intelligence Engine.*  \n`;
+  md += `*Generated automatically by Advotech Copilot Sovereign Contract Intelligence Engine.*  \n`;
   return md;
 }
 

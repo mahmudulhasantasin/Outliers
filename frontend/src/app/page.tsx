@@ -342,8 +342,8 @@ export default function LandingAndAuthPage() {
       role: isBn ? "সিনিয়র পার্টনার, ইসলাম অ্যান্ড অ্যাসোসিয়েটস" : "Senior Partner, Islam & Associates",
       avatar: "/avatar_1.jpg",
       quote: isBn
-        ? '“আগে ৫০ পাতার বাণিজ্যিক চুক্তি রিভিউ করতে ঘণ্টার পর ঘণ্টা সময় লাগত। Legal Copilot এর মাধ্যমে চুক্তির অসামঞ্জস্যপূর্ণ ধারা এবং দ্য কন্ট্রাক্ট অ্যাক্ট ১৮৭২ এর রেফারেন্স চোখের পলকে শনাক্ত করা সম্ভব হচ্ছে।”'
-        : '“Legal Copilot transformed our contract audit workflow. Spotting void non-compete clauses under Section 27 and labor non-compliance takes seconds instead of hours.”',
+        ? '“আগে ৫০ পাতার বাণিজ্যিক চুক্তি রিভিউ করতে ঘণ্টার পর ঘণ্টা সময় লাগত। Advotech Copilot এর মাধ্যমে চুক্তির অসামঞ্জস্যপূর্ণ ধারা এবং দ্য কন্ট্রাক্ট অ্যাক্ট ১৮৭২ এর রেফারেন্স চোখের পলকে শনাক্ত করা সম্ভব হচ্ছে।”'
+        : '“Advotech Copilot transformed our contract audit workflow. Spotting void non-compete clauses under Section 27 and labor non-compliance takes seconds instead of hours.”',
       rating: 5,
     },
     {
@@ -393,7 +393,7 @@ export default function LandingAndAuthPage() {
               <Scale className="w-5 h-5" />
             </div>
             <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-[var(--text-primary)]">
-              Legal Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
+              Advotech Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
             </span>
           </div>
 
@@ -698,7 +698,7 @@ export default function LandingAndAuthPage() {
                 {isBn ? "প্রধান ফিচারসমূহ" : "Core Capabilities"}
               </span>
               <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-3">
-                {isBn ? "লিগ্যাল কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Legal Copilot & ContractMind"}
+                {isBn ? "এডভোটেক কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Advotech Copilot & ContractMind"}
               </h2>
               <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
                 {isBn
@@ -710,7 +710,7 @@ export default function LandingAndAuthPage() {
 
           <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-              {/* Feature 1 Card: Legal Copilot */}
+              {/* Feature 1 Card: Advotech Copilot */}
               <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-indigo-500/40 transition-all duration-300 group`}>
                 <div>
                   <div className="flex items-center justify-between mb-6">
@@ -723,7 +723,7 @@ export default function LandingAndAuthPage() {
                   </div>
 
                   <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
-                    Legal Copilot
+                    Advotech Copilot
                   </h3>
                   <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
                     {isBn
@@ -736,7 +736,7 @@ export default function LandingAndAuthPage() {
                       isBn ? "সরাসরি bdlaws থেকে অনুচ্ছেদ ও ধারা ভেরিফিকেশন" : "Direct bdlaws statutory clause & section mapping",
                       isBn ? "বাংলা ও ইংরেজি উভয় ভাষায় সাবলীল আইনি ব্যাখ্যা" : "Bilingual fluent legal reasoning (Bengali & English)",
                       isBn ? "সুপ্রিম কোর্টের ল্যান্ডমার্ক রায় ও নজিরের সংযোগ" : "Citations to Supreme Court rulings and precedents",
-                      isBn ? "কেস স্টাডি বিশ্লেষণ ও লিগ্যাল নোটিশ ড্রাফটিং" : "Case study synthesis and instant legal notice drafting",
+                      isBn ? "কেস স্টাডি বিশ্লেষণ ও লিগ্যাল নোটিউট ড্রাফটিং" : "Case study synthesis and instant legal notice drafting",
                     ].map((item, idx) => (
                       <div key={idx} className="flex items-start gap-3">
                         <div className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -754,7 +754,7 @@ export default function LandingAndAuthPage() {
                     onClick={() => openLoginModal(false)}
                     className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:gap-3 transition-all cursor-pointer"
                   >
-                    <span>{isBn ? "লিগ্যাল কোপাইলট ওপেন করুন" : "Launch Legal Copilot"}</span>
+                    <span>{isBn ? "এডভোটেক কোপাইলট ওপেন করুন" : "Launch Advotech Copilot"}</span>
                     <ArrowUpRight className="w-4 h-4" />
                   </button>
                 </div>
@@ -1235,12 +1235,12 @@ export default function LandingAndAuthPage() {
                     <Scale className="w-5 h-5" />
                   </div>
                   <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-[var(--text-primary)]">
-                    Legal Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
+                    Advotech Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
                   </span>
                 </div>
                 <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6 max-w-sm">
                   {isBn
-                    ? "বাংলাদেশের প্রথম সার্বভৌম ও সংবিধিবদ্ধ আইন সংহিতা (bdlaws) সমর্থিত লিগ্যাল কোপাইলট ও এআই কন্ট্রাক্ট অডিট প্ল্যাটফর্ম।"
+                    ? "বাংলাদেশের প্রথম সার্বভৌম ও সংবিধিবদ্ধ আইন সংহিতা (bdlaws) সমর্থিত এডভোটেক কোপাইলট ও এআই কন্ট্রাক্ট অডিট প্ল্যাটফর্ম।"
                     : "Bangladesh's premier statutory AI platform for legal intelligence, contract risk audits, and verified dispute resolution."}
                 </p>
                 <div className="text-xs text-[var(--text-muted)] space-y-1">
@@ -1255,7 +1255,7 @@ export default function LandingAndAuthPage() {
                   {isBn ? "প্ল্যাটফর্ম ফিচার" : "Core Products"}
                 </div>
                 <ul className="space-y-2.5 text-xs text-[var(--text-muted)]">
-                  <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">Legal Copilot Chat</a></li>
+                  <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">Advotech Copilot Chat</a></li>
                   <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">ContractMind Audit</a></li>
                   <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রিস্ক স্কোরিং ইঞ্জিন" : "Risk Scoring Engine"}</a></li>
                   <li><a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রেডলাইন ক্লজ ড্রাফট" : "Redline Clause Drafting"}</a></li>
@@ -1303,10 +1303,10 @@ export default function LandingAndAuthPage() {
             {/* Footer Bottom Bar with Giant Watermark */}
             <div className="pt-8 border-t border-[var(--text-primary)]/10 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="text-3xl sm:text-5xl md:text-6xl font-serif font-black tracking-tight text-[var(--text-primary)]/10 select-none">
-                Legal Copilot.
+                Advotech Copilot.
               </div>
               <div className="text-xs text-[var(--text-muted)] text-center sm:text-right">
-                © 2026 Outliers Bangladesh. {isBn ? "সর্বস্বত্ব সংরক্ষিত।" : "All Rights Reserved."}
+                © 2026 Advotech Bangladesh. {isBn ? "সর্বস্বত্ব সংরক্ষিত।" : "All Rights Reserved."}
               </div>
             </div>
           </div>
@@ -1357,7 +1357,7 @@ export default function LandingAndAuthPage() {
                 <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
                   <Scale className="w-4 h-4" />
                 </div>
-                <span className="font-semibold text-base tracking-tight text-[var(--text-primary)]">Legal Copilot</span>
+                <span className="font-semibold text-base tracking-tight text-[var(--text-primary)]">Advotech Copilot</span>
               </div>
               <div className="relative z-10 pt-8 md:pt-0">
                 <span className="text-xs font-semibold uppercase tracking-wider block mb-2 text-[var(--text-muted)]">

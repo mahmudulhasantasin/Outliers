@@ -201,8 +201,8 @@ export default function CopilotPage() {
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
           <p className="text-base font-semibold text-[var(--text-primary)]">
             {language === "bn"
-              ? "লিগ্যাল কোপাইলট সাধারণ ব্যবহারকারীদের জন্য।"
-              : "Legal Copilot is reserved for General Users."}
+              ? "এডভোটেক কোপাইলট সাধারণ ব্যবহারকারীদের জন্য।"
+              : "Advotech Copilot is reserved for General Users."}
           </p>
           <p className="text-xs text-[var(--text-muted)] max-w-md">
             {language === "bn"
@@ -421,7 +421,7 @@ export default function CopilotPage() {
                 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2"
                 style={{ color: "var(--text-primary)" }}
               >
-                {language === "bn" ? "লিগ্যাল কোপাইলট" : "Legal Copilot"}
+                {language === "bn" ? "এডভোটেক কোপাইলট" : "Advotech Copilot"}
               </h2>
               <p
                 className="text-xs sm:text-sm font-normal text-neutral-500 dark:text-neutral-400"

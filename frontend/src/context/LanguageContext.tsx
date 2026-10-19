@@ -13,9 +13,9 @@ interface LanguageContextType {
 const translations: Record<Language, Record<string, string>> = {
   en: {
     // Navigation & General
-    appName: "Legal Copilot",
+    appName: "Advotech Copilot",
     tagline: "AI-native contract intelligence & legal advisory for Bangladesh laws",
-    copilot: "Legal Copilot",
+    copilot: "Advotech Copilot",
     contractmind: "ContractMind",
     archive: "Archive",
     architecture: "Architecture",
@@ -50,7 +50,7 @@ const translations: Record<Language, Record<string, string>> = {
     sampleContracts: "Load Sample Contract",
     maskPii: "Client-side PII Masking",
     analyzeNow: "Run ContractMind Analysis",
-    openInCopilot: "Open in Legal Copilot",
+    openInCopilot: "Open in Advotech Copilot",
     exportMemo: "Export Verified Memo",
     verifiedByLaw: "Statutory Reference Verified",
     highRisk: "High Risk",

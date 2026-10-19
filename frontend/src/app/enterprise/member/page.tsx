@@ -218,7 +218,7 @@ export default function EnterpriseMemberPage() {
               </div>
               <div className="flex-1 min-w-0">
                 <h4 className="text-xs font-bold text-[var(--text-primary)] flex items-center gap-1">
-                  <span>{isBn ? "লিগ্যাল কোপাইলট আলোচনা" : "Legal Copilot Chat"}</span>
+                  <span>{isBn ? "এডভোটেক কোপাইলট আলোচনা" : "Advotech Copilot Chat"}</span>
                   <ArrowUpRight className="w-3 h-3 text-[var(--text-muted)]" />
                 </h4>
                 <p className="text-[11px] text-[var(--text-muted)] mt-0.5 truncate">

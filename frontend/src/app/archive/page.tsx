@@ -85,8 +85,8 @@ export default function ArchivePage() {
             categoryBn: `স্ট্যাটাস: ${item.status}`,
             firstPartyEn: "User Contract",
             firstPartyBn: "ব্যবহারকারীর চুক্তি",
-            secondPartyEn: "Legal Copilot AI",
-            secondPartyBn: "লিগ্যাল কোপাইলট এআই",
+            secondPartyEn: "Advotech Copilot AI",
+            secondPartyBn: "এডভোটেক কোপাইলট এআই",
             auditDateEn: new Date(item.created_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
@@ -188,7 +188,7 @@ export default function ArchivePage() {
             <span>BANGLADESH JURISDICTION</span>
           </div>
           <div className="flex justify-between text-[11px] text-neutral-500 font-sans">
-            <span>Generated via Legal Copilot Repository</span>
+            <span>Generated via Advotech Copilot Repository</span>
             <span>Statutory records verified against bdlaws (bdlaws.minlaw.gov.bd)</span>
           </div>
         </div>
@@ -349,7 +349,7 @@ export default function ArchivePage() {
                     <button
                       onClick={() => handleOpenInCopilot(record)}
                       className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-                      title="Discuss in Legal Copilot"
+                      title="Discuss in Advotech Copilot"
                     >
                       <Bot className="w-3.5 h-3.5" />
                       <span>{language === "bn" ? "কোপাইলট আলোচনা" : "Copilot"}</span>

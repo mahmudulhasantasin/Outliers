@@ -59,7 +59,7 @@ export interface EnterpriseAuditMetadataLog {
   memberName: string;
   memberEmail: string;
   department: string;
-  module: "ContractMind Audit" | "Legal Copilot Chat" | "Advocate Verification";
+  module: "ContractMind Audit" | "Advotech Copilot Chat" | "Advocate Verification";
   category: string;
   creditsConsumed: number;
 }
@@ -331,7 +331,7 @@ export const INITIAL_AUDIT_LOGS: EnterpriseAuditMetadataLog[] = [
     memberName: "Tanvir Ahmed",
     memberEmail: "tanvir.procurement@apexholdings.bd",
     department: "Supply Chain",
-    module: "Legal Copilot Chat",
+    module: "Advotech Copilot Chat",
     category: "The Contract Act 1872",
     creditsConsumed: 5,
   },
@@ -364,7 +364,7 @@ export const INITIAL_AUDIT_LOGS: EnterpriseAuditMetadataLog[] = [
     memberName: "Sadia Rahman",
     memberEmail: "sadia.finance@apexholdings.bd",
     department: "Finance & Accounts",
-    module: "Legal Copilot Chat",
+    module: "Advotech Copilot Chat",
     category: "Income Tax Act 2023",
     creditsConsumed: 5,
   },

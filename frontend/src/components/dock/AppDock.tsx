@@ -30,7 +30,7 @@ export default function AppDock() {
   const generalItems: VerticalDockItemData[] = [
     {
       icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
-      label: isBn ? "লিগ্যাল কোপাইলট (Q&A)" : "Legal Copilot",
+      label: isBn ? "এডভোটেক কোপাইলট (Q&A)" : "Advotech Copilot",
       isActive: pathname === "/copilot" || pathname === "/app",
       onClick: () => router.push("/copilot"),
     },
@@ -138,7 +138,7 @@ export default function AppDock() {
     },
     {
       icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
-      label: isBn ? "লিগ্যাল কোপাইলট (Q&A)" : "Legal Copilot",
+      label: isBn ? "এডভোটেক কোপাইলট (Q&A)" : "Advotech Copilot",
       isActive: pathname === "/copilot" || pathname === "/app",
       onClick: () => router.push("/copilot"),
     },
