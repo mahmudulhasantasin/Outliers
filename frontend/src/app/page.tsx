@@ -1008,13 +1008,14 @@ export default function LandingAndAuthPage() {
                     key={idx}
                     type="button"
                     onClick={() => setActiveTestimonial(idx)}
-                    className={`flex items-center gap-4 p-4 rounded-2xl transition-all text-left cursor-pointer border ${
+                    onMouseEnter={() => setActiveTestimonial(idx)}
+                    className={`flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 text-left cursor-pointer border ${
                       activeTestimonial === idx
-                        ? "border-[var(--text-primary)]/60 bg-[var(--bg-card)] shadow-md"
-                        : "border-transparent hover:bg-[var(--bg-card)]/60"
+                        ? "border-[var(--text-primary)]/60 bg-[var(--bg-card)] shadow-md translate-x-1 sm:translate-x-2"
+                        : "border-transparent hover:bg-[var(--bg-card)]/60 opacity-70 hover:opacity-100"
                     }`}
                   >
-                    <div className={`w-12 h-12 rounded-xl overflow-hidden shrink-0 relative border ${borderClass}`}>
+                    <div className={`w-12 h-12 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-transform duration-300 ${activeTestimonial === idx ? "scale-105" : ""}`}>
                       <Image src={t.avatar} alt={t.name} fill className="object-cover" />
                     </div>
                     <div>
@@ -1025,24 +1026,31 @@ export default function LandingAndAuthPage() {
                 ))}
               </div>
 
-              {/* Right featured testimonial card */}
+              {/* Right featured testimonial card with smooth vertical slide effect */}
               <div
-                className="lg:col-span-8 rounded-3xl p-8 sm:p-12 border border-[#333] text-white shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[320px]"
+                className="lg:col-span-8 rounded-3xl p-8 sm:p-12 border border-[#333] text-white shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[340px]"
                 style={{ backgroundColor: "#1c1917" }}
               >
-                <div className="relative z-10">
-                  <Quote className="w-10 h-10 text-amber-500/40 mb-4" />
-                  <p className="text-base sm:text-xl font-serif font-light leading-relaxed mb-8 text-neutral-100">
-                    {testimonials[activeTestimonial].quote}
-                  </p>
-                </div>
-                <div className="relative z-10 pt-4 border-t border-white/10 flex items-center justify-between">
+                {/* Smooth Sliding Content container keyed by activeTestimonial */}
+                <div
+                  key={activeTestimonial}
+                  className="relative z-10 flex flex-col justify-between h-full animate-[fadeInUp_0.35s_cubic-bezier(0.16,1,0.3,1)]"
+                >
                   <div>
-                    <div className="font-semibold text-sm text-white">{testimonials[activeTestimonial].name}</div>
-                    <div className="text-xs text-neutral-400">{testimonials[activeTestimonial].role}</div>
+                    <Quote className="w-10 h-10 text-amber-500/40 mb-4 transition-transform duration-300 hover:scale-110" />
+                    <p className="text-base sm:text-xl font-serif font-light leading-relaxed mb-8 text-neutral-100 transition-opacity duration-300">
+                      {testimonials[activeTestimonial].quote}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-1 text-amber-400">
-                    {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
+
+                  <div className="pt-4 border-t border-white/10 flex items-center justify-between">
+                    <div>
+                      <div className="font-semibold text-sm text-white">{testimonials[activeTestimonial].name}</div>
+                      <div className="text-xs text-neutral-400">{testimonials[activeTestimonial].role}</div>
+                    </div>
+                    <div className="flex items-center gap-1 text-amber-400">
+                      {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
+                    </div>
                   </div>
                 </div>
               </div>
