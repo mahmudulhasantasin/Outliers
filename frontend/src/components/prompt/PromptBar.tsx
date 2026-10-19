@@ -91,8 +91,8 @@ const LINE = 22;
 const DEFAULT_SOURCES: PromptBarSource[] = [
   {
     key: 'files',
-    name: 'Attach Contract',
-    description: 'Upload PDF or text',
+    name: 'Attach Document',
+    description: 'Image, PDF, DOCX, MD, TXT',
     icon: Attachment01Icon,
     attach: true
   },
@@ -203,6 +203,7 @@ export default function PromptBar({
 }: PromptBarProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const glowRef = useRef<HTMLSpanElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const lastOpen = useRef<string | null>(null);
@@ -213,6 +214,15 @@ export default function PromptBar({
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [plusOpen, setPlusOpen] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const names = Array.from(files).map(f => f.name);
+    setAttachments(prev => [...prev, ...names]);
+    e.target.value = '';
+    focusInput();
+  };
   const [dismissed, setDismissed] = useState(false);
   const [active, setActive] = useState(0);
   const [listening, setListening] = useState(false);
@@ -290,10 +300,14 @@ export default function PromptBar({
     const head = token ? draft.slice(0, token.start) : draft;
     if (row.attach) {
       setDraft(head);
-      Promise.resolve(latest.current.onAttach?.()).then(files => {
-        if (!files) return;
-        setAttachments(a => [...a, ...(Array.isArray(files) ? files : [files])]);
-      });
+      if (latest.current.onAttach) {
+        Promise.resolve(latest.current.onAttach()).then(files => {
+          if (!files) return;
+          setAttachments(a => [...a, ...(Array.isArray(files) ? files : [files])]);
+        });
+      } else {
+        fileInputRef.current?.click();
+      }
     } else if (open === 'at') {
       setDraft(`${head}@${row.name} `);
     } else {
@@ -502,6 +516,14 @@ export default function PromptBar({
         />
 
         <div className="flex items-center gap-1.5 pt-1">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.md,.txt"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <button
             type="button"
             className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors"

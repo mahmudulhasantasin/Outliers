@@ -31,6 +31,7 @@ interface ChatMessage {
   timestamp: string;
   textEn: string;
   textBn: string;
+  attachments?: string[];
   citations?: string[];
   apiCitations?: CitedSection[];
   nextSteps?: string[];
@@ -80,15 +81,19 @@ export default function CopilotPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isTyping]);
 
-  const handleSendPrompt = async (text: string) => {
-    if (!text.trim()) return;
+  const handleSendPrompt = async (text: string, detail?: { attachments?: string[] }) => {
+    const rawAttachments = detail?.attachments || [];
+    if (!text.trim() && rawAttachments.length === 0) return;
+
+    const promptText = text.trim() || (language === "bn" ? "সংযুক্ত ফাইল বিশ্লেষণ করুন" : "Analyze attached document(s)");
 
     const userMessage: ChatMessage = {
       id: `usr-${Date.now()}`,
       sender: "user",
       timestamp: "Just now",
-      textEn: text,
-      textBn: text
+      textEn: promptText,
+      textBn: promptText,
+      attachments: rawAttachments.length > 0 ? rawAttachments : undefined
     };
 
     const copilotMsgId = `cop-${Date.now()}`;
@@ -110,7 +115,7 @@ export default function CopilotPage() {
       let sessionId = activeSessionId;
       if (!sessionId) {
         const session = await createChatSession(
-          text.length > 40 ? text.slice(0, 40) + "..." : text
+          promptText.length > 40 ? promptText.slice(0, 40) + "..." : promptText
         );
         sessionId = String(session.session_id || session.id);
         setActiveSessionId(sessionId);
@@ -123,9 +128,13 @@ export default function CopilotPage() {
         try { contractId = JSON.parse(contractData).id; } catch { /* noop */ }
       }
 
+      const queryWithContext = rawAttachments.length > 0
+        ? `[Attached: ${rawAttachments.join(", ")}]\n${promptText}`
+        : promptText;
+
       const result = await sendChatQuery({
         session_id: sessionId,
-        query: text,
+        query: queryWithContext,
         contract_id: contractId,
       });
 
@@ -283,11 +292,26 @@ export default function CopilotPage() {
                     </div>
                   )}
 
-                  {/* User message text */}
+                  {/* User message attachments & text */}
                   {msg.sender === "user" && (
-                    <p className="text-sm sm:text-[15px] leading-relaxed font-sans">
-                      {language === "bn" ? msg.textBn : msg.textEn}
-                    </p>
+                    <div className="space-y-2">
+                      {msg.attachments && msg.attachments.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pb-1">
+                          {msg.attachments.map((file, idx) => (
+                            <span
+                              key={`${file}-${idx}`}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-black/10 dark:bg-white/10"
+                            >
+                              <FileText className="w-3.5 h-3.5 opacity-70" />
+                              <span className="max-w-[200px] truncate">{file}</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <p className="text-sm sm:text-[15px] leading-relaxed font-sans">
+                        {language === "bn" ? msg.textBn : msg.textEn}
+                      </p>
+                    </div>
                   )}
 
                   {/* Copilot message text and citations */}
