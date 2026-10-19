@@ -69,6 +69,13 @@ export default function LandingAndAuthPage() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
+  const [slideDirection, setSlideDirection] = useState<"down" | "up">("down");
+
+  const handleTestimonialChange = (idx: number) => {
+    if (idx === activeTestimonial) return;
+    setSlideDirection(idx > activeTestimonial ? "down" : "up");
+    setActiveTestimonial(idx);
+  };
 
   // ── Registration multi-step state ──
   const [regStep, setRegStep] = useState<RegistrationStep>("role");
@@ -1007,8 +1014,8 @@ export default function LandingAndAuthPage() {
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setActiveTestimonial(idx)}
-                    onMouseEnter={() => setActiveTestimonial(idx)}
+                    onClick={() => handleTestimonialChange(idx)}
+                    onMouseEnter={() => handleTestimonialChange(idx)}
                     className={`group flex items-center gap-4 p-4 sm:p-4.5 rounded-2xl transition-all duration-300 text-left cursor-pointer border relative ${
                       activeTestimonial === idx
                         ? "border-[var(--text-primary)]/40 bg-[var(--bg-card)] shadow-lg shadow-black/5 translate-x-1 sm:translate-x-2.5"
@@ -1044,12 +1051,16 @@ export default function LandingAndAuthPage() {
                 {/* Background decorative subtle gradient */}
                 <div className="absolute -top-24 -right-24 w-72 h-72 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
-                {/* Smooth Sliding Content container keyed by activeTestimonial */}
+                {/* Vertical ticker animated content container */}
                 <div
                   key={activeTestimonial}
-                  className="relative z-10 flex flex-col justify-between h-full animate-[slideUpRoll_0.4s_cubic-bezier(0.16,1,0.3,1)]"
+                  className={`relative z-10 flex flex-col justify-between h-full ${
+                    slideDirection === "down"
+                      ? "animate-[rollDownIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
+                      : "animate-[rollUpIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
+                  }`}
                 >
-                  <div>
+                  <div className="overflow-hidden">
                     <Quote className="w-10 h-10 text-amber-500/50 mb-5 transition-transform duration-300" />
                     <p className="text-base sm:text-xl font-serif font-light leading-relaxed mb-8 text-neutral-100">
                       {testimonials[activeTestimonial].quote}
