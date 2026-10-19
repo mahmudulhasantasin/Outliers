@@ -581,13 +581,17 @@ export default function LandingAndAuthPage() {
                 {/* Backlight halo glow */}
                 <div className="absolute inset-8 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-2xl pointer-events-none" />
 
-                {/* Looping Smooth Video */}
+                {/* Looping Smooth Video with Adaptive Subject Contour Stroke */}
                 <video
                   autoPlay
                   loop
                   muted
                   playsInline
-                  className="w-full h-full object-contain filter drop-shadow-[0_25px_35px_rgba(0,0,0,0.25)] select-none pointer-events-none transform hover:scale-105 transition-transform duration-700"
+                  style={{
+                    filter:
+                      "drop-shadow(1px 0px 0px var(--bg-primary)) drop-shadow(-1px 0px 0px var(--bg-primary)) drop-shadow(0px 1px 0px var(--bg-primary)) drop-shadow(0px -1px 0px var(--bg-primary)) drop-shadow(0 25px 35px rgba(0,0,0,0.25))",
+                  }}
+                  className="w-full h-full object-contain select-none pointer-events-none transform hover:scale-105 transition-transform duration-700"
                 >
                   <source src="/hero-statue.webm" type="video/webm" />
                   <source src="/From Klickpin,com- Bedroom Decor Ideas That Look So Expensive 32388-pin-id-316026098874858134-Picsart-BackgroundRemover.webm" type="video/webm" />
