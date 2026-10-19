@@ -680,18 +680,18 @@ export default function LandingAndAuthPage() {
 
 
         {/* ── SECTION 2: APP ER MAIN DUITA FEATURE (LEGAL COPILOT & CONTRACTMIND) ── */}
-        <section id="features" className="py-20 px-6 lg:px-10 max-w-6xl mx-auto w-full">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
-              {isBn ? "অ্যাপের প্রধান দুই স্তম্ভ" : "Core Flagship Capabilities"}
+        <section id="features" className="py-16 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+          <div className="text-center max-w-2xl mx-auto mb-12">
+            <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
+              {isBn ? "প্রধান ফিচারসমূহ" : "Core Capabilities"}
             </span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-4">
-              {isBn ? "আইনি গবেষণা ও চুক্তি বিশ্লেষণের স্বয়ংক্রিয় শক্তি" : "Legal Copilot & ContractMind: Built for High Stakes"}
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-3">
+              {isBn ? "লিগ্যাল কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Legal Copilot & ContractMind"}
             </h2>
-            <p className="text-xs sm:text-sm md:text-base text-[var(--text-muted)] leading-relaxed">
+            <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
               {isBn
-                ? "আমাদের প্ল্যাটফর্ম শুধুমাত্র সাধারণ চ্যাটবট নয়; এটি বাংলাদেশের প্রচলিত আইনের ধারা ও সুপ্রিম কোর্টের নজির দ্বারা পরিচালিত একটি সম্পূর্ণ লিগ্যাল ইঞ্জিন।"
-                : "Engineered specifically around Bangladesh statutory jurisprudence. Fast, sovereign, and backed by verifiable citations."}
+                ? "বাংলাদেশের সংবিধিবদ্ধ আইনের ভিত্তিতে নির্ভুল আইনি গবেষণা ও তাৎক্ষণিক চুক্তি অডিট।"
+                : "Codified statutory precision with verifiable legal citations & automated risk audits."}
             </p>
           </div>
 
