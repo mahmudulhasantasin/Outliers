@@ -5,8 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { CONTRACT_AUDITS } from "@/data/contractAudits";
-import { getContractHistory, getContractDownloadUrl } from "@/lib/apiServices";
+import { getContractHistory, getContractDownloadUrl, HITL_STATUS_CONFIG } from "@/lib/apiServices";
 import {
   FolderClock,
   Search,
@@ -16,10 +15,9 @@ import {
   Trash2,
   FileText,
   ShieldCheck,
-  Filter,
-  FileCode2,
   Download,
   Loader2,
+  RefreshCw,
   X
 } from "lucide-react";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
@@ -28,10 +26,13 @@ import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 interface ArchivedRecord {
   id: string;
   contractId: string;
+  memoId?: string | number;
   titleEn: string;
   titleBn: string;
   categoryEn: string;
   categoryBn: string;
+  hitlStatus: string;
+  isLawyerVerified: boolean;
   firstPartyEn: string;
   firstPartyBn: string;
   secondPartyEn: string;
@@ -47,8 +48,6 @@ interface ArchivedRecord {
   summaryEn: string;
   summaryBn: string;
 }
-
-const INITIAL_ARCHIVE: ArchivedRecord[] = [];
 
 export default function ArchivePage() {
   const router = useRouter();
@@ -68,49 +67,123 @@ export default function ArchivePage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
 
-  // Fetch real contract history from backend on mount
-  useEffect(() => {
-    let isMounted = true;
-    async function fetchHistory() {
-      try {
-        setIsLoadingApi(true);
-        const data = await getContractHistory();
-        if (isMounted && Array.isArray(data)) {
-          const mapped: ArchivedRecord[] = data.map((item) => ({
-            id: item.id,
-            contractId: item.id,
-            titleEn: item.file_name,
-            titleBn: item.file_name,
-            categoryEn: `Status: ${item.status}`,
-            categoryBn: `স্ট্যাটাস: ${item.status}`,
-            firstPartyEn: "User Contract",
-            firstPartyBn: "ব্যবহারকারীর চুক্তি",
-            secondPartyEn: "Advotech Copilot AI",
-            secondPartyBn: "এডভোটেক কোপাইলট এআই",
+  // Fetch real contract history from backend
+  const fetchHistory = async () => {
+    try {
+      setIsLoadingApi(true);
+      const data = await getContractHistory();
+      if (Array.isArray(data)) {
+        const mapped: ArchivedRecord[] = data.map((item) => {
+          const cid = String(item.contract_id || item.id);
+          const status = item.hitl_status || item.status || "NOT_REQUESTED";
+          const isVerified = status === "COMPLETED" || item.is_lawyer_verified === true;
+          const title = item.title || item.file_name || "Contract Document";
+          const risk = (item.overall_risk || item.risk_grade || "MODERATE").toUpperCase();
+          const score = typeof item.risk_score === "number" ? item.risk_score : 50;
+
+          const highCount = risk === "CRITICAL" || risk === "HIGH" ? 3 : 0;
+          const medCount = risk === "MODERATE" || risk === "MEDIUM" ? 2 : 1;
+          const compCount = risk === "LOW" || risk === "COMPLIANT" ? 4 : 1;
+
+          return {
+            id: cid,
+            contractId: cid,
+            memoId: item.memo_id,
+            titleEn: title,
+            titleBn: title,
+            categoryEn: status.replace(/_/g, " "),
+            categoryBn: status === "COMPLETED" ? "যাচাইকৃত" : status === "NOT_REQUESTED" ? "শুধু এআই" : "প্রক্রিয়াধীন",
+            hitlStatus: status,
+            isLawyerVerified: isVerified,
+            firstPartyEn: "User / Organization",
+            firstPartyBn: "ব্যবহারকারী / প্রতিষ্ঠান",
+            secondPartyEn: isVerified ? "Verified Advocate" : "ContractMind AI",
+            secondPartyBn: isVerified ? "নিবন্ধিত আইনজীবী" : "কন্ট্রাক্টমাইন্ড এআই",
             auditDateEn: new Date(item.created_at).toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
               year: "numeric",
             }),
             auditDateBn: new Date(item.created_at).toLocaleDateString("bn-BD"),
-            riskScore: item.risk_score ?? 50,
-            riskGradeEn: item.risk_grade ?? "Audited",
-            riskGradeBn: item.risk_grade ?? "মূল্যায়িত",
-            highRiskCount: item.risk_grade === "HIGH" ? 2 : 0,
-            mediumRiskCount: item.risk_grade === "MEDIUM" ? 1 : 0,
-            compliantCount: 1,
-            summaryEn: `Audited on ${new Date(item.created_at).toLocaleDateString()}. Status: ${item.status}.`,
-            summaryBn: `অডিট সম্পন্ন হয়েছে: ${new Date(item.created_at).toLocaleDateString("bn-BD")}। স্ট্যাটাস: ${item.status}।`,
-          }));
+            riskScore: score,
+            riskGradeEn: risk,
+            riskGradeBn: risk === "CRITICAL" ? "সংকটপূর্ণ" : risk === "HIGH" ? "উচ্চ ঝুঁকি" : risk === "MODERATE" ? "মাঝারি ঝুঁকি" : "স্বল্প ঝুঁকি",
+            highRiskCount: highCount,
+            mediumRiskCount: medCount,
+            compliantCount: compCount,
+            summaryEn: `Audited on ${new Date(item.created_at).toLocaleDateString()}. Status: ${status.replace(/_/g, " ")}.`,
+            summaryBn: `অডিট সম্পন্ন হয়েছে: ${new Date(item.created_at).toLocaleDateString("bn-BD")}। স্ট্যাটাস: ${status}।`,
+          };
+        });
+        setRecords(mapped);
+      }
+    } catch (err: unknown) {
+      console.warn("Could not fetch backend contract history:", err);
+    } finally {
+      setIsLoadingApi(false);
+    }
+  };
+
+  useEffect(() => {
+    let isMounted = true;
+    const loadContracts = async () => {
+      try {
+        setIsLoadingApi(true);
+        const data = await getContractHistory();
+        if (!isMounted) return;
+        if (Array.isArray(data)) {
+          const mapped: ArchivedRecord[] = data.map((item) => {
+            const cid = String(item.contract_id || item.id);
+            const status = item.hitl_status || item.status || "NOT_REQUESTED";
+            const isVerified = status === "COMPLETED" || item.is_lawyer_verified === true;
+            const title = item.title || item.file_name || "Contract Document";
+            const risk = (item.overall_risk || item.risk_grade || "MODERATE").toUpperCase();
+            const score = typeof item.risk_score === "number" ? item.risk_score : 50;
+
+            const highCount = risk === "CRITICAL" || risk === "HIGH" ? 3 : 0;
+            const medCount = risk === "MODERATE" || risk === "MEDIUM" ? 2 : 1;
+            const compCount = risk === "LOW" || risk === "COMPLIANT" ? 4 : 1;
+
+            return {
+              id: cid,
+              contractId: cid,
+              memoId: item.memo_id,
+              titleEn: title,
+              titleBn: title,
+              categoryEn: status.replace(/_/g, " "),
+              categoryBn: status === "COMPLETED" ? "যাচাইকৃত" : status === "NOT_REQUESTED" ? "শুধু এআই" : "প্রক্রিয়াধীন",
+              hitlStatus: status,
+              isLawyerVerified: isVerified,
+              firstPartyEn: "User / Organization",
+              firstPartyBn: "ব্যবহারকারী / প্রতিষ্ঠান",
+              secondPartyEn: isVerified ? "Verified Advocate" : "ContractMind AI",
+              secondPartyBn: isVerified ? "নিবন্ধিত আইনজীবী" : "কন্ট্রাক্টমাইন্ড এআই",
+              auditDateEn: new Date(item.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }),
+              auditDateBn: new Date(item.created_at).toLocaleDateString("bn-BD"),
+              riskScore: score,
+              riskGradeEn: risk,
+              riskGradeBn: risk === "CRITICAL" ? "সংকটপূর্ণ" : risk === "HIGH" ? "উচ্চ ঝুঁকি" : risk === "MODERATE" ? "মাঝারি ঝুঁকি" : "স্বল্প ঝুঁকি",
+              highRiskCount: highCount,
+              mediumRiskCount: medCount,
+              compliantCount: compCount,
+              summaryEn: `Audited on ${new Date(item.created_at).toLocaleDateString()}. Status: ${status.replace(/_/g, " ")}.`,
+              summaryBn: `অডিট সম্পন্ন হয়েছে: ${new Date(item.created_at).toLocaleDateString("bn-BD")}। স্ট্যাটাস: ${status}।`,
+            };
+          });
           setRecords(mapped);
         }
-      } catch (err) {
-        console.warn("Could not fetch backend contract history:", err);
+      } catch (err: unknown) {
+        console.warn("Could not load initial contract history:", err);
       } finally {
         if (isMounted) setIsLoadingApi(false);
       }
-    }
-    fetchHistory();
+    };
+
+    loadContracts();
     return () => {
       isMounted = false;
     };
@@ -123,12 +196,13 @@ export default function ArchivePage() {
       if (res?.download_url) {
         window.open(res.download_url, "_blank");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to download contract file.";
       console.error("Download failed:", err);
-      alert(err.message || "Failed to download contract file.");
+      alert(msg);
     } finally {
       setDownloadingId(null);
-    };
+    }
   };
 
   // Filter records
@@ -155,18 +229,23 @@ export default function ArchivePage() {
     });
   }, [records, searchQuery, selectedRisk]);
 
-  // Navigate to ContractMind
-  const handleOpenInContractMind = (contractId: string) => {
-    router.push(`/contractmind?id=${contractId}`);
-  };
-
-  // Open context in Copilot
+  // Open context in Copilot as a fresh session
   const handleOpenInCopilot = (record: ArchivedRecord) => {
     const contextPayload = {
-      contractId: record.contractId,
+      id: record.contractId || record.id,
+      contractId: record.contractId || record.id,
       titleEn: record.titleEn,
       titleBn: record.titleBn,
-      clauseFocus: null
+      summaryEn: record.summaryEn,
+      summaryBn: record.summaryBn,
+      firstPartyEn: record.firstPartyEn,
+      firstPartyBn: record.firstPartyBn,
+      secondPartyEn: record.secondPartyEn,
+      secondPartyBn: record.secondPartyBn,
+      riskScore: record.riskScore,
+      riskGradeEn: record.riskGradeEn,
+      riskGradeBn: record.riskGradeBn,
+      shouldStartNewSession: true,
     };
     sessionStorage.setItem("active_audit_contract", JSON.stringify(contextPayload));
     router.push("/copilot");
@@ -179,7 +258,7 @@ export default function ArchivePage() {
 
   return (
     <AppShell>
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans print:pt-0 print:px-0 print:max-w-none">
+      <div className={`max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans print:pt-0 print:px-0 print:max-w-none ${previewRecord ? "print:hidden" : ""}`}>
         
         {/* Print-Only Official Archive Summary Header */}
         <div className="hidden print:block pb-6 mb-8 border-b-2 border-neutral-900">
@@ -195,9 +274,21 @@ export default function ArchivePage() {
 
         {/* Page Header */}
         <div className="pb-8 border-b print:pb-5 print:border-neutral-200" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
-          <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-wider font-semibold mb-2 print:text-neutral-600">
-            <FolderClock className="w-4 h-4" />
-            <span>{language === "bn" ? "অডিট সংগ্রহশালা ও রেকর্ড" : "Audit Repository"}</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-wider font-semibold print:text-neutral-600">
+              <FolderClock className="w-4 h-4" />
+              <span>{language === "bn" ? "অডিট সংগ্রহশালা ও রেকর্ড" : "Audit Repository"}</span>
+            </div>
+            <button
+              onClick={fetchHistory}
+              disabled={isLoadingApi}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-[var(--text-primary)]/15 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50 cursor-pointer print:hidden"
+              style={{ color: "var(--text-primary)" }}
+              title={language === "bn" ? "চুক্তির তালিকা রিফ্রেশ করুন" : "Refresh Contract History"}
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingApi ? "animate-spin text-blue-500" : ""}`} />
+              <span>{language === "bn" ? "রিফ্রেশ" : "Refresh"}</span>
+            </button>
           </div>
 
           <h1 className="text-3xl sm:text-4xl font-serif font-normal tracking-tight leading-snug mb-3" style={{ color: "var(--text-primary)" }}>
@@ -282,18 +373,39 @@ export default function ArchivePage() {
               >
                 {/* Item Top Metadata */}
                 <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-                  <div className="flex items-baseline gap-3">
+                  <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="text-xs font-semibold text-neutral-400 print:text-neutral-600">
                       {language === "bn" ? record.auditDateBn : record.auditDateEn}
                     </span>
                     <span className="text-xs text-neutral-400 font-sans">·</span>
-                    <span className="text-xs font-medium text-neutral-500 print:text-neutral-700">
-                      {language === "bn" ? record.categoryBn : record.categoryEn}
+                    <span
+                      className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
+                        HITL_STATUS_CONFIG[record.hitlStatus]?.color ||
+                        "bg-neutral-100 text-neutral-700 border-neutral-300 dark:bg-neutral-800 dark:text-neutral-300 dark:border-neutral-700"
+                      }`}
+                      title={
+                        language === "bn"
+                          ? HITL_STATUS_CONFIG[record.hitlStatus]?.descriptionBn
+                          : HITL_STATUS_CONFIG[record.hitlStatus]?.descriptionEn
+                      }
+                    >
+                      {language === "bn"
+                        ? HITL_STATUS_CONFIG[record.hitlStatus]?.labelBn || record.categoryBn
+                        : HITL_STATUS_CONFIG[record.hitlStatus]?.labelEn || record.categoryEn}
                     </span>
+                    {record.isLawyerVerified && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{language === "bn" ? "আইনজীবী দ্বারা যাচাইকৃত ✓" : "Verified by Lawyer ✓"}</span>
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-baseline gap-2">
-                    <span className="text-xs font-medium text-neutral-500 print:text-neutral-700">
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-md" style={{
+                      backgroundColor: record.riskScore >= 75 ? "rgba(239, 68, 68, 0.15)" : record.riskScore >= 50 ? "rgba(245, 158, 11, 0.15)" : "rgba(34, 197, 94, 0.15)",
+                      color: record.riskScore >= 75 ? "#ef4444" : record.riskScore >= 50 ? "#f59e0b" : "#22c55e"
+                    }}>
                       {language === "bn" ? record.riskGradeBn : record.riskGradeEn}
                     </span>
                     <span className="text-xs text-neutral-400 print:text-neutral-600">
@@ -338,26 +450,18 @@ export default function ArchivePage() {
                   {/* Actions (Hidden during Print) */}
                   <div className="flex items-center gap-2 print:hidden">
                     <button
-                      onClick={() => setPreviewRecord(record)}
-                      className="px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer border border-[var(--text-primary)]/10" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-                      title="View Full Audit Report"
-                    >
-                      <FileText className="w-3.5 h-3.5 text-sky-500" />
-                      <span>{language === "bn" ? "অডিট রিপোর্ট দেখুন" : "View Full Audit"}</span>
-                    </button>
-
-                    <button
                       onClick={() => handleOpenInCopilot(record)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-                      title="Discuss in Advotech Copilot"
+                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-[var(--text-primary)]/10" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                      title={language === "bn" ? "কোপাইলটের সাথে আলোচনা করুন" : "Discuss in Advotech Copilot"}
                     >
                       <Bot className="w-3.5 h-3.5" />
-                      <span>{language === "bn" ? "কোপাইলট আলোচনা" : "Copilot"}</span>
+                      <span>{language === "bn" ? "কোপাইলট" : "Copilot"}</span>
                     </button>
 
                     <button
-                      onClick={() => handleOpenInContractMind(record.contractId)}
-                      className="px-3.5 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors hover:opacity-90" style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
+                      onClick={() => setPreviewRecord(record)}
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90"
+                      title={language === "bn" ? "সম্পূর্ণ অডিট রিপোর্ট দেখুন" : "View Full Audit Report"}
                     >
                       <span>{language === "bn" ? "অডিট দেখুন" : "View Audit"}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
@@ -413,26 +517,37 @@ export default function ArchivePage() {
 
         {/* Markdown Audit Modal */}
         {previewRecord && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl overflow-hidden">
-              <div className="p-4 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 print:static print:inset-auto print:bg-white print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:block print:z-auto">
+            <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl overflow-hidden print:border-none print:shadow-none print:rounded-none print:max-h-none print:w-full print:bg-white">
+              <div className="p-4 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)] print:border-b-2 print:border-neutral-900 print:bg-white print:pb-3 print:mb-4">
                 <div className="min-w-0 pr-4">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 print:border-neutral-400 print:text-neutral-700">
                     {previewRecord.id}
                   </span>
-                  <h3 className="text-base font-serif font-bold text-[var(--text-primary)] truncate mt-1">
+                  <h3 className="text-base font-serif font-bold text-[var(--text-primary)] truncate mt-1 print:text-neutral-900 print:text-lg">
                     {language === "bn" ? previewRecord.titleBn : previewRecord.titleEn}
                   </h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setPreviewRecord(null)}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2 print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                    title={language === "bn" ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
+                  >
+                    <Printer className="w-4 h-4 text-sky-500" />
+                    <span>{language === "bn" ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewRecord(null)}
+                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 print:overflow-visible print:p-0">
                 <MarkdownViewer
                   content={generateContractAuditMarkdown(previewRecord.contractId, language as "en" | "bn")}
                 />

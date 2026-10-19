@@ -139,6 +139,18 @@ html, body {
     break-inside: avoid !important;
     page-break-inside: avoid !important;
   }
+
+  /* Ensure code blocks, pre, and redline diffs never print as dark terminal widgets */
+  pre, code {
+    background-color: transparent !important;
+    text-shadow: none !important;
+  }
+
+  /* Keep paper background clean white for legal documents */
+  .print-clean-paper {
+    background: #FFFFFF !important;
+    color: #111111 !important;
+  }
 }
 
 @keyframes fadeInUp {

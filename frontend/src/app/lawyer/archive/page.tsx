@@ -15,7 +15,6 @@ import {
   WithdrawalRequest,
 } from "@/lib/apiServices";
 import {
-  Archive,
   Search,
   CheckCircle2,
   Calendar,
@@ -28,9 +27,9 @@ import {
   Sparkles,
   Coins,
   Wallet,
-  ArrowDownRight,
   Send,
   Loader2,
+  Printer,
 } from "lucide-react";
 
 interface ArchivedVerification {
@@ -49,8 +48,6 @@ interface ArchivedVerification {
   status: "verified";
 }
 
-const SAMPLE_ARCHIVE: ArchivedVerification[] = [];
-
 export default function LawyerArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
@@ -65,22 +62,33 @@ export default function LawyerArchivePage() {
 
   const [activeTab, setActiveTab] = useState<"archive" | "earnings">("archive");
   const [search, setSearch] = useState("");
-  const [archiveList, setArchiveList] = useState<ArchivedVerification[]>([]);
+  const [archiveList] = useState<ArchivedVerification[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const userArchiveKey = user?.email
+        ? `verified_contracts_archive_${user.email}`
+        : "verified_contracts_archive";
+      const stored = JSON.parse(localStorage.getItem(userArchiveKey) || "[]");
+      if (Array.isArray(stored)) {
+        return stored.filter(
+          (s: ArchivedVerification) =>
+            s && s.id && !["ver-901", "ver-902", "ver-903", "ver-cnt-6639"].includes(s.id)
+        );
+      }
+    } catch {
+      // ignore
+    }
+    return [];
+  });
   const [selectedPreview, setSelectedPreview] = useState<ArchivedVerification | null>(null);
 
   // Earnings & Withdrawal state
   const [earnings, setEarnings] = useState<EarningsDashboard | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
   const [withdrawAmount, setWithdrawAmount] = useState<number>(500);
-  const [bkashNumber, setBkashNumber] = useState<string>("");
+  const [bkashNumber, setBkashNumber] = useState<string>(() => user?.mobile || "");
   const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
   const [withdrawalSuccess, setWithdrawalSuccess] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (user?.mobile) {
-      setBkashNumber(user.mobile);
-    }
-  }, [user?.mobile]);
 
   const isVerified = user?.lawyerProfile?.verificationStatus === "verified";
 
@@ -113,39 +121,44 @@ export default function LawyerArchivePage() {
   };
 
   useEffect(() => {
-    if (activeTab === "earnings") {
-      fetchEarningsData();
-    }
-  }, [activeTab, isVerified]);
+    let isMounted = true;
+    if (activeTab !== "earnings") return;
 
-  // Load dynamically verified contracts from localStorage (scoped to this lawyer)
-  useEffect(() => {
-    if (typeof window !== "undefined") {
+    const loadEarnings = async () => {
+      if (!isVerified) {
+        if (!isMounted) return;
+        setEarnings({
+          total_earned_credits: 0,
+          pending_payout_credits: 0,
+          completed_reviews: 0,
+          avg_rating: null,
+          recent_earnings: [],
+        });
+        setWithdrawals([]);
+        return;
+      }
       try {
-        const userArchiveKey = user?.email
-          ? `verified_contracts_archive_${user.email}`
-          : "verified_contracts_archive";
-        const stored = JSON.parse(
-          localStorage.getItem(userArchiveKey) || "[]"
-        );
-        if (Array.isArray(stored)) {
-          // Exclude any legacy mock items
-          const validEntries = stored.filter(
-            (s: ArchivedVerification) =>
-              s &&
-              s.id &&
-              !["ver-901", "ver-902", "ver-903", "ver-cnt-6639"].includes(s.id)
-          );
-          setArchiveList(validEntries);
-        } else {
-          setArchiveList([]);
+        const [earnRes, withRes] = await Promise.allSettled([
+          getLawyerEarnings(),
+          listWithdrawals(),
+        ]);
+        if (!isMounted) return;
+        if (earnRes.status === "fulfilled" && earnRes.value) {
+          setEarnings(earnRes.value);
+        }
+        if (withRes.status === "fulfilled" && Array.isArray(withRes.value)) {
+          setWithdrawals(withRes.value);
         }
       } catch (err) {
-        console.error("Error reading verified archive:", err);
-        setArchiveList([]);
+        console.warn("Could not load earnings/withdrawals:", err);
       }
-    }
-  }, [user?.email]);
+    };
+
+    loadEarnings();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab, isVerified]);
 
   const handleWithdrawalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -164,8 +177,9 @@ export default function LawyerArchivePage() {
           : `Withdrawal request submitted successfully! Ref: ${res.id}`
       );
       fetchEarningsData();
-    } catch (err: any) {
-      alert(err.message || "Failed to submit withdrawal request.");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit withdrawal request.";
+      alert(msg);
     } finally {
       setIsSubmittingWithdrawal(false);
     }
@@ -466,11 +480,11 @@ export default function LawyerArchivePage() {
                     <tbody className="divide-y divide-[var(--text-primary)]/5 font-mono">
                       {withdrawals.map((w) => (
                         <tr key={w.id}>
-                          <td className="py-2.5 text-[var(--text-primary)] font-bold">{w.id.slice(0, 8)}</td>
+                          <td className="py-2.5 text-[var(--text-primary)] font-bold">{String(w.id).slice(0, 8)}</td>
                           <td className="py-2.5 text-[var(--text-muted)]">
                             {new Date(w.requested_at).toLocaleDateString()}
                           </td>
-                          <td className="py-2.5 font-bold text-emerald-500">৳{w.amount_credits}</td>
+                          <td className="py-2.5 font-bold text-emerald-500">৳{w.amount_bdt ?? w.amount_credits}</td>
                           <td className="py-2.5 text-[var(--text-muted)]">{w.bkash_number}</td>
                           <td className="py-2.5 text-right">
                             <span
@@ -497,12 +511,12 @@ export default function LawyerArchivePage() {
           </div>
         )}
         {selectedPreview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden`}>
-              <div className="p-4 sm:p-5 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 print:static print:inset-auto print:bg-white print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:block print:z-auto">
+            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden print:border-none print:shadow-none print:rounded-none print:max-h-none print:w-full print:bg-white`}>
+              <div className="p-4 sm:p-5 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)] print:border-b-2 print:border-neutral-900 print:bg-white print:pb-3 print:mb-4">
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                    <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 print:border-neutral-400 print:text-neutral-700">
                       {selectedPreview.id}
                     </span>
                     <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
@@ -510,24 +524,35 @@ export default function LawyerArchivePage() {
                       {isBn ? "সংবিধিবদ্ধ সিলমোহরকৃত অডিট" : "Statutory Sealed Audit"}
                     </span>
                   </div>
-                  <h2 className="text-base sm:text-lg font-serif font-bold text-[var(--text-primary)] truncate">
+                  <h2 className="text-base sm:text-lg font-serif font-bold text-[var(--text-primary)] truncate print:text-neutral-900">
                     {isBn ? selectedPreview.titleBn : selectedPreview.titleEn}
                   </h2>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 print:text-neutral-700">
                     {isBn ? "ক্লায়েন্ট:" : "Client:"} {selectedPreview.clientName} · {isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn}
                   </p>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setSelectedPreview(null)}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-2 print:hidden">
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                    title={isBn ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
+                  >
+                    <Printer className="w-4 h-4 text-sky-500" />
+                    <span>{isBn ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedPreview(null)}
+                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 print:overflow-visible print:p-0">
                 <MarkdownViewer
                   content={generateContractAuditMarkdown(
                     selectedPreview.contractId || "employment-agreement",
