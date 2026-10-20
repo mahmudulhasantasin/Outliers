@@ -11,6 +11,7 @@ import {
   listChatSessions,
   changePassword,
   getMySettings,
+  uploadProfilePhoto,
 } from "@/lib/apiServices";
 import {
   User,
@@ -40,7 +41,6 @@ import {
   AlertCircle,
   Sparkles,
   RefreshCw,
-  Smartphone,
   Inbox,
 } from "lucide-react";
 
@@ -63,16 +63,6 @@ export default function ProfilePage() {
   const [chatCount, setChatCount] = useState<number | null>(null);
   const [isRefreshingStats, setIsRefreshingStats] = useState(false);
 
-  // Phone Verification Modal State
-  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
-  const [phoneStep, setPhoneStep] = useState<"phone" | "otp" | "success">("phone");
-  const [verifyPhoneInput, setVerifyPhoneInput] = useState(user?.mobile || "+880 1");
-  const [otpCode, setOtpCode] = useState(["", "", "", ""]);
-  const [otpCountdown, setOtpCountdown] = useState(60);
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
-  const [otpError, setOtpError] = useState("");
-
   // Change Password Modal State
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
@@ -84,8 +74,8 @@ export default function ProfilePage() {
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
 
-  // Avatar Picker Modal State
-  const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
+  // Avatar Upload State
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync draft states when user loads
@@ -94,9 +84,6 @@ export default function ProfilePage() {
       setDraftName(user.name || "");
       setDraftMobile(user.mobile || "");
       setDraftEmail(user.email || "");
-      if (!verifyPhoneInput || verifyPhoneInput === "+880 1") {
-        setVerifyPhoneInput(user.mobile || "+880 1");
-      }
     }
   }, [user]);
 
@@ -128,15 +115,6 @@ export default function ProfilePage() {
       refreshUser().catch(() => {});
     }
   }, []);
-
-  // OTP Countdown Timer
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (phoneStep === "otp" && otpCountdown > 0) {
-      timer = setInterval(() => setOtpCountdown((c) => c - 1), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [phoneStep, otpCountdown]);
 
   if (!user) {
     return (
@@ -210,55 +188,6 @@ export default function ProfilePage() {
     setSaveMessage(null);
   };
 
-  // OTP Verification Handlers
-  const handleSendOtp = async () => {
-    if (!verifyPhoneInput || verifyPhoneInput.length < 10) {
-      setOtpError(isBn ? "সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন" : "Please enter a valid mobile number");
-      return;
-    }
-    setIsSendingOtp(true);
-    setOtpError("");
-    try {
-      // Persist mobile number to backend profile
-      await updateProfile({ phone: verifyPhoneInput.trim() });
-      updateUser({ mobile: verifyPhoneInput.trim() });
-      setPhoneStep("otp");
-      setOtpCountdown(60);
-      setOtpCode(["", "", "", ""]);
-    } catch {
-      // Graceful fallback
-      updateUser({ mobile: verifyPhoneInput.trim() });
-      setPhoneStep("otp");
-      setOtpCountdown(60);
-    } finally {
-      setIsSendingOtp(false);
-    }
-  };
-
-  const handleVerifyOtp = async () => {
-    const fullOtp = otpCode.join("");
-    if (fullOtp.length < 4) {
-      setOtpError(isBn ? "৪ ডিজিটের ওটিপি কোড সম্পূর্ণ লিখুন" : "Please enter the complete 4-digit code");
-      return;
-    }
-    setIsVerifyingOtp(true);
-    setOtpError("");
-    try {
-      // Simulate verifying and award 50 bonus credits
-      const newBalance = (user.creditBalance || 0) + 50;
-      updateUser({
-        isPhoneVerified: true,
-        creditBalance: newBalance,
-        mobile: verifyPhoneInput.trim(),
-      });
-      setPhoneStep("success");
-    } catch {
-      setOtpError(isBn ? "ওটিপি যাচাই করা যায়নি। পুনরায় চেষ্টা করুন।" : "Verification failed. Please try again.");
-    } finally {
-      setIsVerifyingOtp(false);
-    }
-  };
-
   // Change Password Handler
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -294,22 +223,55 @@ export default function ProfilePage() {
     }
   };
 
-  // Custom Avatar Upload Handler
-  const handleAvatarFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Profile Photo Upload Handler via API
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) {
-        alert(isBn ? "ছবির সাইজ ২MB-এর কম হতে হবে।" : "Image size must be less than 2MB.");
-        return;
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setSaveMessage({
+        type: "error",
+        text: isBn ? "ছবির সাইজ সর্বোচ্চ ৫MB হতে পারবে।" : "Image size must be less than 5MB.",
+      });
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setSaveMessage(null);
+    try {
+      const res = await uploadProfilePhoto(file);
+      const newUrl = res.profile_photo_url || res.url || res.avatar_url;
+      if (newUrl) {
+        updateUser({ avatarUrl: newUrl, profile_photo_url: newUrl });
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            updateUser({ avatarUrl: reader.result, profile_photo_url: reader.result });
+          }
+        };
+        reader.readAsDataURL(file);
       }
+      setSaveMessage({
+        type: "success",
+        text: isBn ? "প্রোফাইল ছবি সফলভাবে আপডেট হয়েছে।" : "Profile photo uploaded successfully.",
+      });
+    } catch (err: unknown) {
+      console.warn("Upload profile photo error:", err);
       const reader = new FileReader();
       reader.onload = () => {
         if (typeof reader.result === "string") {
-          updateUser({ avatarUrl: reader.result });
-          setIsAvatarModalOpen(false);
+          updateUser({ avatarUrl: reader.result, profile_photo_url: reader.result });
         }
       };
       reader.readAsDataURL(file);
+      setSaveMessage({
+        type: "success",
+        text: isBn ? "প্রোফাইল ছবি প্রিভিউ সেট করা হয়েছে।" : "Profile photo preview set.",
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+      if (e.target) e.target.value = "";
     }
   };
 
@@ -390,19 +352,35 @@ export default function ProfilePage() {
             {/* Avatar Circle */}
             <div className="relative shrink-0">
               <div className="w-16 h-16 rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-2 border-[var(--bg-primary)] shadow-md flex items-center justify-center text-xl font-bold font-serif text-[var(--text-primary)] overflow-hidden">
-                {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.name} className="w-full h-full object-cover" />
+                {user.profile_photo_url || user.avatarUrl ? (
+                  <img
+                    src={user.profile_photo_url || user.avatarUrl}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <span>{initials}</span>
                 )}
               </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handlePhotoUpload}
+                className="hidden"
+              />
               <button
                 type="button"
-                onClick={() => setIsAvatarModalOpen(true)}
-                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-sm"
-                title={isBn ? "প্রোফাইল ছবি পরিবর্তন করুন" : "Change Profile Photo"}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-sm disabled:opacity-50"
+                title={isBn ? "প্রোফাইল ছবি আপলোড করুন" : "Upload Profile Photo"}
               >
-                <Camera className="w-3 h-3" />
+                {isUploadingPhoto ? (
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Camera className="w-3 h-3" />
+                )}
               </button>
             </div>
 
@@ -433,28 +411,6 @@ export default function ProfilePage() {
                     <User className="w-3 h-3" />
                     <span>{isBn ? "সাধারণ ব্যবহারকারী" : "General User"}</span>
                   </span>
-                )}
-
-                <span className="opacity-30">•</span>
-
-                {/* Mobile Verification Badge */}
-                {user.isPhoneVerified ? (
-                  <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    <span>{isBn ? "মোবাইল ভেরিফাইড" : "Mobile Verified"}</span>
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPhoneStep("phone");
-                      setIsPhoneModalOpen(true);
-                    }}
-                    className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                    <span>{isBn ? "মোবাইল আনভেরিফাইড (ভেরিফাই করুন)" : "Mobile Unverified"}</span>
-                  </button>
                 )}
               </div>
             </div>
@@ -634,28 +590,9 @@ export default function ProfilePage() {
                   placeholder="+8801XXXXXXXXX"
                 />
               ) : (
-                <div className="flex items-center gap-2">
-                  <span className="font-mono text-[var(--text-primary)]">
-                    {user.mobile || "—"}
-                  </span>
-                  {user.isPhoneVerified ? (
-                    <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-600 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                      <Check className="w-3 h-3" />
-                      <span>{isBn ? "যাচাইকৃত" : "Verified"}</span>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPhoneStep("phone");
-                        setIsPhoneModalOpen(true);
-                      }}
-                      className="text-xs text-amber-600 dark:text-amber-400 font-semibold hover:underline cursor-pointer"
-                    >
-                      {isBn ? "ভেরিফাই করুন" : "Verify now"}
-                    </button>
-                  )}
-                </div>
+                <span className="font-mono text-[var(--text-primary)]">
+                  {user.mobile || "—"}
+                </span>
               )}
             </div>
 
@@ -722,36 +659,7 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ── 4. PHONE VERIFICATION BANNER (IF NOT VERIFIED) ── */}
-        {!user.isPhoneVerified && (
-          <div className="p-5 rounded-3xl border border-amber-500/20 bg-amber-500/5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
-                <Smartphone className="w-5 h-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
-                  {isBn ? "মোবাইল নম্বর ভেরিফাই করে ৫০ ফ্রি ক্রেডিট পান" : "Verify Your Mobile & Unlock 50 Free Credits"}
-                </p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                  {isBn
-                    ? "আপনার মোবাইল নম্বরে ৪ ডিজিটের ওটিপি যাচাই করে যেকোনো চুক্তি অডিটের বোনাস ক্রেডিট সক্রিয় করুন।"
-                    : "Verify your phone via a quick 4-digit SMS OTP to unlock bonus credits & real-time audit notifications."}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                setPhoneStep("phone");
-                setIsPhoneModalOpen(true);
-              }}
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer shrink-0 shadow-xs"
-            >
-              {isBn ? "নম্বর যাচাই করুন" : "Verify Number"}
-            </button>
-          </div>
-        )}
+
 
         {/* ── 5. LAWYER SPECIFIC CREDENTIALS ── */}
         {isLawyer && (
@@ -945,165 +853,7 @@ export default function ProfilePage() {
       </div>
 
       {/* ==================================================================== */}
-      {/* MODAL 1: INTERACTIVE MOBILE NUMBER VERIFICATION FLOW                 */}
-      {/* ==================================================================== */}
-      {isPhoneModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl p-6 sm:p-7 space-y-5 text-left">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Smartphone className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                  {isBn ? "মোবাইল নম্বর যাচাইকরণ" : "Mobile Phone Verification"}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPhoneModalOpen(false)}
-                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {phoneStep === "phone" && (
-              <div className="space-y-4">
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {isBn
-                    ? "আপনার মোবাইল নম্বরটি লিখুন। আমরা একটি ৪ ডিজিটের এসএমএস ওটিপি কোড পাঠাবো।"
-                    : "Enter your active mobile number. We'll send a 4-digit SMS OTP verification code."}
-                </p>
-                <div>
-                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
-                    {isBn ? "বাংলাদেশি মোবাইল নম্বর" : "Bangladesh Mobile Number"}
-                  </label>
-                  <input
-                    type="tel"
-                    value={verifyPhoneInput}
-                    onChange={(e) => setVerifyPhoneInput(e.target.value)}
-                    placeholder="+8801XXXXXXXXX"
-                    className="w-full px-4 py-2.5 rounded-xl text-sm font-mono border border-[var(--text-primary)]/20 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/60"
-                  />
-                </div>
-                {otpError && <p className="text-xs text-rose-500">{otpError}</p>}
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  disabled={isSendingOtp}
-                  className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
-                >
-                  {isSendingOtp
-                    ? isBn
-                      ? "কোড পাঠানো হচ্ছে..."
-                      : "Sending OTP Code..."
-                    : isBn
-                    ? "ওটিপি কোড পাঠান"
-                    : "Send Verification Code"}
-                </button>
-              </div>
-            )}
-
-            {phoneStep === "otp" && (
-              <div className="space-y-4">
-                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-                  {isBn
-                    ? `${verifyPhoneInput} নম্বরে পাঠানো ৪ ডিজিটের কোডটি লিখুন:`
-                    : `Enter the 4-digit verification code sent to ${verifyPhoneInput}:`}
-                </p>
-                <div className="flex justify-center gap-3 py-2">
-                  {[0, 1, 2, 3].map((idx) => (
-                    <input
-                      key={idx}
-                      id={`otp-input-${idx}`}
-                      type="text"
-                      maxLength={1}
-                      value={otpCode[idx] || ""}
-                      onChange={(e) => {
-                        const val = e.target.value.replace(/\D/g, "");
-                        const next = [...otpCode];
-                        next[idx] = val;
-                        setOtpCode(next);
-                        if (val && idx < 3) {
-                          document.getElementById(`otp-input-${idx + 1}`)?.focus();
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Backspace" && !otpCode[idx] && idx > 0) {
-                          document.getElementById(`otp-input-${idx - 1}`)?.focus();
-                        }
-                      }}
-                      className="w-12 h-12 text-center text-lg font-mono font-bold rounded-xl border border-[var(--text-primary)]/20 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--accent-solid)]"
-                    />
-                  ))}
-                </div>
-                {otpError && <p className="text-xs text-rose-500 text-center">{otpError}</p>}
-                <div className="flex items-center justify-between text-xs text-[var(--text-muted)]">
-                  <span>
-                    {otpCountdown > 0
-                      ? isBn
-                        ? `পুনরায় পাঠানোর সময়: ${otpCountdown}s`
-                        : `Resend code in ${otpCountdown}s`
-                      : isBn
-                      ? "কোড পাননি?"
-                      : "Didn't receive code?"}
-                  </span>
-                  {otpCountdown === 0 && (
-                    <button
-                      type="button"
-                      onClick={handleSendOtp}
-                      className="font-semibold text-[var(--accent-solid)] hover:underline cursor-pointer"
-                    >
-                      {isBn ? "আবার পাঠান" : "Resend OTP"}
-                    </button>
-                  )}
-                </div>
-                <button
-                  type="button"
-                  onClick={handleVerifyOtp}
-                  disabled={isVerifyingOtp}
-                  className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
-                >
-                  {isVerifyingOtp
-                    ? isBn
-                      ? "যাচাই করা হচ্ছে..."
-                      : "Verifying..."
-                    : isBn
-                    ? "যাচাই সম্পন্ন করুন (+৫০ ক্রেডিট পান)"
-                    : "Confirm & Claim +50 Credits"}
-                </button>
-              </div>
-            )}
-
-            {phoneStep === "success" && (
-              <div className="text-center py-4 space-y-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-7 h-7" />
-                </div>
-                <h4 className="text-base font-bold text-[var(--text-primary)]">
-                  {isBn ? "মোবাইল নম্বর সফলভাবে যাচাই হয়েছে!" : "Mobile Number Verified!"}
-                </h4>
-                <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto">
-                  {isBn
-                    ? "আপনার অ্যাকাউন্টে ৫০ বোনাস ক্রেডিট যোগ করা হয়েছে। আপনি এখন চুক্তির সম্পূর্ণ আইনি অডিট ও নোটিফিকেশন পাবেন।"
-                    : "50 bonus credits have been unlocked and added to your balance. You're now fully verified."}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsPhoneModalOpen(false)}
-                  className="mt-2 px-6 py-2 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer"
-                >
-                  {isBn ? "ঠিক আছে" : "Done"}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ==================================================================== */}
-      {/* MODAL 2: CHANGE PASSWORD MODAL                                       */}
+      {/* CHANGE PASSWORD MODAL                                                */}
       {/* ==================================================================== */}
       {isPasswordModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -1209,60 +959,6 @@ export default function ProfilePage() {
                   : "Update Password"}
               </button>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* ==================================================================== */}
-      {/* MODAL 3: AVATAR / PROFILE PHOTO PICKER                               */}
-      {/* ==================================================================== */}
-      {isAvatarModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-sm rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl p-6 space-y-5 text-left">
-            <div className="flex items-center justify-between">
-              <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                {isBn ? "প্রোফাইল ছবি পরিবর্তন" : "Change Profile Photo"}
-              </h3>
-              <button
-                type="button"
-                onClick={() => setIsAvatarModalOpen(false)}
-                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarFileUpload}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="w-full py-3 rounded-2xl border-2 border-dashed border-[var(--text-primary)]/20 hover:border-[var(--text-primary)]/40 text-center text-xs font-semibold text-[var(--text-primary)] cursor-pointer flex flex-col items-center justify-center gap-1.5 transition-colors"
-              >
-                <Camera className="w-5 h-5 text-[var(--text-muted)]" />
-                <span>{isBn ? "ডিভাইস থেকে ছবি আপলোড করুন" : "Upload photo from device"}</span>
-                <span className="text-[10px] text-[var(--text-muted)] font-normal">PNG, JPG up to 2MB</span>
-              </button>
-
-              {user.avatarUrl && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    updateUser({ avatarUrl: "" });
-                    setIsAvatarModalOpen(false);
-                  }}
-                  className="w-full py-2 rounded-xl text-xs font-semibold text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                >
-                  {isBn ? "বর্তমান ছবি মুছুন" : "Remove current photo"}
-                </button>
-              )}
-            </div>
           </div>
         </div>
       )}

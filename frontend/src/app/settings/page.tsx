@@ -12,7 +12,6 @@ import {
   Moon,
   Sun,
   Shield,
-  Trash2,
   Key,
   Check,
   Coins,
@@ -20,7 +19,6 @@ import {
   Eye,
   EyeOff,
   AlertCircle,
-  Download,
   CheckCircle2,
   Sparkles,
   RefreshCw,
@@ -141,10 +139,6 @@ export default function SettingsPage() {
   // Live Payment Summary
   const [paymentSummary, setPaymentSummary] = useState<PaymentSummary | null>(null);
   const [isRefreshingSettings, setIsRefreshingSettings] = useState(false);
-
-  // Danger Zone confirmation modal
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [deleteConfirmText, setDeleteConfirmText] = useState("");
 
   // PII Masking preference
   const [isPiiMaskingEnabled, setIsPiiMaskingEnabled] = useState(true);
@@ -275,35 +269,7 @@ export default function SettingsPage() {
     });
   };
 
-  // Export User Data
-  const handleExportData = () => {
-    const dataToExport = {
-      user: {
-        id: user?.id,
-        name: user?.name,
-        email: user?.email,
-        mobile: user?.mobile,
-        role: user?.role,
-        creditBalance: user?.creditBalance,
-      },
-      preferences: {
-        language,
-        theme,
-        notifications,
-        isPiiMaskingEnabled,
-      },
-      exportedAt: new Date().toISOString(),
-    };
-    const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `contractmind_profile_export_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+
 
   // Password strength calculation
   const getPasswordStrength = (pwd: string) => {
@@ -809,41 +775,8 @@ export default function SettingsPage() {
               </p>
             </div>
 
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleExportData}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 text-[var(--text-primary)] transition-colors cursor-pointer"
-              >
-                <Download className="w-3.5 h-3.5" />
-                <span>{isBn ? "অ্যাকাউন্ট ডেটা ব্যাকআপ ডাউনলোড (JSON)" : "Export Account Data (JSON)"}</span>
-              </button>
-            </div>
           </div>
         </Section>
-
-        {/* ── 6. DANGER ZONE ── */}
-        <div className="p-6 rounded-3xl border border-rose-500/20 bg-rose-500/5 shadow-xs space-y-4">
-          <h3 className="text-xs uppercase tracking-wider font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-1.5">
-            <Trash2 className="w-4 h-4" />
-            <span>{isBn ? "বিপজ্জনক অঞ্চল (Danger Zone)" : "Danger Zone"}</span>
-          </h3>
-          <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-            {isBn
-              ? "অ্যাকাউন্ট মুছলে সংরক্ষিত চুক্তি অডিট, ক্রেডিট ব্যালেন্স এবং হিস্ট্রি স্থায়ীভাবে মুছে যাবে। এই ক্রিয়াটি অপরিবর্তনীয়।"
-              : "Deleting your account will permanently remove all archived contract memos, credit balance, and consultation history."}
-          </p>
-          <button
-            type="button"
-            onClick={() => {
-              setDeleteConfirmText("");
-              setIsDeleteModalOpen(true);
-            }}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-colors cursor-pointer shadow-xs"
-          >
-            {isBn ? "অ্যাকাউন্ট ডিলিট করুন" : "Delete Account"}
-          </button>
-        </div>
       </div>
 
       {/* ==================================================================== */}
@@ -1031,63 +964,7 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* ==================================================================== */}
-      {/* CONFIRM ACCOUNT DELETION MODAL                                       */}
-      {/* ==================================================================== */}
-      {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl border border-rose-500/30 bg-[var(--bg-card)] shadow-2xl p-6 sm:p-7 space-y-5 text-left">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-600 shrink-0">
-                <Trash2 className="w-6 h-6" />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-[var(--text-primary)]">
-                  {isBn ? "অ্যাকাউন্ট স্থায়ীভাবে মুছে ফেলতে চান?" : "Delete Account Permanently?"}
-                </h3>
-                <p className="text-xs text-[var(--text-muted)]">
-                  {isBn ? "এই কাজটি আর ফেরানো যাবে না।" : "This action cannot be undone."}
-                </p>
-              </div>
-            </div>
 
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              {isBn
-                ? "নিশ্চিত করতে নিচে DELETE শব্দটি টাইপ করুন:"
-                : "To confirm deletion, please type DELETE below:"}
-            </p>
-
-            <input
-              type="text"
-              value={deleteConfirmText}
-              onChange={(e) => setDeleteConfirmText(e.target.value)}
-              placeholder="DELETE"
-              className="w-full px-3.5 py-2 rounded-xl text-sm font-mono border border-rose-500/30 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-rose-500"
-            />
-
-            <div className="flex items-center justify-end gap-3 pt-2">
-              <button
-                type="button"
-                onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-              >
-                {isBn ? "বাতিল" : "Cancel"}
-              </button>
-              <button
-                type="button"
-                disabled={deleteConfirmText !== "DELETE"}
-                onClick={() => {
-                  logout();
-                  router.push("/");
-                }}
-                className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-40 cursor-pointer"
-              >
-                {isBn ? "স্থায়ীভাবে মুছুন" : "Confirm Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </AppShell>
   );
 }

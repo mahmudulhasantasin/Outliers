@@ -25,6 +25,7 @@ interface ArchivedRecord {
   id: string;
   contractId: string;
   memoId?: string | number;
+  overallRisk: "HIGH" | "MODERATE" | "LOW" | string;
   titleEn: string;
   titleBn: string;
   categoryEn: string;
@@ -72,8 +73,20 @@ export default function ArchivePage() {
     const status = item.hitl_status || item.status || "NOT_REQUESTED";
     const isVerified = status === "COMPLETED" || item.is_lawyer_verified === true;
     const title = item.title || item.file_name || "Contract Document";
-    const risk = (item.overall_risk || item.risk_grade || "MODERATE").toUpperCase();
     const score = typeof item.risk_score === "number" ? item.risk_score : 50;
+
+    // Normalize backend risk levels: "HIGH", "MODERATE", "LOW"
+    const backendOverallRisk = String(item.overall_risk || item.risk_grade || "").toUpperCase();
+    let overallRisk: "HIGH" | "MODERATE" | "LOW";
+    if (backendOverallRisk === "HIGH" || backendOverallRisk === "CRITICAL") {
+      overallRisk = "HIGH";
+    } else if (backendOverallRisk === "LOW" || backendOverallRisk === "COMPLIANT") {
+      overallRisk = "LOW";
+    } else if (backendOverallRisk === "MODERATE" || backendOverallRisk === "MEDIUM") {
+      overallRisk = "MODERATE";
+    } else {
+      overallRisk = score >= 70 ? "HIGH" : score >= 40 ? "MODERATE" : "LOW";
+    }
 
     // Check localStorage cache for deep audit details from uploads
     let cachedAudit: any = null;
@@ -86,10 +99,10 @@ export default function ArchivePage() {
       } catch {}
     }
 
-    const isCritical = risk === "CRITICAL" || score >= 90;
-    const isHigh = !isCritical && (risk === "HIGH" || score >= 70);
-    const isModerate = !isCritical && !isHigh && (risk === "MODERATE" || risk === "MEDIUM" || (score >= 40 && score < 70));
-    const isLow = !isCritical && !isHigh && !isModerate;
+    const isCritical = backendOverallRisk === "CRITICAL" || score >= 90;
+    const isHigh = !isCritical && overallRisk === "HIGH";
+    const isModerate = overallRisk === "MODERATE";
+    const isLow = overallRisk === "LOW";
 
     let highCount = typeof item.high_risk_count === "number" ? item.high_risk_count : cachedAudit?.high_risk_count;
     let medCount = typeof item.medium_risk_count === "number" ? item.medium_risk_count : cachedAudit?.medium_risk_count;
@@ -134,6 +147,7 @@ export default function ArchivePage() {
       id: cid,
       contractId: cid,
       memoId: item.memo_id,
+      overallRisk,
       titleEn: title,
       titleBn: title,
       categoryEn: status.replace(/_/g, " "),
@@ -231,32 +245,20 @@ export default function ArchivePage() {
   // Compute category counts for the filter tabs
   const tabCounts = useMemo(() => {
     let high = 0;
-    let medium = 0;
-    let compliant = 0;
+    let moderate = 0;
+    let low = 0;
 
     for (const r of records) {
-      const hasHighRisk = r.highRiskCount > 0 || r.riskScore >= 70 || r.riskGradeEn === "HIGH" || r.riskGradeEn === "CRITICAL";
-      const hasReviewNeeded =
-        r.mediumRiskCount > 0 ||
-        (r.riskScore >= 40 && r.riskScore < 75) ||
-        r.riskGradeEn === "MODERATE" ||
-        r.riskGradeEn === "MEDIUM" ||
-        r.hitlStatus === "QUEUED_FOR_LAWYER" ||
-        r.hitlStatus === "IN_REVIEW" ||
-        r.hitlStatus === "ASSIGNED" ||
-        r.hitlStatus === "OFFERED";
-      const isCompliant = (r.riskScore < 50 || r.riskGradeEn === "LOW" || r.riskGradeEn === "COMPLIANT") && r.highRiskCount === 0;
-
-      if (hasHighRisk) high++;
-      if (hasReviewNeeded) medium++;
-      if (isCompliant) compliant++;
+      if (r.overallRisk === "HIGH") high++;
+      else if (r.overallRisk === "MODERATE") moderate++;
+      else if (r.overallRisk === "LOW") low++;
     }
 
     return {
       ALL: records.length,
       HIGH: high,
-      MEDIUM: medium,
-      COMPLIANT: compliant,
+      MODERATE: moderate,
+      LOW: low,
     };
   }, [records]);
 
@@ -277,17 +279,13 @@ export default function ArchivePage() {
       const isNDA = titleLower.includes("non-disclosure") || titleLower.includes("disclosure") || titleLower.includes("nda");
       const isRules = titleLower.includes("rules") || titleLower.includes("fest") || titleLower.includes("competition");
 
-      const hasHighRisk = rec.highRiskCount > 0 || rec.riskScore >= 70 || rec.riskGradeEn === "HIGH" || rec.riskGradeEn === "CRITICAL";
-      const hasReviewNeeded =
-        rec.mediumRiskCount > 0 ||
-        (rec.riskScore >= 40 && rec.riskScore < 75) ||
-        rec.riskGradeEn === "MODERATE" ||
-        rec.riskGradeEn === "MEDIUM" ||
-        rec.hitlStatus === "QUEUED_FOR_LAWYER" ||
-        rec.hitlStatus === "IN_REVIEW" ||
-        rec.hitlStatus === "ASSIGNED" ||
-        rec.hitlStatus === "OFFERED";
-      const isCompliant = (rec.riskScore < 50 || rec.riskGradeEn === "LOW" || rec.riskGradeEn === "COMPLIANT") && rec.highRiskCount === 0;
+      // Backend risk level mapping:
+      // "High Risk" -> overall_risk === "HIGH"
+      // "Review Needed" -> overall_risk === "MODERATE"
+      // "Compliant" -> overall_risk === "LOW"
+      const hasHighRisk = rec.overallRisk === "HIGH";
+      const hasReviewNeeded = rec.overallRisk === "MODERATE";
+      const isCompliant = rec.overallRisk === "LOW";
 
       // Build rich, intelligent domain search corpus
       const corpusParts = [
@@ -345,8 +343,8 @@ export default function ArchivePage() {
         isSearching ||
         selectedRisk === "ALL" ||
         (selectedRisk === "HIGH" && hasHighRisk) ||
-        (selectedRisk === "MEDIUM" && hasReviewNeeded) ||
-        (selectedRisk === "COMPLIANT" && isCompliant);
+        (selectedRisk === "MODERATE" && hasReviewNeeded) ||
+        (selectedRisk === "LOW" && isCompliant);
 
       return matchesSearch && matchesRisk;
     });
@@ -504,13 +502,13 @@ export default function ArchivePage() {
             </div>
             <div>
               <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
-                {tabCounts.MEDIUM}
+                {tabCounts.MODERATE}
               </span>
               <span>{language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}</span>
             </div>
             <div>
               <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
-                {tabCounts.COMPLIANT}
+                {tabCounts.LOW}
               </span>
               <span>{language === "bn" ? "আইনসম্মত চুক্তি" : "Compliant Contracts"}</span>
             </div>
@@ -557,8 +555,8 @@ export default function ArchivePage() {
             {[
               { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
               { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
-              { id: "MEDIUM", labelEn: "Review Needed", labelBn: "পর্যালোচনা প্রয়োজন", count: tabCounts.MEDIUM },
-              { id: "COMPLIANT", labelEn: "Compliant", labelBn: "আইনসম্মত", count: tabCounts.COMPLIANT }
+              { id: "MODERATE", labelEn: "Review Needed", labelBn: "পর্যালোচনা প্রয়োজন", count: tabCounts.MODERATE },
+              { id: "LOW", labelEn: "Compliant", labelBn: "আইনসম্মত", count: tabCounts.LOW }
             ].map((filter) => (
               <button
                 key={filter.id}
