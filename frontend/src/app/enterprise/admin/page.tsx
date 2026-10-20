@@ -95,6 +95,20 @@ export default function EnterpriseAdminPage() {
 
   const [isUploadingPlaybook, setIsUploadingPlaybook] = useState(false);
 
+  useEffect(() => {
+    if (!user) {
+      router.replace("/");
+      return;
+    }
+    if (user.role === "lawyer" || !!user.lawyerProfile) {
+      router.replace("/lawyer/pending");
+      return;
+    }
+    if (user.role !== "enterprise_admin" && user.role !== "enterprise" && user.role !== "admin") {
+      router.replace("/copilot");
+    }
+  }, [user, router]);
+
   // Fetch real Enterprise dashboard and members from backend
   useEffect(() => {
     let isMounted = true;
@@ -262,6 +276,14 @@ export default function EnterpriseAdminPage() {
       m.email.toLowerCase().includes(memberSearch.toLowerCase()) ||
       m.department.toLowerCase().includes(memberSearch.toLowerCase())
   );
+
+  if (!user || user.role === "lawyer" || !!user.lawyerProfile || (user.role !== "enterprise_admin" && user.role !== "enterprise" && user.role !== "admin")) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <AppShell>

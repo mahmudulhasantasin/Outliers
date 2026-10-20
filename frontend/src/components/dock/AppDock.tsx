@@ -15,6 +15,7 @@ import {
   User,
   Building2,
   Coins,
+  ShieldAlert,
 } from "lucide-react";
 
 export default function AppDock() {
@@ -162,10 +163,34 @@ export default function AppDock() {
     },
   ];
 
+  // ── Admin Dock ──
+  const adminItems: VerticalDockItemData[] = [
+    {
+      icon: <ShieldAlert className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "সিস্টেম অ্যাডমিন প্যানেল" : "System Admin Panel",
+      isActive: pathname.startsWith("/admin"),
+      onClick: () => router.push("/admin"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "অ্যাডমিন প্রোফাইল" : "Admin Profile",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
   const isLawyer = role === "lawyer" || !!user?.lawyerProfile;
 
   const items =
-    isLawyer
+    role === "admin"
+      ? adminItems
+      : isLawyer
       ? lawyerItems
       : role === "enterprise_admin"
       ? enterpriseAdminItems

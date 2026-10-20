@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
@@ -88,6 +88,20 @@ export default function EnterpriseMemberPage() {
   const [privateContracts, setPrivateContracts] = useState<MemberPrivateContract[]>(INITIAL_PRIVATE_CONTRACTS);
   const [copiedRuleId, setCopiedRuleId] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!user) {
+      router.replace("/");
+      return;
+    }
+    if (user.role === "lawyer" || !!user.lawyerProfile) {
+      router.replace("/lawyer/pending");
+      return;
+    }
+    if (user.role !== "enterprise_member" && user.role !== "enterprise_admin" && user.role !== "enterprise" && user.role !== "admin") {
+      router.replace("/copilot");
+    }
+  }, [user, router]);
+
   const borderClass = "border-[var(--text-primary)]/10";
   const isMember =
     user?.role === "enterprise_member" ||
@@ -110,6 +124,14 @@ export default function EnterpriseMemberPage() {
     setCopiedRuleId(ruleId);
     setTimeout(() => setCopiedRuleId(null), 2000);
   };
+
+  if (!user || user.role === "lawyer" || !!user.lawyerProfile || (user.role !== "enterprise_member" && user.role !== "enterprise_admin" && user.role !== "enterprise" && user.role !== "admin")) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <AppShell>

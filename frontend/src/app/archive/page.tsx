@@ -381,6 +381,14 @@ export default function ArchivePage() {
   // Target record for print preview: either explicitly triggered or modal currently open
   const printTargetRecord = printRecord || previewRecord;
 
+  if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <AppShell>
       {/* ==================================================================== */}

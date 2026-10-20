@@ -33,6 +33,11 @@ const tiroBangla = localFont({
 export const metadata: Metadata = {
   title: "Advotech Copilot | Sovereign Contract Intelligence for Bangladesh Law",
   description: "Enterprise-grade contract intelligence, statutory clause verification, and hallucination-free legal advisory mapped to Bangladesh statutes.",
+  icons: {
+    icon: "/logo.svg",
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
+  },
 };
 
 export default function RootLayout({

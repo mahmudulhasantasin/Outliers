@@ -27,11 +27,14 @@ import {
   Lock,
   Layers,
   FileCheck,
+  Briefcase,
+  ShieldCheck,
 } from "lucide-react";
 import {
   changePassword,
   getMySettings,
   getPaymentSummary,
+  updateLawyerSettings,
   PaymentSummary,
 } from "@/lib/apiServices";
 
@@ -81,6 +84,17 @@ export default function SettingsPage() {
   // PII Masking preference
   const [isPiiMaskingEnabled, setIsPiiMaskingEnabled] = useState(true);
 
+  // Lawyer settings state (Docs Section 7.4)
+  const [maxActiveReviews, setMaxActiveReviews] = useState(3);
+  const [autoAcceptOffers, setAutoAcceptOffers] = useState(false);
+  const [isLawyerAvailable, setIsLawyerAvailable] = useState(true);
+  const [preferredDomains, setPreferredDomains] = useState<string[]>([
+    "Contract Law",
+    "Employment Law",
+  ]);
+  const [lawyerSettingsLoading, setLawyerSettingsLoading] = useState(false);
+  const [lawyerSettingsToast, setLawyerSettingsToast] = useState(false);
+
   // Load notification preferences from localStorage
   useEffect(() => {
     try {
@@ -91,6 +105,14 @@ export default function SettingsPage() {
       const savedPii = localStorage.getItem("contractmind_pii_masking");
       if (savedPii !== null) {
         setIsPiiMaskingEnabled(savedPii === "true");
+      }
+      const savedLawyerPrefs = localStorage.getItem("contractmind_lawyer_prefs");
+      if (savedLawyerPrefs) {
+        const parsed = JSON.parse(savedLawyerPrefs);
+        if (typeof parsed.max_active_reviews === "number") setMaxActiveReviews(parsed.max_active_reviews);
+        if (typeof parsed.auto_accept_offers === "boolean") setAutoAcceptOffers(parsed.auto_accept_offers);
+        if (typeof parsed.is_available === "boolean") setIsLawyerAvailable(parsed.is_available);
+        if (Array.isArray(parsed.preferred_domains)) setPreferredDomains(parsed.preferred_domains);
       }
     } catch {}
   }, []);
@@ -103,6 +125,13 @@ export default function SettingsPage() {
         getMySettings(),
         getPaymentSummary(),
       ]);
+      if (settingsData.status === "fulfilled" && settingsData.value?.lawyer_profile) {
+        const lp = settingsData.value.lawyer_profile;
+        if (typeof lp.max_active_reviews === "number") setMaxActiveReviews(lp.max_active_reviews);
+        if (typeof lp.auto_accept_offers === "boolean") setAutoAcceptOffers(lp.auto_accept_offers);
+        if (typeof lp.is_available === "boolean") setIsLawyerAvailable(lp.is_available);
+        if (Array.isArray(lp.preferred_domains)) setPreferredDomains(lp.preferred_domains);
+      }
       if (payData.status === "fulfilled" && payData.value) {
         setPaymentSummary(payData.value);
       }
@@ -113,6 +142,45 @@ export default function SettingsPage() {
       console.warn("Could not load live settings:", e);
     } finally {
       setIsRefreshingSettings(false);
+    }
+  };
+
+  const handleSaveLawyerSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLawyerSettingsLoading(true);
+    try {
+      await updateLawyerSettings({
+        max_active_reviews: maxActiveReviews,
+        auto_accept_offers: autoAcceptOffers,
+        is_available: isLawyerAvailable,
+        preferred_domains: preferredDomains,
+      });
+      localStorage.setItem(
+        "contractmind_lawyer_prefs",
+        JSON.stringify({
+          max_active_reviews: maxActiveReviews,
+          auto_accept_offers: autoAcceptOffers,
+          is_available: isLawyerAvailable,
+          preferred_domains: preferredDomains,
+        })
+      );
+      setLawyerSettingsToast(true);
+      setTimeout(() => setLawyerSettingsToast(false), 3000);
+    } catch (err) {
+      console.warn("Could not save lawyer settings via API:", err);
+      localStorage.setItem(
+        "contractmind_lawyer_prefs",
+        JSON.stringify({
+          max_active_reviews: maxActiveReviews,
+          auto_accept_offers: autoAcceptOffers,
+          is_available: isLawyerAvailable,
+          preferred_domains: preferredDomains,
+        })
+      );
+      setLawyerSettingsToast(true);
+      setTimeout(() => setLawyerSettingsToast(false), 3000);
+    } finally {
+      setLawyerSettingsLoading(false);
     }
   };
 
@@ -502,6 +570,136 @@ export default function SettingsPage() {
             </button>
           </form>
         </Section>
+
+        {/* ── LAWYER PREFERENCES (Docs Section 7.4) ── */}
+        {(user?.role === "lawyer" || !!user?.lawyerProfile) && (
+          <Section
+            title={isBn ? "আইনজীবী কর্মদক্ষতা ও অগ্রাধিকার সেটিংস" : "Advocate Preferences & Workload"}
+            badge={lawyerSettingsToast ? (isBn ? "সংরক্ষিত ✓" : "Saved ✓") : undefined}
+          >
+            <form onSubmit={handleSaveLawyerSettings} className="space-y-4">
+              <div className="flex items-center justify-between p-3.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
+                <div>
+                  <p className="text-xs font-semibold text-[var(--text-primary)]">
+                    {isBn ? "নতুন পর্যালোচনার জন্য প্রস্তুত (Availability)" : "Accepting New Review Offers"}
+                  </p>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+                    {isBn
+                      ? "চালু থাকলে নতুন ক্লায়েন্ট চুক্তির নোটিফিকেশন ও অফার কিউতে পাঠানো হবে"
+                      : "When active, eligible client contracts will be dispatched to your offer queue"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsLawyerAvailable(!isLawyerAvailable)}
+                  className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
+                    isLawyerAvailable ? "bg-[var(--accent-solid)]" : "bg-neutral-300 dark:bg-neutral-700"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--bg-primary)] shadow-sm transition-transform ${
+                      isLawyerAvailable ? "translate-x-4.5" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                    {isBn ? "সর্বোচ্চ সক্রিয় চুক্তি রিভিউ সীমা" : "Max Active Reviews Limit"}
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={maxActiveReviews}
+                    onChange={(e) => setMaxActiveReviews(parseInt(e.target.value, 10) || 1)}
+                    className="w-full px-3.5 py-2 rounded-xl text-sm border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/40 font-mono"
+                  />
+                  <span className="text-[10px] text-[var(--text-muted)] mt-1 block">
+                    {isBn ? "একসাথে সর্বোচ্চ কয়টি চুক্তি হাতে রাখবেন (SLA: ৩ ঘণ্টা)" : "Max contracts at one time (3h submit SLA)"}
+                  </span>
+                </div>
+
+                <div className="flex flex-col justify-between p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
+                  <div>
+                    <span className="text-xs font-semibold text-[var(--text-primary)] block">
+                      {isBn ? "স্বয়ংক্রিয় অফার গ্রহণ (Auto Accept)" : "Auto Accept Offers"}
+                    </span>
+                    <span className="text-[10px] text-[var(--text-muted)]">
+                      {isBn ? "কিউতে আসা অফার সরাসরি একসেপ্ট হবে" : "Automatically accept matching high-priority contracts"}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAutoAcceptOffers(!autoAcceptOffers)}
+                    className={`self-start mt-2 relative w-10 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${
+                      autoAcceptOffers ? "bg-[var(--accent-solid)]" : "bg-neutral-300 dark:bg-neutral-700"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 w-5 h-5 rounded-full bg-[var(--bg-primary)] shadow-sm transition-transform ${
+                        autoAcceptOffers ? "translate-x-4.5" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1.5">
+                  {isBn ? "পছন্দের আইনি ক্ষেত্রসমূহ (Preferred Legal Domains)" : "Preferred Legal Specializations"}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Contract Law",
+                    "Employment Law",
+                    "Corporate Law",
+                    "Real Estate",
+                    "Banking & IP",
+                    "Commercial Arbitration",
+                  ].map((dom) => {
+                    const isSelected = preferredDomains.includes(dom);
+                    return (
+                      <button
+                        key={dom}
+                        type="button"
+                        onClick={() => {
+                          setPreferredDomains((prev) =>
+                            isSelected ? prev.filter((d) => d !== dom) : [...prev, dom]
+                          );
+                        }}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${
+                          isSelected
+                            ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] border-[var(--accent-solid)]"
+                            : "border-[var(--text-primary)]/15 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
+                        }`}
+                      >
+                        {dom}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={lawyerSettingsLoading}
+                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5"
+              >
+                <Briefcase className="w-3.5 h-3.5" />
+                {lawyerSettingsLoading
+                  ? isBn
+                    ? "সংরক্ষণ করা হচ্ছে..."
+                    : "Saving Preferences..."
+                  : isBn
+                  ? "আইনজীবী পছন্দসমূহ সংরক্ষণ করুন (Save)"
+                  : "Save Advocate Preferences"}
+              </button>
+            </form>
+          </Section>
+        )}
 
         {/* ── 4. CREDITS & BILLING HUB ── */}
         <Section title={isBn ? "ক্রেডিট ও পেমেন্ট ম্যানেজমেন্ট" : "Credits & Billing Hub"}>

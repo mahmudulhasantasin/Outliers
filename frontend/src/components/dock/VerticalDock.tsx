@@ -10,6 +10,8 @@ import {
   AnimatePresence
 } from 'framer-motion';
 import React, { Children, cloneElement, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 
 export type VerticalDockItemData = {
   icon: React.ReactNode;
@@ -171,10 +173,27 @@ export default function VerticalDock({
         onMouseLeave={() => {
           mouseY.set(Infinity);
         }}
-        className="flex flex-col items-center gap-3 rounded-3xl p-2.5 backdrop-blur-2xl border-0 minimal-dock"
+        className="flex flex-col items-center gap-2.5 rounded-3xl p-2.5 backdrop-blur-2xl border-0 minimal-dock"
         style={{ width: panelWidth }}
         role="toolbar"
       >
+        {/* Brand Logo without background color */}
+        <Link
+          href="/"
+          className="w-10 h-10 flex items-center justify-center rounded-2xl transition-transform hover:scale-110 cursor-pointer"
+          title="Advotech Copilot"
+        >
+          <Image
+            src="/logo.svg"
+            alt="Advotech Copilot"
+            width={34}
+            height={34}
+            className="w-8 h-8 object-contain dark:invert"
+            priority
+          />
+        </Link>
+        <div className="w-6 h-[1px] bg-[var(--text-primary)]/10 mb-0.5" />
+
         {items.map((item, index) => (
           <VerticalDockItem
             key={index}

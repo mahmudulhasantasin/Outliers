@@ -41,6 +41,7 @@ import {
   Sparkles,
   RefreshCw,
   Smartphone,
+  Inbox,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -490,51 +491,59 @@ export default function ProfilePage() {
 
         {/* ── 2. KEY STATS & ACTIVITY HUB (HIGH VALUE UX) ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Card 1: Credit Balance */}
+          {/* Card 1: Balance / Earnings */}
           <div className="p-5 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
-                {isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance"}
+                {isLawyer
+                  ? isBn ? "উপার্জন ও পে-আউট" : "Earnings & Payouts"
+                  : isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance"}
               </span>
               <Coins className="w-4 h-4 text-amber-500" />
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">
-                {user.creditBalance ?? 0}
+                {isLawyer ? (isBn ? "সক্রিয় পোর্টাল" : "Active Hub") : (user.creditBalance ?? 0)}
               </p>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                {isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations"}
+                {isLawyer
+                  ? isBn ? "bKash উত্তোলন ও আয়ের হিসাব" : "bKash payout & earnings ledger"
+                  : isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push("/pricing")}
+              onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/pricing")}
               className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent-solid)] hover:underline cursor-pointer pt-1"
             >
-              <span>{isBn ? "প্যাকেজ কিনুন" : "Top up credits"}</span>
+              <span>{isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : (isBn ? "প্যাকেজ কিনুন" : "Top up credits")}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
 
-          {/* Card 2: Contract Audits */}
+          {/* Card 2: Contract Audits / Sealed Contracts */}
           <div className="p-5 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
-                {isBn ? "সংরক্ষিত চুক্তি অডিট" : "Archived Audits"}
+                {isLawyer
+                  ? isBn ? "সিলমোহরকৃত চুক্তি" : "Sealed Contracts"
+                  : isBn ? "সংরক্ষিত চুক্তি অডিট" : "Archived Audits"}
               </span>
               <FileText className="w-4 h-4 text-sky-500" />
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">
-                {auditCount !== null ? auditCount : "5"}
+                {auditCount !== null ? auditCount : "0"}
               </p>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                {isBn ? "যাচাইকৃত ও সংরক্ষিত চুক্তিপত্র" : "Analyzed contract memos"}
+                {isLawyer
+                  ? isBn ? "আইনগতভাবে অনুমোদিত চুক্তিপত্র" : "Statutorily sealed memos"
+                  : isBn ? "যাচাইকৃত ও সংরক্ষিত চুক্তিপত্র" : "Analyzed contract memos"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push("/archive")}
+              onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/archive")}
               className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--text-primary)] hover:underline cursor-pointer pt-1"
             >
               <span>{isBn ? "আর্কাইভ দেখুন" : "View archive"}</span>
@@ -542,28 +551,36 @@ export default function ProfilePage() {
             </button>
           </div>
 
-          {/* Card 3: Legal Consultations */}
+          {/* Card 3: Consultations / Review Queue */}
           <div className="p-5 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
-                {isBn ? "কপাইলট সেশন" : "Legal Sessions"}
+                {isLawyer
+                  ? isBn ? "রিভিউ কিউ ও কাজ" : "Review Station"
+                  : isBn ? "কপাইলট সেশন" : "Legal Sessions"}
               </span>
-              <MessageSquare className="w-4 h-4 text-emerald-500" />
+              {isLawyer ? (
+                <Inbox className="w-4 h-4 text-purple-500" />
+              ) : (
+                <MessageSquare className="w-4 h-4 text-emerald-500" />
+              )}
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">
-                {chatCount !== null ? chatCount : "—"}
+                {isLawyer ? (isBn ? "পেন্ডিং তালিকা" : "Review Queue") : (chatCount !== null ? chatCount : "—")}
               </p>
               <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
-                {isBn ? "বাংলাদেশ আইনের প্রশ্নোত্তর" : "BD statute consultations"}
+                {isLawyer
+                  ? isBn ? "নতুন ক্লায়েন্ট চুক্তি পর্যালোচনা" : "Pending client contracts"
+                  : isBn ? "বাংলাদেশ আইনের প্রশ্নোত্তর" : "BD statute consultations"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push("/copilot")}
+              onClick={() => router.push(isLawyer ? "/lawyer/pending" : "/copilot")}
               className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--text-primary)] hover:underline cursor-pointer pt-1"
             >
-              <span>{isBn ? "চ্যাট শুরু করুন" : "Open copilot"}</span>
+              <span>{isLawyer ? (isBn ? "রিভিউ স্টেশন খুলুন" : "Open Review Station") : (isBn ? "চ্যাট শুরু করুন" : "Open copilot")}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -773,14 +790,24 @@ export default function ProfilePage() {
                 {lawyerProfile.barAssociation || "Supreme Court Bar Association"}
               </div>
 
-              <div className="sm:col-span-3 pt-2">
+              <div className="sm:col-span-3 pt-2 flex items-center gap-4 flex-wrap">
                 <button
                   type="button"
-                  onClick={() => router.push("/lawyer/archive")}
+                  onClick={() => router.push("/lawyer/pending")}
                   className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                 >
                   <span>{isBn ? "আইনজীবী পোর্টালে যান →" : "Go to Lawyer Portal →"}</span>
                 </button>
+
+                {verificationStatus !== "verified" && (
+                  <button
+                    type="button"
+                    onClick={() => router.push("/admin")}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                  >
+                    <span>{isBn ? "অ্যাডমিন প্যানেলে অনুমোদন দেখুন →" : "Open Admin Approval Panel →"}</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>

@@ -160,7 +160,8 @@ export default function LandingAndAuthPage() {
       closeModal();
       // Route by role
       const role = loggedInUser?.role;
-      if (role === "lawyer") router.push("/lawyer/pending");
+      if (role === "admin") router.push("/admin");
+      else if (role === "lawyer" || !!loggedInUser?.lawyerProfile) router.push("/lawyer/pending");
       else if (role === "enterprise_admin" || role === "enterprise") router.push("/enterprise/admin");
       else if (role === "enterprise_member") router.push("/enterprise/member");
       else router.push("/copilot");
@@ -393,14 +394,21 @@ export default function LandingAndAuthPage() {
       >
         <div className="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
           {/* Brand Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-sm bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-              <Scale className="w-5 h-5" />
+          <a href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 flex items-center justify-center">
+              <Image
+                src="/logo.svg"
+                alt="Advotech Copilot"
+                width={40}
+                height={40}
+                className="w-10 h-10 object-contain dark:invert transition-transform group-hover:scale-105"
+                priority
+              />
             </div>
             <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-[var(--text-primary)]">
               Advotech Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
             </span>
-          </div>
+          </a>
 
           {/* Center Nav Links */}
           <nav className="hidden md:flex items-center gap-7 text-xs sm:text-[13px] font-medium tracking-wide uppercase text-[var(--text-muted)]">
@@ -444,7 +452,15 @@ export default function LandingAndAuthPage() {
             {mounted && isAuthenticated ? (
               <button
                 type="button"
-                onClick={() => router.push(user?.role === "lawyer" ? "/lawyer/pending" : "/copilot")}
+                onClick={() =>
+                  router.push(
+                    user?.role === "admin"
+                      ? "/admin"
+                      : user?.role === "lawyer" || !!user?.lawyerProfile
+                      ? "/lawyer/pending"
+                      : "/copilot"
+                  )
+                }
                 className="px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "ওয়ার্কস্পেস" : "Workspace"}</span>
@@ -1310,9 +1326,15 @@ export default function LandingAndAuthPage() {
                   </div>
 
                   {/* Brand Crest & Tagline */}
-                  <div className="flex items-center justify-center gap-2 mb-1.5">
-                    <div className="w-7 h-7 rounded-xl bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center shadow-xs">
-                      <Scale className="w-4 h-4" />
+                  <div className="flex items-center justify-center gap-2.5 mb-1.5">
+                    <div className="w-7 h-7 flex items-center justify-center">
+                      <Image
+                        src="/logo.svg"
+                        alt="Advotech Copilot"
+                        width={28}
+                        height={28}
+                        className="w-7 h-7 object-contain dark:invert"
+                      />
                     </div>
                     <span className="font-serif font-bold text-lg sm:text-xl tracking-tight text-[var(--text-primary)]">
                       ADVOTECH COPILOT
@@ -1525,8 +1547,14 @@ export default function LandingAndAuthPage() {
                 />
               </div>
               <div className="relative z-10 flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-sm bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                  <Scale className="w-4 h-4" />
+                <div className="w-8 h-8 flex items-center justify-center">
+                  <Image
+                    src="/logo.svg"
+                    alt="Advotech Copilot"
+                    width={32}
+                    height={32}
+                    className="w-8 h-8 object-contain dark:invert"
+                  />
                 </div>
                 <span className="font-semibold text-base tracking-tight text-[var(--text-primary)]">Advotech Copilot</span>
               </div>

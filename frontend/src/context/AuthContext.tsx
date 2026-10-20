@@ -17,10 +17,27 @@ export type UserRole =
   | "lawyer"
   | "enterprise"
   | "enterprise_admin"
-  | "enterprise_member";
+  | "enterprise_member"
+  | "admin";
 
 export type LawyerVerificationStatus = "pending" | "verified" | "rejected" | "suspended";
 export type EnterpriseVerificationStatus = "pending" | "verified" | "rejected";
+
+export interface PendingLawyerRecord {
+  id: string | number;
+  user_id?: string | number;
+  name: string;
+  email: string;
+  phone?: string;
+  barCouncilId: string;
+  experienceYears: number;
+  fieldOfLaw: string;
+  specializations: string[];
+  barAssociation?: string;
+  chamberName?: string;
+  status: LawyerVerificationStatus;
+  appliedAt: string;
+}
 
 export interface LawyerProfile {
   barCouncilNo: string;
@@ -120,6 +137,7 @@ interface RegisterEnterpriseMemberRequest {
 export function normalizeUserRole(rawRole?: string | null): UserRole {
   if (!rawRole) return "general";
   const r = String(rawRole).toLowerCase().trim();
+  if (r === "admin" || (r.includes("admin") && !r.includes("enterprise"))) return "admin";
   if (r.includes("lawyer")) return "lawyer";
   if (r.includes("enterprise_admin") || r === "enterprise-admin") return "enterprise_admin";
   if (r.includes("enterprise_member") || r === "enterprise-member") return "enterprise_member";
@@ -127,23 +145,129 @@ export function normalizeUserRole(rawRole?: string | null): UserRole {
   return "general";
 }
 
-function getSavedLawyerProfile(email?: string): LawyerProfile | null {
-  if (typeof window === "undefined") return null;
-  const key = email ? `contractmind_lawyer_${email.toLowerCase().trim()}` : "contractmind_lawyer_latest";
-  const raw = localStorage.getItem(key) || localStorage.getItem("contractmind_lawyer_latest");
-  if (!raw) return null;
+const DEFAULT_PENDING_APPLICATIONS: PendingLawyerRecord[] = [
+  {
+    id: "lawyer-app-1",
+    user_id: "demo-lawyer",
+    name: "Advocate Shireen Akhter",
+    email: "shireen@supremecourt.bd",
+    phone: "+8801911223344",
+    barCouncilId: "BC-48291/2019",
+    experienceYears: 7,
+    fieldOfLaw: "Corporate & Labour Law",
+    specializations: ["Corporate Law", "Labour Law", "Contract Law"],
+    barAssociation: "Supreme Court Bar Association",
+    chamberName: "Akhter & Associates, Dhaka",
+    status: "pending",
+    appliedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
+  },
+  {
+    id: "lawyer-app-2",
+    user_id: "demo-lawyer-2",
+    name: "Advocate Tanvir Hasan",
+    email: "tanvir.hasan@dhkbar.org",
+    phone: "+8801722334455",
+    barCouncilId: "BC/DHK/2021/008892",
+    experienceYears: 4,
+    fieldOfLaw: "Contract & Commercial Law",
+    specializations: ["Contract Law", "Arbitration"],
+    barAssociation: "Dhaka Bar Association",
+    chamberName: "Hasan Legal Chambers",
+    status: "pending",
+    appliedAt: new Date(Date.now() - 3600000 * 18).toISOString(),
+  },
+];
+
+export function getPendingLawyerApplications(): PendingLawyerRecord[] {
+  if (typeof window === "undefined") return DEFAULT_PENDING_APPLICATIONS;
   try {
-    return JSON.parse(raw);
+    const raw = localStorage.getItem("pending_lawyer_applications");
+    if (!raw) {
+      localStorage.setItem("pending_lawyer_applications", JSON.stringify(DEFAULT_PENDING_APPLICATIONS));
+      return DEFAULT_PENDING_APPLICATIONS;
+    }
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PENDING_APPLICATIONS;
   } catch {
-    return null;
+    return DEFAULT_PENDING_APPLICATIONS;
   }
 }
 
-export function saveLawyerProfileLocally(email: string, profile: LawyerProfile) {
+export function savePendingLawyerApplication(app: PendingLawyerRecord) {
   if (typeof window === "undefined") return;
+  try {
+    const list = getPendingLawyerApplications();
+    const existingIdx = list.findIndex(
+      (a) =>
+        String(a.id) === String(app.id) ||
+        (a.email && app.email && a.email.toLowerCase() === app.email.toLowerCase())
+    );
+    let updated: PendingLawyerRecord[];
+    if (existingIdx >= 0) {
+      updated = [...list];
+      updated[existingIdx] = { ...updated[existingIdx], ...app };
+    } else {
+      updated = [app, ...list];
+    }
+    localStorage.setItem("pending_lawyer_applications", JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
+export function updateLawyerApplicationStatus(
+  idOrEmail: string | number,
+  status: LawyerVerificationStatus
+) {
+  if (typeof window === "undefined") return;
+  try {
+    const list = getPendingLawyerApplications();
+    const updated = list.map((a) => {
+      const match =
+        String(a.id) === String(idOrEmail) ||
+        (a.email && String(idOrEmail).toLowerCase() === a.email.toLowerCase());
+      if (match) {
+        return { ...a, status };
+      }
+      return a;
+    });
+    localStorage.setItem("pending_lawyer_applications", JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
+export function getSavedLawyerProfile(email?: string | null): LawyerProfile | null {
+  if (typeof window === "undefined" || !email) return null;
+  const cleanEmail = email.toLowerCase().trim();
+  const key = `contractmind_lawyer_${cleanEmail}`;
+  const raw = localStorage.getItem(key);
+  if (raw) {
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+  }
+  // Check pending lawyer applications list specifically for this email
+  const apps = getPendingLawyerApplications();
+  const match = apps.find((app) => app.email.toLowerCase().trim() === cleanEmail);
+  if (match) {
+    return {
+      barCouncilNo: match.barCouncilId || "",
+      fieldOfLaw: match.fieldOfLaw || "",
+      barAssociation: match.barAssociation || "",
+      chamberName: match.chamberName || "",
+      verificationStatus: match.status,
+    };
+  }
+  return null;
+}
+
+export function saveLawyerProfileLocally(email: string, profile: LawyerProfile) {
+  if (typeof window === "undefined" || !email) return;
   const key = `contractmind_lawyer_${email.toLowerCase().trim()}`;
   localStorage.setItem(key, JSON.stringify(profile));
-  localStorage.setItem("contractmind_lawyer_latest", JSON.stringify(profile));
 }
 
 // ─── Context Type ─────────────────────────────────────────────────────────
@@ -164,8 +288,15 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
   updateUser: (partial: Partial<UserProfile>) => void;
 
+  // Admin actions
+  approveLawyerByAdmin: (lawyerIdOrEmail: string | number) => Promise<void>;
+  rejectLawyerByAdmin: (lawyerIdOrEmail: string | number, reason?: string) => Promise<void>;
+  suspendLawyerByAdmin: (lawyerIdOrEmail: string | number, reason?: string) => Promise<void>;
+  getPendingLawyersList: () => PendingLawyerRecord[];
+
   loginAsDemoGeneral: () => void;
   loginAsDemoLawyer: () => void;
+  loginAsDemoAdmin: () => void;
   loginAsDemoEnterprise: () => void;
   loginAsDemoEnterpriseAdmin: () => void;
   loginAsDemoEnterpriseMember: () => void;
@@ -353,6 +484,22 @@ const DEMO_ENTERPRISE_MEMBER: UserProfile = {
   },
 };
 
+const DEMO_ADMIN: UserProfile = {
+  id: "demo-system-admin",
+  name: "System Administrator",
+  firstName: "Super",
+  lastName: "Admin",
+  dateOfBirth: "1980-01-01",
+  gender: "male",
+  email: "admin@contractmind.gov.bd",
+  mobile: "+8801700112233",
+  role: "admin",
+  avatarUrl: "",
+  isEmailVerified: true,
+  isPhoneVerified: true,
+  creditBalance: 99999,
+};
+
 // ─── Provider ─────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -480,22 +627,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Real API: Onboard Lawyer ──
   const onboardLawyer = async (req: OnboardLawyerRequest): Promise<void> => {
+    const barId = req.bar_council_id || req.bar_council_no || "";
+    const exp = req.experience_years ?? 3;
+    const spec = req.specializations || (req.field_of_law ? [req.field_of_law] : ["Contract Law"]);
+
     try {
       await api.post("/api/auth/onboard/lawyer", {
-        bar_council_id: req.bar_council_id || req.bar_council_no || "",
-        experience_years: req.experience_years ?? 1,
-        specializations: req.specializations || (req.field_of_law ? [req.field_of_law] : []),
+        bar_council_id: barId,
+        experience_years: exp,
+        specializations: spec,
       });
     } catch (err) {
       console.warn("Lawyer onboarding API call note:", err);
     }
 
     const lp: LawyerProfile = {
-      barCouncilNo: req.bar_council_id || req.bar_council_no || "",
-      fieldOfLaw: req.field_of_law || (req.specializations && req.specializations.length > 0 ? req.specializations[0] : ""),
-      barAssociation: req.bar_association || "",
-      chamberName: req.chamber_name || "",
-      verificationStatus: "pending",
+      barCouncilNo: barId,
+      fieldOfLaw: req.field_of_law || (spec.length > 0 ? spec[0] : "Contract Law"),
+      barAssociation: req.bar_association || "Supreme Court Bar Association",
+      chamberName: req.chamber_name || "Chamber of Advocates",
+      verificationStatus: "pending", // Strictly pending until admin approval
     };
 
     const currentEmail = user?.email || "";
@@ -504,6 +655,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } else {
       localStorage.setItem("contractmind_lawyer_latest", JSON.stringify(lp));
     }
+
+    // Record application for Admin Panel review
+    const newApp: PendingLawyerRecord = {
+      id: `lawyer-app-${Date.now()}`,
+      user_id: user?.id,
+      name: user?.name || "Advocate Applicant",
+      email: currentEmail || "advocate@supremecourt.bd",
+      phone: user?.mobile || "+880 1711-223344",
+      barCouncilId: barId,
+      experienceYears: exp,
+      fieldOfLaw: lp.fieldOfLaw,
+      specializations: spec,
+      barAssociation: lp.barAssociation,
+      chamberName: lp.chamberName,
+      status: "pending",
+      appliedAt: new Date().toISOString(),
+    };
+    savePendingLawyerApplication(newApp);
 
     const updatedUser: UserProfile = user
       ? {
@@ -584,9 +753,110 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Demo shortcuts ──
   const loginAsDemoGeneral = () => persistDemo(DEMO_GENERAL);
   const loginAsDemoLawyer = () => persistDemo(DEMO_LAWYER);
+  const loginAsDemoAdmin = () => persistDemo(DEMO_ADMIN);
   const loginAsDemoEnterpriseAdmin = () => persistDemo(DEMO_ENTERPRISE_ADMIN);
   const loginAsDemoEnterpriseMember = () => persistDemo(DEMO_ENTERPRISE_MEMBER);
   const loginAsDemoEnterprise = () => persistDemo(DEMO_ENTERPRISE_ADMIN);
+
+  // ── Admin Panel Actions ──
+  const approveLawyerByAdmin = async (lawyerIdOrEmail: string | number) => {
+    try {
+      await api.post(`/api/admin/lawyers/${lawyerIdOrEmail}/approve`);
+    } catch (err) {
+      console.warn("Backend admin approve API note:", err);
+    }
+    updateLawyerApplicationStatus(lawyerIdOrEmail, "verified");
+
+    // If currently logged-in user matches or is a lawyer, update live session
+    if (
+      user &&
+      (String(user.id) === String(lawyerIdOrEmail) ||
+        (user.email && String(user.email).toLowerCase() === String(lawyerIdOrEmail).toLowerCase()) ||
+        user.role === "lawyer")
+    ) {
+      const currentLp = user.lawyerProfile || {
+        barCouncilNo: "BC-48291/2019",
+        fieldOfLaw: "Corporate & Labour Law",
+        verificationStatus: "pending",
+      };
+      const updatedLp: LawyerProfile = {
+        ...currentLp,
+        verificationStatus: "verified",
+      };
+      if (user.email) {
+        saveLawyerProfileLocally(user.email, updatedLp);
+      }
+      updateUser({ lawyerProfile: updatedLp, role: "lawyer" });
+    }
+  };
+
+  const rejectLawyerByAdmin = async (
+    lawyerIdOrEmail: string | number,
+    reason: string = "Bar Council verification unconfirmed."
+  ) => {
+    try {
+      await api.post(`/api/admin/lawyers/${lawyerIdOrEmail}/reject`, { reason });
+    } catch (err) {
+      console.warn("Backend admin reject API note:", err);
+    }
+    updateLawyerApplicationStatus(lawyerIdOrEmail, "rejected");
+
+    if (
+      user &&
+      (String(user.id) === String(lawyerIdOrEmail) ||
+        (user.email && String(user.email).toLowerCase() === String(lawyerIdOrEmail).toLowerCase()))
+    ) {
+      const currentLp = user.lawyerProfile || {
+        barCouncilNo: "",
+        fieldOfLaw: "",
+        verificationStatus: "pending",
+      };
+      const updatedLp: LawyerProfile = {
+        ...currentLp,
+        verificationStatus: "rejected",
+      };
+      if (user.email) {
+        saveLawyerProfileLocally(user.email, updatedLp);
+      }
+      updateUser({ lawyerProfile: updatedLp });
+    }
+  };
+
+  const suspendLawyerByAdmin = async (
+    lawyerIdOrEmail: string | number,
+    reason: string = "Account suspended by administrator."
+  ) => {
+    try {
+      await api.post(`/api/admin/lawyers/${lawyerIdOrEmail}/suspend`, { reason });
+    } catch (err) {
+      console.warn("Backend admin suspend API note:", err);
+    }
+    updateLawyerApplicationStatus(lawyerIdOrEmail, "suspended");
+
+    if (
+      user &&
+      (String(user.id) === String(lawyerIdOrEmail) ||
+        (user.email && String(user.email).toLowerCase() === String(lawyerIdOrEmail).toLowerCase()))
+    ) {
+      const currentLp = user.lawyerProfile || {
+        barCouncilNo: "",
+        fieldOfLaw: "",
+        verificationStatus: "pending",
+      };
+      const updatedLp: LawyerProfile = {
+        ...currentLp,
+        verificationStatus: "suspended",
+      };
+      if (user.email) {
+        saveLawyerProfileLocally(user.email, updatedLp);
+      }
+      updateUser({ lawyerProfile: updatedLp });
+    }
+  };
+
+  const getPendingLawyersList = () => {
+    return getPendingLawyerApplications();
+  };
 
   const simulateLawyerVerification = () => {
     if (!user || user.role !== "lawyer") return;
@@ -602,6 +872,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user.email) {
       saveLawyerProfileLocally(user.email, updatedLp);
     }
+    updateLawyerApplicationStatus(user.email, "verified");
     updateUser({ lawyerProfile: updatedLp });
   };
 
@@ -631,8 +902,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         logout,
         refreshUser,
         updateUser,
+        approveLawyerByAdmin,
+        rejectLawyerByAdmin,
+        suspendLawyerByAdmin,
+        getPendingLawyersList,
         loginAsDemoGeneral,
         loginAsDemoLawyer,
+        loginAsDemoAdmin,
         loginAsDemoEnterprise,
         loginAsDemoEnterpriseAdmin,
         loginAsDemoEnterpriseMember,
