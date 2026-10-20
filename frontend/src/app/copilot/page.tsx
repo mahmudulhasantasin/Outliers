@@ -51,7 +51,7 @@ interface ChatMessage {
   thoughtSeconds?: number;
 }
 
-// ✅ নতুন: চ্যাট হিস্ট্রি ডেট অনুযায়ী গ্রুপ করার হেল্পার ফাংশন
+// ✅ চ্যাট হিস্ট্রি ডেট অনুযায়ী গ্রুপ করার হেল্পার ফাংশন
 function groupSessions(sessions: ChatSession[]) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -718,14 +718,15 @@ export default function CopilotPage() {
         )}
 
         {/* ==================================================================== */}
-        {/* ✅ নতুন ডিজাইনের চ্যাট হিস্ট্রি ড্রয়ার */}
+        {/* ✅ ফ্লোটিং চ্যাট হিস্ট্রি ড্রয়ার */}
         {/* ==================================================================== */}
         {showHistoryDrawer && (
-          <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-            <div className="w-full sm:w-105 h-full shadow-2xl flex flex-col justify-between overflow-y-auto bg-(--bg-card) animate-in slide-in-from-right duration-200">
+          <div className="fixed inset-0 z-50 flex justify-end items-center p-3 sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+            {/* ফ্লোটিং প্যানেল কন্টেইনার */}
+            <div className="w-full sm:w-105 h-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col rounded-3xl overflow-hidden bg-(--bg-card) border border-(--text-primary)/10 animate-in slide-in-from-right duration-300">
               
               {/* ড্রয়ার হেডার */}
-              <div className="sticky top-0 z-10 p-5 border-b border-(--text-primary)/10 bg-(--bg-card)/95 backdrop-blur-md flex items-center justify-between">
+              <div className="p-5 border-b border-(--text-primary)/10 bg-(--bg-card)/95 backdrop-blur-md flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <History className="w-5 h-5 text-indigo-500" />
                   <h3 className="text-base font-bold text-(--text-primary)">{language === "bn" ? "আইনি চ্যাট ইতিহাস" : "Chat History"}</h3>
@@ -733,7 +734,8 @@ export default function CopilotPage() {
                 <button onClick={() => setShowHistoryDrawer(false)} className="p-1.5 rounded-lg text-(--text-muted) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
 
-              <div className="flex-1 p-4 space-y-6">
+              {/* স্ক্রলেবল কন্টেন্ট */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {/* নতুন চ্যাট বাটন */}
                 <button onClick={handleNewSession} className="w-full py-3 px-4 rounded-2xl text-xs font-bold border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 transition-all flex items-center justify-center gap-2 cursor-pointer">
                   <Plus className="w-4 h-4" />
@@ -811,7 +813,7 @@ export default function CopilotPage() {
               </div>
 
               {/* ড্রয়ার ফুটার */}
-              <div className="p-4 border-t border-(--text-primary)/10 bg-(--bg-card)">
+              <div className="p-4 border-t border-(--text-primary)/10 bg-(--bg-card) shrink-0">
                 <button onClick={() => setShowHistoryDrawer(false)} className="w-full py-2.5 rounded-xl text-xs font-medium border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer">
                   {language === "bn" ? "বন্ধ করুন" : "Close"}
                 </button>

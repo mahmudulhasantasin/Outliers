@@ -1,7 +1,6 @@
 'use client';
 
 import React, {
-  isValidElement,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -9,29 +8,11 @@ import React, {
   useRef,
   useState,
   type CSSProperties,
-  type KeyboardEvent,
-  type PointerEvent,
-  type ReactNode
+  type KeyboardEvent
 } from 'react';
 import { animate, useMotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion';
-import { HugeiconsIcon, type IconSvgElement } from '@hugeicons/react';
-import {
-  Attachment01Icon,
-  Cancel01Icon,
-  File02Icon,
-  Globe02Icon,
-  Mic01Icon,
-  PlusSignIcon,
-  Tick02Icon
-} from '@hugeicons/core-free-icons';
-
-export interface PromptBarSource {
-  key: string;
-  name: string;
-  description?: string;
-  icon?: ReactNode | IconSvgElement;
-  attach?: boolean;
-}
+import { HugeiconsIcon } from '@hugeicons/react';
+import { Mic01Icon } from '@hugeicons/core-free-icons';
 
 export interface PromptBarCommand {
   key: string;
@@ -39,18 +20,12 @@ export interface PromptBarCommand {
   description?: string;
 }
 
-export interface PromptBarSendDetail {
-  attachments: string[];
-}
-
 export interface PromptBarProps {
   placeholder?: string;
-  sources?: PromptBarSource[];
   commands?: PromptBarCommand[];
   busy?: boolean;
-  onSend?: (text: string, detail: PromptBarSendDetail) => void;
+  onSend?: (text: string, detail?: { attachments?: string[] }) => void;
   onStop?: () => void;
-  onAttach?: () => string | string[] | void | Promise<string | string[] | void>;
   onDictate?: () => string | void | Promise<string | void>;
   background?: string;
   color?: string;
@@ -65,16 +40,8 @@ export interface PromptBarProps {
   className?: string;
 }
 
-type Row = {
-  key: string;
-  name: string;
-  description?: string;
-  tag?: string;
-  icon?: ReactNode | IconSvgElement;
-  attach?: boolean;
-};
-type Token = { kind: 'at' | 'slash'; query: string; start: number };
-type Latest = Pick<PromptBarProps, 'onSend' | 'onStop' | 'onAttach' | 'onDictate'>;
+type Token = { kind: 'slash'; query: string; start: number };
+type Latest = Pick<PromptBarProps, 'onSend' | 'onStop' | 'onDictate'>;
 
 interface SendGlyphProps {
   busy: boolean;
@@ -87,17 +54,6 @@ const ARROW_UP = [12, 4.5, 18.5, 11, 14.25, 11, 14.25, 19.5, 9.75, 19.5, 9.75, 1
 const SQUARE = [12, 6, 18, 6, 18, 12, 18, 18, 6, 18, 6, 12, 6, 6];
 const EASE_IN_OUT: [number, number, number, number] = [0.77, 0, 0.175, 1];
 const LINE = 22;
-
-const DEFAULT_SOURCES: PromptBarSource[] = [
-  {
-    key: 'files',
-    name: 'Attach Document',
-    description: 'Image, PDF, DOCX, MD, TXT',
-    icon: Attachment01Icon,
-    attach: true
-  },
-  { key: 'bdlaws', name: 'bdlaws Repository', description: 'Statutory provisions', icon: Globe02Icon }
-];
 
 const DEFAULT_COMMANDS: PromptBarCommand[] = [
   { key: 'audit', name: '/audit', description: 'Run complete compliance check' },
@@ -115,13 +71,10 @@ const pathAt = (a: number[], b: number[], t: number) => {
 };
 
 const parseToken = (draft: string): Token | null => {
-  const m = /(^|\s)([@/])([\w-]*)$/.exec(draft);
+  const m = /(^|\s)([/])([\w-]*)$/.exec(draft);
   if (!m) return null;
-  return { kind: m[2] === '@' ? 'at' : 'slash', query: m[3].toLowerCase(), start: m.index + m[1].length };
+  return { kind: 'slash', query: m[3].toLowerCase(), start: m.index + m[1].length };
 };
-
-const renderIcon = (icon: ReactNode | IconSvgElement, size: number) =>
-  isValidElement(icon) ? icon : <HugeiconsIcon icon={icon as IconSvgElement} size={size} strokeWidth={1.8} />;
 
 function SendGlyph({ busy, morphDuration, squash, tilt }: SendGlyphProps) {
   const reduce = useReducedMotion();
@@ -180,14 +133,12 @@ const STYLE = `
 }
 `;
 
-export default function PromptBar({
+const PromptBar: React.FC<PromptBarProps> = ({
   placeholder = 'Ask anything',
-  sources = DEFAULT_SOURCES,
   commands = DEFAULT_COMMANDS,
   busy = false,
   onSend,
   onStop,
-  onAttach,
   onDictate,
   background = 'var(--bg-card)',
   color = 'var(--text-primary)',
@@ -200,51 +151,37 @@ export default function PromptBar({
   tilt = 8,
   pressScale = 0.96,
   className = ''
-}: PromptBarProps) {
+}) => {
   const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const glowRef = useRef<HTMLSpanElement>(null);
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const lastOpen = useRef<string | null>(null);
   const dictation = useRef(0);
   const latest = useRef<Latest>({});
-  latest.current = { onSend, onStop, onAttach, onDictate };
+  latest.current = { onSend, onStop, onDictate };
 
   const [draft, setDraft] = useState('');
-  const [attachments, setAttachments] = useState<string[]>([]);
-  const [plusOpen, setPlusOpen] = useState(false);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-    const names = Array.from(files).map(f => f.name);
-    setAttachments(prev => [...prev, ...names]);
-    e.target.value = '';
-    focusInput();
-  };
   const [dismissed, setDismissed] = useState(false);
   const [active, setActive] = useState(0);
   const [listening, setListening] = useState(false);
-  const [pressed, setPressed] = useState(false);
 
   const token = dismissed ? null : parseToken(draft);
-  const open = plusOpen ? 'at' : (token?.kind ?? null);
-  const query = plusOpen ? '' : (token?.query ?? '');
+  const open = token?.kind ?? null;
+  const query = token?.query ?? '';
 
-  const list = useMemo<Row[]>(() => {
-    if (open === 'at') return sources.filter(s => s.name.toLowerCase().includes(query));
+  const list = useMemo(() => {
     if (open === 'slash') return commands.filter(c => c.name.replace(/^\//, '').toLowerCase().startsWith(query));
     return [];
-  }, [open, query, sources, commands]);
+  }, [open, query, commands]);
 
   const cursor = Math.min(active, Math.max(0, list.length - 1));
-  const canSend = draft.trim().length > 0 || attachments.length > 0;
+  const canSend = draft.trim().length > 0;
   const armed = busy || canSend;
 
   const focusInput = () => inputRef.current?.focus({ preventScroll: true });
   const closeMenus = useCallback(() => {
-    setPlusOpen(false);
+    // No menus to close manually now
   }, []);
 
   useLayoutEffect(() => {
@@ -271,15 +208,6 @@ export default function PromptBar({
     if (!open) lastOpen.current = null;
   }, [open]);
 
-  useEffect(() => {
-    if (!plusOpen) return undefined;
-    const onDown = (e: globalThis.PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) closeMenus();
-    };
-    document.addEventListener('pointerdown', onDown);
-    return () => document.removeEventListener('pointerdown', onDown);
-  }, [plusOpen, closeMenus]);
-
   useLayoutEffect(() => {
     const el = inputRef.current;
     if (!el) return;
@@ -296,35 +224,18 @@ export default function PromptBar({
     []
   );
 
-  const pick = (row: Row) => {
+  const pick = (row: PromptBarCommand) => {
     const head = token ? draft.slice(0, token.start) : draft;
-    if (row.attach) {
-      setDraft(head);
-      if (latest.current.onAttach) {
-        Promise.resolve(latest.current.onAttach()).then(files => {
-          if (!files) return;
-          setAttachments(a => [...a, ...(Array.isArray(files) ? files : [files])]);
-        });
-      } else {
-        fileInputRef.current?.click();
-      }
-    } else if (open === 'at') {
-      setDraft(`${head}@${row.name} `);
-    } else {
-      setDraft(`${head}${row.name} `);
-    }
-    setPlusOpen(false);
+    setDraft(`${head}${row.name} `);
     setDismissed(false);
     focusInput();
   };
 
   const send = () => {
     if (!canSend || busy) return;
-    latest.current.onSend?.(draft.trim(), { attachments });
+    latest.current.onSend?.(draft.trim());
     setDraft('');
-    setAttachments([]);
     setDismissed(false);
-    closeMenus();
     focusInput();
   };
 
@@ -366,7 +277,6 @@ export default function PromptBar({
       if (open) {
         e.preventDefault();
         setDismissed(true);
-        closeMenus();
       }
       return;
     }
@@ -376,16 +286,10 @@ export default function PromptBar({
     }
   };
 
-  const down = (e: PointerEvent<HTMLButtonElement>) => {
-    if (e.button !== 0 || !armed) return;
-    setPressed(true);
-  };
-  const up = () => setPressed(false);
-
   return (
     <div
       ref={rootRef}
-      className={`group relative text-[14px] leading-[22px] w-full [color:var(--pb-ink)]${className ? ` ${className}` : ''}`}
+      className={`group relative text-[14px] leading-5.5 w-full [color:var(--pb-ink)]${className ? ` ${className}` : ''}`}
       data-busy={busy ? '' : undefined}
       style={
         {
@@ -400,11 +304,13 @@ export default function PromptBar({
       }
     >
       <style>{STYLE}</style>
+      
+      {/* Command Menu (Slash commands) */}
       {open ? (
         <div
-          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 origin-bottom rounded-2xl p-1.5 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_36px_-8px_rgba(0,0,0,0.5)] dark:border dark:border-white/10 [animation:prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] motion-reduce:[animation:none] border-0"
+          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-20 origin-bottom rounded-2xl p-1.5 shadow-[0_12px_36px_-8px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_36px_-8px_rgba(0,0,0,0.5)] dark:border dark:border-white/10 animate-[prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] motion-reduce:animate-none border-0"
           role="listbox"
-          aria-label={open === 'at' ? 'Sources' : 'Commands'}
+          aria-label="Commands"
         >
           <span
             ref={glowRef}
@@ -420,16 +326,11 @@ export default function PromptBar({
               type="button"
               role="option"
               aria-selected={i === cursor}
-              className="relative z-[1] flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl border-0 bg-transparent px-3 text-left text-inherit outline-none font-sans"
+              className="relative z-1 flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-xl border-0 bg-transparent px-3 text-left text-inherit outline-none font-sans"
               onMouseDown={e => e.preventDefault()}
               onPointerEnter={() => setActive(i)}
               onClick={() => pick(row)}
             >
-              {open === 'at' ? (
-                <span className="inline-flex w-5 flex-none justify-center opacity-60">
-                  {renderIcon(row.icon, 15)}
-                </span>
-              ) : null}
               <span className="flex-none text-[13px] font-semibold">{row.name}</span>
               {row.description ? (
                 <span className="min-w-0 flex-auto truncate text-[12px] opacity-60">
@@ -446,12 +347,12 @@ export default function PromptBar({
         </div>
       ) : null}
 
-      {/* Rotating Conic Gradient Border Container (User button structure) */}
+      {/* Rotating Conic Gradient Border Container */}
       <div
-        className="relative w-full p-[2px] overflow-hidden transition-all duration-300"
+        className="relative w-full p-0.5 overflow-hidden transition-all duration-300"
         style={{ borderRadius: 'calc(var(--pb-radius) + 2px)' }}
       >
-        {/* ১. রোটেটিং কনিক গ্রেডিয়েন্ট বর্ডার */}
+        {/* ১. রোটেটিং কনিক গ্রেডিয়েন্ট বর্ডার (busy হলে দেখাবে) */}
         <div
           className={`pointer-events-none absolute inset-[-200%] animate-[prompt-bar-spin_4s_linear_infinite] transition-opacity duration-500 ${
             busy ? 'opacity-100' : 'opacity-0'
@@ -472,119 +373,70 @@ export default function PromptBar({
           }}
           onClick={focusInput}
         >
-        {attachments.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
-            {attachments.map((file, i) => (
-              <span
-                key={`${file}-${i}`}
-                className="inline-flex h-[26px] items-center gap-1.5 rounded-lg pr-1.5 pl-2 text-[12px] bg-neutral-100 dark:bg-neutral-800 text-neutral-800 dark:text-neutral-200"
-              >
-                <HugeiconsIcon icon={File02Icon} size={12} strokeWidth={2} />
-                <span className="max-w-[160px] truncate font-medium">{file}</span>
-                <button
-                  type="button"
-                  className="inline-grid h-[18px] w-[18px] cursor-pointer place-items-center rounded-md border-0 bg-transparent p-0 text-inherit opacity-60 hover:opacity-100 hover:bg-neutral-200 dark:hover:bg-neutral-700"
-                  aria-label={`Remove ${file}`}
-                  onClick={() => setAttachments(a => a.filter((_, j) => j !== i))}
-                >
-                  <HugeiconsIcon icon={Cancel01Icon} size={10} strokeWidth={2.5} />
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : null}
-
-        <textarea
-          ref={inputRef}
-          className="prompt-bar-input block w-full resize-none border-0 bg-transparent p-1 text-[15px] leading-[22px] outline-none font-sans"
-          style={{
-            color: "var(--text-primary)",
-            caretColor: "var(--text-primary)"
-          }}
-          rows={1}
-          value={draft}
-          placeholder={listening ? 'Listening…' : placeholder}
-          aria-label="Prompt"
-          onChange={e => {
-            setDraft(e.target.value);
-            setDismissed(false);
-            closeMenus();
-            setActive(0);
-          }}
-          onFocus={closeMenus}
-          onKeyDown={onKeyDown}
-        />
-
-        <div className="flex items-center gap-1.5 pt-1">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*,.pdf,.doc,.docx,.md,.txt"
-            className="hidden"
-            onChange={handleFileChange}
-          />
-          <button
-            type="button"
-            className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors"
-            style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-            aria-label="Add files and sources"
-            aria-expanded={plusOpen}
-            onMouseDown={e => e.preventDefault()}
-            onClick={() => {
-              setActive(0);
-              setPlusOpen(v => !v);
-              focusInput();
+          <textarea
+            ref={inputRef}
+            className="prompt-bar-input block w-full resize-none border-0 bg-transparent p-1 text-[15px] leading-5.5 outline-none font-sans"
+            style={{
+              color: "var(--text-primary)",
+              caretColor: "var(--text-primary)"
             }}
-          >
-            <HugeiconsIcon icon={PlusSignIcon} size={16} strokeWidth={2.2} />
-          </button>
+            rows={1}
+            value={draft}
+            placeholder={listening ? 'Listening…' : placeholder}
+            aria-label="Prompt"
+            onChange={e => {
+              setDraft(e.target.value);
+              setDismissed(false);
+              closeMenus();
+              setActive(0);
+            }}
+            onFocus={closeMenus}
+            onKeyDown={onKeyDown}
+          />
 
-          <span className="flex-auto" />
+          <div className="flex items-center justify-end gap-1.5 pt-1">
+            {onDictate ? (
+              <button
+                type="button"
+                className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors"
+                style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                aria-label={listening ? 'Stop dictation' : 'Dictate'}
+                aria-pressed={listening}
+                onMouseDown={e => e.preventDefault()}
+                onClick={toggleListen}
+              >
+                {listening ? (
+                  <span className="flex h-3.5 items-center gap-[2.5px] [&>i]:block [&>i]:h-full [&>i]:w-[2.5px] [&>i]:rounded-full [&>i]:bg-red-500 [&>i]:animate-pulse">
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                ) : (
+                  <HugeiconsIcon icon={Mic01Icon} size={15} strokeWidth={2} />
+                )}
+              </button>
+            ) : null}
 
-          {onDictate ? (
+            {/* Send Button */}
             <button
               type="button"
-              className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors"
-              style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-              aria-label={listening ? 'Stop dictation' : 'Dictate'}
-              aria-pressed={listening}
+              className="relative inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 disabled:opacity-30 transition-colors shadow-sm outline-none hover:opacity-90"
+              style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
+              disabled={!armed}
+              aria-label={busy ? 'Stop' : 'Send'}
               onMouseDown={e => e.preventDefault()}
-              onClick={toggleListen}
+              onClick={() => {
+                if (busy) latest.current.onStop?.();
+                else send();
+              }}
             >
-              {listening ? (
-                <span className="flex h-3.5 items-center gap-[2.5px] [&>i]:block [&>i]:h-full [&>i]:w-[2.5px] [&>i]:rounded-full [&>i]:bg-red-500 [&>i]:animate-pulse">
-                  <i />
-                  <i />
-                  <i />
-                </span>
-              ) : (
-                <HugeiconsIcon icon={Mic01Icon} size={15} strokeWidth={2} />
-              )}
+              <SendGlyph busy={busy} morphDuration={morphDuration} squash={squash} tilt={tilt} />
             </button>
-          ) : null}
-
-          <button
-            type="button"
-            className="relative inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 disabled:opacity-30 transition-colors shadow-sm outline-none hover:opacity-90"
-            style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
-            disabled={!armed}
-            aria-label={busy ? 'Stop' : 'Send'}
-            onMouseDown={e => e.preventDefault()}
-            onPointerDown={down}
-            onPointerUp={up}
-            onPointerCancel={up}
-            onPointerLeave={up}
-            onClick={() => {
-              if (busy) latest.current.onStop?.();
-              else send();
-            }}
-          >
-            <SendGlyph busy={busy} morphDuration={morphDuration} squash={squash} tilt={tilt} />
-          </button>
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );
-}
+};
+
+export default PromptBar;
