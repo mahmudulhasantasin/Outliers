@@ -269,6 +269,9 @@ export default function CopilotPage() {
     setMessages((prev) => [...prev, userMessage, pendingCopilotMessage]);
     setIsTyping(true);
 
+    // ✅ FIX: টাইমার শুরু করা হলো
+    const startTime = Date.now();
+
     try {
       const contractData = sessionStorage.getItem("active_audit_contract");
       let contractId: string | undefined;
@@ -318,6 +321,10 @@ export default function CopilotPage() {
         updateUser({ creditBalance: result.credits_remaining });
       }
 
+      // ✅ FIX: কত সেকেন্ড সময় লেগেছে তা ক্যালকুলেট করা হলো
+      const endTime = Date.now();
+      const actualSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
+
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === copilotMsgId
@@ -329,13 +336,18 @@ export default function CopilotPage() {
                 apiCitations,
                 nextSteps,
                 isThinking: false,
-                thoughtSeconds: 1.5
+                thoughtSeconds: actualSeconds // ✅ ডাইনামিক সেকেন্ড সেট করা হলো
               }
             : msg
         )
       );
     } catch (err: unknown) {
       console.error("Chat Query failed:", err);
+      
+      // ✅ FIX: এরর হলেও কত সেকেন্ড লেগেছে তা দেখাবে
+      const endTime = Date.now();
+      const actualSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
+      
       const errMsg = err instanceof Error ? err.message : "Sorry, I encountered an error connecting to the legal knowledge base. Please try again.";
       setMessages((prev) =>
         prev.map((msg) =>
@@ -346,6 +358,7 @@ export default function CopilotPage() {
                 textBn: err instanceof Error ? err.message : "দুঃখিত, আইনি জ্ঞান ভাণ্ডারে সংযোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।",
                 citations: [],
                 isThinking: false,
+                thoughtSeconds: actualSeconds // ✅ এরর এর ক্ষেত্রেও সঠিক টাইম
               }
             : msg
         )
