@@ -10,7 +10,7 @@ const LIVE_BACKEND_URL = "https://legal-copilot-backend-npq7.onrender.com";
 
 const BASE_URL =
   (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-  LIVE_BACKEND_URL;
+  (typeof window !== "undefined" ? "" : LIVE_BACKEND_URL);
 
 type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -55,7 +55,7 @@ async function request<T>(
 
   let res: Response;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 35000);
+  const timeoutId = setTimeout(() => controller.abort(), 90000);
 
   try {
     res = await fetch(fullUrl, {
@@ -69,10 +69,11 @@ async function request<T>(
             : JSON.stringify(body)
           : undefined,
     });
-  } catch (netErr: any) {
-    if (netErr?.name === "AbortError") {
-      console.error(`[API Timeout] ${method} ${fullUrl} exceeded 35s`);
-      throw new ApiError(408, "Request timed out after 35s. AI model might be busy.");
+  } catch (netErr: unknown) {
+    const err = netErr as { name?: string };
+    if (err?.name === "AbortError") {
+      console.error(`[API Timeout] ${method} ${fullUrl} exceeded 90s`);
+      throw new ApiError(408, "Request timed out after 90s. AI model might be busy.");
     }
     console.error(`[API Network Error] ${method} ${fullUrl}:`, netErr);
     throw new ApiError(0, "Network connection error. Please verify backend connectivity.");
@@ -95,7 +96,7 @@ async function request<T>(
       } else if (Array.isArray(rawDetail)) {
         // Format Pydantic 422 errors: [{ loc: ['body', 'field'], msg: '...' }]
         detail = rawDetail
-          .map((d: any) => {
+          .map((d: { loc?: (string | number)[]; msg?: string }) => {
             const field = Array.isArray(d.loc) ? d.loc[d.loc.length - 1] : "";
             return field ? `${field}: ${d.msg}` : d.msg || JSON.stringify(d);
           })
