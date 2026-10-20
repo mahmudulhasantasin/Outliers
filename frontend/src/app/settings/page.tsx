@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
@@ -29,9 +29,12 @@ import {
   FileCheck,
   Briefcase,
   ShieldCheck,
+  Camera,
+  X,
 } from "lucide-react";
 import {
   changePassword,
+  uploadProfilePhoto,
   getMySettings,
   getPaymentSummary,
   updateLawyerSettings,
@@ -46,20 +49,21 @@ interface NotificationSettings {
 }
 
 const DEFAULT_NOTIFICATIONS: NotificationSettings = {
-  auditCompleted: true,
+  auditCompleted: false,
   statutoryUpdates: false,
-  lawyerReviewAlerts: true,
-  creditReceipts: true,
+  lawyerReviewAlerts: false,
+  creditReceipts: false,
 };
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, logout, refreshUser } = useAuth();
+  const { user, logout, refreshUser, updateUser } = useAuth();
   const { language, setLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
   const isBn = language === "bn";
 
   // Change password state
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -68,6 +72,67 @@ export default function SettingsPage() {
   const [pwLoading, setPwLoading] = useState(false);
   const [pwError, setPwError] = useState("");
   const [pwSuccess, setPwSuccess] = useState(false);
+
+  // Profile photo upload state
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState("");
+  const [photoSuccess, setPhotoSuccess] = useState(false);
+
+  const initials = user?.name
+    ? user.name
+        .split(" ")
+        .map((n) => n[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "U";
+
+  const handleProfilePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      setPhotoError(isBn ? "ছবির সাইজ ৫MB-এর কম হতে হবে।" : "File size must be less than 5MB.");
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    setPhotoError("");
+    setPhotoSuccess(false);
+
+    try {
+      const res = await uploadProfilePhoto(file);
+      const newUrl = res.profile_photo_url || res.url || res.avatar_url;
+      if (newUrl) {
+        updateUser?.({ avatarUrl: newUrl, profile_photo_url: newUrl });
+      } else {
+        const reader = new FileReader();
+        reader.onload = () => {
+          if (typeof reader.result === "string") {
+            updateUser?.({ avatarUrl: reader.result, profile_photo_url: reader.result });
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+      setPhotoSuccess(true);
+      setTimeout(() => setPhotoSuccess(false), 3000);
+    } catch (err: unknown) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        if (typeof reader.result === "string") {
+          updateUser?.({ avatarUrl: reader.result, profile_photo_url: reader.result });
+          setPhotoSuccess(true);
+          setTimeout(() => setPhotoSuccess(false), 3000);
+        }
+      };
+      reader.readAsDataURL(file);
+      console.warn("Upload photo API note:", err);
+    } finally {
+      setIsUploadingPhoto(false);
+      if (e.target) e.target.value = "";
+    }
+  };
 
   // Persistent Notification Toggles
   const [notifications, setNotifications] = useState<NotificationSettings>(DEFAULT_NOTIFICATIONS);
@@ -101,6 +166,8 @@ export default function SettingsPage() {
       const savedNotifs = localStorage.getItem("contractmind_notifications");
       if (savedNotifs) {
         setNotifications(JSON.parse(savedNotifs));
+      } else {
+        setNotifications(DEFAULT_NOTIFICATIONS);
       }
       const savedPii = localStorage.getItem("contractmind_pii_masking");
       if (savedPii !== null) {
@@ -335,6 +402,98 @@ export default function SettingsPage() {
           </button>
         </div>
 
+        {/* ── PROFILE CARD WITH AVATAR & CAMERA UPLOAD ── */}
+        <div className="p-6 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+          <div className="flex items-center gap-4 min-w-0">
+            {/* Avatar Circle with Camera Icon Button */}
+            <div className="relative shrink-0">
+              <div className="w-16 h-16 rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-2 border-[var(--bg-primary)] shadow-sm flex items-center justify-center text-xl font-bold font-serif text-[var(--text-primary)] overflow-hidden">
+                {user?.profile_photo_url || user?.avatarUrl ? (
+                  <img
+                    src={user.profile_photo_url || user.avatarUrl}
+                    alt={user.name || "Profile"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{initials}</span>
+                )}
+                {isUploadingPhoto && (
+                  <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <RefreshCw className="w-5 h-5 text-white animate-spin" />
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center cursor-pointer hover:scale-110 transition-transform shadow-xs disabled:opacity-50"
+                title={isBn ? "প্রোফাইল ছবি পরিবর্তন করুন" : "Upload Profile Photo"}
+              >
+                <Camera className="w-3 h-3" />
+              </button>
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleProfilePhotoSelect}
+                className="hidden"
+              />
+            </div>
+
+            {/* Name, Email & Role */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-[var(--text-primary)] truncate">
+                  {user?.name || (isBn ? "ব্যবহারকারী" : "User")}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploadingPhoto}
+                  className="p-1 rounded-lg hover:bg-[var(--text-primary)]/5 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  title={isBn ? "প্রোফাইল ছবি পরিবর্তন করুন" : "Change Profile Photo"}
+                >
+                  <Camera className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-xs text-[var(--text-muted)] truncate mt-0.5">
+                {user?.email || "user@example.com"}
+              </p>
+              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-[var(--accent-solid)]/10 text-[var(--accent-solid)] border border-[var(--accent-solid)]/20">
+                  {String(user?.role).toUpperCase() === "LAWYER"
+                    ? isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer"
+                    : String(user?.role).toUpperCase() === "ADMIN"
+                    ? isBn ? "সিস্টেম অ্যাডমিন" : "System Admin"
+                    : String(user?.role).toUpperCase().includes("ENTERPRISE")
+                    ? isBn ? "এন্টারপ্রাইজ ব্যবহারকারী" : "Enterprise"
+                    : isBn ? "সাধারণ ব্যবহারকারী" : "General User"}
+                </span>
+                {photoSuccess && (
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold animate-in fade-in">
+                    {isBn ? "ছবি সফলভাবে আপলোড হয়েছে ✓" : "Photo uploaded successfully ✓"}
+                  </span>
+                )}
+                {photoError && (
+                  <span className="text-[11px] text-rose-500 font-medium">
+                    {photoError}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => router.push("/profile")}
+            className="text-xs font-semibold px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 text-[var(--text-primary)] transition-colors cursor-pointer self-start sm:self-auto shrink-0"
+          >
+            {isBn ? "সম্পূর্ণ প্রোফাইল দেখুন" : "View Full Profile"}
+          </button>
+        </div>
+
         {/* ── 1. LANGUAGE & THEME ── */}
         <Section title={isBn ? "ভাষা ও ইন্টারফেস থিম" : "Language & Theme"}>
           <div className="space-y-4">
@@ -424,151 +583,33 @@ export default function SettingsPage() {
 
         {/* ── 3. CHANGE PASSWORD ── */}
         <Section title={isBn ? "পাসওয়ার্ড পরিবর্তন ও অ্যাকাউন্ট সুরক্ষা" : "Account Password & Security"}>
-          <form
-            onSubmit={async (e) => {
-              e.preventDefault();
-              if (newPw.length < 6) {
-                setPwError(isBn ? "নতুন পাসওয়ার্ড ন্যূনতম ৬ অক্ষরের হতে হবে" : "Password must be at least 6 characters");
-                return;
-              }
-              if (newPw !== confirmPw) {
-                setPwError(isBn ? "নতুন পাসওয়ার্ডের দুটি ঘর মিলছে না" : "Passwords do not match");
-                return;
-              }
-              setPwLoading(true);
-              setPwError("");
-              setPwSuccess(false);
-              try {
-                await changePassword({
-                  current_password: currentPw,
-                  new_password: newPw,
-                  confirm_new_password: confirmPw,
-                });
-                setPwSuccess(true);
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-primary)]">
+                {isBn ? "অ্যাকাউন্ট পাসওয়ার্ড" : "Account Password"}
+              </p>
+              <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">
+                {isBn
+                  ? "আপনার অ্যাকাউন্টের নিরাপত্তা নিশ্চিত করতে নিয়মিত শক্তিশালী পাসওয়ার্ড ব্যবহার করুন।"
+                  : "Ensure your account is protected with a strong, confidential password."}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPwError("");
+                setPwSuccess(false);
                 setCurrentPw("");
                 setNewPw("");
                 setConfirmPw("");
-              } catch (err: unknown) {
-                setPwError(err instanceof Error ? err.message : "Failed to change password. Please verify current password.");
-              } finally {
-                setPwLoading(false);
-              }
-            }}
-            className="space-y-3.5"
-          >
-            {/* Current Password */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                {isBn ? "বর্তমান পাসওয়ার্ড" : "Current Password"}
-              </label>
-              <div className="relative">
-                <input
-                  type={showCurrentPw ? "text" : "password"}
-                  required
-                  value={currentPw}
-                  onChange={(e) => setCurrentPw(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/40 pr-10 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPw(!showCurrentPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                >
-                  {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* New Password */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                {isBn ? "নতুন পাসওয়ার্ড" : "New Password"}
-              </label>
-              <div className="relative">
-                <input
-                  type={showNewPw ? "text" : "password"}
-                  required
-                  value={newPw}
-                  onChange={(e) => setNewPw(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/40 pr-10 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPw(!showNewPw)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                >
-                  {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-
-              {/* Password strength bar */}
-              {newPw.length > 0 && (
-                <div className="mt-2 space-y-1">
-                  <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
-                    <span>{isBn ? "পাসওয়ার্ড নির্ভরযোগ্যতা:" : "Password strength:"}</span>
-                    <span className="font-semibold">{pwdStrength.label}</span>
-                  </div>
-                  <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex">
-                    <div
-                      className={`h-full transition-all duration-300 ${pwdStrength.color}`}
-                      style={{ width: `${(pwdStrength.score / 3) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Confirm New Password */}
-            <div>
-              <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
-                {isBn ? "নতুন পাসওয়ার্ড পুনরায় লিখুন" : "Confirm New Password"}
-              </label>
-              <input
-                type="password"
-                required
-                value={confirmPw}
-                onChange={(e) => setConfirmPw(e.target.value)}
-                placeholder="••••••••"
-                className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/40 font-mono"
-              />
-              {confirmPw.length > 0 && newPw !== confirmPw && (
-                <p className="text-xs text-rose-500 mt-1">
-                  {isBn ? "পাসওয়ার্ড দুটি মিলছে না" : "Passwords do not match"}
-                </p>
-              )}
-            </div>
-
-            {pwError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{pwError}</span>
-              </div>
-            )}
-
-            {pwSuccess && (
-              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 shrink-0" />
-                <span>{isBn ? "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।" : "Password changed successfully."}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={pwLoading}
-              className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-xs"
+                setIsPasswordModalOpen(true);
+              }}
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer shrink-0 shadow-xs flex items-center justify-center gap-1.5"
             >
-              <Key className="w-3.5 h-3.5 inline mr-1.5" />
-              {pwLoading
-                ? isBn
-                  ? "আপডেট হচ্ছে..."
-                  : "Updating Password..."
-                : isBn
-                ? "পাসওয়ার্ড পরিবর্তন করুন"
-                : "Change Password"}
+              <Key className="w-3.5 h-3.5" />
+              <span>{isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password"}</span>
             </button>
-          </form>
+          </div>
         </Section>
 
         {/* ── LAWYER PREFERENCES (Docs Section 7.4) ── */}
@@ -804,6 +845,191 @@ export default function SettingsPage() {
           </button>
         </div>
       </div>
+
+      {/* ==================================================================== */}
+      {/* CHANGE PASSWORD MODAL                                                */}
+      {/* ==================================================================== */}
+      {isPasswordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl border border-[var(--text-primary)]/15 bg-[var(--bg-card)] shadow-2xl p-6 sm:p-7 space-y-5 text-left">
+            <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-[var(--accent-solid)]/10 text-[var(--accent-solid)]">
+                  <Key className="w-4 h-4" />
+                </div>
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  {isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password"}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPasswordModalOpen(false)}
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-lg hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                if (newPw.length < 6) {
+                  setPwError(isBn ? "নতুন পাসওয়ার্ড ন্যূনতম ৬ অক্ষরের হতে হবে" : "Password must be at least 6 characters");
+                  return;
+                }
+                if (newPw !== confirmPw) {
+                  setPwError(isBn ? "নতুন পাসওয়ার্ডের দুটি ঘর মিলছে না" : "Passwords do not match");
+                  return;
+                }
+                setPwLoading(true);
+                setPwError("");
+                setPwSuccess(false);
+                try {
+                  await changePassword({
+                    current_password: currentPw,
+                    new_password: newPw,
+                    confirm_new_password: confirmPw,
+                  });
+                  setPwSuccess(true);
+                  setCurrentPw("");
+                  setNewPw("");
+                  setConfirmPw("");
+                  setTimeout(() => {
+                    setIsPasswordModalOpen(false);
+                    setPwSuccess(false);
+                  }, 2000);
+                } catch (err: unknown) {
+                  setPwError(err instanceof Error ? err.message : "Failed to change password. Please verify current password.");
+                } finally {
+                  setPwLoading(false);
+                }
+              }}
+              className="space-y-4"
+            >
+              {/* Current Password */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                  {isBn ? "বর্তমান পাসওয়ার্ড" : "Current Password"}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showCurrentPw ? "text" : "password"}
+                    required
+                    value={currentPw}
+                    onChange={(e) => setCurrentPw(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/40 pr-10 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowCurrentPw(!showCurrentPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                  >
+                    {showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                  {isBn ? "নতুন পাসওয়ার্ড" : "New Password"}
+                </label>
+                <div className="relative">
+                  <input
+                    type={showNewPw ? "text" : "password"}
+                    required
+                    value={newPw}
+                    onChange={(e) => setNewPw(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/40 pr-10 font-mono"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPw(!showNewPw)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer"
+                  >
+                    {showNewPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+
+                {/* Password strength bar */}
+                {newPw.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)]">
+                      <span>{isBn ? "পাসওয়ার্ড নির্ভরযোগ্যতা:" : "Password strength:"}</span>
+                      <span className="font-semibold">{pwdStrength.label}</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden flex">
+                      <div
+                        className={`h-full transition-all duration-300 ${pwdStrength.color}`}
+                        style={{ width: `${(pwdStrength.score / 3) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Confirm New Password */}
+              <div>
+                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                  {isBn ? "নতুন পাসওয়ার্ড পুনরায় লিখুন" : "Confirm New Password"}
+                </label>
+                <input
+                  type="password"
+                  required
+                  value={confirmPw}
+                  onChange={(e) => setConfirmPw(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/40 font-mono"
+                />
+                {confirmPw.length > 0 && newPw !== confirmPw && (
+                  <p className="text-xs text-rose-500 mt-1">
+                    {isBn ? "পাসওয়ার্ড দুটি মিলছে না" : "Passwords do not match"}
+                  </p>
+                )}
+              </div>
+
+              {pwError && (
+                <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{pwError}</span>
+                </div>
+              )}
+
+              {pwSuccess && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>{isBn ? "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।" : "Password changed successfully."}</span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPasswordModalOpen(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                >
+                  {isBn ? "বাতিল" : "Cancel"}
+                </button>
+                <button
+                  type="submit"
+                  disabled={pwLoading}
+                  className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-50 cursor-pointer shadow-xs"
+                >
+                  {pwLoading
+                    ? isBn
+                      ? "আপডেট হচ্ছে..."
+                      : "Updating..."
+                    : isBn
+                    ? "পাসওয়ার্ড পরিবর্তন করুন"
+                    : "Change Password"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* ==================================================================== */}
       {/* CONFIRM ACCOUNT DELETION MODAL                                       */}

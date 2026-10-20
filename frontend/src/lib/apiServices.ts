@@ -928,6 +928,18 @@ export async function changePassword(req: ChangePasswordRequest): Promise<{ mess
   });
 }
 
+/** Upload profile photo (POST /api/settings/upload-photo) */
+export async function uploadProfilePhoto(
+  file: File
+): Promise<{ profile_photo_url?: string; url?: string; avatar_url?: string; status?: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.upload<{ profile_photo_url?: string; url?: string; avatar_url?: string; status?: string }>(
+    "/api/settings/upload-photo",
+    formData
+  );
+}
+
 /** Update lawyer-specific settings */
 export async function updateLawyerSettings(
   req: UpdateLawyerSettingsRequest

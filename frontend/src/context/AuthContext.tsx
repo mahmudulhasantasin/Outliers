@@ -70,6 +70,7 @@ export interface UserProfile {
   mobile?: string;
   role: UserRole;
   avatarUrl?: string;
+  profile_photo_url?: string;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   creditBalance: number;
@@ -369,7 +370,8 @@ function meResponseToProfile(data: any): UserProfile {
     email: email,
     mobile: data.phone,
     role: normRole,
-    avatarUrl: data.avatar_url,
+    avatarUrl: data.profile_photo_url || data.avatar_url,
+    profile_photo_url: data.profile_photo_url || data.avatar_url,
     isEmailVerified: data.is_verified ?? false,
     isPhoneVerified: data.is_phone_verified ?? false,
     creditBalance: data.credit_balance ?? 0,
