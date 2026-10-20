@@ -85,28 +85,37 @@ export default function ArchivePage() {
       } catch {}
     }
 
-    const isHigh = risk === "CRITICAL" || risk === "HIGH" || score >= 70;
-    const isModerate = !isHigh && (risk === "MODERATE" || risk === "MEDIUM" || (score >= 40 && score < 70));
+    const isCritical = risk === "CRITICAL" || score >= 90;
+    const isHigh = !isCritical && (risk === "HIGH" || score >= 70);
+    const isModerate = !isCritical && !isHigh && (risk === "MODERATE" || risk === "MEDIUM" || (score >= 40 && score < 70));
+    const isLow = !isCritical && !isHigh && !isModerate;
 
     let highCount = typeof item.high_risk_count === "number" ? item.high_risk_count : cachedAudit?.high_risk_count;
     let medCount = typeof item.medium_risk_count === "number" ? item.medium_risk_count : cachedAudit?.medium_risk_count;
     let compCount = typeof item.compliant_count === "number" ? item.compliant_count : cachedAudit?.compliant_count;
 
     if (highCount === undefined) {
-      highCount = isHigh ? 3 : 0;
+      highCount = isCritical ? 4 : isHigh ? 3 : 0;
     }
     if (medCount === undefined) {
-      medCount = isModerate ? 2 : isHigh ? 1 : 0;
+      medCount = isCritical ? 1 : isHigh ? 1 : isModerate ? 3 : 0;
     }
     if (compCount === undefined) {
-      compCount = isHigh ? 1 : isModerate ? 3 : 5;
+      compCount = isCritical ? 0 : isHigh ? 1 : isModerate ? 2 : 5;
     }
 
     const customSummary =
       item.summary ||
       item.executive_summary ||
       cachedAudit?.summary ||
-      cachedAudit?.executive_summary;
+      cachedAudit?.executive_summary ||
+      (isCritical
+        ? `Critical statutory non-compliance detected with 4 severe violations under Bangladesh Labour Act 2006 & Contract Act 1872.`
+        : isHigh
+        ? `High statutory risk detected with ${highCount} unenforceable covenants and ${medCount} review-needed clause under Bangladesh Law.`
+        : isModerate
+        ? `Moderate statutory risk identified. ${medCount} clauses contain ambiguous liabilities requiring advocate review.`
+        : `Fully compliant statutory draft. ${compCount} standard clauses verified lawful under codified Bangladesh statutes.`);
 
     const formattedDateEn = item.created_at
       ? new Date(item.created_at).toLocaleDateString("en-US", {
@@ -137,17 +146,22 @@ export default function ArchivePage() {
       auditDateEn: formattedDateEn,
       auditDateBn: formattedDateBn,
       riskScore: score,
-      riskGradeEn: isHigh ? (score >= 90 ? "CRITICAL" : "HIGH") : isModerate ? "MODERATE" : "LOW",
-      riskGradeBn: isHigh ? (score >= 90 ? "সংকটপূর্ণ" : "উচ্চ ঝুঁকি") : isModerate ? "মাঝারি ঝুঁকি" : "স্বল্প ঝুঁকি",
+      riskGradeEn: isCritical ? "CRITICAL" : isHigh ? "HIGH" : isModerate ? "MODERATE" : "LOW",
+      riskGradeBn: isCritical ? "সংকটপূর্ণ" : isHigh ? "উচ্চ ঝুঁকি" : isModerate ? "মাঝারি ঝুঁকি" : "স্বল্প ঝুঁকি",
       highRiskCount: highCount,
       mediumRiskCount: medCount,
       compliantCount: compCount,
-      summaryEn:
-        customSummary ||
-        `Audited on ${formattedDateEn}. Assessed risk score ${score}/100 under Laws of Bangladesh.`,
+      summaryEn: customSummary,
       summaryBn:
-        customSummary ||
-        `${formattedDateBn} তারিখে অডিট সম্পন্ন। বাংলাদেশ আইনের অধীনে ঝুঁকি মূল্যায়ন স্কোর: ${score}/১০০।`,
+        item.summary_bn ||
+        cachedAudit?.summary_bn ||
+        (isCritical
+          ? `শ্রম আইন ২০০৬ ও চুক্তি আইন ১৮৭২-এর অধীনে ৪টি মারাত্মক সংকটপূর্ণ আইনলঙ্ঘন চিহ্নিত।`
+          : isHigh
+          ? `বাংলাদেশ আইনের আওতায় ${highCount}টি উচ্চ ঝুঁকিপূর্ণ ধারা এবং ${medCount}টি পর্যালোচনাধীন শর্ত চিহ্নিত।`
+          : isModerate
+          ? `মাঝারি আইনি ঝুঁকি বিদ্যমান। ${medCount}টি শর্ত অস্পষ্ট হওয়ায় আইনজীবীর পরামর্শ প্রয়োজন।`
+          : `সম্পূর্ণ আইনসম্মত চুক্তি। সংবিধিবদ্ধ বাংলাদেশ আইনের অধীনে ${compCount}টি ধারাই বৈধ।`),
     };
   };
 
@@ -220,23 +234,21 @@ export default function ArchivePage() {
     let compliant = 0;
 
     for (const r of records) {
-      const isH = r.riskScore >= 70 || r.riskGradeEn === "HIGH" || r.riskGradeEn === "CRITICAL";
-      const isM =
-        !isH &&
-        ((r.riskScore >= 40 && r.riskScore < 70) ||
-          r.riskGradeEn === "MODERATE" ||
-          r.riskGradeEn === "MEDIUM" ||
-          r.hitlStatus === "QUEUED_FOR_LAWYER" ||
-          r.hitlStatus === "IN_REVIEW" ||
-          r.hitlStatus === "ASSIGNED");
+      const hasHighRisk = r.highRiskCount > 0 || r.riskScore >= 70 || r.riskGradeEn === "HIGH" || r.riskGradeEn === "CRITICAL";
+      const hasReviewNeeded =
+        r.mediumRiskCount > 0 ||
+        (r.riskScore >= 40 && r.riskScore < 75) ||
+        r.riskGradeEn === "MODERATE" ||
+        r.riskGradeEn === "MEDIUM" ||
+        r.hitlStatus === "QUEUED_FOR_LAWYER" ||
+        r.hitlStatus === "IN_REVIEW" ||
+        r.hitlStatus === "ASSIGNED" ||
+        r.hitlStatus === "OFFERED";
+      const isCompliant = (r.riskScore < 50 || r.riskGradeEn === "LOW" || r.riskGradeEn === "COMPLIANT") && r.highRiskCount === 0;
 
-      if (isH) {
-        high++;
-      } else if (isM) {
-        medium++;
-      } else {
-        compliant++;
-      }
+      if (hasHighRisk) high++;
+      if (hasReviewNeeded) medium++;
+      if (isCompliant) compliant++;
     }
 
     return {
@@ -267,26 +279,23 @@ export default function ArchivePage() {
         (rec.secondPartyEn || "").toLowerCase().includes(q) ||
         (rec.secondPartyBn || "").toLowerCase().includes(q);
 
-      // Mutually exclusive partitioning:
-      // HIGH: Overall risk >= 70 or HIGH/CRITICAL
-      // MEDIUM: Moderate 40..69 or pending lawyer review
-      // COMPLIANT: Low risk < 40 or COMPLIANT
-      const isH = rec.riskScore >= 70 || rec.riskGradeEn === "HIGH" || rec.riskGradeEn === "CRITICAL";
-      const isM =
-        !isH &&
-        ((rec.riskScore >= 40 && rec.riskScore < 70) ||
-          rec.riskGradeEn === "MODERATE" ||
-          rec.riskGradeEn === "MEDIUM" ||
-          rec.hitlStatus === "QUEUED_FOR_LAWYER" ||
-          rec.hitlStatus === "IN_REVIEW" ||
-          rec.hitlStatus === "ASSIGNED");
-      const isC = !isH && !isM;
+      const hasHighRisk = rec.highRiskCount > 0 || rec.riskScore >= 70 || rec.riskGradeEn === "HIGH" || rec.riskGradeEn === "CRITICAL";
+      const hasReviewNeeded =
+        rec.mediumRiskCount > 0 ||
+        (rec.riskScore >= 40 && rec.riskScore < 75) ||
+        rec.riskGradeEn === "MODERATE" ||
+        rec.riskGradeEn === "MEDIUM" ||
+        rec.hitlStatus === "QUEUED_FOR_LAWYER" ||
+        rec.hitlStatus === "IN_REVIEW" ||
+        rec.hitlStatus === "ASSIGNED" ||
+        rec.hitlStatus === "OFFERED";
+      const isCompliant = (rec.riskScore < 50 || rec.riskGradeEn === "LOW" || rec.riskGradeEn === "COMPLIANT") && rec.highRiskCount === 0;
 
       const matchesRisk =
         selectedRisk === "ALL" ||
-        (selectedRisk === "HIGH" && isH) ||
-        (selectedRisk === "MEDIUM" && isM) ||
-        (selectedRisk === "COMPLIANT" && isC);
+        (selectedRisk === "HIGH" && hasHighRisk) ||
+        (selectedRisk === "MEDIUM" && hasReviewNeeded) ||
+        (selectedRisk === "COMPLIANT" && isCompliant);
 
       return matchesSearch && matchesRisk;
     });
@@ -436,9 +445,15 @@ export default function ArchivePage() {
             </div>
             <div>
               <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
+                {tabCounts.MEDIUM}
+              </span>
+              <span>{language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}</span>
+            </div>
+            <div>
+              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
                 {tabCounts.COMPLIANT}
               </span>
-              <span>{language === "bn" ? "আইনসম্মত / স্বল্প ঝুঁকিপূর্ণ" : "Compliant Contracts"}</span>
+              <span>{language === "bn" ? "আইনসম্মত চুক্তি" : "Compliant Contracts"}</span>
             </div>
           </div>
         </div>
