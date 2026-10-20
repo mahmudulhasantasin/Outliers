@@ -96,18 +96,24 @@ html, body {
 /* ==================================================================== */
 /* PROFESSIONAL LEGAL PRINT & PDF EXPORT STYLES                         */
 /* ==================================================================== */
+
+/* Screen vs Print Visibility: Explicit classes guaranteeing no conflict */
+.legal-print-only {
+  display: none !important;
+}
+
 @media print {
   @page {
-    margin: 18mm 16mm 18mm 16mm;
+    margin: 14mm 14mm 14mm 14mm;
     size: A4 portrait;
   }
 
-  html, body {
+  html, body, #__next, main, [data-nextjs-scroll-focus-boundary] {
     background: #FFFFFF !important;
     background-color: #FFFFFF !important;
     color: #111111 !important;
-    font-size: 11pt !important;
-    line-height: 1.5 !important;
+    font-size: 10.5pt !important;
+    line-height: 1.45 !important;
   }
 
   /* Force crisp colors in PDF generation */
@@ -116,13 +122,22 @@ html, body {
     print-color-adjust: exact !important;
   }
 
-  /* Hide interactive UI elements */
+  /* Hide screen UI elements */
   aside,
   nav,
   button,
   input,
+  .legal-screen-only,
   .print\:hidden {
     display: none !important;
+  }
+
+  /* Show printable area */
+  .legal-print-only {
+    display: block !important;
+    width: 100% !important;
+    background: #FFFFFF !important;
+    color: #111111 !important;
   }
 
   /* Clean print layout reset */

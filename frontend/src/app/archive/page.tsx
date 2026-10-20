@@ -68,7 +68,7 @@ export default function ArchivePage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
 
-  // Map backend history item to full ArchivedRecord with local audit intelligence
+  // Map backend history item to full ArchivedRecord
   const mapItemToRecord = (item: any): ArchivedRecord => {
     const cid = String(item.contract_id || item.id);
     const status = item.hitl_status || item.status || "NOT_REQUESTED";
@@ -88,20 +88,22 @@ export default function ArchivePage() {
       } catch {}
     }
 
-    const highCount =
-      typeof item.high_risk_count === "number"
-        ? item.high_risk_count
-        : cachedAudit?.high_risk_count ?? (risk === "CRITICAL" || risk === "HIGH" ? 3 : 0);
+    const isHigh = risk === "CRITICAL" || risk === "HIGH" || score >= 70;
+    const isModerate = !isHigh && (risk === "MODERATE" || risk === "MEDIUM" || (score >= 40 && score < 70));
 
-    const medCount =
-      typeof item.medium_risk_count === "number"
-        ? item.medium_risk_count
-        : cachedAudit?.medium_risk_count ?? (risk === "MODERATE" || risk === "MEDIUM" ? 2 : 1);
+    let highCount = typeof item.high_risk_count === "number" ? item.high_risk_count : cachedAudit?.high_risk_count;
+    let medCount = typeof item.medium_risk_count === "number" ? item.medium_risk_count : cachedAudit?.medium_risk_count;
+    let compCount = typeof item.compliant_count === "number" ? item.compliant_count : cachedAudit?.compliant_count;
 
-    const compCount =
-      typeof item.compliant_count === "number"
-        ? item.compliant_count
-        : cachedAudit?.compliant_count ?? (risk === "LOW" || risk === "COMPLIANT" ? 4 : 1);
+    if (highCount === undefined) {
+      highCount = isHigh ? 3 : 0;
+    }
+    if (medCount === undefined) {
+      medCount = isModerate ? 2 : isHigh ? 1 : 0;
+    }
+    if (compCount === undefined) {
+      compCount = isHigh ? 1 : isModerate ? 3 : 5;
+    }
 
     const customSummary =
       item.summary ||
@@ -138,24 +140,17 @@ export default function ArchivePage() {
       auditDateEn: formattedDateEn,
       auditDateBn: formattedDateBn,
       riskScore: score,
-      riskGradeEn: risk,
-      riskGradeBn:
-        risk === "CRITICAL"
-          ? "সংকটপূর্ণ"
-          : risk === "HIGH"
-          ? "উচ্চ ঝুঁকি"
-          : risk === "MODERATE"
-          ? "মাঝারি ঝুঁকি"
-          : "স্বল্প ঝুঁকি",
+      riskGradeEn: isHigh ? (score >= 90 ? "CRITICAL" : "HIGH") : isModerate ? "MODERATE" : "LOW",
+      riskGradeBn: isHigh ? (score >= 90 ? "সংকটপূর্ণ" : "উচ্চ ঝুঁকি") : isModerate ? "মাঝারি ঝুঁকি" : "স্বল্প ঝুঁকি",
       highRiskCount: highCount,
       mediumRiskCount: medCount,
       compliantCount: compCount,
       summaryEn:
         customSummary ||
-        `Audited on ${formattedDateEn}. Identified ${highCount} high risk and ${medCount} review needed clauses under Laws of Bangladesh.`,
+        `Audited on ${formattedDateEn}. Assessed risk score ${score}/100 under Laws of Bangladesh.`,
       summaryBn:
         customSummary ||
-        `${formattedDateBn} তারিখে অডিট সম্পন্ন। বাংলাদেশ আইনের অধীনে ${highCount}টি উচ্চ ঝুঁকি এবং ${medCount}টি পর্যবেক্ষণাধীন ধারা চিহ্নিত।`,
+        `${formattedDateBn} তারিখে অডিট সম্পন্ন। বাংলাদেশ আইনের অধীনে ঝুঁকি মূল্যায়ন স্কোর: ${score}/১০০।`,
     };
   };
 
@@ -218,10 +213,58 @@ export default function ArchivePage() {
   // Direct print or export as PDF handler
   const handlePrintMemo = (record: ArchivedRecord) => {
     setPrintRecord(record);
-    setTimeout(() => {
-      window.print();
-    }, 150);
   };
+
+  useEffect(() => {
+    if (printRecord) {
+      const timer = setTimeout(() => {
+        window.print();
+      }, 200);
+      return () => clearTimeout(timer);
+    }
+  }, [printRecord]);
+
+  useEffect(() => {
+    const handleAfterPrint = () => {
+      setPrintRecord(null);
+    };
+    window.addEventListener("afterprint", handleAfterPrint);
+    return () => window.removeEventListener("afterprint", handleAfterPrint);
+  }, []);
+
+  // Compute category counts for the filter tabs
+  const tabCounts = useMemo(() => {
+    let high = 0;
+    let medium = 0;
+    let compliant = 0;
+
+    for (const r of records) {
+      const isH = r.riskScore >= 70 || r.riskGradeEn === "HIGH" || r.riskGradeEn === "CRITICAL";
+      const isM =
+        !isH &&
+        ((r.riskScore >= 40 && r.riskScore < 70) ||
+          r.riskGradeEn === "MODERATE" ||
+          r.riskGradeEn === "MEDIUM" ||
+          r.hitlStatus === "QUEUED_FOR_LAWYER" ||
+          r.hitlStatus === "IN_REVIEW" ||
+          r.hitlStatus === "ASSIGNED");
+
+      if (isH) {
+        high++;
+      } else if (isM) {
+        medium++;
+      } else {
+        compliant++;
+      }
+    }
+
+    return {
+      ALL: records.length,
+      HIGH: high,
+      MEDIUM: medium,
+      COMPLIANT: compliant,
+    };
+  }, [records]);
 
   // Filter records
   const filteredRecords = useMemo(() => {
@@ -243,27 +286,26 @@ export default function ArchivePage() {
         (rec.secondPartyEn || "").toLowerCase().includes(q) ||
         (rec.secondPartyBn || "").toLowerCase().includes(q);
 
-      // Matches filter:
-      // HIGH: score >= 70 OR highRiskCount > 0 OR risk grade HIGH/CRITICAL
-      // MEDIUM (Review Needed): mediumRiskCount > 0 OR score 40..74 OR risk grade MODERATE/MEDIUM
-      // COMPLIANT: score < 60 OR compliantCount > 0 OR risk grade LOW/COMPLIANT
+      // Mutually exclusive partitioning:
+      // HIGH: Overall risk >= 70 or HIGH/CRITICAL
+      // MEDIUM: Moderate 40..69 or pending lawyer review
+      // COMPLIANT: Low risk < 40 or COMPLIANT
+      const isH = rec.riskScore >= 70 || rec.riskGradeEn === "HIGH" || rec.riskGradeEn === "CRITICAL";
+      const isM =
+        !isH &&
+        ((rec.riskScore >= 40 && rec.riskScore < 70) ||
+          rec.riskGradeEn === "MODERATE" ||
+          rec.riskGradeEn === "MEDIUM" ||
+          rec.hitlStatus === "QUEUED_FOR_LAWYER" ||
+          rec.hitlStatus === "IN_REVIEW" ||
+          rec.hitlStatus === "ASSIGNED");
+      const isC = !isH && !isM;
+
       const matchesRisk =
         selectedRisk === "ALL" ||
-        (selectedRisk === "HIGH" &&
-          (rec.riskScore >= 70 ||
-            rec.highRiskCount > 0 ||
-            rec.riskGradeEn === "HIGH" ||
-            rec.riskGradeEn === "CRITICAL")) ||
-        (selectedRisk === "MEDIUM" &&
-          (rec.mediumRiskCount > 0 ||
-            (rec.riskScore >= 40 && rec.riskScore < 75) ||
-            rec.riskGradeEn === "MODERATE" ||
-            rec.riskGradeEn === "MEDIUM")) ||
-        (selectedRisk === "COMPLIANT" &&
-          (rec.riskScore < 60 ||
-            rec.compliantCount > 0 ||
-            rec.riskGradeEn === "LOW" ||
-            rec.riskGradeEn === "COMPLIANT"));
+        (selectedRisk === "HIGH" && isH) ||
+        (selectedRisk === "MEDIUM" && isM) ||
+        (selectedRisk === "COMPLIANT" && isC);
 
       return matchesSearch && matchesRisk;
     });
@@ -304,7 +346,7 @@ export default function ArchivePage() {
       {/* ==================================================================== */}
       {/* 1. DEDICATED PRINT / PDF EXPORT CONTAINER (ONLY VISIBLE ON PRINT)     */}
       {/* ==================================================================== */}
-      <div className="hidden print:block w-full bg-white text-black p-8 print-clean-paper">
+      <div className="legal-print-only w-full bg-white text-black p-8 print-clean-paper">
         {printTargetRecord ? (
           <div className="space-y-6">
             <div className="pb-4 border-b-2 border-neutral-900 flex justify-between items-baseline text-xs font-mono uppercase tracking-widest text-neutral-800">
@@ -368,7 +410,7 @@ export default function ArchivePage() {
       {/* ==================================================================== */}
       {/* 2. INTERACTIVE SCREEN UI (COMPLETELY HIDDEN DURING PRINT)            */}
       {/* ==================================================================== */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans print:hidden">
+      <div className="legal-screen-only max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans">
         
         {/* Page Header */}
         <div className="pb-8 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
@@ -407,15 +449,15 @@ export default function ArchivePage() {
             </div>
             <div>
               <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
-                {records.filter((r) => r.riskScore >= 70 || r.highRiskCount > 0).length}
+                {tabCounts.HIGH}
               </span>
               <span>{language === "bn" ? "উচ্চ ঝুঁকিপূর্ণ চুক্তি" : "High Risk Contracts"}</span>
             </div>
             <div>
               <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
-                {records.reduce((acc, r) => acc + r.compliantCount, 0)}
+                {tabCounts.COMPLIANT}
               </span>
-              <span>{language === "bn" ? "যাচাইকৃত আইনসম্মত ধারা" : "Compliant Clauses"}</span>
+              <span>{language === "bn" ? "আইনসম্মত / স্বল্প ঝুঁকিপূর্ণ" : "Compliant Contracts"}</span>
             </div>
           </div>
         </div>
@@ -438,24 +480,33 @@ export default function ArchivePage() {
             />
           </div>
 
-          {/* Filter Pills */}
+          {/* Filter Pills with real counts */}
           <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0">
             {[
-              { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট" },
-              { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি" },
-              { id: "MEDIUM", labelEn: "Review Needed", labelBn: "পর্যালোচনা প্রয়োজন" },
-              { id: "COMPLIANT", labelEn: "Compliant", labelBn: "আইনসম্মত" }
+              { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
+              { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
+              { id: "MEDIUM", labelEn: "Review Needed", labelBn: "পর্যালোচনা প্রয়োজন", count: tabCounts.MEDIUM },
+              { id: "COMPLIANT", labelEn: "Compliant", labelBn: "আইনসম্মত", count: tabCounts.COMPLIANT }
             ].map((filter) => (
               <button
                 key={filter.id}
                 onClick={() => setSelectedRisk(filter.id)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                   selectedRisk === filter.id
                     ? "bg-[var(--text-primary)] text-[var(--bg-primary)] font-semibold shadow-xs"
                     : "opacity-60 hover:opacity-100 bg-neutral-200/50 dark:bg-neutral-800/50"
                 }`}
               >
-                {language === "bn" ? filter.labelBn : filter.labelEn}
+                <span>{language === "bn" ? filter.labelBn : filter.labelEn}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
+                    selectedRisk === filter.id
+                      ? "bg-[var(--bg-primary)] text-[var(--text-primary)]"
+                      : "bg-neutral-300 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
+                  }`}
+                >
+                  {filter.count}
+                </span>
               </button>
             ))}
           </div>
@@ -501,8 +552,8 @@ export default function ArchivePage() {
 
                   <div className="flex items-baseline gap-2">
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-md" style={{
-                      backgroundColor: record.riskScore >= 75 ? "rgba(239, 68, 68, 0.15)" : record.riskScore >= 50 ? "rgba(245, 158, 11, 0.15)" : "rgba(34, 197, 94, 0.15)",
-                      color: record.riskScore >= 75 ? "#ef4444" : record.riskScore >= 50 ? "#f59e0b" : "#22c55e"
+                      backgroundColor: record.riskScore >= 70 ? "rgba(239, 68, 68, 0.15)" : record.riskScore >= 40 ? "rgba(245, 158, 11, 0.15)" : "rgba(34, 197, 94, 0.15)",
+                      color: record.riskScore >= 70 ? "#ef4444" : record.riskScore >= 40 ? "#f59e0b" : "#22c55e"
                     }}>
                       {language === "bn" ? record.riskGradeBn : record.riskGradeEn}
                     </span>
@@ -607,8 +658,8 @@ export default function ArchivePage() {
               </p>
               <p className="text-xs text-neutral-400 max-w-sm mx-auto">
                 {language === "bn"
-                  ? "আপনার অনুসন্ধানের সাথে মিলে এমন কোনো চুক্তিপত্র পাওয়া যায়নি। অন্য কিওয়ার্ড বা ফিল্টার দিয়ে চেষ্টা করুন।"
-                  : "No contracts matched your search criteria. Try a different query or filter."}
+                  ? "আপনার নির্বাচনের সাথে মিলে এমন কোনো চুক্তিপত্র পাওয়া যায়নি। অন্য কিওয়ার্ড বা ফিল্টার দিয়ে চেষ্টা করুন।"
+                  : "No contracts matched your filter criteria. Try selecting another tab or clearing search."}
               </p>
             </div>
           )}
@@ -616,10 +667,10 @@ export default function ArchivePage() {
       </div>
 
       {/* ==================================================================== */}
-      {/* 3. MARKDOWN AUDIT MODAL (PRINT:HIDDEN TO PREVENT SCREEN CLIPPING)     */}
+      {/* 3. MARKDOWN AUDIT MODAL (LEGAL-SCREEN-ONLY TO PREVENT PRINT CLIPPING) */}
       {/* ==================================================================== */}
       {previewRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 print:hidden">
+        <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl overflow-hidden">
             <div className="p-4 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
               <div className="min-w-0 pr-4">
