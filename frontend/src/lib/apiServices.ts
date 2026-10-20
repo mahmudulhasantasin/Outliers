@@ -7,7 +7,7 @@ import api from "@/lib/api";
 // ────────────────────────────────────────────────────────────────────────────
 // TYPES
 // ────────────────────────────────────────────────────────────────────────────
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export type HITLStatus =
   | "NOT_REQUESTED"
   | "QUEUED_FOR_LAWYER"
@@ -1386,4 +1386,9 @@ export async function rejectAdminWithdrawal(
     `/api/admin/withdrawals/${id}/reject`,
     { reason }
   );
+}
+
+/** Delete current user account (soft delete) (DELETE /api/auth/me) */
+export async function deleteAccount(): Promise<{ status: string; message: string }> {
+  return api.delete<{ status: string; message: string }>("/api/auth/me");
 }
