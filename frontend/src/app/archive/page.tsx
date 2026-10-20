@@ -213,12 +213,11 @@ export default function ArchivePage() {
         !q ||
         (rec.titleEn || "").toLowerCase().includes(q) ||
         (rec.titleBn || "").toLowerCase().includes(q) ||
-        (rec.firstPartyEn || "").toLowerCase().includes(q) ||
-        (rec.firstPartyBn || "").toLowerCase().includes(q) ||
-        (rec.secondPartyEn || "").toLowerCase().includes(q) ||
-        (rec.secondPartyBn || "").toLowerCase().includes(q) ||
-        (rec.categoryEn || "").toLowerCase().includes(q) ||
-        (rec.categoryBn || "").toLowerCase().includes(q);
+        (rec.contractId || "").toLowerCase().includes(q) ||
+        (rec.summaryEn || "").toLowerCase().includes(q) ||
+        (rec.summaryBn || "").toLowerCase().includes(q) ||
+        (rec.firstPartyEn !== "User / Organization" && (rec.firstPartyEn || "").toLowerCase().includes(q)) ||
+        (rec.firstPartyBn !== "ব্যবহারকারী / প্রতিষ্ঠান" && (rec.firstPartyBn || "").toLowerCase().includes(q));
 
       const matchesRisk =
         selectedRisk === "ALL" ||
@@ -354,8 +353,8 @@ export default function ArchivePage() {
                 onClick={() => setSelectedRisk(filter.id)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
                   selectedRisk === filter.id
-                    ? ""
-                    : "opacity-50 hover:opacity-100"
+                    ? "bg-[var(--text-primary)] text-[var(--bg-primary)] font-semibold shadow-xs"
+                    : "opacity-60 hover:opacity-100 bg-neutral-200/50 dark:bg-neutral-800/50"
                 }`}
               >
                 {language === "bn" ? filter.labelBn : filter.labelEn}
@@ -482,9 +481,15 @@ export default function ArchivePage() {
                     </button>
 
                     <button
-                      onClick={() => window.print()}
-                      className="p-1.5 rounded-full text-neutral-400 hover:text-black transition-colors"
-                      title="Print Memo"
+                      type="button"
+                      onClick={() => {
+                        setPreviewRecord(record);
+                        setTimeout(() => {
+                          window.print();
+                        }, 250);
+                      }}
+                      className="p-1.5 rounded-full text-neutral-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                      title={language === "bn" ? "অডিট মেমো প্রিন্ট করুন" : "Print Audit Memo"}
                     >
                       <Printer className="w-3.5 h-3.5" />
                     </button>
