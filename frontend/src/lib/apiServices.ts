@@ -4,10 +4,12 @@
  */
 import api from "@/lib/api";
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 // ────────────────────────────────────────────────────────────────────────────
 // TYPES
 // ────────────────────────────────────────────────────────────────────────────
-/* eslint-disable @typescript-eslint/no-explicit-any */
+
 export type HITLStatus =
   | "NOT_REQUESTED"
   | "QUEUED_FOR_LAWYER"
@@ -262,6 +264,13 @@ export async function requestLawyerVerification(
   );
 }
 
+/** Delete a contract (soft delete) (DELETE /api/contracts/{contract_id}) */
+export async function deleteContract(
+  contractId: string | number
+): Promise<{ status: string; message: string }> {
+  return api.delete<{ status: string; message: string }>(`/api/contracts/${contractId}`);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // CHAT TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────
@@ -398,7 +407,6 @@ export async function getChatSessionHistory(
   const sid = typeof sessionId === "string" ? parseInt(sessionId, 10) || sessionId : sessionId;
   const raw = await api.get<any>(`/api/chat/sessions/${sid}`);
 
-  // Standard API format: { session_id, mode, message_count, message_limit, messages: [...] }
   if (raw && Array.isArray(raw.messages)) {
     return {
       session_id: raw.session_id ?? sid,
@@ -414,7 +422,6 @@ export async function getChatSessionHistory(
     };
   }
 
-  // Fallback if raw response is directly an array of messages
   if (Array.isArray(raw)) {
     return {
       session_id: sid,
@@ -1094,7 +1101,6 @@ export async function initiatePayment(
     };
   } catch (err) {
     console.warn("Backend initiatePayment failed or offline, using fallback payment session:", err);
-    // Graceful fallback payment initiation for demo / guest / offline backend
     const randomCode = `PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
     const credits = fallbackPackage?.total_credits ?? fallbackPackage?.credits ?? (parsedId === 1 ? 440 : parsedId === 2 ? 950 : 2600);
     const amount = fallbackPackage?.price_bdt ?? (parsedId === 1 ? 500 : parsedId === 2 ? 1000 : 2500);

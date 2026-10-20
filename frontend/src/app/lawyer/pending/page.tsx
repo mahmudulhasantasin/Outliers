@@ -14,7 +14,6 @@ import {
   getActiveTasks,
   submitReview,
   startContractReviewChat,
-  ActiveTask,
 } from "@/lib/apiServices";
 import {
   Inbox,
@@ -23,19 +22,17 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
-  ChevronRight,
   ShieldAlert,
   ArrowUpRight,
   Search,
-  Filter,
   X,
   FileCode2,
   ShieldCheck,
   Check,
-  Send,
-  Printer,
   Sparkles,
   Lock,
+  Ban,
+  XCircle,
 } from "lucide-react";
 
 interface PendingContract {
@@ -53,15 +50,21 @@ interface PendingContract {
   contractId?: string;
 }
 
-const DEFAULT_PENDING: PendingContract[] = [];
-
 export default function LawyerPendingPage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user, simulateLawyerVerification } = useAuth();
+  const { user } = useAuth();
   const isBn = language === "bn";
 
-  const isVerified = user?.lawyerProfile?.verificationStatus === "verified";
+  // ✅ FIX: স্টেটাসগুলো আলাদাভাবে চেক করা হচ্ছে
+  const verificationStatus = user?.lawyerProfile?.verificationStatus || "pending";
+  const isVerified = verificationStatus === "verified";
+  const isRejected = verificationStatus === "rejected";
+  const isSuspended = verificationStatus === "suspended";
+  const isPending = verificationStatus === "pending";
+
+  // ✅ FIX: 'any' এরর দূর করতে নির্দিষ্ট টাইপ দেওয়া হলো
+  const rejectionReason = (user?.lawyerProfile as { rejectionReason?: string } | undefined)?.rejectionReason;
 
   useEffect(() => {
     if (!user) {
@@ -70,7 +73,7 @@ export default function LawyerPendingPage() {
     }
     const userRole = String(user.role).toUpperCase();
     if (userRole !== "LAWYER" && userRole !== "ADMIN") {
-      router.replace("/dashboard"); // Kick GENERAL users to their dashboard
+      router.replace("/dashboard");
     }
   }, [user, router]);
 
@@ -169,7 +172,7 @@ export default function LawyerPendingPage() {
     };
   }, [user, isVerified]);
 
-  const borderClass = "border-[var(--text-primary)]/10";
+  const borderClass = "border-(--text-primary)/10";
 
   const currentList = activeSubTab === "queue" ? pendingList : activeTasks;
 
@@ -200,8 +203,8 @@ export default function LawyerPendingPage() {
         setActiveTasks((prev) => [acceptedItem, ...prev]);
         setActiveSubTab("active");
       }
-    } catch (err: any) {
-      alert(err.message || (isBn ? "চুক্তি গ্রহণ ব্যর্থ হয়েছে।" : "Failed to accept offer"));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : (isBn ? "চুক্তি গ্রহণ ব্যর্থ হয়েছে।" : "Failed to accept offer"));
     }
   };
 
@@ -224,8 +227,8 @@ export default function LawyerPendingPage() {
           ? `এআই আইনি গবেষণা সেশন #${res.session_id} সক্রিয় করা হয়েছে! (আইনজীবীদের জন্য বিনামূল্যে ১০ মেসেজ)`
           : `AI Legal Research Chat Session #${res.session_id} initiated! (Free for lawyers, limit 10 msgs)`
       );
-    } catch (err: any) {
-      alert(err.message || "Failed to start AI chat session");
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to start AI chat session");
     }
   };
 
@@ -251,7 +254,7 @@ export default function LawyerPendingPage() {
         signature_url: `signatures/lawyer_${user?.id || "42"}.png`,
         signed_pdf_url: `signed_contracts/memo_${selectedContract.id}_final.pdf`,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("Submit review note:", err);
     }
 
@@ -286,12 +289,11 @@ export default function LawyerPendingPage() {
           JSON.stringify([newVerified, ...archive])
         );
 
-        // Remove from dispatched queue if it was there
         const dispatched = JSON.parse(
           localStorage.getItem("dispatched_pending_contracts") || "[]"
         );
         const updatedDispatched = dispatched.filter(
-          (d: any) => d.id !== selectedContract.id
+          (d: PendingContract) => d.id !== selectedContract.id
         );
         localStorage.setItem(
           "dispatched_pending_contracts",
@@ -299,7 +301,6 @@ export default function LawyerPendingPage() {
         );
       }
 
-      // Remove from active list after short delay
       setTimeout(() => {
         setPendingList((prev) => prev.filter((p) => p.id !== selectedContract.id));
         setSelectedContract(null);
@@ -307,7 +308,6 @@ export default function LawyerPendingPage() {
     }, 800);
   };
 
-  // Generate markdown content for current selected contract
   const contractIdForMarkdown = selectedContract?.contractId || "employment-agreement";
   const markdownAuditContent = selectedContract
     ? generateContractAuditMarkdown(
@@ -326,7 +326,7 @@ export default function LawyerPendingPage() {
   const userRole = user ? String(user.role).toUpperCase() : "";
   if (!user || (userRole !== "LAWYER" && userRole !== "ADMIN")) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -338,35 +338,34 @@ export default function LawyerPendingPage() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 font-sans">
           <div>
-            <p className="text-[11px] uppercase tracking-wider font-medium text-[var(--text-muted)] mb-1">
+            <p className="text-[11px] uppercase tracking-wider font-medium text-(--text-muted) mb-1">
               {isBn ? "আইনজীবী ওয়ার্কস্পেস" : "Advocate Workspace"}
             </p>
-            <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-[var(--text-primary)]">
+            <h1 className="text-2xl sm:text-[28px] font-semibold tracking-tight text-(--text-primary)">
               {isBn ? "পেন্ডিং চুক্তি রিভিউ ও অনুমোদন" : "Pending Contracts for Statutory Review"}
             </h1>
-            <p className="text-xs sm:text-[13px] text-[var(--text-muted)] mt-1 max-w-xl leading-relaxed">
+            <p className="text-xs sm:text-[13px] text-(--text-muted) mt-1 max-w-xl leading-relaxed">
               {isBn
                 ? "ক্লায়েন্টদের আপলোডকৃত চুক্তি এবং এআই অডিট প্রিভিউ পর্যালোচনা করে সংবিধিবদ্ধ সিলমোহর প্রদান করুন।"
                 : "Inspect client-submitted contracts, evaluate AI markdown audit reports, and apply statutory seal."}
             </p>
           </div>
 
-          {/* Quick stats counters */}
           <div className="flex items-center gap-6 self-start md:self-auto py-1">
             <div>
-              <div className="text-xl font-mono font-semibold text-[var(--text-primary)]">
+              <div className="text-xl font-mono font-semibold text-(--text-primary)">
                 {isVerified ? pendingList.length : "0"}
               </div>
-              <div className="text-[11px] text-[var(--text-muted)] tracking-wider">
+              <div className="text-[11px] text-(--text-muted) tracking-wider">
                 {isBn ? "পেন্ডিং ফাইল" : "Pending Files"}
               </div>
             </div>
-            <div className="w-[1px] h-8 bg-[var(--text-primary)]/10" />
+            <div className="w-px h-8 bg-(--text-primary)/10" />
             <div>
-              <div className="text-xl font-mono font-semibold text-[var(--text-primary)]">
+              <div className="text-xl font-mono font-semibold text-(--text-primary)">
                 {isVerified ? "< 2.5h" : "—"}
               </div>
-              <div className="text-[11px] text-[var(--text-muted)] tracking-wider">
+              <div className="text-[11px] text-(--text-muted) tracking-wider">
                 {isBn ? "ভেরিফিকেশন" : "Verification"}
               </div>
             </div>
@@ -374,83 +373,97 @@ export default function LawyerPendingPage() {
         </div>
 
         {!isVerified ? (
-          /* LOCKED CONTRACT VIEW FOR UNVERIFIED LAWYERS */
-          <div className={`rounded-3xl border border-amber-300/40 dark:border-amber-700/50 bg-[var(--bg-card)] p-8 md:p-12 text-center max-w-2xl mx-auto shadow-sm my-6`}>
-            <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center mb-4 shadow-inner">
-              <Lock className="w-8 h-8" />
-            </div>
-
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/40 mb-3">
-              <Clock className="w-3.5 h-3.5 animate-pulse" />
-              {isBn ? "ভেরিফিকেশন প্রক্রিয়াধীন" : "Verification Pending"}
-            </div>
-
-            <h2 className="text-xl md:text-2xl font-serif font-bold text-[var(--text-primary)] mb-2">
-              {isBn ? "চুক্তিপত্র অ্যাক্সেস লক করা আছে" : "Client Contract Queue is Locked"}
-            </h2>
-
-            <p className="text-xs md:text-sm text-[var(--text-muted)] leading-relaxed max-w-lg mx-auto mb-6">
-              {isBn
-                ? "আপনার বাংলাদেশ বার কাউন্সিল সনদটি বর্তমানে অ্যাডমিন ভেরিফিকেশনের অপেক্ষায় রয়েছে। বাংলাদেশ বার কাউন্সিল ও আইনি নীতিমালা অনুযায়ী, ভেরিফিকেশন সম্পন্ন হওয়ার আগ পর্যন্ত ক্লায়েন্টদের অডিটকৃত চুক্তিপত্র দেখার বা সত্যায়ন করার অনুমতি স্থগিত রাখা হয়েছে।"
-                : "Your Bangladesh Bar Council certificate is currently awaiting administrative approval. In compliance with legal regulations, access to view, accept, or seal client contracts remains locked until your advocate status is verified."}
-            </p>
-
-            {/* Advocate credentials summary */}
-            <div className={`p-4 rounded-2xl border ${borderClass} bg-[var(--bg-surface)] text-left space-y-2.5 mb-6 max-w-md mx-auto text-xs`}>
-              <div className="flex justify-between items-center py-1 border-b border-[var(--text-primary)]/5">
-                <span className="text-[var(--text-muted)]">{isBn ? "আবেদনকারী আইনজীবী:" : "Advocate Name:"}</span>
-                <span className="font-semibold text-[var(--text-primary)]">{user?.name || "Advocate"}</span>
+          <div className="my-6 max-w-2xl mx-auto">
+            {/* ✅ FIX: Pending State */}
+            {isPending && (
+              <div className="rounded-3xl border border-amber-300/40 dark:border-amber-700/50 bg-(--bg-card) p-8 md:p-12 text-center shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center mb-4 shadow-inner">
+                  <Lock className="w-8 h-8" />
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/40 mb-3">
+                  <Clock className="w-3.5 h-3.5 animate-pulse" />
+                  {isBn ? "ভেরিফিকেশন প্রক্রিয়াধীন" : "Verification Pending"}
+                </div>
+                <h2 className="text-xl md:text-2xl font-serif font-bold text-(--text-primary) mb-2">
+                  {isBn ? "চুক্তিপত্র অ্যাক্সেস লক করা আছে" : "Client Contract Queue is Locked"}
+                </h2>
+                <p className="text-xs md:text-sm text-(--text-muted) leading-relaxed max-w-lg mx-auto mb-6">
+                  {isBn
+                    ? "আপনার বাংলাদেশ বার কাউন্সিল সনদটি বর্তমানে অ্যাডমিন ভেরিফিকেশনের অপেক্ষায় রয়েছে। ভেরিফিকেশন সম্পন্ন হওয়ার আগ পর্যন্ত ক্লায়েন্টদের চুক্তিপত্র দেখার অনুমতি স্থগিত রাখা হয়েছে।"
+                    : "Your Bar Council certificate is currently awaiting administrative approval. Access remains locked until your advocate status is verified."}
+                </p>
+                <div className="flex items-center justify-center gap-3 flex-wrap">
+                  <button onClick={() => router.push("/profile")} className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--bg-surface) text-(--text-primary) transition-colors cursor-pointer">
+                    {isBn ? "প্রোফাইল দেখুন" : "View Profile"}
+                  </button>
+                </div>
               </div>
-              <div className="flex justify-between items-center py-1 border-b border-[var(--text-primary)]/5">
-                <span className="text-[var(--text-muted)]">{isBn ? "বার কাউন্সিল নম্বর:" : "Bar Council No:"}</span>
-                <span className="font-mono font-semibold text-amber-600 dark:text-amber-400">
-                  {user?.lawyerProfile?.barCouncilNo || (isBn ? "প্রদান করা হয়নি" : "Not Provided")}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1 border-b border-[var(--text-primary)]/5">
-                <span className="text-[var(--text-muted)]">{isBn ? "আইন শাখা:" : "Field of Law:"}</span>
-                <span className="font-semibold text-[var(--text-primary)]">
-                  {user?.lawyerProfile?.fieldOfLaw || (isBn ? "সাধারণ আইন" : "General Practice")}
-                </span>
-              </div>
-              <div className="flex justify-between items-center py-1">
-                <span className="text-[var(--text-muted)]">{isBn ? "বর্তমান অবস্থা:" : "Verification Status:"}</span>
-                <span className="inline-flex items-center gap-1 font-semibold text-amber-600 dark:text-amber-400">
-                  <Clock className="w-3 h-3" />
-                  {isBn ? "পেন্ডিং ভেরিফিকেশন (অ্যাডমিন পর্যালোচনায়)" : "Pending Admin Review"}
-                </span>
-              </div>
-            </div>
+            )}
 
-            <div className="flex items-center justify-center gap-3 flex-wrap">
-              <button
-                type="button"
-                onClick={() => router.push("/profile")}
-                className={`px-5 py-2.5 rounded-xl text-xs font-semibold border ${borderClass} hover:bg-[var(--bg-surface)] text-[var(--text-primary)] transition-colors cursor-pointer`}
-              >
-                {isBn ? "প্রোফাইল দেখুন" : "View Profile"}
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/admin")}
-                className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
-              >
-                <ShieldAlert className="w-3.5 h-3.5" />
-                <span>{isBn ? "অ্যাডমিন অনুমোদন প্যানেল খুলুন" : "Open Admin Approval Panel"}</span>
-              </button>
-            </div>
+            {/* ✅ FIX: Rejected State */}
+            {isRejected && (
+              <div className="rounded-3xl border border-rose-300/40 dark:border-rose-700/50 bg-(--bg-card) p-8 md:p-12 text-center shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center mb-4 shadow-inner">
+                  <XCircle className="w-8 h-8" />
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-300/40 mb-3">
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  {isBn ? "আবেদন বাতিল করা হয়েছে" : "Application Rejected"}
+                </div>
+                <h2 className="text-xl md:text-2xl font-serif font-bold text-(--text-primary) mb-2">
+                  {isBn ? "আপনার আইনজীবী আবেদন বাতিল হয়েছে" : "Your Advocate Application was Rejected"}
+                </h2>
+                <p className="text-xs md:text-sm text-(--text-muted) leading-relaxed max-w-lg mx-auto mb-6">
+                  {isBn
+                    ? "দুঃখিত, আপনার বার কাউন্সিল সনদটি যাচাই করা সম্ভব হয়নি। আপনি আর এই অ্যাকাউন্ট দিয়ে লইয়ার হিসেবে কাজ করতে পারবেন না।"
+                    : "We could not verify your Bar Council credentials. You can no longer operate as a lawyer on this account."}
+                </p>
+                {rejectionReason && (
+                  <div className="p-3 mb-6 rounded-xl bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-xs text-rose-700 dark:text-rose-300 max-w-md mx-auto text-left">
+                    <strong>{isBn ? "কারণ:" : "Reason:"}</strong> {rejectionReason}
+                  </div>
+                )}
+                <button onClick={() => router.push("/profile")} className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer">
+                  {isBn ? "প্রোফাইল দেখুন" : "View Profile"}
+                </button>
+              </div>
+            )}
+
+            {/* ✅ FIX: Suspended State */}
+            {isSuspended && (
+              <div className="rounded-3xl border border-neutral-300/40 dark:border-neutral-700/50 bg-(--bg-card) p-8 md:p-12 text-center shadow-sm">
+                <div className="w-16 h-16 rounded-2xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 mx-auto flex items-center justify-center mb-4 shadow-inner">
+                  <Ban className="w-8 h-8" />
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 mb-3">
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  {isBn ? "অ্যাকাউন্ট স্থগিত" : "Account Suspended"}
+                </div>
+                <h2 className="text-xl md:text-2xl font-serif font-bold text-(--text-primary) mb-2">
+                  {isBn ? "আপনার অ্যাকাউন্ট স্থগিত করা হয়েছে" : "Your Account is Suspended"}
+                </h2>
+                <p className="text-xs md:text-sm text-(--text-muted) leading-relaxed max-w-lg mx-auto mb-6">
+                  {isBn
+                    ? "অ্যাডমিনের নির্দেশে আপনার অ্যাকাউন্টটি সাময়িকভাবে স্থগিত করা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।"
+                    : "Your account has been temporarily suspended by the administration. Please contact support for more information."}
+                </p>
+                <button onClick={() => router.push("/profile")} className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--bg-surface) text-(--text-primary) transition-colors cursor-pointer">
+                  {isBn ? "প্রোফাইল দেখুন" : "View Profile"}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <>
             {/* Sub-tabs: Offer Queue vs Active Tasks */}
-            <div className="flex items-center gap-2 mb-6 border-b border-[var(--text-primary)]/10 pb-3">
+            <div className="flex items-center gap-2 mb-6 border-b border-(--text-primary)/10 pb-3">
               <button
                 type="button"
                 onClick={() => setActiveSubTab("queue")}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSubTab === "queue"
-                    ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-xs"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
+                    ? "bg-(--accent-solid) text-(--accent-contrast) shadow-xs"
+                    : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5"
                 }`}
               >
                 <Inbox className="w-3.5 h-3.5" />
@@ -465,8 +478,8 @@ export default function LawyerPendingPage() {
                 onClick={() => setActiveSubTab("active")}
                 className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
                   activeSubTab === "active"
-                    ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-xs"
-                    : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
+                    ? "bg-(--accent-solid) text-(--accent-contrast) shadow-xs"
+                    : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5"
                 }`}
               >
                 <Clock className="w-3.5 h-3.5" />
@@ -479,7 +492,7 @@ export default function LawyerPendingPage() {
 
             {/* Search & Filter */}
             <div className="relative mb-6">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-muted)]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-(--text-muted)" />
               <input
                 type="text"
                 value={search}
@@ -493,7 +506,7 @@ export default function LawyerPendingPage() {
                     ? "সক্রিয় টাস্ক থেকে চুক্তি খুঁজুন..."
                     : "Search active review tasks..."
                 }
-                className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)]`}
+                className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-(--text-primary)/40 bg-(--bg-card) text-(--text-primary)`}
               />
             </div>
 
@@ -502,11 +515,11 @@ export default function LawyerPendingPage() {
               {filtered.map((contract) => (
                 <div
                   key={contract.id}
-                  className={`p-5 rounded-2xl border ${borderClass} bg-[var(--bg-card)] hover:border-amber-400/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4`}
+                  className={`p-5 rounded-2xl border ${borderClass} bg-(--bg-card) hover:border-amber-400/50 transition-all flex flex-col md:flex-row md:items-center justify-between gap-4`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                      <span className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] text-[var(--text-muted)]">
+                      <span className="font-mono text-[11px] px-2 py-0.5 rounded-md bg-(--bg-surface) text-(--text-muted)">
                         {contract.id}
                       </span>
                       <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 px-2 py-0.5 rounded-md">
@@ -521,11 +534,11 @@ export default function LawyerPendingPage() {
                       )}
                     </div>
 
-                    <h3 className="text-base font-semibold text-[var(--text-primary)] mb-1">
+                    <h3 className="text-base font-semibold text-(--text-primary) mb-1">
                       {isBn ? contract.titleBn : contract.titleEn}
                     </h3>
 
-                    <div className="flex items-center gap-4 text-xs text-[var(--text-muted)] flex-wrap">
+                    <div className="flex items-center gap-4 text-xs text-(--text-muted) flex-wrap">
                       <span className="flex items-center gap-1">
                         <User className="w-3 h-3" />
                         {contract.clientName} ({contract.clientPhone})
@@ -541,19 +554,16 @@ export default function LawyerPendingPage() {
                     </div>
                   </div>
 
-                  {/* Action Buttons based on Queue vs Active */}
                   <div className="shrink-0 flex items-center gap-2 flex-wrap">
                     {activeSubTab === "queue" ? (
                       <>
                         <button
                           type="button"
                           onClick={() => handleDecline(contract.id)}
-                          className="px-3 py-2 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                          title={isBn ? "প্রস্তাব প্রত্যাখ্যান করুন" : "Decline offer"}
+                          className="px-3 py-2 rounded-xl text-xs font-semibold text-(--text-muted) hover:text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
                         >
                           {isBn ? "প্রত্যাখ্যান" : "Decline"}
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleAccept(contract.id)}
@@ -569,16 +579,14 @@ export default function LawyerPendingPage() {
                           type="button"
                           onClick={() => handleStartAiChat(contract.id)}
                           className="px-3 py-2 rounded-xl text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 transition-colors cursor-pointer flex items-center gap-1"
-                          title={isBn ? "এআই লিগ্যাল রিসার্চ" : "AI Legal Research"}
                         >
                           <Sparkles className="w-3.5 h-3.5" />
                           <span>{isBn ? "এআই রিসার্চ" : "AI Research"}</span>
                         </button>
-
                         <button
                           type="button"
                           onClick={() => handleOpenReview(contract)}
-                          className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5 shadow-sm"
+                          className="px-4 py-2.5 rounded-xl text-xs font-bold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer flex items-center gap-1.5 shadow-sm"
                         >
                           {isBn ? "রিভিউ ও সিলমোহর" : "Review & Seal"}
                           <ArrowUpRight className="w-3.5 h-3.5" />
@@ -591,24 +599,11 @@ export default function LawyerPendingPage() {
 
               {filtered.length === 0 && (
                 <div className="py-16 text-center">
-                  <CheckCircle2 className="w-8 h-8 text-[var(--text-muted)] mx-auto mb-2 opacity-60" />
-                  <p className="text-sm font-medium text-[var(--text-primary)]">
+                  <CheckCircle2 className="w-8 h-8 text-(--text-muted) mx-auto mb-2 opacity-60" />
+                  <p className="text-sm font-medium text-(--text-primary)">
                     {activeSubTab === "queue"
-                      ? isBn
-                        ? "কোনো পেন্ডিং অফার নেই"
-                        : "No pending contract offers in queue"
-                      : isBn
-                      ? "কোনো সক্রিয় পর্যালোচনা টাস্ক নেই"
-                      : "No active review tasks"}
-                  </p>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    {activeSubTab === "queue"
-                      ? isBn
-                        ? "নতুন কোনো ক্লায়েন্ট চুক্তি জমা হলে এখানে প্রদর্শিত হবে।"
-                        : "New client contracts dispatched for review will appear here."
-                      : isBn
-                      ? "অফার কিউ থেকে চুক্তি গ্রহণ করলে এখানে দেখতে পাবেন।"
-                      : "Accept offers from the Offer Queue to work on them here."}
+                      ? isBn ? "কোনো পেন্ডিং অফার নেই" : "No pending contract offers in queue"
+                      : isBn ? "কোনো সক্রিয় পর্যালোচনা টাস্ক নেই" : "No active review tasks"}
                   </p>
                 </div>
               )}
@@ -619,23 +614,23 @@ export default function LawyerPendingPage() {
         {/* FULL ADVOCATE STATUTORY VERIFICATION & MARKDOWN MODAL */}
         {selectedContract && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden`}>
+            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl overflow-hidden`}>
               
               {/* Modal Header */}
-              <div className="p-4 sm:p-5 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
+              <div className="p-4 sm:p-5 border-b border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                    <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-(--bg-card) text-(--text-muted) border border-(--text-primary)/10">
                       {selectedContract.id}
                     </span>
                     <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400">
                       {isBn ? "সংবিধিবদ্ধ অডিট রিপোর্ট" : "Statutory Audit Report"}
                     </span>
                   </div>
-                  <h2 className="text-base sm:text-lg font-serif font-bold text-[var(--text-primary)] truncate">
+                  <h2 className="text-base sm:text-lg font-serif font-bold text-(--text-primary) truncate">
                     {isBn ? selectedContract.titleBn : selectedContract.titleEn}
                   </h2>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                  <p className="text-xs text-(--text-muted) mt-0.5">
                     {isBn ? "ক্লায়েন্ট:" : "Client:"} {selectedContract.clientName} ({selectedContract.clientPhone})
                   </p>
                 </div>
@@ -643,22 +638,22 @@ export default function LawyerPendingPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedContract(null)}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer shrink-0"
+                  className="p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
               {/* Modal Tab Switcher */}
-              <div className="px-5 py-2.5 border-b border-[var(--text-primary)]/10 flex items-center justify-between gap-3 bg-[var(--bg-card)]">
-                <div className="flex items-center bg-[var(--bg-surface)] p-1 rounded-xl border border-[var(--text-primary)]/10 text-xs font-semibold">
+              <div className="px-5 py-2.5 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-card)">
+                <div className="flex items-center bg-(--bg-surface) p-1 rounded-xl border border-(--text-primary)/10 text-xs font-semibold">
                   <button
                     type="button"
                     onClick={() => setModalTab("markdown")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       modalTab === "markdown"
-                        ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
-                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                        ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
+                        : "text-(--text-muted) hover:text-(--text-primary)"
                     }`}
                   >
                     <FileCode2 className="w-3.5 h-3.5" />
@@ -669,8 +664,8 @@ export default function LawyerPendingPage() {
                     onClick={() => setModalTab("signoff")}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
                       modalTab === "signoff"
-                        ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
-                        : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                        ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
+                        : "text-(--text-muted) hover:text-(--text-primary)"
                     }`}
                   >
                     <ShieldCheck className="w-3.5 h-3.5" />
@@ -689,85 +684,61 @@ export default function LawyerPendingPage() {
               {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
                 {modalTab === "markdown" ? (
-                  <MarkdownViewer
-                    content={markdownAuditContent}
-                  />
+                  <MarkdownViewer content={markdownAuditContent} />
                 ) : (
-                  /* Advocate Sign-off Station */
                   <div className="space-y-6 max-w-2xl mx-auto">
                     {/* Bar Council Credentials Card */}
-                    <div className="p-4 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)]">
+                    <div className="p-4 rounded-2xl border border-(--text-primary)/10 bg-(--bg-surface)">
                       <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+                        <span className="text-xs font-semibold uppercase tracking-wider text-(--text-muted)">
                           {isBn ? "আইনজীবী প্রমাণীকরণ" : "Advocate Credentials"}
                         </span>
                         <span className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
                           Verified Bar Council Member
                         </span>
                       </div>
-                      <p className="text-sm font-semibold text-[var(--text-primary)]">
+                      <p className="text-sm font-semibold text-(--text-primary)">
                         {user?.name || "Adv. Tanvir Ahmed, Supreme Court of Bangladesh"}
                       </p>
-                      <p className="text-xs font-mono text-[var(--text-muted)] mt-0.5">
+                      <p className="text-xs font-mono text-(--text-muted) mt-0.5">
                         Enrollment: SC-DH-48912/2016 · High Court Division
                       </p>
                     </div>
 
                     {/* Statutory Verification Checkpoints */}
                     <div className="space-y-3">
-                      <label className="text-xs font-semibold text-[var(--text-primary)] block">
+                      <label className="text-xs font-semibold text-(--text-primary) block">
                         {isBn ? "সংবিধিবদ্ধ আইনি যাচাইকরণ চেকলিস্ট:" : "Statutory Verification Checkpoints:"}
                       </label>
 
                       <div className="space-y-2 text-xs">
-                        <label className="flex items-start gap-2.5 p-3 rounded-xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)] cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={checklist.severanceAudited}
-                            onChange={(e) => setChecklist({ ...checklist, severanceAudited: e.target.checked })}
-                            className="mt-0.5 rounded text-emerald-600"
-                          />
-                          <span>
-                            <strong>Bangladesh Labour Act 2006 (Sec 26):</strong> Statutory notice period and severance pay calculations verified.
-                          </span>
+                        <label className="flex items-start gap-2.5 p-3 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) cursor-pointer">
+                          <input type="checkbox" checked={checklist.severanceAudited} onChange={(e) => setChecklist({ ...checklist, severanceAudited: e.target.checked })} className="mt-0.5 rounded text-emerald-600" />
+                          <span><strong>Bangladesh Labour Act 2006 (Sec 26):</strong> Statutory notice period and severance pay calculations verified.</span>
                         </label>
 
-                        <label className="flex items-start gap-2.5 p-3 rounded-xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)] cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={checklist.restraintResolved}
-                            onChange={(e) => setChecklist({ ...checklist, restraintResolved: e.target.checked })}
-                            className="mt-0.5 rounded text-emerald-600"
-                          />
-                          <span>
-                            <strong>The Contract Act 1872 (Sec 27):</strong> Restraint of trade doctrine audited; unlawful non-compete clauses voided/redlined.
-                          </span>
+                        <label className="flex items-start gap-2.5 p-3 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) cursor-pointer">
+                          <input type="checkbox" checked={checklist.restraintResolved} onChange={(e) => setChecklist({ ...checklist, restraintResolved: e.target.checked })} className="mt-0.5 rounded text-emerald-600" />
+                          <span><strong>The Contract Act 1872 (Sec 27):</strong> Restraint of trade doctrine audited; unlawful non-compete clauses voided/redlined.</span>
                         </label>
 
-                        <label className="flex items-start gap-2.5 p-3 rounded-xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)] cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={checklist.stampAuthorized}
-                            onChange={(e) => setChecklist({ ...checklist, stampAuthorized: e.target.checked })}
-                            className="mt-0.5 rounded text-emerald-600"
-                          />
-                          <span>
-                            <strong>Advocate Digital Seal Authorization:</strong> Authorize inclusion of Bar Council advocate signature block on client document.
-                          </span>
+                        <label className="flex items-start gap-2.5 p-3 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) cursor-pointer">
+                          <input type="checkbox" checked={checklist.stampAuthorized} onChange={(e) => setChecklist({ ...checklist, stampAuthorized: e.target.checked })} className="mt-0.5 rounded text-emerald-600" />
+                          <span><strong>Advocate Digital Seal Authorization:</strong> Authorize inclusion of Bar Council advocate signature block on client document.</span>
                         </label>
                       </div>
                     </div>
 
                     {/* Advocate Notes Textarea */}
                     <div>
-                      <label className="text-xs font-semibold text-[var(--text-primary)] block mb-1.5">
+                      <label className="text-xs font-semibold text-(--text-primary) block mb-1.5">
                         {isBn ? "আইনজীবীর মন্তব্য ও রায়:" : "Advocate Statutory Advisory Notes:"}
                       </label>
                       <textarea
                         rows={3}
                         value={advocateNotes}
                         onChange={(e) => setAdvocateNotes(e.target.value)}
-                        className={`w-full p-3 rounded-xl text-xs border outline-none font-sans leading-relaxed ${borderClass} bg-[var(--bg-surface)] text-[var(--text-primary)] focus:border-[var(--text-primary)]/40`}
+                        className={`w-full p-3 rounded-xl text-xs border outline-none font-sans leading-relaxed ${borderClass} bg-(--bg-surface) text-(--text-primary) focus:border-(--text-primary)/40`}
                         placeholder={isBn ? "আইনি মতামত লিখুন..." : "Enter statutory notes for client..."}
                       />
                     </div>
@@ -793,11 +764,11 @@ export default function LawyerPendingPage() {
               </div>
 
               {/* Modal Footer Actions */}
-              <div className="p-4 sm:p-5 border-t border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
+              <div className="p-4 sm:p-5 border-t border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
                 <button
                   type="button"
                   onClick={() => setSelectedContract(null)}
-                  className={`px-4 py-2 rounded-xl text-xs font-semibold border ${borderClass} text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer`}
+                  className={`px-4 py-2 rounded-xl text-xs font-semibold border ${borderClass} text-(--text-muted) hover:text-(--text-primary) cursor-pointer`}
                 >
                   {isBn ? "বন্ধ করুন" : "Close"}
                 </button>
@@ -819,20 +790,11 @@ export default function LawyerPendingPage() {
                       className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
                     >
                       {isSealing ? (
-                        <>
-                          <div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                          <span>{isBn ? "সিলমোহর প্রয়োগ হচ্ছে..." : "Applying Statutory Seal..."}</span>
-                        </>
+                        <><div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" /><span>{isBn ? "সিলমোহর প্রয়োগ হচ্ছে..." : "Applying Statutory Seal..."}</span></>
                       ) : sealedSuccess ? (
-                        <>
-                          <Check className="w-3.5 h-3.5" />
-                          <span>{isBn ? "অনুমোদিত ও সিলমোহরযুক্ত ✓" : "Approved & Sealed ✓"}</span>
-                        </>
+                        <><Check className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদিত ও সিলমোহরযুক্ত ✓" : "Approved & Sealed ✓"}</span></>
                       ) : (
-                        <>
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          <span>{isBn ? "অনুমোদন ও সিলমোহর দিন ✓" : "Approve & Seal ✓"}</span>
-                        </>
+                        <><ShieldCheck className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদন ও সিলমোহর দিন ✓" : "Approve & Seal ✓"}</span></>
                       )}
                     </button>
                   )}

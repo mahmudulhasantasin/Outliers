@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useMemo, useEffect } from "react";
@@ -5,7 +6,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { getContractHistory, HITL_STATUS_CONFIG } from "@/lib/apiServices";
+import { getContractHistory, deleteContract, HITL_STATUS_CONFIG } from "@/lib/apiServices";
 import {
   FolderClock,
   Search,
@@ -66,6 +67,9 @@ export default function ArchivePage() {
   const [previewRecord, setPreviewRecord] = useState<ArchivedRecord | null>(null);
   const [printRecord, setPrintRecord] = useState<ArchivedRecord | null>(null);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
+  
+  // ✅ ডিলিট লোডিং স্টেট
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Map backend history item to full ArchivedRecord
   const mapItemToRecord = (item: any): ArchivedRecord => {
@@ -75,7 +79,6 @@ export default function ArchivePage() {
     const title = item.title || item.file_name || "Contract Document";
     const score = typeof item.risk_score === "number" ? item.risk_score : 50;
 
-    // Normalize backend risk levels: "HIGH", "MODERATE", "LOW"
     const backendOverallRisk = String(item.overall_risk || item.risk_grade || "").toUpperCase();
     let overallRisk: "HIGH" | "MODERATE" | "LOW";
     if (backendOverallRisk === "HIGH" || backendOverallRisk === "CRITICAL") {
@@ -88,7 +91,6 @@ export default function ArchivePage() {
       overallRisk = score >= 70 ? "HIGH" : score >= 40 ? "MODERATE" : "LOW";
     }
 
-    // Check localStorage cache for deep audit details from uploads
     let cachedAudit: any = null;
     if (typeof window !== "undefined") {
       try {
@@ -102,7 +104,7 @@ export default function ArchivePage() {
     const isCritical = backendOverallRisk === "CRITICAL" || score >= 90;
     const isHigh = !isCritical && overallRisk === "HIGH";
     const isModerate = overallRisk === "MODERATE";
-    const isLow = overallRisk === "LOW";
+    // ✅ FIX: isLow ভ্যারিয়েবলটি রিমুভ করা হয়েছে কারণ এটি কোডে ব্যবহার হয়নি
 
     let highCount = typeof item.high_risk_count === "number" ? item.high_risk_count : cachedAudit?.high_risk_count;
     let medCount = typeof item.medium_risk_count === "number" ? item.medium_risk_count : cachedAudit?.medium_risk_count;
@@ -180,7 +182,6 @@ export default function ArchivePage() {
     };
   };
 
-  // Fetch real contract history from backend
   const fetchHistory = async () => {
     try {
       setIsLoadingApi(true);
@@ -220,7 +221,6 @@ export default function ArchivePage() {
     };
   }, []);
 
-  // Direct print or export as PDF handler
   const handlePrintMemo = (record: ArchivedRecord) => {
     setPrintRecord(record);
   };
@@ -242,7 +242,6 @@ export default function ArchivePage() {
     return () => window.removeEventListener("afterprint", handleAfterPrint);
   }, []);
 
-  // Compute category counts for the filter tabs
   const tabCounts = useMemo(() => {
     let high = 0;
     let moderate = 0;
@@ -262,10 +261,8 @@ export default function ArchivePage() {
     };
   }, [records]);
 
-  // Filter records
   const filteredRecords = useMemo(() => {
     const rawQ = (searchQuery || "").trim().toLowerCase();
-    // Split into normalized search tokens (space, hyphen, comma, period separated)
     const tokens = rawQ
       .replace(/[-_.,/]/g, " ")
       .split(/\s+/)
@@ -279,15 +276,10 @@ export default function ArchivePage() {
       const isNDA = titleLower.includes("non-disclosure") || titleLower.includes("disclosure") || titleLower.includes("nda");
       const isRules = titleLower.includes("rules") || titleLower.includes("fest") || titleLower.includes("competition");
 
-      // Backend risk level mapping:
-      // "High Risk" -> overall_risk === "HIGH"
-      // "Review Needed" -> overall_risk === "MODERATE"
-      // "Compliant" -> overall_risk === "LOW"
       const hasHighRisk = rec.overallRisk === "HIGH";
       const hasReviewNeeded = rec.overallRisk === "MODERATE";
       const isCompliant = rec.overallRisk === "LOW";
 
-      // Build rich, intelligent domain search corpus
       const corpusParts = [
         rec.titleEn,
         rec.titleBn,
@@ -299,22 +291,18 @@ export default function ArchivePage() {
         rec.riskGradeBn,
         rec.auditDateEn,
         rec.auditDateBn,
-        // Only include custom/actual party names, not generic platform placeholders
         rec.firstPartyEn && !rec.firstPartyEn.includes("User / Organization") ? rec.firstPartyEn : "",
         rec.firstPartyBn && !rec.firstPartyBn.includes("প্রতিষ্ঠান") ? rec.firstPartyBn : "",
         rec.secondPartyEn && !rec.secondPartyEn.includes("ContractMind") && !rec.secondPartyEn.includes("Verified Advocate") ? rec.secondPartyEn : "",
         rec.secondPartyBn && !rec.secondPartyBn.includes("কন্ট্রাক্টমাইন্ড") ? rec.secondPartyBn : "",
         rec.summaryEn,
         rec.summaryBn,
-        // Semantic risk status phrases (so user can type "high risk", "review needed", "compliant", etc.)
         hasHighRisk ? "high risk critical বিপদজনক সংকটপূর্ণ উচ্চ ঝুঁকি মারাত্মক" : "",
         hasReviewNeeded ? "review needed medium moderate পর্যালোচনা প্রয়োজন মাঝারি ঝুঁকি পর্যালোচনাধীন শর্ত" : "",
         isCompliant ? "compliant low risk আইনসম্মত স্বল্প ঝুঁকি নিরাপদ বৈধ" : "",
-        // Breakdown counts
         rec.highRiskCount > 0 ? `${rec.highRiskCount} high risk ${rec.highRiskCount}টি উচ্চ ঝুঁকি` : "",
         rec.mediumRiskCount > 0 ? `${rec.mediumRiskCount} review needed ${rec.mediumRiskCount}টি পর্যালোচনা` : "",
         rec.compliantCount > 0 ? `${rec.compliantCount} compliant ${rec.compliantCount}টি আইনসম্মত` : "",
-        // Domain synonyms
         isEmployment ? "employment job worker employee labor labour salary appointment agreement নিয়োগ চাকরি কর্মসংস্থান শ্রম আইন শ্রমিক labour act 2006 contract act 1872" : "",
         isNDA ? "nda non disclosure non-disclosure confidentiality secrecy গোপনীয়তা চুক্তি তথ্য প্রকাশ" : "",
         isRules ? "rules fest festival dev competition guidelines নীতি নিয়মাবলী নীতিমালা প্রতিযোগিতা নির্দেশিকা" : "",
@@ -328,7 +316,6 @@ export default function ArchivePage() {
 
       const corpusWords = corpus.split(/\s+/).filter(Boolean);
 
-      // Robust matching: short tokens (<=2 chars) match exact or prefix word; longer tokens match anywhere in corpus
       const matchesSearch =
         !isSearching ||
         tokens.every((tok) => {
@@ -338,7 +325,6 @@ export default function ArchivePage() {
           return corpus.includes(tok);
         });
 
-      // When actively searching, search across all records so tab filters never hide results
       const matchesRisk =
         isSearching ||
         selectedRisk === "ALL" ||
@@ -350,7 +336,6 @@ export default function ArchivePage() {
     });
   }, [records, searchQuery, selectedRisk]);
 
-  // Open context in Copilot as a fresh session
   const handleOpenInCopilot = (record: ArchivedRecord) => {
     const contextPayload = {
       id: record.contractId || record.id,
@@ -372,17 +357,30 @@ export default function ArchivePage() {
     router.push("/copilot");
   };
 
-  // Delete archive item
-  const handleDelete = (id: string) => {
-    setRecords((prev) => prev.filter((r) => r.id !== id));
+  const handleDelete = async (id: string) => {
+    const confirmDelete = window.confirm(
+      language === "bn"
+        ? "আপনি কি নিশ্চিত এই অডিটটি মুছে ফেলতে চান? এটি আর ফিরে পাবেন না।"
+        : "Are you sure you want to delete this audit? This action cannot be undone."
+    );
+    if (!confirmDelete) return;
+
+    setDeletingId(id);
+    try {
+      await deleteContract(id);
+      setRecords((prev) => prev.filter((r) => r.id !== id));
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Failed to delete contract. Please try again.");
+    } finally {
+      setDeletingId(null);
+    }
   };
 
-  // Target record for print preview: either explicitly triggered or modal currently open
   const printTargetRecord = printRecord || previewRecord;
 
   if (String(user?.role).toUpperCase() === "LAWYER") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -469,8 +467,7 @@ export default function ArchivePage() {
             <button
               onClick={fetchHistory}
               disabled={isLoadingApi}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-[var(--text-primary)]/15 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50 cursor-pointer"
-              style={{ color: "var(--text-primary)" }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-(--text-primary)/15 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition-colors disabled:opacity-50 cursor-pointer text-(--text-primary)"
               title={language === "bn" ? "চুক্তির তালিকা রিফ্রেশ করুন" : "Refresh Contract History"}
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingApi ? "animate-spin text-blue-500" : ""}`} />
@@ -478,7 +475,7 @@ export default function ArchivePage() {
             </button>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-serif font-normal tracking-tight leading-snug mb-3" style={{ color: "var(--text-primary)" }}>
+          <h1 className="text-3xl sm:text-4xl font-serif font-normal tracking-tight leading-snug mb-3 text-(--text-primary)">
             {language === "bn" ? "সংরক্ষিত চুক্তি ও অডিট মেমো" : "Archived Audits & Legal Memos"}
           </h1>
 
@@ -491,23 +488,23 @@ export default function ArchivePage() {
           {/* Quick Stats Strip */}
           <div className="flex flex-wrap items-center gap-6 pt-6 mt-6 border-t text-xs" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
             <div>
-              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>{records.length}</span>
+              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">{records.length}</span>
               <span>{language === "bn" ? "মোট অডিট" : "Total Audits"}</span>
             </div>
             <div>
-              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
+              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
                 {tabCounts.HIGH}
               </span>
               <span>{language === "bn" ? "উচ্চ ঝুঁকিপূর্ণ চুক্তি" : "High Risk Contracts"}</span>
             </div>
             <div>
-              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
+              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
                 {tabCounts.MODERATE}
               </span>
               <span>{language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}</span>
             </div>
             <div>
-              <span className="font-semibold text-sm mr-1.5" style={{ color: "var(--text-primary)" }}>
+              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
                 {tabCounts.LOW}
               </span>
               <span>{language === "bn" ? "আইনসম্মত চুক্তি" : "Compliant Contracts"}</span>
@@ -535,8 +532,7 @@ export default function ArchivePage() {
                   ? "চুক্তির নাম, স্কোর, পক্ষ বা আইন অনুযায়ী অনুসন্ধান..."
                   : "Search by title, score, party, or statute..."
               }
-              className="w-full pl-10 pr-9 py-2 rounded-full text-xs outline-none transition-all border border-[var(--text-primary)]/10 focus:border-[var(--text-primary)]/30 focus:ring-1 focus:ring-[var(--text-primary)]/20"
-              style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+              className="w-full pl-10 pr-9 py-2 rounded-full text-xs outline-none transition-all border border-(--text-primary)/10 focus:border-(--text-primary)/30 focus:ring-1 focus:ring-(--text-primary)/20 bg-(--bg-surface) text-(--text-primary)"
             />
             {searchQuery && (
               <button
@@ -563,7 +559,7 @@ export default function ArchivePage() {
                 onClick={() => setSelectedRisk(filter.id)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
                   selectedRisk === filter.id
-                    ? "bg-[var(--text-primary)] text-[var(--bg-primary)] font-semibold shadow-xs"
+                    ? "bg-(--text-primary) text-(--bg-primary) font-semibold shadow-xs"
                     : "opacity-60 hover:opacity-100 bg-neutral-200/50 dark:bg-neutral-800/50"
                 }`}
               >
@@ -571,7 +567,7 @@ export default function ArchivePage() {
                 <span
                   className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
                     selectedRisk === filter.id
-                      ? "bg-[var(--bg-primary)] text-[var(--text-primary)]"
+                      ? "bg-(--bg-primary) text-(--text-primary)"
                       : "bg-neutral-300 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
                   }`}
                 >
@@ -656,7 +652,7 @@ export default function ArchivePage() {
 
                 {/* Contract Title */}
                 <div>
-                  <h2 className="text-xl font-serif font-medium transition-colors leading-snug" style={{ color: "var(--text-primary)" }}>
+                  <h2 className="text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary)">
                     {language === "bn" ? record.titleBn : record.titleEn}
                   </h2>
                   <p className="text-xs text-neutral-500 mt-1">
@@ -691,7 +687,7 @@ export default function ArchivePage() {
                   <div className="flex items-center gap-2">
                     <button
                       onClick={() => handleOpenInCopilot(record)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-[var(--text-primary)]/10" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary)"
                       title={language === "bn" ? "কোপাইলটের সাথে আলোচনা করুন" : "Discuss in Advotech Copilot"}
                     >
                       <Bot className="w-3.5 h-3.5" />
@@ -718,10 +714,15 @@ export default function ArchivePage() {
 
                     <button
                       onClick={() => handleDelete(record.id)}
-                      className="p-1.5 rounded-full text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer"
+                      disabled={deletingId === record.id}
+                      className="p-1.5 rounded-full text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
                       title="Remove from archive"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      {deletingId === record.id ? (
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="w-3.5 h-3.5" />
+                      )}
                     </button>
                   </div>
                 </div>
@@ -731,7 +732,7 @@ export default function ArchivePage() {
           ) : (
             <div className="py-20 text-center space-y-3">
               <FileText className="w-8 h-8 text-neutral-300 mx-auto" />
-              <p className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>
+              <p className="text-sm font-medium text-(--text-primary)">
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
               <p className="text-xs text-neutral-400 max-w-sm mx-auto">
@@ -763,13 +764,13 @@ export default function ArchivePage() {
       {/* ==================================================================== */}
       {previewRecord && (
         <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
+          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-2xl overflow-hidden">
+            <div className="p-4 border-b border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
               <div className="min-w-0 pr-4">
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-(--bg-card) text-(--text-muted) border border-(--text-primary)/10">
                   {previewRecord.id}
                 </span>
-                <h3 className="text-base font-serif font-bold text-[var(--text-primary)] truncate mt-1">
+                <h3 className="text-base font-serif font-bold text-(--text-primary) truncate mt-1">
                   {language === "bn" ? previewRecord.titleBn : previewRecord.titleEn}
                 </h3>
               </div>
@@ -777,7 +778,7 @@ export default function ArchivePage() {
                 <button
                   type="button"
                   onClick={() => handlePrintMemo(previewRecord)}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                  className="p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
                   title={language === "bn" ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
                 >
                   <Printer className="w-4 h-4 text-sky-500" />
@@ -786,7 +787,7 @@ export default function ArchivePage() {
                 <button
                   type="button"
                   onClick={() => setPreviewRecord(null)}
-                  className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+                  className="p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) transition-colors cursor-pointer"
                 >
                   <X className="w-5 h-5" />
                 </button>
