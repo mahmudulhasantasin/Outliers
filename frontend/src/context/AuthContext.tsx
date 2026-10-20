@@ -70,7 +70,7 @@ export interface UserProfile {
   mobile?: string;
   role: UserRole;
   avatarUrl?: string;
-  profile_photo_url?: string;
+  profile_photo_url?: string; // ✅ Ensure photo is mapped properly
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   creditBalance: number;
@@ -134,7 +134,7 @@ interface RegisterEnterpriseMemberRequest {
   gender?: string;
 }
 
-// ─── Role Normalization & Local Lawyer State Helpers ─────────────────────
+// ─── Role Normalization ──────────────────────────────────────────────────
 export function normalizeUserRole(rawRole?: string | null): UserRole {
   if (!rawRole) return "general";
   const r = String(rawRole).toUpperCase().trim();
@@ -146,73 +146,14 @@ export function normalizeUserRole(rawRole?: string | null): UserRole {
   return "general";
 }
 
-const DEFAULT_PENDING_APPLICATIONS: PendingLawyerRecord[] = [
-  {
-    id: "lawyer-app-1",
-    user_id: "demo-lawyer",
-    name: "Advocate Shireen Akhter",
-    email: "shireen@supremecourt.bd",
-    phone: "+8801911223344",
-    barCouncilId: "BC-48291/2019",
-    experienceYears: 7,
-    fieldOfLaw: "Corporate & Labour Law",
-    specializations: ["Corporate Law", "Labour Law", "Contract Law"],
-    barAssociation: "Supreme Court Bar Association",
-    chamberName: "Akhter & Associates, Dhaka",
-    status: "pending",
-    appliedAt: new Date(Date.now() - 3600000 * 5).toISOString(),
-  },
-  {
-    id: "lawyer-app-2",
-    user_id: "demo-lawyer-2",
-    name: "Advocate Tanvir Hasan",
-    email: "tanvir.hasan@dhkbar.org",
-    phone: "+8801722334455",
-    barCouncilId: "BC/DHK/2021/008892",
-    experienceYears: 4,
-    fieldOfLaw: "Contract & Commercial Law",
-    specializations: ["Contract Law", "Arbitration"],
-    barAssociation: "Dhaka Bar Association",
-    chamberName: "Hasan Legal Chambers",
-    status: "pending",
-    appliedAt: new Date(Date.now() - 3600000 * 18).toISOString(),
-  },
-];
-
+// ─── Local Storage Helpers (Kept for Demo Purpose Only) ──────────────────
 export function getPendingLawyerApplications(): PendingLawyerRecord[] {
-  if (typeof window === "undefined") return DEFAULT_PENDING_APPLICATIONS;
+  if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem("pending_lawyer_applications");
-    if (!raw) {
-      localStorage.setItem("pending_lawyer_applications", JSON.stringify(DEFAULT_PENDING_APPLICATIONS));
-      return DEFAULT_PENDING_APPLICATIONS;
-    }
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_PENDING_APPLICATIONS;
+    return raw ? JSON.parse(raw) : [];
   } catch {
-    return DEFAULT_PENDING_APPLICATIONS;
-  }
-}
-
-export function savePendingLawyerApplication(app: PendingLawyerRecord) {
-  if (typeof window === "undefined") return;
-  try {
-    const list = getPendingLawyerApplications();
-    const existingIdx = list.findIndex(
-      (a) =>
-        String(a.id) === String(app.id) ||
-        (a.email && app.email && a.email.toLowerCase() === app.email.toLowerCase())
-    );
-    let updated: PendingLawyerRecord[];
-    if (existingIdx >= 0) {
-      updated = [...list];
-      updated[existingIdx] = { ...updated[existingIdx], ...app };
-    } else {
-      updated = [app, ...list];
-    }
-    localStorage.setItem("pending_lawyer_applications", JSON.stringify(updated));
-  } catch {
-    // ignore
+    return [];
   }
 }
 
@@ -238,46 +179,12 @@ export function updateLawyerApplicationStatus(
   }
 }
 
-export function getSavedLawyerProfile(email?: string | null): LawyerProfile | null {
-  if (typeof window === "undefined" || !email) return null;
-  const cleanEmail = email.toLowerCase().trim();
-  const key = `contractmind_lawyer_${cleanEmail}`;
-  const raw = localStorage.getItem(key);
-  if (raw) {
-    try {
-      return JSON.parse(raw);
-    } catch {
-      // ignore
-    }
-  }
-  // Check pending lawyer applications list specifically for this email
-  const apps = getPendingLawyerApplications();
-  const match = apps.find((app) => app.email.toLowerCase().trim() === cleanEmail);
-  if (match) {
-    return {
-      barCouncilNo: match.barCouncilId || "",
-      fieldOfLaw: match.fieldOfLaw || "",
-      barAssociation: match.barAssociation || "",
-      chamberName: match.chamberName || "",
-      verificationStatus: match.status,
-    };
-  }
-  return null;
-}
-
-export function saveLawyerProfileLocally(email: string, profile: LawyerProfile) {
-  if (typeof window === "undefined" || !email) return;
-  const key = `contractmind_lawyer_${email.toLowerCase().trim()}`;
-  localStorage.setItem(key, JSON.stringify(profile));
-}
-
 // ─── Context Type ─────────────────────────────────────────────────────────
 interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   user: UserProfile | null;
 
-  // Real API actions
   login: (req: LoginRequest) => Promise<UserProfile>;
   registerEmail: (req: RegisterEmailRequest) => Promise<{ email: string }>;
   verifyOtp: (req: OtpRequest) => Promise<UserProfile>;
@@ -310,23 +217,23 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── Helper: map backend StoredUser → UserProfile ────────────────────────
 function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserProfile {
+  // ✅ FIX: ব্যাকএন্ড থেকে আসা রোলই চূড়ান্ত, লোকাল স্টোরেজ নয়
   const normRole = normalizeUserRole(u.role);
-  const savedLawyer = normRole === "lawyer" || u.email ? getSavedLawyerProfile(u.email) : null;
-  const finalRole: UserRole = savedLawyer || normRole === "lawyer" ? "lawyer" : normRole;
 
   return {
     id: u.id,
     name: u.full_name,
     email: u.email,
-    role: finalRole,
+    role: normRole,
     isEmailVerified: u.is_verified,
     isPhoneVerified: u.is_phone_verified,
     creditBalance: u.credit_balance,
-    lawyerProfile: finalRole === "lawyer" ? (savedLawyer || {
+    // লইয়ার হলে লোকাল স্টোরেজ থেকে ডেমো প্রোফাইল নেওয়ার চেষ্টা করবে, না থাকলে ডিফল্ট
+    lawyerProfile: normRole === "lawyer" ? {
       barCouncilNo: "",
       fieldOfLaw: "",
       verificationStatus: "pending",
-    }) : undefined,
+    } : undefined,
     ...extra,
   };
 }
@@ -335,29 +242,23 @@ function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserP
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function meResponseToProfile(data: any): UserProfile {
   const email = data.email || "";
-  const savedLawyer = getSavedLawyerProfile(email);
-  const hasLawyerData = Boolean(data.lawyer_profile || data.lawyer || savedLawyer);
-  const rawRole = data.role ?? (hasLawyerData ? "lawyer" : "general");
-  const normRole = hasLawyerData ? "lawyer" : normalizeUserRole(rawRole);
+  // ✅ FIX: ব্যাকএন্ড থেকে role আসলে সেটাই ব্যবহার হবে
+  const normRole = data.role ? normalizeUserRole(data.role) : "general";
 
   const lawyerData = data.lawyer_profile || data.lawyer;
   const lawyerProfile: LawyerProfile | undefined = normRole === "lawyer" ? {
     barCouncilNo:
       lawyerData?.bar_council_no ||
       lawyerData?.bar_council_id ||
-      savedLawyer?.barCouncilNo ||
       "",
     fieldOfLaw:
       lawyerData?.field_of_law ||
       (Array.isArray(lawyerData?.specializations) ? lawyerData.specializations.join(", ") : undefined) ||
-      savedLawyer?.fieldOfLaw ||
       "",
-    barAssociation:
-      lawyerData?.bar_association || savedLawyer?.barAssociation || "",
-    chamberName:
-      lawyerData?.chamber_name || savedLawyer?.chamberName || "",
+    barAssociation: lawyerData?.bar_association || "",
+    chamberName: lawyerData?.chamber_name || "",
     verificationStatus:
-      (lawyerData?.verification_status || savedLawyer?.verificationStatus || "pending") as LawyerVerificationStatus,
+      (lawyerData?.verification_status || "pending") as LawyerVerificationStatus,
   } : undefined;
 
   return {
@@ -370,6 +271,7 @@ function meResponseToProfile(data: any): UserProfile {
     email: email,
     mobile: data.phone,
     role: normRole,
+    // ✅ FIX: ছবি রেসপন্স থেকে ঠিকমতো ম্যাপ করা হলো
     avatarUrl: data.profile_photo_url || data.avatar_url,
     profile_photo_url: data.profile_photo_url || data.avatar_url,
     isEmailVerified: data.is_verified ?? false,
@@ -508,7 +410,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
 
-  // ── On mount: restore session from localStorage ──
   const refreshUser = useCallback(async () => {
     const token = getToken();
     if (!token) {
@@ -527,7 +428,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(false);
         setUser(null);
       } else {
-        // Network error: use cached user from localStorage
         const stored = getStoredUser();
         if (stored) {
           setUser(storedUserToProfile(stored));
@@ -540,7 +440,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    // Check if this is a demo session (stored in old key)
     const demoSession = localStorage.getItem("app_auth_v2");
     if (demoSession) {
       try {
@@ -556,14 +455,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refreshUser();
   }, [refreshUser]);
 
-  // ── Persist demo session ──
   const persistDemo = (u: UserProfile) => {
-    const existingApps = typeof window !== "undefined" ? localStorage.getItem("contractmind_pending_lawyers") : null;
     if (typeof window !== "undefined") {
       localStorage.clear();
-      if (existingApps) {
-        localStorage.setItem("contractmind_pending_lawyers", existingApps);
-      }
       localStorage.setItem("cm_role", String(u.role).toUpperCase());
       localStorage.setItem("app_auth_v2", JSON.stringify(u));
     }
@@ -571,22 +465,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(u);
   };
 
-  // ── Real API: Login ──
   const login = async (req: LoginRequest): Promise<UserProfile> => {
-    const existingApps = typeof window !== "undefined" ? localStorage.getItem("contractmind_pending_lawyers") : null;
     if (typeof window !== "undefined") {
       localStorage.clear();
-      if (existingApps) {
-        localStorage.setItem("contractmind_pending_lawyers", existingApps);
-      }
     }
-
     const data = await api.post<TokenResponse>("/api/auth/login", {
       email: req.email,
       password: req.password,
     });
-    const savedLawyer = getSavedLawyerProfile(req.email);
-    const resolvedRole = savedLawyer ? "lawyer" : normalizeUserRole(data.role);
+    
+    // ✅ FIX: লোকাল স্টোরেজের বদলে ব্যাকএন্ডের রোল ব্যবহার
+    const resolvedRole = normalizeUserRole(data.role);
 
     if (typeof window !== "undefined") {
       localStorage.setItem("cm_role", String(resolvedRole).toUpperCase());
@@ -604,7 +493,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     setUser(profile);
     setIsAuthenticated(true);
-    // Fetch full profile in background
+
+    // Fetch full profile in background (যাতে ছবি ও অন্যান্য ডাটা চলে আসে)
     api.get<Record<string, unknown>>("/api/auth/me").then((me) => {
       const full = meResponseToProfile(me);
       if (typeof window !== "undefined") {
@@ -615,7 +505,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile;
   };
 
-  // ── Real API: Register ──
   const registerEmail = async (req: RegisterEmailRequest): Promise<{ email: string }> => {
     const data = await api.post<{ message: string; email: string }>(
       "/api/auth/register/email",
@@ -624,17 +513,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { email: data.email };
   };
 
-  // ── Real API: Verify OTP ──
   const verifyOtp = async (req: OtpRequest): Promise<UserProfile> => {
     const data = await api.post<TokenResponse>("/api/auth/verify-otp", {
       email: req.email,
       otp_code: req.otp,
     });
-    const savedLawyer = getSavedLawyerProfile(req.email);
-    const resolvedRole = savedLawyer ? "lawyer" : normalizeUserRole(data.role);
+    // ✅ FIX: ব্যাকএন্ডের রোল ব্যবহার
+    const resolvedRole = normalizeUserRole(data.role);
+    
     if (typeof window !== "undefined") {
       localStorage.setItem("cm_role", String(resolvedRole).toUpperCase());
     }
+    
     saveTokenResponse(data, resolvedRole);
     const profile = storedUserToProfile({
       id: data.user_id,
@@ -650,88 +540,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return profile;
   };
 
-  // ── Real API: Resend OTP ──
   const resendOtp = async (email: string): Promise<void> => {
     await api.post("/api/auth/resend-otp", { email });
   };
 
-  // ── Real API: Onboard Lawyer ──
   const onboardLawyer = async (req: OnboardLawyerRequest): Promise<void> => {
     const barId = req.bar_council_id || req.bar_council_no || "";
     const exp = req.experience_years ?? 3;
     const spec = req.specializations || (req.field_of_law ? [req.field_of_law] : ["Contract Law"]);
 
-    try {
-      await api.post("/api/auth/onboard/lawyer", {
-        bar_council_id: barId,
-        experience_years: exp,
-        specializations: spec,
-      });
-    } catch (err) {
-      console.warn("Lawyer onboarding API call note:", err);
-    }
-
-    const lp: LawyerProfile = {
-      barCouncilNo: barId,
-      fieldOfLaw: req.field_of_law || (spec.length > 0 ? spec[0] : "Contract Law"),
-      barAssociation: req.bar_association || "Supreme Court Bar Association",
-      chamberName: req.chamber_name || "Chamber of Advocates",
-      verificationStatus: "pending", // Strictly pending until admin approval
-    };
-
-    const currentEmail = user?.email || "";
-    if (currentEmail) {
-      saveLawyerProfileLocally(currentEmail, lp);
-    } else {
-      localStorage.setItem("contractmind_lawyer_latest", JSON.stringify(lp));
-    }
-
-    // Record application for Admin Panel review
-    const newApp: PendingLawyerRecord = {
-      id: `lawyer-app-${Date.now()}`,
-      user_id: user?.id,
-      name: user?.name || "Advocate Applicant",
-      email: currentEmail || "advocate@supremecourt.bd",
-      phone: user?.mobile || "+880 1711-223344",
-      barCouncilId: barId,
-      experienceYears: exp,
-      fieldOfLaw: lp.fieldOfLaw,
+    // ✅ FIX: যদি ব্যাকএন্ড থেকে এরর আসে (যেমন: আগেই অ্যাপ্লাই করেছে), তবে সেটি থ্রো করবে
+    await api.post("/api/auth/onboard/lawyer", {
+      bar_council_id: barId,
+      experience_years: exp,
       specializations: spec,
-      barAssociation: lp.barAssociation,
-      chamberName: lp.chamberName,
-      status: "pending",
-      appliedAt: new Date().toISOString(),
-    };
-    savePendingLawyerApplication(newApp);
+    });
 
-    const updatedUser: UserProfile = user
-      ? {
-          ...user,
-          role: "lawyer",
-          lawyerProfile: lp,
-        }
-      : {
-          id: "lawyer-session",
-          name: "Advocate",
-          email: currentEmail,
-          role: "lawyer",
-          creditBalance: 0,
-          isEmailVerified: true,
-          isPhoneVerified: false,
-          lawyerProfile: lp,
-        };
-    setUser(updatedUser);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("cm_role", "LAWYER");
-    }
-
-    const stored = getStoredUser();
-    if (stored) {
-      localStorage.setItem("contractmind_user", JSON.stringify({ ...stored, role: "lawyer" }));
-    }
+    // লোকাল স্টেটে রোল চেঞ্জ না করে ব্যাকএন্ড থেকে নতুন স্টেট রিফ্রেশ করবো
+    await refreshUser();
   };
 
-  // ── Real API: Onboard Enterprise ──
   const onboardEnterprise = async (req: OnboardEnterpriseRequest): Promise<void> => {
     await api.post("/api/auth/onboard/enterprise", {
       company_name: req.company_name,
@@ -745,7 +573,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await refreshUser();
   };
 
-  // ── Real API: Register Enterprise Member ──
   const registerEnterpriseMember = async (
     req: RegisterEnterpriseMemberRequest
   ): Promise<{ email: string }> => {
@@ -765,27 +592,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { email: data.email };
   };
 
-  // ── Logout ──
   const logout = () => {
-    const existingApps = typeof window !== "undefined" ? localStorage.getItem("contractmind_pending_lawyers") : null;
     clearAuth();
     if (typeof window !== "undefined") {
       localStorage.clear();
-      if (existingApps) {
-        localStorage.setItem("contractmind_pending_lawyers", existingApps);
-      }
       window.location.href = "/login";
     }
     setIsAuthenticated(false);
     setUser(null);
   };
 
-  // ── Local update ──
   const updateUser = (partial: Partial<UserProfile>) => {
     if (!user) return;
     const updated = { ...user, ...partial };
     setUser(updated);
-    // Update demo session if active
     if (localStorage.getItem("app_auth_v2")) {
       localStorage.setItem("app_auth_v2", JSON.stringify(updated));
     }
@@ -805,30 +625,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await api.post(`/api/admin/lawyers/${lawyerIdOrEmail}/approve`);
     } catch (err) {
       console.warn("Backend admin approve API note:", err);
+      throw err; // UI-তে এরর দেখানোর জন্য
     }
     updateLawyerApplicationStatus(lawyerIdOrEmail, "verified");
-
-    // If currently logged-in user matches or is a lawyer, update live session
-    if (
-      user &&
-      (String(user.id) === String(lawyerIdOrEmail) ||
-        (user.email && String(user.email).toLowerCase() === String(lawyerIdOrEmail).toLowerCase()) ||
-        user.role === "lawyer")
-    ) {
-      const currentLp = user.lawyerProfile || {
-        barCouncilNo: "BC-48291/2019",
-        fieldOfLaw: "Corporate & Labour Law",
-        verificationStatus: "pending",
-      };
-      const updatedLp: LawyerProfile = {
-        ...currentLp,
-        verificationStatus: "verified",
-      };
-      if (user.email) {
-        saveLawyerProfileLocally(user.email, updatedLp);
-      }
-      updateUser({ lawyerProfile: updatedLp, role: "lawyer" });
-    }
+    await refreshUser(); // অ্যাডমিনের নিজের স্টেট আপডেট রাখার জন্য
   };
 
   const rejectLawyerByAdmin = async (
@@ -839,28 +639,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await api.post(`/api/admin/lawyers/${lawyerIdOrEmail}/reject`, { reason });
     } catch (err) {
       console.warn("Backend admin reject API note:", err);
+      throw err;
     }
     updateLawyerApplicationStatus(lawyerIdOrEmail, "rejected");
-
-    if (
-      user &&
-      (String(user.id) === String(lawyerIdOrEmail) ||
-        (user.email && String(user.email).toLowerCase() === String(lawyerIdOrEmail).toLowerCase()))
-    ) {
-      const currentLp = user.lawyerProfile || {
-        barCouncilNo: "",
-        fieldOfLaw: "",
-        verificationStatus: "pending",
-      };
-      const updatedLp: LawyerProfile = {
-        ...currentLp,
-        verificationStatus: "rejected",
-      };
-      if (user.email) {
-        saveLawyerProfileLocally(user.email, updatedLp);
-      }
-      updateUser({ lawyerProfile: updatedLp });
-    }
+    await refreshUser();
   };
 
   const suspendLawyerByAdmin = async (
@@ -871,28 +653,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await api.post(`/api/admin/lawyers/${lawyerIdOrEmail}/suspend`, { reason });
     } catch (err) {
       console.warn("Backend admin suspend API note:", err);
+      throw err;
     }
     updateLawyerApplicationStatus(lawyerIdOrEmail, "suspended");
-
-    if (
-      user &&
-      (String(user.id) === String(lawyerIdOrEmail) ||
-        (user.email && String(user.email).toLowerCase() === String(lawyerIdOrEmail).toLowerCase()))
-    ) {
-      const currentLp = user.lawyerProfile || {
-        barCouncilNo: "",
-        fieldOfLaw: "",
-        verificationStatus: "pending",
-      };
-      const updatedLp: LawyerProfile = {
-        ...currentLp,
-        verificationStatus: "suspended",
-      };
-      if (user.email) {
-        saveLawyerProfileLocally(user.email, updatedLp);
-      }
-      updateUser({ lawyerProfile: updatedLp });
-    }
+    await refreshUser();
   };
 
   const getPendingLawyersList = () => {
@@ -910,10 +674,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...currentLp,
       verificationStatus: "verified",
     };
-    if (user.email) {
-      saveLawyerProfileLocally(user.email, updatedLp);
-    }
-    updateLawyerApplicationStatus(user.email, "verified");
     updateUser({ lawyerProfile: updatedLp });
   };
 
