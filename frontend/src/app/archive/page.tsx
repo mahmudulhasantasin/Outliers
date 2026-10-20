@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { getContractHistory, getContractDownloadUrl, HITL_STATUS_CONFIG } from "@/lib/apiServices";
+import { getContractHistory, HITL_STATUS_CONFIG } from "@/lib/apiServices";
 import {
   FolderClock,
   Search,
@@ -15,8 +15,6 @@ import {
   Trash2,
   FileText,
   ShieldCheck,
-  Download,
-  Loader2,
   RefreshCw,
   X
 } from "lucide-react";
@@ -65,7 +63,6 @@ export default function ArchivePage() {
   const [selectedRisk, setSelectedRisk] = useState<string>("ALL");
   const [previewRecord, setPreviewRecord] = useState<ArchivedRecord | null>(null);
   const [printRecord, setPrintRecord] = useState<ArchivedRecord | null>(null);
-  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
 
   // Map backend history item to full ArchivedRecord
@@ -193,22 +190,6 @@ export default function ArchivePage() {
       isMounted = false;
     };
   }, []);
-
-  const handleDownload = async (contractId: string) => {
-    try {
-      setDownloadingId(contractId);
-      const res = await getContractDownloadUrl(contractId);
-      if (res?.download_url) {
-        window.open(res.download_url, "_blank");
-      }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to download contract file.";
-      console.error("Download failed:", err);
-      alert(msg);
-    } finally {
-      setDownloadingId(null);
-    }
-  };
 
   // Direct print or export as PDF handler
   const handlePrintMemo = (record: ArchivedRecord) => {
@@ -614,19 +595,6 @@ export default function ArchivePage() {
                     >
                       <span>{language === "bn" ? "অডিট দেখুন" : "View Audit"}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
-                    </button>
-
-                    <button
-                      onClick={() => handleDownload(record.contractId)}
-                      disabled={downloadingId === record.contractId}
-                      className="p-1.5 rounded-full text-neutral-400 hover:text-emerald-500 transition-colors disabled:opacity-50 cursor-pointer"
-                      title={language === "bn" ? "চুক্তি ডাউনলোড করুন" : "Download Contract File"}
-                    >
-                      {downloadingId === record.contractId ? (
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Download className="w-3.5 h-3.5" />
-                      )}
                     </button>
 
                     <button
