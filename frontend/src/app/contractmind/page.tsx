@@ -48,11 +48,37 @@ export default function ContractMindPage() {
   const isBn = language === "bn";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Initial stage: no contract loaded by default
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [selectedContractId, setSelectedContractId] = useState<string>("employment-agreement");
+  const [copiedClauseId, setCopiedClauseId] = useState<string | null>(null);
+  const [piiMasked, setPiiMasked] = useState<boolean>(true);
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isDispatching, setIsDispatching] = useState<boolean>(false);
+  const [dispatchedDecision, setDispatchedDecision] = useState<DispatchDecision | null>(null);
+  const [lawyerSealApplied, setLawyerSealApplied] = useState<boolean>(false);
+
+  // Check URL query parameter (e.g. ?id=vendor-sla)
+  const [apiContractId, setApiContractId] = useState<string | null>(null);
+  const [apiAuditResult, setApiAuditResult] = useState<ContractAuditResult | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   useEffect(() => {
     if (user?.role === "lawyer" || !!user?.lawyerProfile) {
       router.replace("/lawyer/pending");
     }
   }, [user, router]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const contractId = params.get("id");
+      if (contractId && CONTRACT_AUDITS[contractId]) {
+        setSelectedContractId(contractId);
+        setIsLoaded(true);
+      }
+    }
+  }, []);
 
   if (user?.role === "lawyer" || !!user?.lawyerProfile) {
     return (
@@ -72,32 +98,6 @@ export default function ContractMindPage() {
       </AppShell>
     );
   }
-
-  // Initial stage: no contract loaded by default
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
-  const [selectedContractId, setSelectedContractId] = useState<string>("employment-agreement");
-  const [copiedClauseId, setCopiedClauseId] = useState<string | null>(null);
-  const [piiMasked, setPiiMasked] = useState<boolean>(true);
-  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
-  const [isDispatching, setIsDispatching] = useState<boolean>(false);
-  const [dispatchedDecision, setDispatchedDecision] = useState<DispatchDecision | null>(null);
-  const [lawyerSealApplied, setLawyerSealApplied] = useState<boolean>(false);
-
-  // Check URL query parameter (e.g. ?id=vendor-sla)
-  const [apiContractId, setApiContractId] = useState<string | null>(null);
-  const [apiAuditResult, setApiAuditResult] = useState<ContractAuditResult | null>(null);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const params = new URLSearchParams(window.location.search);
-      const contractId = params.get("id");
-      if (contractId && CONTRACT_AUDITS[contractId]) {
-        setSelectedContractId(contractId);
-        setIsLoaded(true);
-      }
-    }
-  }, []);
 
   // Current contract & audit
   const currentContract: SampleContract =
