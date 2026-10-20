@@ -13,6 +13,17 @@ const nextConfig: NextConfig = {
       },
     },
   },
+  // ✅ FIX: Supabase থেকে ছবি লোড করার পারমিশন
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "*.supabase.co", // Supabase এর সব সাবডোমেইন allow করবে
+        port: "",
+        pathname: "/**",
+      },
+    ],
+  },
   async rewrites() {
     const backendUrl =
       process.env.BACKEND_INTERNAL_URL ||
