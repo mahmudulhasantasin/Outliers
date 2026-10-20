@@ -62,6 +62,9 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
+  // ✅ FIX: ছবি লোড ফেইল করলে ট্র্যাক করার স্টেট
+  const [imgError, setImgError] = useState(false);
+
   const avatarUrl = user?.profile_photo_url || user?.avatarUrl || "";
 
   const initials = user?.name
@@ -80,6 +83,7 @@ export default function SettingsPage() {
     setIsUploadingPhoto(true);
     setPhotoError("");
     setPhotoSuccess(false);
+    setImgError(false); // নতুন ছবি দিলে এরর স্টেট রিসেট হবে
 
     try {
       const res = await uploadProfilePhoto(file);
@@ -274,13 +278,15 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4 min-w-0">
             <div className="relative shrink-0">
               <div className="w-16 h-16 rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-2 border-(--bg-primary) shadow-sm flex items-center justify-center text-xl font-bold font-serif text-(--text-primary) overflow-hidden relative">
-                {avatarUrl ? (
+                {/* ✅ FIX: imgError চেক করা হয়েছে */}
+                {(!imgError && avatarUrl) ? (
                   <Image
                     src={avatarUrl}
                     alt={user?.name || "Profile"}
                     fill
                     className="object-cover"
                     unoptimized 
+                    onError={() => setImgError(true)}
                   />
                 ) : (
                   <span>{initials}</span>
@@ -321,7 +327,6 @@ export default function SettingsPage() {
         <Section title={isBn ? "ভাষা ও ইন্টারফেস থিম" : "Language & Theme"}>
           <div className="space-y-4">
             <div>
-              {/* ✅ FIX: 'block' এবং 'flex' কনফ্লিক্ট দূর করা হয়েছে */}
               <label className="flex items-center gap-1.5 text-xs font-semibold text-(--text-muted) mb-2">
                 <Globe className="w-3.5 h-3.5 opacity-70" />
                 <span>{isBn ? "ইন্টারফেস ভাষা" : "Interface Language"}</span>
@@ -335,7 +340,6 @@ export default function SettingsPage() {
               </div>
             </div>
             <div>
-              {/* ✅ FIX: 'block' এবং 'flex' কনফ্লিক্ট দূর করা হয়েছে */}
               <label className="flex items-center gap-1.5 text-xs font-semibold text-(--text-muted) mb-2">
                 {theme === "dark" ? <Moon className="w-3.5 h-3.5 opacity-70" /> : <Sun className="w-3.5 h-3.5 opacity-70" />}
                 <span>{isBn ? "থিম মোড" : "Appearance Theme"}</span>

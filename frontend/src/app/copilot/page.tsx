@@ -34,6 +34,7 @@ import {
   Loader2,
   Copy,
   Check,
+  Clock,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -48,6 +49,33 @@ interface ChatMessage {
   nextSteps?: string[];
   isThinking?: boolean;
   thoughtSeconds?: number;
+}
+
+// ✅ নতুন: চ্যাট হিস্ট্রি ডেট অনুযায়ী গ্রুপ করার হেল্পার ফাংশন
+function groupSessions(sessions: ChatSession[]) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const lastWeek = new Date(today);
+  lastWeek.setDate(lastWeek.getDate() - 7);
+
+  const groups: { [key: string]: ChatSession[] } = {
+    Today: [],
+    Yesterday: [],
+    "Previous 7 Days": [],
+    Older: [],
+  };
+
+  sessions.forEach((sess) => {
+    const d = sess.created_at ? new Date(sess.created_at) : new Date();
+    if (d >= today) groups["Today"].push(sess);
+    else if (d >= yesterday) groups["Yesterday"].push(sess);
+    else if (d >= lastWeek) groups["Previous 7 Days"].push(sess);
+    else groups["Older"].push(sess);
+  });
+
+  return groups;
 }
 
 export default function CopilotPage() {
@@ -73,7 +101,6 @@ export default function CopilotPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isLoadingSessions, setIsLoadingSessions] = useState(false);
 
-  // Copy message state for chat replies
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
   const copyMessageText = (text: string, msgId: string) => {
@@ -94,7 +121,6 @@ export default function CopilotPage() {
         setLoadedContractTitle(title);
 
         if (parsed.shouldStartNewSession) {
-          // Consume the trigger so it only fires once
           delete parsed.shouldStartNewSession;
           sessionStorage.setItem("active_audit_contract", JSON.stringify(parsed));
 
@@ -102,11 +128,7 @@ export default function CopilotPage() {
             const cid = parsed.contractId || parsed.id;
             try {
               const sessionTitle = title ? `Audit: ${title.slice(0, 32)}` : "Contract Consultation";
-              const newSession = await createChatSession(
-                sessionTitle,
-                "USER_CONTRACT",
-                cid
-              );
+              const newSession = await createChatSession(sessionTitle, "USER_CONTRACT", cid);
               if (!isMounted) return;
 
               const sid = String(newSession.session_id || newSession.id);
@@ -150,7 +172,6 @@ export default function CopilotPage() {
     };
   }, [language]);
 
-  // Load previous sessions
   const loadSessions = async () => {
     setIsLoadingSessions(true);
     try {
@@ -249,7 +270,6 @@ export default function CopilotPage() {
     setIsTyping(true);
 
     try {
-      // Get loaded contract context from sessionStorage
       const contractData = sessionStorage.getItem("active_audit_contract");
       let contractId: string | undefined;
       if (contractData) {
@@ -259,7 +279,6 @@ export default function CopilotPage() {
         } catch { /* noop */ }
       }
 
-      // Create a session if we don't have one yet
       let sessionId = activeSessionId;
       if (!sessionId) {
         const session = await createChatSession(
@@ -281,10 +300,8 @@ export default function CopilotPage() {
         contract_id: contractId,
       });
 
-      // Refresh sessions to reflect updated message count & title
       loadSessions();
 
-      // Extract answer, live statutory citations, and suggested next steps
       let answerText = "";
       let apiCitations: CitedSection[] = [];
       let nextSteps: string[] = [];
@@ -297,7 +314,6 @@ export default function CopilotPage() {
         nextSteps = result.response.suggested_next_steps || [];
       }
 
-      // Update credit balance in context if returned
       if (typeof result.credits_remaining === "number" && updateUser) {
         updateUser({ creditBalance: result.credits_remaining });
       }
@@ -321,7 +337,6 @@ export default function CopilotPage() {
     } catch (err: unknown) {
       console.error("Chat Query failed:", err);
       const errMsg = err instanceof Error ? err.message : "Sorry, I encountered an error connecting to the legal knowledge base. Please try again.";
-      // Fallback: show an error message
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === copilotMsgId
@@ -354,21 +369,23 @@ export default function CopilotPage() {
 
   if (String(user?.role).toUpperCase() === "LAWYER") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
+  const groupedSessions = groupSessions(sessions);
+
   return (
     <AppShell>
       <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto font-sans">
         
-        {/* Top Control Bar: Active Session Info & Chat History Trigger */}
-        <div className="mb-2 px-3.5 py-2 rounded-2xl flex items-center justify-between gap-3 text-xs bg-[var(--bg-card)] border border-[var(--text-primary)]/10 shadow-xs">
+        {/* Top Control Bar */}
+        <div className="mb-2 px-3.5 py-2 rounded-2xl flex items-center justify-between gap-3 text-xs bg-(--bg-card) border border-(--text-primary)/10 shadow-xs">
           <div className="flex items-center gap-2 truncate">
             <MessageSquare className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span className="font-semibold truncate max-w-[200px] sm:max-w-md text-[var(--text-primary)]">
+            <span className="font-semibold truncate max-w-50 text-(--text-primary)">
               {currentActiveSession
                 ? currentActiveSession.title
                 : activeSessionId
@@ -395,7 +412,7 @@ export default function CopilotPage() {
             {activeSessionId && (
               <button
                 onClick={handleNewSession}
-                className="px-2.5 py-1 rounded-xl text-xs font-medium border border-[var(--text-primary)]/15 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[var(--text-primary)] transition-colors flex items-center gap-1 cursor-pointer"
+                className="px-2.5 py-1 rounded-xl text-xs font-medium border border-(--text-primary)/15 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-(--text-primary) transition-colors flex items-center gap-1 cursor-pointer"
                 title={language === "bn" ? "নতুন সেশন শুরু করুন" : "Start New Consultation"}
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -408,7 +425,7 @@ export default function CopilotPage() {
                 setShowHistoryDrawer(true);
                 loadSessions();
               }}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shadow-xs"
+              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shadow-xs"
               title={language === "bn" ? "চ্যাট হিস্ট্রি দেখুন" : "View Chat History"}
             >
               <History className="w-3.5 h-3.5" />
@@ -432,13 +449,13 @@ export default function CopilotPage() {
 
         {/* Context Bar if contract is loaded */}
         {loadedContractTitle && (
-          <div className="mb-3 px-4 py-2 rounded-xl shadow-xs flex items-center justify-between text-xs bg-[var(--bg-card)] border border-[var(--text-primary)]/10 text-[var(--text-primary)]">
+          <div className="mb-3 px-4 py-2 rounded-xl shadow-xs flex items-center justify-between text-xs bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)">
             <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4" style={{ color: "var(--text-primary)" }} />
-              <span className="font-semibold" style={{ color: "var(--text-primary)" }}>
+              <FileText className="w-4 h-4 text-(--text-primary)" />
+              <span className="font-semibold text-(--text-primary)">
                 {language === "bn" ? "চুক্তির কনটেক্সট সক্রিয়:" : "Active Contract:"}
               </span>
-              <span style={{ color: "var(--text-muted)" }}>{loadedContractTitle}</span>
+              <span className="text-(--text-muted)">{loadedContractTitle}</span>
             </div>
             <button
               onClick={() => {
@@ -458,8 +475,7 @@ export default function CopilotPage() {
             {messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"
-                  }`}
+                className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
               >
                 <div
                   className={`max-w-[85%] sm:max-w-[78%] transition-all duration-300 ${
@@ -477,7 +493,6 @@ export default function CopilotPage() {
                       : { backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }
                   }
                 >
-                  {/* ThoughtLine for Copilot Response */}
                   {msg.sender === "copilot" && (
                     <div className={msg.isThinking ? "" : "mb-3"}>
                       <ThoughtLine
@@ -505,7 +520,6 @@ export default function CopilotPage() {
                     </div>
                   )}
 
-                  {/* User message attachments & text */}
                   {msg.sender === "user" && (
                     <div className="space-y-2">
                       {msg.attachments && msg.attachments.length > 0 && (
@@ -516,7 +530,7 @@ export default function CopilotPage() {
                               className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-black/10 dark:bg-white/10"
                             >
                               <FileText className="w-3.5 h-3.5 opacity-70" />
-                              <span className="max-w-[200px] truncate">{file}</span>
+                              <span className="max-w-50 truncate">{file}</span>
                             </span>
                           ))}
                         </div>
@@ -527,7 +541,6 @@ export default function CopilotPage() {
                     </div>
                   )}
 
-                  {/* Copilot message text and citations */}
                   {msg.sender === "copilot" && !msg.isThinking && (msg.textEn || msg.textBn) && (
                     <>
                       <div className="copilot-markdown-reply">
@@ -537,12 +550,11 @@ export default function CopilotPage() {
                         />
                       </div>
 
-                      {/* Message Actions */}
                       <div className="mt-2 flex items-center justify-end">
                         <button
                           type="button"
                           onClick={() => copyMessageText(language === "bn" ? msg.textBn : msg.textEn, msg.id)}
-                          className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer"
+                          className="p-1 rounded-md text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"
                           title={language === "bn" ? "মেসেজ কপি করুন" : "Copy message"}
                         >
                           {copiedMsgId === msg.id ? (
@@ -553,11 +565,10 @@ export default function CopilotPage() {
                         </button>
                       </div>
 
-                      {/* Statutory Citations Section (Local) */}
                       {msg.citations && msg.citations.length > 0 && (
                         <div className="mt-3.5 flex flex-wrap gap-2 items-center">
-                          <span className="text-[11px] font-medium flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
-                            <Scale className="w-3 h-3" style={{ color: "var(--text-muted)" }} />
+                          <span className="text-[11px] font-medium flex items-center gap-1 text-(--text-muted)">
+                            <Scale className="w-3 h-3 text-(--text-muted)" />
                             {language === "bn" ? "যাচাইকৃত আইনি রেফারেন্স:" : "Statutory Citations:"}
                           </span>
                           {msg.citations.map((citeId) => {
@@ -567,8 +578,7 @@ export default function CopilotPage() {
                               <button
                                 key={citeId}
                                 onClick={() => setActiveCitation(provision)}
-                                className="px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer"
-                                style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+                                className="px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer bg-(--bg-surface) text-(--text-primary)"
                               >
                                 <span>
                                   {language === "bn"
@@ -582,9 +592,8 @@ export default function CopilotPage() {
                         </div>
                       )}
 
-                      {/* Live Backend RAG Statutory Citations Section */}
                       {msg.apiCitations && msg.apiCitations.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-[var(--text-primary)]/10 space-y-2">
+                        <div className="mt-4 pt-3 border-t border-(--text-primary)/10 space-y-2">
                           <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
                             <Scale className="w-3.5 h-3.5" />
                             <span>{language === "bn" ? "সংবিধিবদ্ধ আইনের ধারা ও সাইটেশন (Live RAG Citations):" : "Statutory Citations (Live RAG):"}</span>
@@ -593,23 +602,23 @@ export default function CopilotPage() {
                             {msg.apiCitations.map((cite, cIdx) => (
                               <div
                                 key={cIdx}
-                                className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)] text-xs space-y-1 shadow-sm"
+                                className="p-2.5 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) text-xs space-y-1 shadow-sm"
                               >
-                                <div className="flex items-center justify-between font-bold text-[var(--text-primary)]">
+                                <div className="flex items-center justify-between font-bold text-(--text-primary)">
                                   <span className="text-indigo-600 dark:text-indigo-400">{cite.section_number || cite.section || "Section"}</span>
                                   {cite.act && (
-                                    <span className="text-[10px] text-[var(--text-muted)] truncate max-w-[140px]" title={cite.act}>
+                                    <span className="text-[10px] text-(--text-muted) truncate max-w-35" title={cite.act}>
                                       {cite.act}
                                     </span>
                                   )}
                                 </div>
                                 {(cite.title || cite.act_title) && (
-                                  <p className="font-semibold text-[11px] text-[var(--text-primary)]">
+                                  <p className="font-semibold text-[11px] text-(--text-primary)">
                                     {cite.title || cite.act_title}
                                   </p>
                                 )}
                                 {(cite.provision_summary || cite.relevance || cite.relevance_summary) && (
-                                  <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                  <p className="text-[11px] text-(--text-muted) leading-relaxed">
                                     {cite.provision_summary || cite.relevance || cite.relevance_summary}
                                   </p>
                                 )}
@@ -619,10 +628,9 @@ export default function CopilotPage() {
                         </div>
                       )}
 
-                      {/* Suggested Next Steps Chips */}
                       {msg.nextSteps && msg.nextSteps.length > 0 && (
-                        <div className="mt-3.5 pt-2 border-t border-[var(--text-primary)]/10 flex flex-wrap gap-1.5 items-center">
-                          <span className="text-[10px] uppercase font-bold text-[var(--text-muted)] mr-1">
+                        <div className="mt-3.5 pt-2 border-t border-(--text-primary)/10 flex flex-wrap gap-1.5 items-center">
+                          <span className="text-[10px] uppercase font-bold text-(--text-muted) mr-1">
                             {language === "bn" ? "পরবর্তী পদক্ষেপ:" : "Suggested:"}
                           </span>
                           {msg.nextSteps.map((step, sIdx) => (
@@ -630,7 +638,7 @@ export default function CopilotPage() {
                               key={sIdx}
                               type="button"
                               onClick={() => handleSendPrompt(step)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-[var(--text-primary)]/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-[var(--bg-surface)] text-[var(--text-primary)] cursor-pointer transition-all shadow-xs"
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-(--text-primary)/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs"
                             >
                               💡 {step}
                             </button>
@@ -646,25 +654,19 @@ export default function CopilotPage() {
             <div ref={messagesEndRef} />
           </div>
         ) : (
-          /* Initial Stage: Centered Prompt Bar */
           <div className="flex-1 flex flex-col items-center justify-center -mt-8">
             <div className="text-center mb-8">
-              <h2
-                className="text-2xl sm:text-3xl font-medium tracking-tight mb-2"
-                style={{ color: "var(--text-primary)" }}
-              >
+              <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2 text-(--text-primary)">
                 {language === "bn" ? "এডভোটেক কোপাইলট" : "Advotech Copilot"}
               </h2>
-              <p
-                className="text-xs sm:text-sm font-normal text-neutral-500 dark:text-neutral-400"
-              >
+              <p className="text-xs sm:text-sm font-normal text-neutral-500 dark:text-neutral-400">
                 {language === "bn"
                   ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
                   : "Ask statutory questions with verifiable citations"}
               </p>
             </div>
 
-            <div className="w-full max-w-[620px] shadow-sm rounded-[22px]">
+            <div className="w-full max-w-155 shadow-sm rounded-[22px]">
               <PromptBar
                 placeholder={
                   language === "bn"
@@ -672,7 +674,7 @@ export default function CopilotPage() {
                     : "Ask anything about contracts or Bangladesh statutes..."
                 }
                 width={620}
-                className="w-full !max-w-none"
+                className="w-full max-w-none!"
                 busy={isTyping}
                 onSend={handleSendPrompt}
               />
@@ -680,7 +682,6 @@ export default function CopilotPage() {
           </div>
         )}
 
-        {/* Message Limit Warning Banner (FastAPI Tier Constraint) */}
         {messageLimitReached && (
           <div className="my-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-in fade-in">
             <div className="flex items-center gap-2">
@@ -701,7 +702,6 @@ export default function CopilotPage() {
           </div>
         )}
 
-        {/* Bottom Docked Prompt Bar when messages exist */}
         {hasMessages && !messageLimitReached && (
           <div className="pt-2 flex justify-center w-full">
             <PromptBar
@@ -717,124 +717,102 @@ export default function CopilotPage() {
           </div>
         )}
 
-        {/* Chat History Slide-Over Drawer */}
+        {/* ==================================================================== */}
+        {/* ✅ নতুন ডিজাইনের চ্যাট হিস্ট্রি ড্রয়ার */}
+        {/* ==================================================================== */}
         {showHistoryDrawer && (
           <div className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-xs animate-in fade-in duration-150">
-            <div
-              className="w-full sm:w-[420px] h-full shadow-2xl p-6 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200"
-              style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}
-            >
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-[var(--text-primary)]/10">
-                  <div className="flex items-center gap-2">
-                    <History className="w-5 h-5 text-indigo-500" />
-                    <h3 className="text-base font-bold text-[var(--text-primary)]">
-                      {language === "bn" ? "আইনি চ্যাট ইতিহাস" : "Chat History & Sessions"}
-                    </h3>
-                  </div>
-                  <button
-                    onClick={() => setShowHistoryDrawer(false)}
-                    className="p-1 rounded-lg text-neutral-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+            <div className="w-full sm:w-105 h-full shadow-2xl flex flex-col justify-between overflow-y-auto bg-(--bg-card) animate-in slide-in-from-right duration-200">
+              
+              {/* ড্রয়ার হেডার */}
+              <div className="sticky top-0 z-10 p-5 border-b border-(--text-primary)/10 bg-(--bg-card)/95 backdrop-blur-md flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <History className="w-5 h-5 text-indigo-500" />
+                  <h3 className="text-base font-bold text-(--text-primary)">{language === "bn" ? "আইনি চ্যাট ইতিহাস" : "Chat History"}</h3>
                 </div>
-
-                {/* New Chat Button in Drawer */}
-                <button
-                  onClick={handleNewSession}
-                  className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold border-2 border-dashed border-indigo-500/40 hover:border-indigo-500 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 transition-all flex items-center justify-center gap-2 cursor-pointer shadow-xs"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{language === "bn" ? "+ নতুন আইনি পরামর্শ শুরু করুন" : "+ Start New Consultation"}</span>
-                </button>
-
-                {/* Session List */}
-                <div className="space-y-2.5 pt-1">
-                  {isLoadingSessions ? (
-                    <div className="py-12 flex flex-col items-center justify-center gap-2 text-neutral-400 text-xs">
-                      <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-                      <span>{language === "bn" ? "সেশন লোড হচ্ছে..." : "Loading sessions..."}</span>
-                    </div>
-                  ) : sessions.length === 0 ? (
-                    <div className="py-12 text-center text-xs text-neutral-400 space-y-1">
-                      <p>{language === "bn" ? "কোনো সংরক্ষিত সেশন পাওয়া যায়নি।" : "No past chat sessions found."}</p>
-                      <p className="text-[11px] opacity-75">{language === "bn" ? "নতুন প্রশ্ন জিজ্ঞাসা করে প্রথম সেশন শুরু করুন।" : "Ask a legal question to create your first session."}</p>
-                    </div>
-                  ) : (
-                    sessions.map((sess) => {
-                      const sid = String(sess.session_id || sess.id);
-                      const isActive = String(activeSessionId) === sid;
-                      const count = sess.message_count ?? 0;
-                      const limit = sess.message_limit ?? 5;
-                      const percent = Math.min(100, Math.round((count / limit) * 100));
-
-                      return (
-                        <div
-                          key={sid}
-                          onClick={() => handleSelectSession(sess)}
-                          className={`p-3.5 rounded-2xl border transition-all cursor-pointer group relative ${
-                            isActive
-                              ? "border-indigo-500 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-xs"
-                              : "border-[var(--text-primary)]/10 hover:border-[var(--text-primary)]/25 bg-[var(--bg-surface)]"
-                          }`}
-                        >
-                          <div className="flex items-start justify-between gap-2 mb-1.5">
-                            <span className="font-semibold text-xs text-[var(--text-primary)] line-clamp-1 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                              {sess.title}
-                            </span>
-                            <button
-                              onClick={(e) => handleCloseSession(sid, e)}
-                              className="opacity-0 group-hover:opacity-100 p-1 text-neutral-400 hover:text-rose-500 rounded-md transition-opacity cursor-pointer"
-                              title={language === "bn" ? "সেশন বন্ধ করুন" : "Close session"}
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-
-                          <div className="flex items-center justify-between text-[11px] text-[var(--text-muted)] mb-2">
-                            <span className="uppercase text-[9px] font-bold px-1.5 py-0.5 rounded bg-neutral-200/50 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-300">
-                              {sess.mode || "GENERAL"}
-                            </span>
-                            <span>
-                              {sess.updated_at
-                                ? new Date(sess.updated_at).toLocaleDateString([], { month: "short", day: "numeric" })
-                                : "Recent"}
-                            </span>
-                          </div>
-
-                          {/* Progress bar showing message usage */}
-                          <div className="space-y-1">
-                            <div className="flex items-center justify-between text-[10px] text-neutral-400">
-                              <span>{count} / {limit} {language === "bn" ? "বার্তা ব্যবহৃত" : "messages used"}</span>
-                              <span>{percent}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all ${
-                                  percent >= 100
-                                    ? "bg-rose-500"
-                                    : percent >= 80
-                                    ? "bg-amber-500"
-                                    : "bg-indigo-500"
-                                }`}
-                                style={{ width: `${percent}%` }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
+                <button onClick={() => setShowHistoryDrawer(false)} className="p-1.5 rounded-lg text-(--text-muted) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
 
-              {/* Close Drawer button */}
-              <div className="pt-4 border-t border-[var(--text-primary)]/10">
-                <button
-                  onClick={() => setShowHistoryDrawer(false)}
-                  className="w-full py-2.5 rounded-xl text-xs font-medium border border-[var(--text-primary)]/15 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-[var(--text-primary)] transition-colors cursor-pointer"
-                >
+              <div className="flex-1 p-4 space-y-6">
+                {/* নতুন চ্যাট বাটন */}
+                <button onClick={handleNewSession} className="w-full py-3 px-4 rounded-2xl text-xs font-bold border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                  <Plus className="w-4 h-4" />
+                  <span>{language === "bn" ? "নতুন পরামর্শ শুরু করুন" : "Start New Consultation"}</span>
+                </button>
+
+                {/* সেশন লিস্ট (গ্রুপ করা) */}
+                {isLoadingSessions ? (
+                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-(--text-muted) text-xs">
+                    <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
+                    <span>{language === "bn" ? "লোড হচ্ছে..." : "Loading sessions..."}</span>
+                  </div>
+                ) : sessions.length === 0 ? (
+                  <div className="py-12 text-center text-xs text-(--text-muted) space-y-1">
+                    <p>{language === "bn" ? "কোনো হিস্ট্রি পাওয়া যায়নি।" : "No chat history found."}</p>
+                  </div>
+                ) : (
+                  Object.entries(groupedSessions).map(([groupName, groupSessions]) => {
+                    if (groupSessions.length === 0) return null;
+                    return (
+                      <div key={groupName} className="space-y-2">
+                        <h4 className="text-[10px] uppercase font-bold tracking-wider text-(--text-muted) ml-1">
+                          {language === "bn" 
+                            ? groupName === "Today" ? "আজ" : groupName === "Yesterday" ? "গতকাল" : groupName === "Previous 7 Days" ? "গত ৭ দিন" : "পুরনো"
+                            : groupName}
+                        </h4>
+                        <div className="space-y-1">
+                          {groupSessions.map((sess) => {
+                            const sid = String(sess.session_id || sess.id);
+                            const isActive = String(activeSessionId) === sid;
+                            const isContract = sess.mode === "USER_CONTRACT";
+                            
+                            return (
+                              <div
+                                key={sid}
+                                onClick={() => handleSelectSession(sess)}
+                                className={`group p-3 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-2 ${
+                                  isActive 
+                                    ? "border-indigo-500/50 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-xs" 
+                                    : "border-transparent hover:bg-(--bg-surface) hover:border-(--text-primary)/10"
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 mb-1">
+                                    {isContract ? <FileText className="w-3.5 h-3.5 text-sky-500 shrink-0" /> : <MessageSquare className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
+                                    <span className={`font-semibold text-xs truncate ${isActive ? "text-indigo-700 dark:text-indigo-300" : "text-(--text-primary)"}`}>
+                                      {sess.title}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2 text-[10px] text-(--text-muted)">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="w-3 h-3" />
+                                      {sess.updated_at ? new Date(sess.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recent"}
+                                    </span>
+                                    <span>·</span>
+                                    <span>{sess.message_count || 0} messages</span>
+                                  </div>
+                                </div>
+
+                                <button
+                                  onClick={(e) => handleCloseSession(sid, e)}
+                                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-(--text-muted) hover:text-rose-500 hover:bg-rose-500/10 transition-all shrink-0"
+                                  title={language === "bn" ? "সেশন মুছুন" : "Delete session"}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* ড্রয়ার ফুটার */}
+              <div className="p-4 border-t border-(--text-primary)/10 bg-(--bg-card)">
+                <button onClick={() => setShowHistoryDrawer(false)} className="w-full py-2.5 rounded-xl text-xs font-medium border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer">
                   {language === "bn" ? "বন্ধ করুন" : "Close"}
                 </button>
               </div>
@@ -842,84 +820,45 @@ export default function CopilotPage() {
           </div>
         )}
 
-        {/* Side Slide-Over Citation Reader Panel */}
+        {/* Citation Modal */}
         {activeCitation && (
-          <div
-            className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] shadow-2xl p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200"
-            style={{ backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }}
-          >
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-120 shadow-2xl p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 bg-(--bg-card) text-(--text-primary)">
             <div className="space-y-5">
-              <div
-                className="flex items-center justify-between pb-3 border-b"
-                style={{ borderColor: "color-mix(in srgb, var(--text-primary) 10%, transparent)" }}
-              >
-                <div className="flex items-center gap-2 text-xs font-semibold" style={{ color: "var(--text-primary)" }}>
+              <div className="flex items-center justify-between pb-3 border-b border-(--text-primary)/10">
+                <div className="flex items-center gap-2 text-xs font-semibold text-(--text-primary)">
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span>
-                    {language === "bn" ? "সরকারি bdlaws আইনভাণ্ডার" : "Verified Official Statute"}
-                  </span>
+                  <span>{language === "bn" ? "সরকারি bdlaws আইনভাণ্ডার" : "Verified Official Statute"}</span>
                 </div>
-                <button
-                  onClick={() => setActiveCitation(null)}
-                  className="p-1 rounded-lg transition-colors"
-                  style={{ color: "var(--text-muted)" }}
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                <button onClick={() => setActiveCitation(null)} className="p-1 rounded-lg transition-colors text-(--text-muted) hover:text-(--text-primary) cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
 
               <div>
-                <span className="text-[11px] font-semibold tracking-wider uppercase block mb-1" style={{ color: "var(--text-muted)" }}>
+                <span className="text-[11px] font-semibold tracking-wider uppercase block mb-1 text-(--text-muted)">
                   {language === "bn" ? activeCitation.actTitleBn : activeCitation.actTitleEn}
                 </span>
-                <h3 className="text-lg font-bold leading-snug" style={{ color: "var(--text-primary)" }}>
+                <h3 className="text-lg font-bold leading-snug text-(--text-primary)">
                   {language === "bn" ? activeCitation.sectionBn : activeCitation.sectionEn}
                 </h3>
               </div>
 
-              {/* Legal Summary Card */}
-              <div className="p-4 rounded-2xl text-xs leading-relaxed space-y-1" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}>
-                <span className="font-bold block">
-                  {language === "bn" ? "সহজ আইনি ব্যাখ্যা:" : "Key Takeaway:"}
-                </span>
-                <p style={{ color: "var(--text-muted)" }}>
-                  {language === "bn" ? activeCitation.summaryBn : activeCitation.summaryEn}
-                </p>
+              <div className="p-4 rounded-2xl text-xs leading-relaxed space-y-1 bg-(--bg-surface) text-(--text-primary)">
+                <span className="font-bold block">{language === "bn" ? "সহজ আইনি ব্যাখ্যা:" : "Key Takeaway:"}</span>
+                <p className="text-(--text-muted)">{language === "bn" ? activeCitation.summaryBn : activeCitation.summaryEn}</p>
               </div>
 
-              {/* Exact Statutory Verbatim Text */}
               <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider block mb-2" style={{ color: "var(--text-muted)" }}>
-                  {language === "bn"
-                    ? "আইনের হুবহু ধারা (Statutory Verbatim):"
-                    : "Statutory Provision Text:"}
+                <span className="text-[11px] font-bold uppercase tracking-wider block mb-2 text-(--text-muted)">
+                  {language === "bn" ? "আইনের হুবহু ধারা (Statutory Verbatim):" : "Statutory Provision Text:"}
                 </span>
-                <div
-                  className="p-4 rounded-2xl font-serif text-xs leading-relaxed whitespace-pre-line border-l-2"
-                  style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)", borderColor: "color-mix(in srgb, var(--text-primary) 15%, transparent)" }}
-                >
+                <div className="p-4 rounded-2xl font-serif text-xs leading-relaxed whitespace-pre-line border-l-2 bg-(--bg-surface) text-(--text-primary) border-(--text-primary)/15">
                   {language === "bn" ? activeCitation.fullTextBn : activeCitation.fullTextEn}
                 </div>
               </div>
             </div>
 
-            {/* External Government Link */}
-            <div
-              className="pt-6 border-t mt-6"
-              style={{ borderColor: "color-mix(in srgb, var(--text-primary) 10%, transparent)" }}
-            >
-              <a
-                href={activeCitation.bdlawsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm hover:opacity-90"
-                style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
-              >
-                <span>
-                  {language === "bn"
-                    ? "bdlaws ওয়েবসাইটে আসল ধারাটি দেখুন"
-                    : "View on Official bdlaws Portal"}
-                </span>
+            <div className="pt-6 border-t border-(--text-primary)/10 mt-6">
+              <a href={activeCitation.bdlawsUrl} target="_blank" rel="noopener noreferrer" className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm hover:opacity-90 bg-(--accent-solid) text-(--accent-contrast)">
+                <span>{language === "bn" ? "bdlaws ওয়েবসাইটে আসল ধারাটি দেখুন" : "View on Official bdlaws Portal"}</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>
             </div>

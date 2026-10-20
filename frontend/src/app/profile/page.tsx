@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image"; // ✅ FIX: Next.js Image ইমপোর্ট করা হলো
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -10,7 +11,6 @@ import {
   getContractHistory,
   listChatSessions,
   changePassword,
-  getMySettings,
   uploadProfilePhoto,
 } from "@/lib/apiServices";
 import {
@@ -32,14 +32,11 @@ import {
   FileText,
   MessageSquare,
   ArrowRight,
-  ExternalLink,
-  Lock,
   Eye,
   EyeOff,
   Key,
   Check,
   AlertCircle,
-  Sparkles,
   RefreshCw,
   Inbox,
 } from "lucide-react";
@@ -76,6 +73,7 @@ export default function ProfilePage() {
 
   // Avatar Upload State
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync draft states when user loads
@@ -88,7 +86,7 @@ export default function ProfilePage() {
   }, [user]);
 
   // Load live activity stats on mount (Contract Audits & Chat Sessions)
-  const loadActivityStats = async () => {
+  const loadActivityStats = useCallback(async () => {
     setIsRefreshingStats(true);
     try {
       const [historyData, chatData] = await Promise.allSettled([
@@ -106,22 +104,21 @@ export default function ProfilePage() {
     } finally {
       setIsRefreshingStats(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     loadActivityStats();
-    // Also refresh latest user data from backend
     if (refreshUser) {
       refreshUser().catch(() => {});
     }
-  }, []);
+  }, [loadActivityStats, refreshUser]);
 
   if (!user) {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3">
-          <div className="w-8 h-8 rounded-full border-2 border-[var(--text-primary)]/20 border-t-[var(--accent-solid)] animate-spin" />
-          <p className="text-sm text-[var(--text-muted)]">
+          <div className="w-8 h-8 rounded-full border-2 border-(--text-primary)/20 border-t-(--accent-solid) animate-spin" />
+          <p className="text-sm text-(--text-muted)">
             {isBn ? "প্রোফাইল লোড হচ্ছে..." : "Loading profile..."}
           </p>
         </div>
@@ -144,13 +141,11 @@ export default function ProfilePage() {
     setIsSaving(true);
     setSaveMessage(null);
     try {
-      // 1. Call Backend API
       await updateProfile({
         full_name: draftName.trim(),
         phone: draftMobile.trim(),
       });
 
-      // 2. Update AuthContext & LocalStorage
       updateUser({
         name: draftName.trim(),
         mobile: draftMobile.trim(),
@@ -164,7 +159,6 @@ export default function ProfilePage() {
       setEditMode(false);
     } catch (err: unknown) {
       console.error("Failed to update profile:", err);
-      // Fallback update locally even if backend server is unreachable
       updateUser({
         name: draftName.trim(),
         mobile: draftMobile.trim(),
@@ -238,6 +232,7 @@ export default function ProfilePage() {
 
     setIsUploadingPhoto(true);
     setSaveMessage(null);
+    setImgError(false);
     try {
       const res = await uploadProfilePhoto(file);
       const newUrl = res.profile_photo_url || res.url || res.avatar_url;
@@ -275,15 +270,6 @@ export default function ProfilePage() {
     }
   };
 
-  // Avatar presets
-  const AVATAR_PRESETS = [
-    { label: "Classic Navy", bg: "from-blue-600 to-indigo-700", text: "text-white" },
-    { label: "Emerald Law", bg: "from-emerald-600 to-teal-700", text: "text-white" },
-    { label: "Crimson Silk", bg: "from-rose-600 to-red-700", text: "text-white" },
-    { label: "Amber Gold", bg: "from-amber-600 to-yellow-700", text: "text-white" },
-    { label: "Slate Minimal", bg: "from-neutral-700 to-neutral-900", text: "text-white" },
-  ];
-
   // User initials
   const initials = user.name
     ? user.name
@@ -300,10 +286,10 @@ export default function ProfilePage() {
         {/* Top Header */}
         <div className="flex items-center justify-between gap-4">
           <div>
-            <p className="text-[11px] uppercase tracking-wider font-semibold text-[var(--text-muted)] mb-1">
+            <p className="text-[11px] uppercase tracking-wider font-semibold text-(--text-muted) mb-1">
               {isBn ? "ব্যক্তিগত অ্যাকাউন্ট ও প্রোফাইল" : "Personal Account & Profile"}
             </p>
-            <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-[var(--text-primary)]">
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-(--text-primary)">
               {isBn ? "প্রোফাইল ওভারভিউ" : "Profile"}
             </h1>
           </div>
@@ -311,7 +297,7 @@ export default function ProfilePage() {
             type="button"
             onClick={loadActivityStats}
             disabled={isRefreshingStats}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border border-(--text-primary)/10 hover:bg-(--text-primary)/5 transition-colors cursor-pointer text-(--text-muted) hover:text-(--text-primary)"
             title="Refresh stats"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingStats ? "animate-spin" : ""}`} />
@@ -347,16 +333,20 @@ export default function ProfilePage() {
         )}
 
         {/* ── 1. AVATAR & IDENTITY HERO CARD ── */}
-        <div className="p-6 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4.5 min-w-0">
             {/* Avatar Circle */}
             <div className="relative shrink-0">
-              <div className="w-16 h-16 rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-2 border-[var(--bg-primary)] shadow-md flex items-center justify-center text-xl font-bold font-serif text-[var(--text-primary)] overflow-hidden">
-                {user.profile_photo_url || user.avatarUrl ? (
-                  <img
-                    src={user.profile_photo_url || user.avatarUrl}
+              <div className="w-16 h-16 rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-2 border-(--bg-primary) shadow-md flex items-center justify-center text-xl font-bold font-serif text-(--text-primary) overflow-hidden">
+                {(!imgError && (user.profile_photo_url || user.avatarUrl)) ? (
+                  <Image
+                    src={user.profile_photo_url || user.avatarUrl || ""}
                     alt={user.name}
+                    width={64}
+                    height={64}
                     className="w-full h-full object-cover"
+                    unoptimized
+                    onError={() => setImgError(true)}
                   />
                 ) : (
                   <span>{initials}</span>
@@ -373,7 +363,7 @@ export default function ProfilePage() {
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={isUploadingPhoto}
-                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-sm disabled:opacity-50"
+                className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-(--accent-solid) text-(--accent-contrast) flex items-center justify-center cursor-pointer hover:scale-105 transition-transform shadow-sm disabled:opacity-50"
                 title={isBn ? "প্রোফাইল ছবি আপলোড করুন" : "Upload Profile Photo"}
               >
                 {isUploadingPhoto ? (
@@ -386,23 +376,26 @@ export default function ProfilePage() {
 
             {/* Name & Role Badges */}
             <div className="min-w-0">
-              <h2 className="text-lg sm:text-xl font-semibold text-[var(--text-primary)] truncate">
+              <h2 className="text-lg sm:text-xl font-semibold text-(--text-primary) truncate">
                 {user.name}
               </h2>
-              <div className="flex items-center gap-2 flex-wrap text-xs text-[var(--text-muted)] mt-1">
+              <div className="flex items-center gap-2 flex-wrap text-xs text-(--text-muted) mt-1">
                 {/* Role Pill */}
                 {isLawyer ? (
-                  <span className="inline-flex items-center gap-1 font-semibold text-[var(--text-primary)] bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
+                  // ✅ FIX: text-(--text-primary) রিমুভ করা হয়েছে
+                  <span className="inline-flex items-center gap-1 font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
                     <Gavel className="w-3 h-3" />
                     <span>{isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer"}</span>
                   </span>
                 ) : user.role === "enterprise_admin" || (user.role === "enterprise" && !user.enterpriseProfile?.isTeamMember) ? (
-                  <span className="inline-flex items-center gap-1 font-semibold text-[var(--text-primary)] bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                  // ✅ FIX: text-(--text-primary) রিমুভ করা হয়েছে
+                  <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
                     <span>{isBn ? "এন্টারপ্রাইজ অ্যাডমিন" : "Enterprise Admin"}</span>
                   </span>
                 ) : user.role === "enterprise_member" || (user.role === "enterprise" && user.enterpriseProfile?.isTeamMember) ? (
-                  <span className="inline-flex items-center gap-1 font-semibold text-[var(--text-primary)] bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
+                  // ✅ FIX: text-(--text-primary) রিমুভ করা হয়েছে
+                  <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
                     <span>{isBn ? "এন্টারপ্রাইজ সদস্য" : "Enterprise Member"}</span>
                   </span>
@@ -429,7 +422,7 @@ export default function ProfilePage() {
                 setDraftEmail(user.email);
               }
             }}
-            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 text-[var(--text-primary)] transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-xs"
+            className="inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-xs"
           >
             {editMode ? (
               <>
@@ -448,7 +441,7 @@ export default function ProfilePage() {
         {/* ── 2. KEY STATS & ACTIVITY HUB (HIGH VALUE UX) ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {/* Card 1: Balance / Earnings */}
-          <div className="p-5 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col justify-between space-y-3">
+          <div className="p-5 rounded-2xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
                 {isLawyer
@@ -458,10 +451,10 @@ export default function ProfilePage() {
               <Coins className="w-4 h-4 text-amber-500" />
             </div>
             <div>
-              <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">
+              <p className="text-2xl font-mono font-bold text-(--text-primary)">
                 {isLawyer ? (isBn ? "সক্রিয় পোর্টাল" : "Active Hub") : (user.creditBalance ?? 0)}
               </p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+              <p className="text-[11px] text-(--text-muted) mt-0.5">
                 {isLawyer
                   ? isBn ? "bKash উত্তোলন ও আয়ের হিসাব" : "bKash payout & earnings ledger"
                   : isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations"}
@@ -470,7 +463,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/pricing")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--accent-solid)] hover:underline cursor-pointer pt-1"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-(--accent-solid) hover:underline cursor-pointer pt-1"
             >
               <span>{isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : (isBn ? "প্যাকেজ কিনুন" : "Top up credits")}</span>
               <ArrowRight className="w-3 h-3" />
@@ -478,7 +471,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Card 2: Contract Audits / Sealed Contracts */}
-          <div className="p-5 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col justify-between space-y-3">
+          <div className="p-5 rounded-2xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
                 {isLawyer
@@ -488,10 +481,10 @@ export default function ProfilePage() {
               <FileText className="w-4 h-4 text-sky-500" />
             </div>
             <div>
-              <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">
+              <p className="text-2xl font-mono font-bold text-(--text-primary)">
                 {auditCount !== null ? auditCount : "0"}
               </p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+              <p className="text-[11px] text-(--text-muted) mt-0.5">
                 {isLawyer
                   ? isBn ? "আইনগতভাবে অনুমোদিত চুক্তিপত্র" : "Statutorily sealed memos"
                   : isBn ? "যাচাইকৃত ও সংরক্ষিত চুক্তিপত্র" : "Analyzed contract memos"}
@@ -500,7 +493,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/archive")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--text-primary)] hover:underline cursor-pointer pt-1"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-(--text-primary) hover:underline cursor-pointer pt-1"
             >
               <span>{isBn ? "আর্কাইভ দেখুন" : "View archive"}</span>
               <ArrowRight className="w-3 h-3" />
@@ -508,7 +501,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Card 3: Consultations / Review Queue */}
-          <div className="p-5 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs flex flex-col justify-between space-y-3">
+          <div className="p-5 rounded-2xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
                 {isLawyer
@@ -522,10 +515,10 @@ export default function ProfilePage() {
               )}
             </div>
             <div>
-              <p className="text-2xl font-mono font-bold text-[var(--text-primary)]">
+              <p className="text-2xl font-mono font-bold text-(--text-primary)">
                 {isLawyer ? (isBn ? "পেন্ডিং তালিকা" : "Review Queue") : (chatCount !== null ? chatCount : "—")}
               </p>
-              <p className="text-[11px] text-[var(--text-muted)] mt-0.5">
+              <p className="text-[11px] text-(--text-muted) mt-0.5">
                 {isLawyer
                   ? isBn ? "নতুন ক্লায়েন্ট চুক্তি পর্যালোচনা" : "Pending client contracts"
                   : isBn ? "বাংলাদেশ আইনের প্রশ্নোত্তর" : "BD statute consultations"}
@@ -534,7 +527,7 @@ export default function ProfilePage() {
             <button
               type="button"
               onClick={() => router.push(isLawyer ? "/lawyer/pending" : "/copilot")}
-              className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--text-primary)] hover:underline cursor-pointer pt-1"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-(--text-primary) hover:underline cursor-pointer pt-1"
             >
               <span>{isLawyer ? (isBn ? "রিভিউ স্টেশন খুলুন" : "Open Review Station") : (isBn ? "চ্যাট শুরু করুন" : "Open copilot")}</span>
               <ArrowRight className="w-3 h-3" />
@@ -543,9 +536,9 @@ export default function ProfilePage() {
         </div>
 
         {/* ── 3. PERSONAL INFORMATION SECTION ── */}
-        <div className="p-6 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs space-y-4">
+        <div className="p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs space-y-4">
           <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
-            <h3 className="text-xs uppercase tracking-wider font-semibold text-[var(--text-muted)]">
+            <h3 className="text-xs uppercase tracking-wider font-semibold text-(--text-muted)">
               {isBn ? "ব্যক্তিগত তথ্য বিবরণী" : "Personal Information"}
             </h3>
             {editMode && (
@@ -557,7 +550,7 @@ export default function ProfilePage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-4 py-2 text-sm">
             {/* Full Name */}
-            <span className="text-[var(--text-muted)] text-[13px] flex items-center gap-2">
+            <span className="text-(--text-muted) text-[13px] flex items-center gap-2">
               <User className="w-4 h-4 opacity-70" />
               <span>{isBn ? "পুরো নাম" : "Full Name"}</span>
             </span>
@@ -567,16 +560,16 @@ export default function ProfilePage() {
                   type="text"
                   value={draftName}
                   onChange={(e) => setDraftName(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl text-sm outline-none border border-[var(--text-primary)]/20 focus:border-[var(--text-primary)]/60 bg-[var(--bg-surface)] text-[var(--text-primary)] font-medium"
+                  className="w-full px-3.5 py-2 rounded-xl text-sm outline-none border border-(--text-primary)/20 focus:border-(--text-primary)/60 bg-(--bg-surface) text-(--text-primary) font-medium"
                   placeholder={isBn ? "আপনার পুরো নাম" : "Your full name"}
                 />
               ) : (
-                <span className="font-medium text-[var(--text-primary)]">{user.name || "—"}</span>
+                <span className="font-medium text-(--text-primary)">{user.name || "—"}</span>
               )}
             </div>
 
             {/* Mobile Number */}
-            <span className="text-[var(--text-muted)] text-[13px] flex items-center gap-2">
+            <span className="text-(--text-muted) text-[13px] flex items-center gap-2">
               <Phone className="w-4 h-4 opacity-70" />
               <span>{isBn ? "মোবাইল নম্বর" : "Mobile Number"}</span>
             </span>
@@ -586,23 +579,23 @@ export default function ProfilePage() {
                   type="tel"
                   value={draftMobile}
                   onChange={(e) => setDraftMobile(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl text-sm outline-none border border-[var(--text-primary)]/20 focus:border-[var(--text-primary)]/60 bg-[var(--bg-surface)] text-[var(--text-primary)] font-mono"
+                  className="w-full px-3.5 py-2 rounded-xl text-sm outline-none border border-(--text-primary)/20 focus:border-(--text-primary)/60 bg-(--bg-surface) text-(--text-primary) font-mono"
                   placeholder="+8801XXXXXXXXX"
                 />
               ) : (
-                <span className="font-mono text-[var(--text-primary)]">
+                <span className="font-mono text-(--text-primary)">
                   {user.mobile || "—"}
                 </span>
               )}
             </div>
 
             {/* Email Address */}
-            <span className="text-[var(--text-muted)] text-[13px] flex items-center gap-2">
+            <span className="text-(--text-muted) text-[13px] flex items-center gap-2">
               <Mail className="w-4 h-4 opacity-70" />
               <span>{isBn ? "ইমেইল ঠিকানা" : "Email Address"}</span>
             </span>
             <div className="sm:col-span-2 flex items-center gap-2">
-              <span className="text-[var(--text-primary)] font-mono text-xs sm:text-sm">
+              <span className="text-(--text-primary) font-mono text-xs sm:text-sm">
                 {user.email || "—"}
               </span>
               {user.isEmailVerified && (
@@ -614,11 +607,11 @@ export default function ProfilePage() {
             </div>
 
             {/* Account ID / Member Since */}
-            <span className="text-[var(--text-muted)] text-[13px] flex items-center gap-2">
+            <span className="text-(--text-muted) text-[13px] flex items-center gap-2">
               <Clock className="w-4 h-4 opacity-70" />
               <span>{isBn ? "সদস্য অন্তর্ভুক্তি" : "Member Since"}</span>
             </span>
-            <div className="sm:col-span-2 text-xs font-mono text-[var(--text-muted)]">
+            <div className="sm:col-span-2 text-xs font-mono text-(--text-muted)">
               Oct 2026 · ID: {user.id || "usr_active_session"}
             </div>
 
@@ -629,7 +622,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={handleSaveProfile}
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 shadow-sm"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 shadow-sm"
                 >
                   {isSaving ? (
                     <RefreshCw className="w-3.5 h-3.5 animate-spin" />
@@ -650,7 +643,7 @@ export default function ProfilePage() {
                   type="button"
                   onClick={handleCancelEdit}
                   disabled={isSaving}
-                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer"
+                  className="px-4 py-2.5 rounded-xl text-xs font-semibold text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"
                 >
                   {isBn ? "বাতিল" : "Cancel"}
                 </button>
@@ -658,8 +651,6 @@ export default function ProfilePage() {
             )}
           </div>
         </div>
-
-
 
         {/* ── 5. LAWYER SPECIFIC CREDENTIALS ── */}
         {isLawyer && (
@@ -683,18 +674,18 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 py-1 text-sm">
-              <span className="text-[var(--text-muted)] text-[13px]">{isBn ? "এনরোলমেন্ট নম্বর" : "Enrollment No."}</span>
-              <div className="sm:col-span-2 font-mono font-semibold text-[var(--text-primary)]">
+              <span className="text-(--text-muted) text-[13px]">{isBn ? "এনরোলমেন্ট নম্বর" : "Enrollment No."}</span>
+              <div className="sm:col-span-2 font-mono font-semibold text-(--text-primary)">
                 {lawyerProfile.barCouncilNo || "BC-48291/2019"}
               </div>
 
-              <span className="text-[var(--text-muted)] text-[13px]">{isBn ? "বিশেষজ্ঞতার ক্ষেত্র" : "Field of Practice"}</span>
-              <div className="sm:col-span-2 text-[var(--text-primary)]">
+              <span className="text-(--text-muted) text-[13px]">{isBn ? "বিশেষজ্ঞতার ক্ষেত্র" : "Field of Practice"}</span>
+              <div className="sm:col-span-2 text-(--text-primary)">
                 {lawyerProfile.fieldOfLaw || "Corporate & Labour Law"}
               </div>
 
-              <span className="text-[var(--text-muted)] text-[13px]">{isBn ? "বার সমিতি" : "Bar Association"}</span>
-              <div className="sm:col-span-2 text-[var(--text-primary)]">
+              <span className="text-(--text-muted) text-[13px]">{isBn ? "বার সমিতি" : "Bar Association"}</span>
+              <div className="sm:col-span-2 text-(--text-primary)">
                 {lawyerProfile.barAssociation || "Supreme Court Bar Association"}
               </div>
 
@@ -735,18 +726,18 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-y-3 py-1 text-sm">
-              <span className="text-[var(--text-muted)] text-[13px]">{isBn ? "কোম্পানির নাম" : "Company Name"}</span>
-              <div className="sm:col-span-2 font-semibold text-[var(--text-primary)]">
+              <span className="text-(--text-muted) text-[13px]">{isBn ? "কোম্পানির নাম" : "Company Name"}</span>
+              <div className="sm:col-span-2 font-semibold text-(--text-primary)">
                 {user.enterpriseProfile.companyName}
               </div>
 
-              <span className="text-[var(--text-muted)] text-[13px]">{isBn ? "আরজেএসসি নম্বর" : "RJSC Reg"}</span>
-              <div className="sm:col-span-2 font-mono text-[var(--text-primary)]">
+              <span className="text-(--text-muted) text-[13px]">{isBn ? "আরজেএসসি নম্বর" : "RJSC Reg"}</span>
+              <div className="sm:col-span-2 font-mono text-(--text-primary)">
                 {user.enterpriseProfile.registrationNo}
               </div>
 
-              <span className="text-[var(--text-muted)] text-[13px]">{isBn ? "টিআইএন নম্বর" : "Corporate TIN"}</span>
-              <div className="sm:col-span-2 font-mono text-[var(--text-primary)]">
+              <span className="text-(--text-muted) text-[13px]">{isBn ? "টিআইএন নম্বর" : "Corporate TIN"}</span>
+              <div className="sm:col-span-2 font-mono text-(--text-primary)">
                 {user.enterpriseProfile.tinNo}
               </div>
 
@@ -771,8 +762,8 @@ export default function ProfilePage() {
         )}
 
         {/* ── 7. ACCOUNT SECURITY & FAST ACTIONS ── */}
-        <div className="p-6 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-xs space-y-4">
-          <h3 className="text-xs uppercase tracking-wider font-semibold text-[var(--text-muted)] flex items-center gap-1.5">
+        <div className="p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs space-y-4">
+          <h3 className="text-xs uppercase tracking-wider font-semibold text-(--text-muted) flex items-center gap-1.5">
             <Shield className="w-3.5 h-3.5" />
             <span>{isBn ? "অ্যাকাউন্ট নিরাপত্তা ও সেটিংস" : "Account Security & Preferences"}</span>
           </h3>
@@ -781,11 +772,11 @@ export default function ProfilePage() {
             {/* Change Password Row */}
             <div className="py-3.5 flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-[var(--text-primary)] flex items-center gap-1.5">
-                  <Key className="w-4 h-4 text-[var(--text-muted)]" />
+                <p className="text-sm font-semibold text-(--text-primary) flex items-center gap-1.5">
+                  <Key className="w-4 h-4 text-(--text-muted)" />
                   <span>{isBn ? "অ্যাকাউন্ট পাসওয়ার্ড" : "Account Password"}</span>
                 </p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                <p className="text-xs text-(--text-muted) mt-0.5">
                   {isBn ? "নিয়মিত পাসওয়ার্ড পরিবর্তন করে অ্যাকাউন্ট সুরক্ষিত রাখুন" : "Update your password to protect your legal documents"}
                 </p>
               </div>
@@ -799,7 +790,7 @@ export default function ProfilePage() {
                   setConfirmPw("");
                   setIsPasswordModalOpen(true);
                 }}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer shrink-0"
               >
                 {isBn ? "পাসওয়ার্ড পরিবর্তন করুন →" : "Change Password →"}
               </button>
@@ -808,24 +799,24 @@ export default function ProfilePage() {
             {/* App Settings Shortcut */}
             <div className="py-3.5 flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-semibold text-[var(--text-primary)]">
+                <p className="text-sm font-semibold text-(--text-primary)">
                   {isBn ? "অ্যাপ সেটিংস ও ভাষা" : "App Settings & System Preferences"}
                 </p>
-                <p className="text-xs text-[var(--text-muted)] mt-0.5">
+                <p className="text-xs text-(--text-muted) mt-0.5">
                   {isBn ? "নোটিফিকেশন, থিম মোড এবং ভাষা সমন্বয় করুন" : "Configure theme, language, and notifications"}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => router.push("/settings")}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer shrink-0"
               >
                 {isBn ? "সেটিংসে যান →" : "Open Settings →"}
               </button>
             </div>
 
             {/* PII Masking Note */}
-            <div className="py-3.5 flex items-center gap-3 text-xs text-[var(--text-muted)]">
+            <div className="py-3.5 flex items-center gap-3 text-xs text-(--text-muted)">
               <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
               <span>
                 {isBn
@@ -857,20 +848,20 @@ export default function ProfilePage() {
       {/* ==================================================================== */}
       {isPasswordModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-2xl p-6 sm:p-7 space-y-5 text-left">
+          <div className="w-full max-w-md rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-2xl p-6 sm:p-7 space-y-5 text-left">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-2 rounded-xl bg-[var(--accent-solid)]/10 text-[var(--text-primary)]">
+                <div className="p-2 rounded-xl bg-(--accent-solid)/10 text-(--text-primary)">
                   <Key className="w-5 h-5" />
                 </div>
-                <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
+                <h3 className="text-base font-serif font-bold text-(--text-primary)">
                   {isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password"}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setIsPasswordModalOpen(false)}
-                className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
+                className="p-1 rounded-lg text-(--text-muted) hover:text-(--text-primary) cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -878,7 +869,7 @@ export default function ProfilePage() {
 
             <form onSubmit={handleChangePassword} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1">
                   {isBn ? "বর্তমান পাসওয়ার্ড" : "Current Password"}
                 </label>
                 <div className="relative">
@@ -887,7 +878,7 @@ export default function ProfilePage() {
                     required
                     value={currentPw}
                     onChange={(e) => setCurrentPw(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/20 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/60 pr-10"
+                    className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-(--text-primary)/20 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-(--text-primary)/60 pr-10"
                     placeholder="••••••••"
                   />
                   <button
@@ -901,7 +892,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1">
                   {isBn ? "নতুন পাসওয়ার্ড" : "New Password"}
                 </label>
                 <div className="relative">
@@ -910,7 +901,7 @@ export default function ProfilePage() {
                     required
                     value={newPw}
                     onChange={(e) => setNewPw(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/20 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/60 pr-10"
+                    className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-(--text-primary)/20 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-(--text-primary)/60 pr-10"
                     placeholder="Min 6 characters"
                   />
                   <button
@@ -924,7 +915,7 @@ export default function ProfilePage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-[var(--text-muted)] mb-1">
+                <label className="block text-xs font-semibold text-(--text-muted) mb-1">
                   {isBn ? "নতুন পাসওয়ার্ড নিশ্চিত করুন" : "Confirm New Password"}
                 </label>
                 <input
@@ -932,7 +923,7 @@ export default function ProfilePage() {
                   required
                   value={confirmPw}
                   onChange={(e) => setConfirmPw(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-[var(--text-primary)]/20 bg-[var(--bg-surface)] text-[var(--text-primary)] outline-none focus:border-[var(--text-primary)]/60"
+                  className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-(--text-primary)/20 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-(--text-primary)/60"
                   placeholder="Repeat new password"
                 />
               </div>
@@ -948,7 +939,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={pwLoading}
-                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50"
               >
                 {pwLoading
                   ? isBn
