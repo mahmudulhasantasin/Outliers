@@ -261,23 +261,43 @@ export default function ArchivePage() {
 
   // Filter records
   const filteredRecords = useMemo(() => {
+    const rawQ = (searchQuery || "").trim().toLowerCase();
+    // Split into normalized search tokens (space, hyphen, comma, period separated)
+    const tokens = rawQ
+      .replace(/[-_.,/]/g, " ")
+      .split(/\s+/)
+      .filter(Boolean);
+
     return records.filter((rec) => {
-      const q = (searchQuery || "").trim().toLowerCase();
+      // Build searchable corpus for this record
+      const corpus = [
+        rec.titleEn,
+        rec.titleBn,
+        rec.contractId,
+        String(rec.riskScore),
+        `${rec.riskScore}/100`,
+        rec.riskGradeEn,
+        rec.riskGradeBn,
+        rec.categoryEn,
+        rec.categoryBn,
+        rec.hitlStatus,
+        rec.auditDateEn,
+        rec.auditDateBn,
+        rec.summaryEn,
+        rec.summaryBn,
+        rec.firstPartyEn,
+        rec.firstPartyBn,
+        rec.secondPartyEn,
+        rec.secondPartyBn,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .replace(/[-_.,/]/g, " ");
+
       const matchesSearch =
-        !q ||
-        (rec.titleEn || "").toLowerCase().includes(q) ||
-        (rec.titleBn || "").toLowerCase().includes(q) ||
-        (rec.contractId || "").toLowerCase().includes(q) ||
-        (rec.summaryEn || "").toLowerCase().includes(q) ||
-        (rec.summaryBn || "").toLowerCase().includes(q) ||
-        (rec.categoryEn || "").toLowerCase().includes(q) ||
-        (rec.categoryBn || "").toLowerCase().includes(q) ||
-        (rec.riskGradeEn || "").toLowerCase().includes(q) ||
-        (rec.riskGradeBn || "").toLowerCase().includes(q) ||
-        (rec.firstPartyEn !== "User / Organization" && (rec.firstPartyEn || "").toLowerCase().includes(q)) ||
-        (rec.firstPartyBn !== "ব্যবহারকারী / প্রতিষ্ঠান" && (rec.firstPartyBn || "").toLowerCase().includes(q)) ||
-        (rec.secondPartyEn || "").toLowerCase().includes(q) ||
-        (rec.secondPartyBn || "").toLowerCase().includes(q);
+        tokens.length === 0 ||
+        tokens.every((tok) => corpus.includes(tok));
 
       const hasHighRisk = rec.highRiskCount > 0 || rec.riskScore >= 70 || rec.riskGradeEn === "HIGH" || rec.riskGradeEn === "CRITICAL";
       const hasReviewNeeded =
@@ -462,18 +482,35 @@ export default function ArchivePage() {
         <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           {/* Search Box */}
           <div className="relative flex-1 max-w-md">
-            <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchQuery(val);
+                if (selectedRisk !== "ALL" && val.trim().length > 0) {
+                  setSelectedRisk("ALL");
+                }
+              }}
               placeholder={
                 language === "bn"
-                  ? "চুক্তির নাম, পক্ষ বা আইন অনুযায়ী অনুসন্ধান..."
-                  : "Search by title, party, or statute..."
+                  ? "চুক্তির নাম, স্কোর, পক্ষ বা আইন অনুযায়ী অনুসন্ধান..."
+                  : "Search by title, score, party, or statute..."
               }
-              className="w-full pl-10 pr-4 py-2 rounded-full text-xs outline-none transition-all border border-transparent" style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
+              className="w-full pl-10 pr-9 py-2 rounded-full text-xs outline-none transition-all border border-[var(--text-primary)]/10 focus:border-[var(--text-primary)]/30 focus:ring-1 focus:ring-[var(--text-primary)]/20"
+              style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
             />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
 
           {/* Filter Pills with real counts */}
