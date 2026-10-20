@@ -563,7 +563,8 @@ export default function LawyerArchivePage() {
                       verifiedAt: isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn,
                       sealApplied: true,
                       advocateNotes: selectedPreview.notes,
-                    }
+                    },
+                    selectedPreview
                   )}
                 />
               </div>

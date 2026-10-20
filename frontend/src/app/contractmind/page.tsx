@@ -141,6 +141,12 @@ export default function ContractMindPage() {
       const result = await uploadContract(file);
       setApiContractId(String(result.contract_id));
       setApiAuditResult(result);
+      try {
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`contract_audit_${result.contract_id}`, JSON.stringify(result));
+          if (result.memo_id) localStorage.setItem(`contract_audit_${result.memo_id}`, JSON.stringify(result));
+        }
+      } catch {}
       if (refreshUser) refreshUser().catch(() => {});
       setIsAnalyzing(false);
       setIsLoaded(true);
@@ -180,6 +186,12 @@ export default function ContractMindPage() {
         const result = await uploadContract(file);
         setApiContractId(String(result.contract_id));
         setApiAuditResult(result);
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`contract_audit_${result.contract_id}`, JSON.stringify(result));
+            if (result.memo_id) localStorage.setItem(`contract_audit_${result.memo_id}`, JSON.stringify(result));
+          }
+        } catch {}
         if (refreshUser) refreshUser().catch(() => {});
         setIsAnalyzing(false);
         setIsLoaded(true);
