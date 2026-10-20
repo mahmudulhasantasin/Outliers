@@ -1,25 +1,236 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import {
   Check,
   AlertTriangle,
   Info,
-  CheckCircle2,
   AlertCircle,
   ShieldAlert,
-  Sparkles
+  Sparkles,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 
 interface MarkdownViewerProps {
   content: string;
   className?: string;
+  variant?: "document" | "chat";
+}
+
+function DiffRedlineBlock({
+  lines,
+  isChat,
+}: {
+  lines: string[];
+  isChat: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const textToCopy = lines.map((l) => l.replace(/^[+-]\s?/, "")).join("\n");
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      className={`my-3 sm:my-4 rounded-xl sm:rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 shadow-sm overflow-hidden text-xs print:border print:border-neutral-300 print:bg-white print:shadow-none print:my-3 print:rounded-lg print:break-inside-avoid ${
+        isChat ? "max-w-full" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/60 text-[11px] text-neutral-600 dark:text-neutral-400 print:bg-neutral-100 print:border-b print:border-neutral-300 print:text-neutral-800">
+        <div className="flex items-center gap-1.5 font-semibold tracking-wider text-[10px] uppercase">
+          <span className="w-2 h-2 rounded-full bg-amber-500 print:hidden" />
+          <span>Statutory Redline Comparison</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-[10px] print:hidden"
+          title="Copy clean draft text"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+          <span>{copied ? "Copied" : "Copy Draft"}</span>
+        </button>
+      </div>
+
+      <div className="divide-y divide-neutral-100 dark:divide-neutral-800/60 print:divide-neutral-200 font-mono text-[11px] sm:text-xs">
+        {lines.map((line, idx) => {
+          if (line.startsWith("+")) {
+            return (
+              <div
+                key={idx}
+                className="flex items-start gap-2 px-3.5 py-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 print:bg-emerald-50 print:text-emerald-950 print:border-l-4 print:border-emerald-600"
+              >
+                <span className="select-none font-bold text-emerald-600 dark:text-emerald-400 print:text-emerald-700 shrink-0">
+                  +
+                </span>
+                <span className="flex-1 font-sans sm:font-mono font-medium leading-relaxed whitespace-pre-wrap">
+                  {line.slice(1).trim()}
+                </span>
+              </div>
+            );
+          }
+          if (line.startsWith("-")) {
+            return (
+              <div
+                key={idx}
+                className="flex items-start gap-2 px-3.5 py-2.5 bg-rose-50/90 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-l-4 border-rose-500 line-through decoration-rose-500/70 opacity-90 print:bg-rose-50 print:text-rose-950 print:border-l-4 print:border-rose-600 print:line-through"
+              >
+                <span className="select-none font-bold text-rose-600 dark:text-rose-400 print:text-rose-700 shrink-0">
+                  -
+                </span>
+                <span className="flex-1 font-sans sm:font-mono leading-relaxed whitespace-pre-wrap">
+                  {line.slice(1).trim()}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={idx}
+              className="px-3.5 py-1.5 text-neutral-600 dark:text-neutral-400 print:text-neutral-800 leading-relaxed whitespace-pre-wrap"
+            >
+              {line}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function CodeBlockItem({
+  lang,
+  lines,
+  isChat,
+}: {
+  lang: string;
+  lines: string[];
+  isChat: boolean;
+}) {
+  const [copied, setCopied] = useState(false);
+  const codeText = lines.join("\n");
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(codeText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div
+      className={`my-3 rounded-xl border border-[var(--text-primary)]/15 bg-neutral-900 text-neutral-100 font-mono text-xs overflow-hidden shadow-inner print:bg-white print:text-neutral-900 print:border-neutral-300 print:shadow-none print:break-inside-avoid ${
+        isChat ? "max-w-full" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-neutral-800 bg-neutral-950/70 text-[11px] text-neutral-400 print:bg-neutral-100 print:border-neutral-300 print:text-neutral-700">
+        <span className="uppercase font-semibold tracking-wider text-[10px]">
+          {lang || "code"}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer text-[10px] print:hidden"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+          <span>{copied ? "Copied" : "Copy"}</span>
+        </button>
+      </div>
+      <pre className="p-3.5 overflow-x-auto leading-relaxed print:bg-white print:text-neutral-900 print:overflow-visible print:whitespace-pre-wrap">
+        <code>
+          {lines.map((line, idx) => {
+            let lineClass = "text-neutral-300 print:text-neutral-800";
+            if (line.startsWith("+"))
+              lineClass = "text-emerald-400 font-semibold bg-emerald-950/40 print:bg-emerald-50 print:text-emerald-950 block -mx-3.5 px-3.5";
+            else if (line.startsWith("-"))
+              lineClass = "text-rose-400 line-through opacity-80 bg-rose-950/40 print:bg-rose-50 print:text-rose-950 block -mx-3.5 px-3.5";
+            return (
+              <span key={idx} className={lineClass}>
+                {line}
+                {"\n"}
+              </span>
+            );
+          })}
+        </code>
+      </pre>
+    </div>
+  );
 }
 
 export default function MarkdownViewer({
   content,
-  className = ""
+  className = "",
+  variant = "document",
 }: MarkdownViewerProps) {
+  if (!content) return null;
+
+  const isChat = variant === "chat";
+
+  // Helper for inline markdown: **bold**, `code`, *italic*, [link](url)
+  const formatInlineText = (text: string): React.ReactNode[] => {
+    // Regex for [text](url), `code`, **bold**, *italic*
+    const regex = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    const parts = text.split(regex);
+
+    return parts.map((part, idx) => {
+      if (!part) return null;
+
+      // Link: [text](url)
+      if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+        const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (match) {
+          return (
+            <a
+              key={idx}
+              href={match[2]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
+            >
+              <span>{match[1]}</span>
+              <ExternalLink className="w-2.5 h-2.5 inline" />
+            </a>
+          );
+        }
+      }
+
+      // Code: `code`
+      if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+        return (
+          <code
+            key={idx}
+            className="px-1.5 py-0.5 mx-0.5 rounded-md font-mono text-[11px] sm:text-xs bg-[var(--text-primary)]/8 border border-[var(--text-primary)]/10 text-pink-600 dark:text-pink-400"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
+
+      // Bold: **bold**
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        return (
+          <strong key={idx} className="font-semibold text-[var(--text-primary)]">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
+
+      // Italic: *italic*
+      if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+        return (
+          <em key={idx} className="italic text-[var(--text-primary)]/90">
+            {part.slice(1, -1)}
+          </em>
+        );
+      }
+
+      return part;
+    });
+  };
+
   // Render raw markdown parser
   const renderMarkdownContent = (raw: string) => {
     const lines = raw.split("\n");
@@ -40,12 +251,15 @@ export default function MarkdownViewer({
         );
 
         elements.push(
-          <div key={`table-${key}`} className="my-6 overflow-x-auto rounded-xl border border-[var(--text-primary)]/10">
+          <div
+            key={`table-${key}`}
+            className="my-3 overflow-x-auto rounded-xl border border-[var(--text-primary)]/10"
+          >
             <table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-[var(--text-primary)]/15 bg-[var(--bg-surface)]">
                   {headerRow.map((cell, idx) => (
-                    <th key={idx} className="p-3 font-semibold text-[var(--text-primary)]">
+                    <th key={idx} className="p-2.5 font-semibold text-[var(--text-primary)]">
                       {formatInlineText(cell.trim())}
                     </th>
                   ))}
@@ -55,7 +269,7 @@ export default function MarkdownViewer({
                 {bodyRows.map((row, rIdx) => (
                   <tr key={rIdx} className="hover:bg-[var(--text-primary)]/[0.02] transition-colors">
                     {row.map((cell, cIdx) => (
-                      <td key={cIdx} className="p-3 text-[var(--text-primary)]/85 align-top">
+                      <td key={cIdx} className="p-2.5 text-[var(--text-primary)]/85 align-top">
                         {formatInlineText(cell.trim())}
                       </td>
                     ))}
@@ -72,34 +286,24 @@ export default function MarkdownViewer({
 
     const flushCodeBlock = (key: string) => {
       if (inCodeBlock) {
-        elements.push(
-          <div
-            key={`code-${key}`}
-            className="my-5 rounded-xl border border-[var(--text-primary)]/15 bg-neutral-900 text-neutral-100 font-mono text-xs overflow-hidden shadow-inner"
-          >
-            <div className="flex items-center justify-between px-4 py-2 border-b border-neutral-800 bg-neutral-950/60 text-[11px] text-neutral-400">
-              <span className="uppercase font-semibold tracking-wider text-[10px]">
-                {codeBlockLang || "text"}
-              </span>
-              <span>GitHub README Diff</span>
-            </div>
-            <pre className="p-4 overflow-x-auto leading-relaxed">
-              <code>
-                {codeLines.map((line, idx) => {
-                  let lineClass = "text-neutral-300";
-                  if (line.startsWith("+")) lineClass = "text-emerald-400 font-semibold bg-emerald-950/40 block -mx-4 px-4";
-                  else if (line.startsWith("-")) lineClass = "text-rose-400 line-through opacity-80 bg-rose-950/40 block -mx-4 px-4";
-                  return (
-                    <span key={idx} className={lineClass}>
-                      {line}
-                      {"\n"}
-                    </span>
-                  );
-                })}
-              </code>
-            </pre>
-          </div>
-        );
+        if (codeBlockLang && codeBlockLang.toLowerCase() === "diff") {
+          elements.push(
+            <DiffRedlineBlock
+              key={`diff-${key}`}
+              lines={[...codeLines]}
+              isChat={isChat}
+            />
+          );
+        } else {
+          elements.push(
+            <CodeBlockItem
+              key={`code-${key}`}
+              lang={codeBlockLang}
+              lines={[...codeLines]}
+              isChat={isChat}
+            />
+          );
+        }
         codeLines = [];
         inCodeBlock = false;
         codeBlockLang = "";
@@ -142,6 +346,7 @@ export default function MarkdownViewer({
 
       // Empty line
       if (line.trim() === "") {
+        elements.push(<div key={`space-${i}`} className={isChat ? "h-1" : "h-2"} />);
         continue;
       }
 
@@ -150,7 +355,7 @@ export default function MarkdownViewer({
         elements.push(
           <hr
             key={`hr-${i}`}
-            className="my-6 border-t border-[var(--text-primary)]/10"
+            className="my-3 border-t border-[var(--text-primary)]/10"
           />
         );
         continue;
@@ -198,7 +403,7 @@ export default function MarkdownViewer({
         elements.push(
           <div
             key={`alert-${i}`}
-            className={`my-4 p-4 rounded-xl border-l-4 ${alertBorder} flex flex-col gap-1.5`}
+            className={`my-3 p-3 rounded-xl border-l-4 ${alertBorder} flex flex-col gap-1`}
           >
             <div className={`flex items-center gap-2 font-semibold text-xs uppercase tracking-wider ${titleColor}`}>
               {icon}
@@ -222,7 +427,7 @@ export default function MarkdownViewer({
         elements.push(
           <blockquote
             key={`bq-${i}`}
-            className="my-3 pl-4 border-l-2 border-[var(--text-primary)]/30 text-xs italic text-[var(--text-primary)]/80"
+            className="my-2 pl-3.5 border-l-2 border-[var(--text-primary)]/30 text-xs italic text-[var(--text-primary)]/80"
           >
             {formatInlineText(bqText)}
           </blockquote>
@@ -235,7 +440,9 @@ export default function MarkdownViewer({
         elements.push(
           <h1
             key={`h1-${i}`}
-            className="text-2xl font-serif font-bold text-[var(--text-primary)] mt-6 mb-3 pb-2 border-b border-[var(--text-primary)]/10"
+            className={`${
+              isChat ? "text-base sm:text-lg mt-3 mb-1.5" : "text-2xl mt-6 mb-3"
+            } font-serif font-bold text-[var(--text-primary)] pb-1 border-b border-[var(--text-primary)]/10`}
           >
             {formatInlineText(line.slice(2))}
           </h1>
@@ -246,7 +453,9 @@ export default function MarkdownViewer({
         elements.push(
           <h2
             key={`h2-${i}`}
-            className="text-lg font-serif font-semibold text-[var(--text-primary)] mt-6 mb-2 pb-1.5 border-b border-[var(--text-primary)]/10"
+            className={`${
+              isChat ? "text-sm sm:text-base mt-2.5 mb-1" : "text-lg mt-6 mb-2"
+            } font-serif font-semibold text-[var(--text-primary)] pb-1 border-b border-[var(--text-primary)]/10`}
           >
             {formatInlineText(line.slice(3))}
           </h2>
@@ -257,10 +466,23 @@ export default function MarkdownViewer({
         elements.push(
           <h3
             key={`h3-${i}`}
-            className="text-sm font-sans font-bold text-[var(--text-primary)] mt-5 mb-2"
+            className={`${
+              isChat ? "text-xs sm:text-sm mt-2 mb-0.5" : "text-sm mt-5 mb-2"
+            } font-sans font-bold text-[var(--text-primary)]`}
           >
             {formatInlineText(line.slice(4))}
           </h3>
+        );
+        continue;
+      }
+      if (line.startsWith("#### ")) {
+        elements.push(
+          <h4
+            key={`h4-${i}`}
+            className="text-xs font-semibold text-[var(--text-primary)] mt-1.5 mb-0.5"
+          >
+            {formatInlineText(line.slice(5))}
+          </h4>
         );
         continue;
       }
@@ -273,14 +495,34 @@ export default function MarkdownViewer({
           const checkText = match[2];
           elements.push(
             <div key={`check-${i}`} className="flex items-start gap-2.5 my-1 text-xs text-[var(--text-primary)]/90">
-              <span className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
-                isChecked
-                  ? "bg-emerald-600 border-emerald-600 text-white"
-                  : "border-[var(--text-primary)]/30 bg-[var(--bg-surface)]"
-              }`}>
+              <span
+                className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
+                  isChecked
+                    ? "bg-emerald-600 border-emerald-600 text-white"
+                    : "border-[var(--text-primary)]/30 bg-[var(--bg-surface)]"
+                }`}
+              >
                 {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
               </span>
               <span>{formatInlineText(checkText)}</span>
+            </div>
+          );
+          continue;
+        }
+      }
+
+      // Numbered List item: 1. or 1)
+      if (/^(\d+)[\.\)]\s+(.*)$/.test(line.trim())) {
+        const match = line.trim().match(/^(\d+)[\.\)]\s+(.*)$/);
+        if (match) {
+          elements.push(
+            <div key={`ol-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-[var(--text-primary)]/90 ml-1">
+              <span className="font-mono font-bold text-[var(--text-primary)]/70 text-[11px] shrink-0 min-w-[18px]">
+                {match[1]}.
+              </span>
+              <div className="flex-1">
+                {formatInlineText(match[2])}
+              </div>
             </div>
           );
           continue;
@@ -292,9 +534,12 @@ export default function MarkdownViewer({
         const match = line.trim().match(/^[\-\*]\s+(.*)$/);
         if (match) {
           elements.push(
-            <li key={`li-${i}`} className="text-xs text-[var(--text-primary)]/90 ml-4 list-disc my-1 leading-relaxed">
-              {formatInlineText(match[1])}
-            </li>
+            <div key={`li-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-[var(--text-primary)]/90 ml-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)]/50 mt-1.5 shrink-0" />
+              <div className="flex-1">
+                {formatInlineText(match[1])}
+              </div>
+            </div>
           );
           continue;
         }
@@ -302,7 +547,12 @@ export default function MarkdownViewer({
 
       // Standard Paragraph
       elements.push(
-        <p key={`p-${i}`} className="text-xs text-[var(--text-primary)]/90 my-2 leading-relaxed">
+        <p
+          key={`p-${i}`}
+          className={`${
+            isChat ? "text-sm sm:text-[14px]" : "text-xs"
+          } text-[var(--text-primary)]/90 my-1 leading-relaxed`}
+        >
           {formatInlineText(line)}
         </p>
       );
@@ -314,37 +564,19 @@ export default function MarkdownViewer({
     return elements;
   };
 
-  // Helper for inline markdown: **bold**, `code`, links
-  const formatInlineText = (text: string) => {
-    // split by code `...`
-    const parts = text.split(/(`[^`]+`|\*\*[^*]+\*\*)/g);
-    return parts.map((part, idx) => {
-      if (part.startsWith("`") && part.endsWith("`")) {
-        return (
-          <code
-            key={idx}
-            className="px-1.5 py-0.5 mx-0.5 rounded-md font-mono text-[11px] bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 text-rose-600 dark:text-rose-400"
-          >
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return (
-          <strong key={idx} className="font-semibold text-[var(--text-primary)]">
-            {part.slice(2, -2)}
-          </strong>
-        );
-      }
-      return part;
-    });
-  };
+  if (isChat) {
+    return (
+      <div className={`font-sans leading-relaxed text-sm sm:text-[14px] space-y-1 ${className}`}>
+        {renderMarkdownContent(content)}
+      </div>
+    );
+  }
 
   return (
     <div
-      className={`p-6 md:p-10 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-sm font-sans leading-relaxed ${className}`}
+      className={`p-6 md:p-10 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-sm font-sans leading-relaxed print:p-0 print:border-none print:shadow-none print:bg-transparent print:rounded-none ${className}`}
     >
-      <div className="max-w-4xl mx-auto space-y-1">
+      <div className="max-w-4xl mx-auto space-y-1 print:max-w-none">
         {renderMarkdownContent(content)}
       </div>
     </div>
