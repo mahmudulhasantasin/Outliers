@@ -772,12 +772,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (existingApps) {
         localStorage.setItem("contractmind_pending_lawyers", existingApps);
       }
+      window.location.href = "/login";
     }
     setIsAuthenticated(false);
     setUser(null);
-    if (typeof window !== "undefined") {
-      window.location.href = "/";
-    }
   };
 
   // ── Local update ──

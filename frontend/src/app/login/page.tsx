@@ -19,7 +19,7 @@ export default function LoginPage() {
         router.replace("/dashboard");
       }
     } else {
-      router.replace("/");
+      router.replace("/?auth=login");
     }
   }, [user, router]);
 

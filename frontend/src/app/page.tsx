@@ -120,6 +120,13 @@ export default function LandingAndAuthPage() {
 
   useEffect(() => {
     setMounted(true);
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("auth") === "login" || params.get("login") === "true") {
+        setShowAuthModal(true);
+        setIsSignUp(false);
+      }
+    }
   }, []);
 
   // ESC key to close modal
