@@ -268,36 +268,13 @@ export default function ArchivePage() {
       .split(/\s+/)
       .filter(Boolean);
 
-    return records.filter((rec) => {
-      // Build searchable corpus for this record
-      const corpus = [
-        rec.titleEn,
-        rec.titleBn,
-        rec.contractId,
-        String(rec.riskScore),
-        `${rec.riskScore}/100`,
-        rec.riskGradeEn,
-        rec.riskGradeBn,
-        rec.categoryEn,
-        rec.categoryBn,
-        rec.hitlStatus,
-        rec.auditDateEn,
-        rec.auditDateBn,
-        rec.summaryEn,
-        rec.summaryBn,
-        rec.firstPartyEn,
-        rec.firstPartyBn,
-        rec.secondPartyEn,
-        rec.secondPartyBn,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .replace(/[-_.,/]/g, " ");
+    const isSearching = tokens.length > 0;
 
-      const matchesSearch =
-        tokens.length === 0 ||
-        tokens.every((tok) => corpus.includes(tok));
+    return records.filter((rec) => {
+      const titleLower = `${rec.titleEn || ""} ${rec.titleBn || ""}`.toLowerCase();
+      const isEmployment = titleLower.includes("employment");
+      const isNDA = titleLower.includes("non-disclosure") || titleLower.includes("disclosure") || titleLower.includes("nda");
+      const isRules = titleLower.includes("rules") || titleLower.includes("fest") || titleLower.includes("competition");
 
       const hasHighRisk = rec.highRiskCount > 0 || rec.riskScore >= 70 || rec.riskGradeEn === "HIGH" || rec.riskGradeEn === "CRITICAL";
       const hasReviewNeeded =
@@ -311,7 +288,60 @@ export default function ArchivePage() {
         rec.hitlStatus === "OFFERED";
       const isCompliant = (rec.riskScore < 50 || rec.riskGradeEn === "LOW" || rec.riskGradeEn === "COMPLIANT") && rec.highRiskCount === 0;
 
+      // Build rich, intelligent domain search corpus
+      const corpusParts = [
+        rec.titleEn,
+        rec.titleBn,
+        rec.contractId,
+        String(rec.riskScore),
+        `${rec.riskScore}/100`,
+        `score ${rec.riskScore}`,
+        rec.riskGradeEn,
+        rec.riskGradeBn,
+        rec.auditDateEn,
+        rec.auditDateBn,
+        // Only include custom/actual party names, not generic platform placeholders
+        rec.firstPartyEn && !rec.firstPartyEn.includes("User / Organization") ? rec.firstPartyEn : "",
+        rec.firstPartyBn && !rec.firstPartyBn.includes("প্রতিষ্ঠান") ? rec.firstPartyBn : "",
+        rec.secondPartyEn && !rec.secondPartyEn.includes("ContractMind") && !rec.secondPartyEn.includes("Verified Advocate") ? rec.secondPartyEn : "",
+        rec.secondPartyBn && !rec.secondPartyBn.includes("কন্ট্রাক্টমাইন্ড") ? rec.secondPartyBn : "",
+        rec.summaryEn,
+        rec.summaryBn,
+        // Semantic risk status phrases (so user can type "high risk", "review needed", "compliant", etc.)
+        hasHighRisk ? "high risk critical বিপদজনক সংকটপূর্ণ উচ্চ ঝুঁকি মারাত্মক" : "",
+        hasReviewNeeded ? "review needed medium moderate পর্যালোচনা প্রয়োজন মাঝারি ঝুঁকি পর্যালোচনাধীন শর্ত" : "",
+        isCompliant ? "compliant low risk আইনসম্মত স্বল্প ঝুঁকি নিরাপদ বৈধ" : "",
+        // Breakdown counts
+        rec.highRiskCount > 0 ? `${rec.highRiskCount} high risk ${rec.highRiskCount}টি উচ্চ ঝুঁকি` : "",
+        rec.mediumRiskCount > 0 ? `${rec.mediumRiskCount} review needed ${rec.mediumRiskCount}টি পর্যালোচনা` : "",
+        rec.compliantCount > 0 ? `${rec.compliantCount} compliant ${rec.compliantCount}টি আইনসম্মত` : "",
+        // Domain synonyms
+        isEmployment ? "employment job worker employee labor labour salary appointment agreement নিয়োগ চাকরি কর্মসংস্থান শ্রম আইন শ্রমিক labour act 2006 contract act 1872" : "",
+        isNDA ? "nda non disclosure non-disclosure confidentiality secrecy গোপনীয়তা চুক্তি তথ্য প্রকাশ" : "",
+        isRules ? "rules fest festival dev competition guidelines নীতি নিয়মাবলী নীতিমালা প্রতিযোগিতা নির্দেশিকা" : "",
+      ];
+
+      const corpus = corpusParts
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .replace(/[-_.,/]/g, " ");
+
+      const corpusWords = corpus.split(/\s+/).filter(Boolean);
+
+      // Robust matching: short tokens (<=2 chars) match exact or prefix word; longer tokens match anywhere in corpus
+      const matchesSearch =
+        !isSearching ||
+        tokens.every((tok) => {
+          if (tok.length <= 2) {
+            return corpusWords.some((w) => w === tok || w.startsWith(tok));
+          }
+          return corpus.includes(tok);
+        });
+
+      // When actively searching, search across all records so tab filters never hide results
       const matchesRisk =
+        isSearching ||
         selectedRisk === "ALL" ||
         (selectedRisk === "HIGH" && hasHighRisk) ||
         (selectedRisk === "MEDIUM" && hasReviewNeeded) ||
@@ -545,6 +575,27 @@ export default function ArchivePage() {
           </div>
         </div>
 
+        {/* Active Search Results Indicator */}
+        {searchQuery.trim().length > 0 && (
+          <div className="my-4 flex items-center justify-between px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+            <div className="flex items-center gap-2 text-neutral-800 dark:text-neutral-200">
+              <Search className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+              <span>
+                {language === "bn"
+                  ? `"${searchQuery.trim()}" অনুসন্ধান ফলাফল: ${filteredRecords.length}টি চুক্তি পাওয়া গেছে`
+                  : `Showing ${filteredRecords.length} contract${filteredRecords.length === 1 ? "" : "s"} matching "${searchQuery.trim()}"`}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSearchQuery("")}
+              className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer ml-3 shrink-0"
+            >
+              {language === "bn" ? "সার্চ মুছুন (Clear)" : "Clear search"}
+            </button>
+          </div>
+        )}
+
         {/* Archived Records List */}
         <div className="divide-y" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 6%, transparent)" }}>
           {filteredRecords.length > 0 ? (
@@ -677,10 +728,24 @@ export default function ArchivePage() {
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
               <p className="text-xs text-neutral-400 max-w-sm mx-auto">
-                {language === "bn"
+                {searchQuery.trim().length > 0
+                  ? language === "bn"
+                    ? `"${searchQuery.trim()}" দিয়ে কোনো চুক্তি মেলেনি। বানান পরীক্ষা করুন অথবা সার্চ ক্লিয়ার করুন।`
+                    : `No contracts matched your search for "${searchQuery.trim()}". Try different keywords or clear search.`
+                  : language === "bn"
                   ? "আপনার নির্বাচনের সাথে মিলে এমন কোনো চুক্তিপত্র পাওয়া যায়নি। অন্য কিওয়ার্ড বা ফিল্টার দিয়ে চেষ্টা করুন।"
                   : "No contracts matched your filter criteria. Try selecting another tab or clearing search."}
               </p>
+              {searchQuery.trim().length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="mt-2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-semibold bg-neutral-200 dark:bg-neutral-800 hover:bg-neutral-300 dark:hover:bg-neutral-700 transition-colors cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                  <span>{language === "bn" ? "সার্চ ক্লিয়ার করুন" : "Clear search"}</span>
+                </button>
+              )}
             </div>
           )}
         </div>
