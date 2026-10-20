@@ -64,7 +64,8 @@ export default function ContractMindPage() {
   const [uploadError, setUploadError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+    const userRole = String(user?.role).toUpperCase();
+    if (userRole === "LAWYER") {
       router.replace("/lawyer/pending");
     }
   }, [user, router]);
@@ -80,22 +81,11 @@ export default function ContractMindPage() {
     }
   }, []);
 
-  if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+  if (String(user?.role).toUpperCase() === "LAWYER") {
     return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-3 text-center px-4">
-          <p className="text-base font-semibold text-[var(--text-primary)]">
-            {isBn
-              ? "কন্ট্রাক্টমাইন্ড চুক্তি অডিট সাধারণ ব্যবহারকারীদের জন্য।"
-              : "ContractMind Audit is for General Users."}
-          </p>
-          <p className="text-xs text-[var(--text-muted)] max-w-md">
-            {isBn
-              ? "সাধারণ ব্যবহারকারীদের প্রেরিত চুক্তি যাচাই করতে আপনার আইনজীবী পোর্টালে প্রবেশ করুন। রিডাইরেক্ট করা হচ্ছে..."
-              : "To review and verify contracts submitted by general users, please use the Lawyer Portal. Redirecting..."}
-          </p>
-        </div>
-      </AppShell>
+      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
     );
   }
 

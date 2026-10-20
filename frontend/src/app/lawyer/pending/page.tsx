@@ -65,11 +65,12 @@ export default function LawyerPendingPage() {
 
   useEffect(() => {
     if (!user) {
-      router.replace("/");
+      router.replace("/login");
       return;
     }
-    if (user.role !== "lawyer" && !user.lawyerProfile) {
-      router.replace("/copilot");
+    const userRole = String(user.role).toUpperCase();
+    if (userRole !== "LAWYER" && userRole !== "ADMIN") {
+      router.replace("/dashboard"); // Kick GENERAL users to their dashboard
     }
   }, [user, router]);
 
@@ -322,7 +323,8 @@ export default function LawyerPendingPage() {
       )
     : "";
 
-  if (!user || (user.role !== "lawyer" && !user.lawyerProfile)) {
+  const userRole = user ? String(user.role).toUpperCase() : "";
+  if (!user || (userRole !== "LAWYER" && userRole !== "ADMIN")) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />

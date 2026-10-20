@@ -90,15 +90,16 @@ export default function EnterpriseMemberPage() {
 
   useEffect(() => {
     if (!user) {
-      router.replace("/");
+      router.replace("/login");
       return;
     }
-    if (user.role === "lawyer" || !!user.lawyerProfile) {
+    const userRole = String(user.role).toUpperCase();
+    if (userRole === "LAWYER") {
       router.replace("/lawyer/pending");
       return;
     }
-    if (user.role !== "enterprise_member" && user.role !== "enterprise_admin" && user.role !== "enterprise" && user.role !== "admin") {
-      router.replace("/copilot");
+    if (userRole !== "ENTERPRISE_MEMBER" && userRole !== "ENTERPRISE_ADMIN" && userRole !== "ENTERPRISE" && userRole !== "ADMIN") {
+      router.replace("/dashboard");
     }
   }, [user, router]);
 
@@ -125,7 +126,8 @@ export default function EnterpriseMemberPage() {
     setTimeout(() => setCopiedRuleId(null), 2000);
   };
 
-  if (!user || user.role === "lawyer" || !!user.lawyerProfile || (user.role !== "enterprise_member" && user.role !== "enterprise_admin" && user.role !== "enterprise" && user.role !== "admin")) {
+  const roleUpper = user ? String(user.role).toUpperCase() : "";
+  if (!user || roleUpper === "LAWYER" || (roleUpper !== "ENTERPRISE_MEMBER" && roleUpper !== "ENTERPRISE_ADMIN" && roleUpper !== "ENTERPRISE" && roleUpper !== "ADMIN")) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />

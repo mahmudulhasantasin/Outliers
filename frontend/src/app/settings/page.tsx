@@ -572,7 +572,7 @@ export default function SettingsPage() {
         </Section>
 
         {/* ── LAWYER PREFERENCES (Docs Section 7.4) ── */}
-        {(user?.role === "lawyer" || !!user?.lawyerProfile) && (
+        {String(user?.role).toUpperCase() === "LAWYER" && (
           <Section
             title={isBn ? "আইনজীবী কর্মদক্ষতা ও অগ্রাধিকার সেটিংস" : "Advocate Preferences & Workload"}
             badge={lawyerSettingsToast ? (isBn ? "সংরক্ষিত ✓" : "Saved ✓") : undefined}

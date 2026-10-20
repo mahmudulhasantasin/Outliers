@@ -136,12 +136,12 @@ interface RegisterEnterpriseMemberRequest {
 // ─── Role Normalization & Local Lawyer State Helpers ─────────────────────
 export function normalizeUserRole(rawRole?: string | null): UserRole {
   if (!rawRole) return "general";
-  const r = String(rawRole).toLowerCase().trim();
-  if (r === "admin" || (r.includes("admin") && !r.includes("enterprise"))) return "admin";
-  if (r.includes("lawyer")) return "lawyer";
-  if (r.includes("enterprise_admin") || r === "enterprise-admin") return "enterprise_admin";
-  if (r.includes("enterprise_member") || r === "enterprise-member") return "enterprise_member";
-  if (r.includes("enterprise")) return "enterprise_admin";
+  const r = String(rawRole).toUpperCase().trim();
+  if (r === "ADMIN" || (r.includes("ADMIN") && !r.includes("ENTERPRISE"))) return "admin";
+  if (r.includes("LAWYER")) return "lawyer";
+  if (r.includes("ENTERPRISE_ADMIN") || r === "ENTERPRISE-ADMIN") return "enterprise_admin";
+  if (r.includes("ENTERPRISE_MEMBER") || r === "ENTERPRISE-MEMBER") return "enterprise_member";
+  if (r.includes("ENTERPRISE")) return "enterprise_admin";
   return "general";
 }
 
@@ -556,19 +556,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Persist demo session ──
   const persistDemo = (u: UserProfile) => {
+    const existingApps = typeof window !== "undefined" ? localStorage.getItem("contractmind_pending_lawyers") : null;
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      if (existingApps) {
+        localStorage.setItem("contractmind_pending_lawyers", existingApps);
+      }
+      localStorage.setItem("cm_role", String(u.role).toUpperCase());
+      localStorage.setItem("app_auth_v2", JSON.stringify(u));
+    }
     setIsAuthenticated(true);
     setUser(u);
-    localStorage.setItem("app_auth_v2", JSON.stringify(u));
   };
 
   // ── Real API: Login ──
   const login = async (req: LoginRequest): Promise<UserProfile> => {
+    const existingApps = typeof window !== "undefined" ? localStorage.getItem("contractmind_pending_lawyers") : null;
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      if (existingApps) {
+        localStorage.setItem("contractmind_pending_lawyers", existingApps);
+      }
+    }
+
     const data = await api.post<TokenResponse>("/api/auth/login", {
       email: req.email,
       password: req.password,
     });
     const savedLawyer = getSavedLawyerProfile(req.email);
     const resolvedRole = savedLawyer ? "lawyer" : normalizeUserRole(data.role);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cm_role", String(resolvedRole).toUpperCase());
+    }
+
     saveTokenResponse(data, resolvedRole);
     const profile = storedUserToProfile({
       id: data.user_id,
@@ -583,7 +604,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsAuthenticated(true);
     // Fetch full profile in background
     api.get<Record<string, unknown>>("/api/auth/me").then((me) => {
-      setUser(meResponseToProfile(me));
+      const full = meResponseToProfile(me);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("cm_role", String(full.role).toUpperCase());
+      }
+      setUser(full);
     }).catch(() => {/* noop */});
     return profile;
   };
@@ -605,6 +630,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     const savedLawyer = getSavedLawyerProfile(req.email);
     const resolvedRole = savedLawyer ? "lawyer" : normalizeUserRole(data.role);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cm_role", String(resolvedRole).toUpperCase());
+    }
     saveTokenResponse(data, resolvedRole);
     const profile = storedUserToProfile({
       id: data.user_id,
@@ -691,6 +719,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           lawyerProfile: lp,
         };
     setUser(updatedUser);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cm_role", "LAWYER");
+    }
 
     const stored = getStoredUser();
     if (stored) {
@@ -734,9 +765,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // ── Logout ──
   const logout = () => {
+    const existingApps = typeof window !== "undefined" ? localStorage.getItem("contractmind_pending_lawyers") : null;
     clearAuth();
+    if (typeof window !== "undefined") {
+      localStorage.clear();
+      if (existingApps) {
+        localStorage.setItem("contractmind_pending_lawyers", existingApps);
+      }
+    }
     setIsAuthenticated(false);
     setUser(null);
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   };
 
   // ── Local update ──

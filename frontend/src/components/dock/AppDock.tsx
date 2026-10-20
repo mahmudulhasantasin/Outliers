@@ -185,20 +185,21 @@ export default function AppDock() {
     },
   ];
 
-  const isLawyer = role === "lawyer" || !!user?.lawyerProfile;
+  const userRole = String(user?.role || role).toUpperCase();
+  const isLawyer = userRole === "LAWYER";
 
   const items =
-    role === "admin"
+    userRole === "ADMIN"
       ? adminItems
       : isLawyer
       ? lawyerItems
-      : role === "enterprise_admin"
+      : userRole === "ENTERPRISE_ADMIN"
       ? enterpriseAdminItems
-      : role === "enterprise_member"
+      : userRole === "ENTERPRISE_MEMBER"
       ? enterpriseMemberItems
-      : role === "enterprise" && user?.enterpriseProfile?.isTeamMember
+      : userRole === "ENTERPRISE" && user?.enterpriseProfile?.isTeamMember
       ? enterpriseMemberItems
-      : role === "enterprise"
+      : userRole === "ENTERPRISE"
       ? enterpriseAdminItems
       : generalItems;
 

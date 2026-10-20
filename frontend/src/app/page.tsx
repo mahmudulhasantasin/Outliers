@@ -158,13 +158,13 @@ export default function LandingAndAuthPage() {
     try {
       const loggedInUser = await login({ email: loginEmail, password: loginPassword });
       closeModal();
-      // Route by role
-      const role = loggedInUser?.role;
-      if (role === "admin") router.push("/admin");
-      else if (role === "lawyer" || !!loggedInUser?.lawyerProfile) router.push("/lawyer/pending");
-      else if (role === "enterprise_admin" || role === "enterprise") router.push("/enterprise/admin");
-      else if (role === "enterprise_member") router.push("/enterprise/member");
-      else router.push("/copilot");
+      // Route by role (enforce uppercase)
+      const role = String(loggedInUser?.role).toUpperCase();
+      if (role === "ADMIN") router.push("/admin");
+      else if (role === "LAWYER") router.push("/lawyer/pending");
+      else if (role === "ENTERPRISE_ADMIN" || role === "ENTERPRISE") router.push("/enterprise/admin");
+      else if (role === "ENTERPRISE_MEMBER") router.push("/enterprise/member");
+      else router.push("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
       setAuthError(msg);
@@ -452,15 +452,16 @@ export default function LandingAndAuthPage() {
             {mounted && isAuthenticated ? (
               <button
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  const role = String(user?.role).toUpperCase();
                   router.push(
-                    user?.role === "admin"
+                    role === "ADMIN"
                       ? "/admin"
-                      : user?.role === "lawyer" || !!user?.lawyerProfile
+                      : role === "LAWYER"
                       ? "/lawyer/pending"
-                      : "/copilot"
-                  )
-                }
+                      : "/dashboard"
+                  );
+                }}
                 className="px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "ওয়ার্কস্পেস" : "Workspace"}</span>

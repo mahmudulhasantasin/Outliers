@@ -53,7 +53,8 @@ export default function ArchivePage() {
   const { user } = useAuth();
 
   useEffect(() => {
-    if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+    const userRole = String(user?.role).toUpperCase();
+    if (userRole === "LAWYER") {
       router.replace("/lawyer/archive");
     }
   }, [user, router]);
@@ -381,7 +382,7 @@ export default function ArchivePage() {
   // Target record for print preview: either explicitly triggered or modal currently open
   const printTargetRecord = printRecord || previewRecord;
 
-  if (user?.role === "lawyer" || !!user?.lawyerProfile) {
+  if (String(user?.role).toUpperCase() === "LAWYER") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />

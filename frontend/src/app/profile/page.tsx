@@ -151,7 +151,7 @@ export default function ProfilePage() {
     );
   }
 
-  const isLawyer = user.role === "lawyer" || !!user.lawyerProfile;
+  const isLawyer = String(user.role).toUpperCase() === "LAWYER";
   const lawyerProfile = user.lawyerProfile || {
     barCouncilNo: isBn ? "প্রদান করা হয়নি" : "Not Provided",
     fieldOfLaw: isBn ? "সাধারণ আইন" : "General Practice",
