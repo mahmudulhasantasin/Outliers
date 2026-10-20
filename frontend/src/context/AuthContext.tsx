@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation"; // ✅ FIX: useRouter ইমপোর্ট করা হলো
 import api, { ApiError } from "@/lib/api";
 import {
   saveTokenResponse,
@@ -70,7 +71,7 @@ export interface UserProfile {
   mobile?: string;
   role: UserRole;
   avatarUrl?: string;
-  profile_photo_url?: string; // ✅ Ensure photo is mapped properly
+  profile_photo_url?: string;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   creditBalance: number;
@@ -146,7 +147,7 @@ export function normalizeUserRole(rawRole?: string | null): UserRole {
   return "general";
 }
 
-// ─── Local Storage Helpers (Kept for Demo Purpose Only) ──────────────────
+// ─── Local Storage Helpers ───────────────────────────────────────────────
 export function getPendingLawyerApplications(): PendingLawyerRecord[] {
   if (typeof window === "undefined") return [];
   try {
@@ -217,7 +218,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── Helper: map backend StoredUser → UserProfile ────────────────────────
 function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserProfile {
-  // ✅ FIX: ব্যাকএন্ড থেকে আসা রোলই চূড়ান্ত, লোকাল স্টোরেজ নয়
   const normRole = normalizeUserRole(u.role);
 
   return {
@@ -228,7 +228,6 @@ function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserP
     isEmailVerified: u.is_verified,
     isPhoneVerified: u.is_phone_verified,
     creditBalance: u.credit_balance,
-    // লইয়ার হলে লোকাল স্টোরেজ থেকে ডেমো প্রোফাইল নেওয়ার চেষ্টা করবে, না থাকলে ডিফল্ট
     lawyerProfile: normRole === "lawyer" ? {
       barCouncilNo: "",
       fieldOfLaw: "",
@@ -242,7 +241,6 @@ function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserP
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function meResponseToProfile(data: any): UserProfile {
   const email = data.email || "";
-  // ✅ FIX: ব্যাকএন্ড থেকে role আসলে সেটাই ব্যবহার হবে
   const normRole = data.role ? normalizeUserRole(data.role) : "general";
 
   const lawyerData = data.lawyer_profile || data.lawyer;
@@ -271,7 +269,6 @@ function meResponseToProfile(data: any): UserProfile {
     email: email,
     mobile: data.phone,
     role: normRole,
-    // ✅ FIX: ছবি রেসপন্স থেকে ঠিকমতো ম্যাপ করা হলো
     avatarUrl: data.profile_photo_url || data.avatar_url,
     profile_photo_url: data.profile_photo_url || data.avatar_url,
     isEmailVerified: data.is_verified ?? false,
@@ -406,6 +403,7 @@ const DEMO_ADMIN: UserProfile = {
 
 // ─── Provider ─────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter(); // ✅ FIX: Router ইনিশিয়ালাইজ করা হলো
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -474,7 +472,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       password: req.password,
     });
     
-    // ✅ FIX: লোকাল স্টোরেজের বদলে ব্যাকএন্ডের রোল ব্যবহার
     const resolvedRole = normalizeUserRole(data.role);
 
     if (typeof window !== "undefined") {
@@ -494,7 +491,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(profile);
     setIsAuthenticated(true);
 
-    // Fetch full profile in background (যাতে ছবি ও অন্যান্য ডাটা চলে আসে)
     api.get<Record<string, unknown>>("/api/auth/me").then((me) => {
       const full = meResponseToProfile(me);
       if (typeof window !== "undefined") {
@@ -518,7 +514,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       email: req.email,
       otp_code: req.otp,
     });
-    // ✅ FIX: ব্যাকএন্ডের রোল ব্যবহার
     const resolvedRole = normalizeUserRole(data.role);
     
     if (typeof window !== "undefined") {
@@ -549,14 +544,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const exp = req.experience_years ?? 3;
     const spec = req.specializations || (req.field_of_law ? [req.field_of_law] : ["Contract Law"]);
 
-    // ✅ FIX: যদি ব্যাকএন্ড থেকে এরর আসে (যেমন: আগেই অ্যাপ্লাই করেছে), তবে সেটি থ্রো করবে
     await api.post("/api/auth/onboard/lawyer", {
       bar_council_id: barId,
       experience_years: exp,
       specializations: spec,
     });
 
-    // লোকাল স্টেটে রোল চেঞ্জ না করে ব্যাকএন্ড থেকে নতুন স্টেট রিফ্রেশ করবো
     await refreshUser();
   };
 
@@ -596,10 +589,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     clearAuth();
     if (typeof window !== "undefined") {
       localStorage.clear();
-      window.location.href = "/login";
     }
     setIsAuthenticated(false);
     setUser(null);
+    router.replace("/login"); // ✅ FIX: Next.js Router দিয়ে রিডাইরেক্ট
   };
 
   const updateUser = (partial: Partial<UserProfile>) => {
@@ -625,10 +618,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       await api.post(`/api/admin/lawyers/${lawyerIdOrEmail}/approve`);
     } catch (err) {
       console.warn("Backend admin approve API note:", err);
-      throw err; // UI-তে এরর দেখানোর জন্য
+      throw err;
     }
     updateLawyerApplicationStatus(lawyerIdOrEmail, "verified");
-    await refreshUser(); // অ্যাডমিনের নিজের স্টেট আপডেট রাখার জন্য
+    await refreshUser();
   };
 
   const rejectLawyerByAdmin = async (
