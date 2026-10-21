@@ -363,9 +363,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
           }}
         />
 
-        {/* ২. ভেতরের মূল বডি (Inner Content) */}
+        {/* ২. ভেতরের মূল বডি (Inner Content) - ✅ Flex Row, Compact Layout */}
         <div
-          className="relative isolate flex cursor-text flex-col gap-2 p-3.5 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
+          className="relative isolate flex cursor-text items-end gap-2 py-2 pl-4 pr-2 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
           style={{ borderRadius: 'var(--pb-radius)' }}
           role="presentation"
           onPointerDown={e => {
@@ -375,7 +375,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
         >
           <textarea
             ref={inputRef}
-            className="prompt-bar-input block w-full resize-none border-0 bg-transparent p-1 text-[15px] leading-5.5 outline-none font-sans"
+            className="prompt-bar-input block w-full resize-none border-0 bg-transparent py-1.5 text-[15px] leading-5.5 outline-none font-sans flex-1"
             style={{
               color: "var(--text-primary)",
               caretColor: "var(--text-primary)"
@@ -394,7 +394,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             onKeyDown={onKeyDown}
           />
 
-          <div className="flex items-center justify-end gap-1.5 pt-1">
+          <div className="flex items-center gap-1.5 shrink-0 pb-0.5">
             {onDictate ? (
               <button
                 type="button"
@@ -420,7 +420,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             {/* Send Button */}
             <button
               type="button"
-              className="relative inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 disabled:opacity-30 transition-colors shadow-sm outline-none hover:opacity-90"
+              className="relative inline-grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-xl border-0 disabled:opacity-30 transition-colors shadow-sm outline-none hover:opacity-90"
               style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
               disabled={!armed}
               aria-label={busy ? 'Stop' : 'Send'}
