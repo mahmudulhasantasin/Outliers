@@ -1,16 +1,16 @@
 /**
  * Central API client for ContractMind.
- * Uses the NEXT_PUBLIC_API_URL env var (falls back to localhost:8000 for dev).
+ * Uses the NEXT_PUBLIC_API_URL env var (falls back to live backend for production).
  * Automatically attaches Bearer token on every request.
- * On 401 responses, clears auth and redirects to home.
+ * On 401 responses (except login/register), clears auth and redirects to home.
  */
 import { getToken, clearAuth } from "@/lib/auth";
 
 const LIVE_BACKEND_URL = "https://legal-copilot-backend-npq7.onrender.com";
 
-const BASE_URL =
-  (typeof process !== "undefined" && process.env.NEXT_PUBLIC_API_URL) ||
-  (typeof window !== "undefined" ? "" : LIVE_BACKEND_URL);
+// ✅ FIX: Always fall back to the live backend URL if env var is missing.
+// This prevents the frontend from accidentally hitting its own Vercel domain.
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || LIVE_BACKEND_URL;
 
 type RequestMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -82,7 +82,6 @@ async function request<T>(
   }
 
   // ✅ FIX: Only clear auth if 401 occurs on a protected route (NOT login/register).
-  // If it's a login error, let the generic error handler below extract the actual message.
   if (res.status === 401 && !path.includes("/api/auth/login") && !path.includes("/api/auth/register")) {
     clearAuth();
     throw new ApiError(401, "Session expired or unauthorized. Please log in.");
