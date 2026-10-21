@@ -658,44 +658,29 @@ export async function startContractReviewChat(
 
 /** Get earnings dashboard (GET /api/lawyer/earnings) */
 export async function getLawyerEarnings(): Promise<EarningsDashboard> {
-  try {
-    const data = await api.get<any>("/api/lawyer/earnings");
-    const walletBdt = Number(data.wallet_balance_bdt ?? data.total_earned_credits ?? 2500.0);
-    const totalEarnedBdt = Number(data.total_earned_bdt ?? data.total_earned_credits ?? 7000.0);
-    const totalWithdrawnBdt = Number(data.total_withdrawn_bdt ?? 4500.0);
-    const pendingWithdrawalsBdt = Number(data.pending_withdrawals_bdt ?? data.pending_payout_credits ?? 0.0);
-    const completed = Number(data.completed_reviews ?? 7);
-    const rating = Number(data.rating ?? data.avg_rating ?? 4.8);
-    const activeTasks = Number(data.active_tasks ?? 1);
+  // ✅ ভুয়া ডেমো ডেটা রিমুভ করা হলো
+  const data = await api.get<any>("/api/lawyer/earnings");
+  const walletBdt = Number(data.wallet_balance_bdt ?? data.total_earned_credits ?? 0);
+  const totalEarnedBdt = Number(data.total_earned_bdt ?? data.total_earned_credits ?? 0);
+  const totalWithdrawnBdt = Number(data.total_withdrawn_bdt ?? 0);
+  const pendingWithdrawalsBdt = Number(data.pending_withdrawals_bdt ?? data.pending_payout_credits ?? 0);
+  const completed = Number(data.completed_reviews ?? 0);
+  const rating = Number(data.rating ?? data.avg_rating ?? 0);
+  const activeTasks = Number(data.active_tasks ?? 0);
 
-    return {
-      wallet_balance_bdt: walletBdt,
-      total_earned_bdt: totalEarnedBdt,
-      total_withdrawn_bdt: totalWithdrawnBdt,
-      pending_withdrawals_bdt: pendingWithdrawalsBdt,
-      completed_reviews: completed,
-      rating: rating,
-      avg_rating: rating,
-      active_tasks: activeTasks,
-      total_earned_credits: totalEarnedBdt,
-      pending_payout_credits: pendingWithdrawalsBdt,
-      recent_earnings: Array.isArray(data.recent_earnings) ? data.recent_earnings : [],
-    };
-  } catch {
-    return {
-      wallet_balance_bdt: 2500.0,
-      total_earned_bdt: 7000.0,
-      total_withdrawn_bdt: 4500.0,
-      pending_withdrawals_bdt: 0.0,
-      completed_reviews: 7,
-      rating: 4.8,
-      avg_rating: 4.8,
-      active_tasks: 1,
-      total_earned_credits: 7000,
-      pending_payout_credits: 0,
-      recent_earnings: [],
-    };
-  }
+  return {
+    wallet_balance_bdt: walletBdt,
+    total_earned_bdt: totalEarnedBdt,
+    total_withdrawn_bdt: totalWithdrawnBdt,
+    pending_withdrawals_bdt: pendingWithdrawalsBdt,
+    completed_reviews: completed,
+    rating: rating,
+    avg_rating: rating,
+    active_tasks: activeTasks,
+    total_earned_credits: totalEarnedBdt,
+    pending_payout_credits: pendingWithdrawalsBdt,
+    recent_earnings: Array.isArray(data.recent_earnings) ? data.recent_earnings : [],
+  };
 }
 
 /** List withdrawal requests (GET /api/lawyer/withdrawals) */
@@ -1073,57 +1058,32 @@ export async function initiatePayment(
 ): Promise<InitiatePaymentResponse> {
   const parsedId = typeof packageId === "string" ? parseInt(packageId, 10) || packageId : packageId;
 
-  try {
-    const data = await api.post<any>("/api/payments/initiate", {
-      package_id: parsedId,
-    });
+  // ✅ ভুয়া ফলব্যাক রিমুভ করা হলো (এখন এরর হলে সরাসরি থ্রো করবে)
+  const data = await api.post<any>("/api/payments/initiate", {
+    package_id: parsedId,
+  });
 
-    const credits = data.total_credits ?? data.credits ?? fallbackPackage?.total_credits ?? fallbackPackage?.credits ?? 0;
-    const bkashObj: BkashPaymentInstructions = data.bkash || {
-      bkash_number: data.bkash_number || "01711000000",
-      bkash_type: "Merchant",
-      instructions_en: data.instructions || "1. Open bKash app.\n2. Choose 'Send Money' or 'Payment'.\n3. Send to bKash Number.\n4. Enter the Reference Code.\n5. Copy the TrxID from confirmation SMS and submit below.",
-      instructions_bn: "১. বিকাশ অ্যাপ খুলুন।\n২. 'Send Money' বা 'Payment' নির্বাচন করুন।\n৩. বিকাশ নম্বরে টাকা পাঠান।\n৪. রেফারেন্স ফিল্ডে রেফারেন্স কোডটি দিন।\n৫. কনফার্মেশন এসএমএস থেকে TrxID কপি করে নিচে জমা দিন।",
-    };
+  const credits = data.total_credits ?? data.credits ?? fallbackPackage?.total_credits ?? fallbackPackage?.credits ?? 0;
+  const bkashObj: BkashPaymentInstructions = data.bkash || {
+    bkash_number: data.bkash_number || "01711000000",
+    bkash_type: "Merchant",
+    instructions_en: data.instructions || "1. Open bKash app.\n2. Choose 'Send Money' or 'Payment'.\n3. Send to bKash Number.\n4. Enter the Reference Code.\n5. Copy the TrxID from confirmation SMS and submit below.",
+    instructions_bn: "১. বিকাশ অ্যাপ খুলুন।\n২. 'Send Money' বা 'Payment' নির্বাচন করুন।\n৩. বিকাশ নম্বরে টাকা পাঠান।\n৪. রেফারেন্স ফিল্ডে রেফারেন্স কোডটি দিন।\n৫. কনফার্মেশন এসএমএস থেকে TrxID কপি করে নিচে জমা দিন।",
+  };
 
-    return {
-      payment_id: data.payment_id ?? Date.now(),
-      reference_code: data.reference_code || `PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
-      amount_bdt: data.amount_bdt ?? fallbackPackage?.price_bdt ?? 0,
-      total_credits: credits,
-      credits,
-      package_name: data.package_name ?? fallbackPackage?.name ?? "Credit Package",
-      expires_at: data.expires_at || new Date(Date.now() + 86400000).toISOString(),
-      bkash: bkashObj,
-      bkash_number: bkashObj.bkash_number,
-      instructions: bkashObj.instructions_en,
-      next_step: data.next_step,
-    };
-  } catch (err) {
-    console.warn("Backend initiatePayment failed or offline, using fallback payment session:", err);
-    const randomCode = `PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-    const credits = fallbackPackage?.total_credits ?? fallbackPackage?.credits ?? (parsedId === 1 ? 440 : parsedId === 2 ? 950 : 2600);
-    const amount = fallbackPackage?.price_bdt ?? (parsedId === 1 ? 500 : parsedId === 2 ? 1000 : 2500);
-    const name = fallbackPackage?.name ?? (parsedId === 1 ? "Starter Pack" : parsedId === 2 ? "Standard Pack" : "Pro Pack");
-
-    return {
-      payment_id: `pay-${Date.now()}`,
-      reference_code: randomCode,
-      amount_bdt: amount,
-      total_credits: credits,
-      credits,
-      package_name: name,
-      expires_at: new Date(Date.now() + 86400000).toISOString(),
-      bkash: {
-        bkash_number: "01711000000",
-        bkash_type: "Merchant",
-        instructions_en: "1. Open bKash app.\n2. Choose 'Send Money' or 'Payment' to 01711000000.\n3. Enter exact amount ৳" + amount + ".\n4. Enter Reference: " + randomCode + ".\n5. Enter your TrxID below.",
-        instructions_bn: "১. বিকাশ অ্যাপ খুলুন।\n২. 'Send Money' বা 'Payment' করুন 01711000000 নম্বরে।\n৩. টাকার পরিমাণ ৳" + amount + " দিন।\n৪. রেফারেন্স কোড হিসেবে " + randomCode + " লিখুন।\n৫. প্রাপ্ত TrxID নিচে লিখুন।",
-      },
-      bkash_number: "01711000000",
-      instructions: "Send Money to 01711000000 with Reference: " + randomCode,
-    };
-  }
+  return {
+    payment_id: data.payment_id,
+    reference_code: data.reference_code,
+    amount_bdt: data.amount_bdt ?? fallbackPackage?.price_bdt ?? 0,
+    total_credits: credits,
+    credits,
+    package_name: data.package_name ?? fallbackPackage?.name ?? "Credit Package",
+    expires_at: data.expires_at || new Date(Date.now() + 86400000).toISOString(),
+    bkash: bkashObj,
+    bkash_number: bkashObj.bkash_number,
+    instructions: bkashObj.instructions_en,
+    next_step: data.next_step,
+  };
 }
 
 /** Submit bKash TRX ID for a payment (POST /api/payments/{payment_id}/submit-trx) */
@@ -1133,33 +1093,20 @@ export async function submitTrxId(
   senderNumber: string = "01700000000"
 ): Promise<SubmitTrxResponse> {
   const pid = typeof paymentId === "string" ? parseInt(paymentId, 10) || paymentId : paymentId;
-  try {
-    return await api.post<SubmitTrxResponse>(`/api/payments/${pid}/submit-trx`, {
-      trx_id: trxId.trim(),
-      sender_number: senderNumber.trim(),
-    });
-  } catch (err) {
-    console.warn("Backend submitTrxId failed, using fallback:", err);
-    return {
-      status: "success",
-      payment_id: pid,
-      message: "TrxID submitted successfully. Verification in progress.",
-      current_status: "PENDING_VERIFICATION",
-    };
-  }
+  
+  // ✅ ভুয়া সাকসেস ফলব্যাক রিমুভ করা হলো
+  return await api.post<SubmitTrxResponse>(`/api/payments/${pid}/submit-trx`, {
+    trx_id: trxId.trim(),
+    sender_number: senderNumber.trim(),
+  });
 }
 
 /** Cancel a pending payment (POST /api/payments/{payment_id}/cancel) */
 export async function cancelPayment(paymentId: string | number): Promise<CancelPaymentResponse> {
   const pid = typeof paymentId === "string" ? parseInt(paymentId, 10) || paymentId : paymentId;
-  try {
-    return await api.post<CancelPaymentResponse>(`/api/payments/${pid}/cancel`);
-  } catch (err) {
-    console.warn("Backend cancelPayment failed, using fallback:", err);
-    return {
-      status: "cancelled",
-    };
-  }
+  
+  // ✅ ভুয়া সাকসেস ফলব্যাক রিমুভ করা হলো
+  return await api.post<CancelPaymentResponse>(`/api/payments/${pid}/cancel`);
 }
 
 /** List user's payments (GET /api/payments/my) */
@@ -1295,25 +1242,8 @@ export interface AdminDashboardStats {
 
 /** Get admin dashboard overview stats (GET /api/admin/dashboard) */
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
-  try {
-    return await api.get<AdminDashboardStats>("/api/admin/dashboard");
-  } catch {
-    return {
-      users: {
-        total: 1250,
-        general: 1100,
-        lawyers: 85,
-        enterprise_admins: 30,
-        enterprise_members: 35,
-      },
-      pending: {
-        lawyers: 1,
-        enterprises: 2,
-        payments: 5,
-        withdrawals: 1,
-      },
-    };
-  }
+  // ✅ ভুয়া ডেমো স্ট্যাটস রিমুভ করা হলো
+  return await api.get<AdminDashboardStats>("/api/admin/dashboard");
 }
 
 /** Get pending lawyer verification queue (GET /api/admin/lawyers/pending) */
