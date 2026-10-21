@@ -1428,3 +1428,83 @@ export async function getAdminPendingPayments(): Promise<AdminPendingPayment[]> 
 export async function approveAdminPayment(id: string | number, note?: string): Promise<any> {
   return api.post(`/api/admin/payments/${id}/approve`, { admin_note: note || "Approved via Admin Portal" });
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// SYSTEM ADMIN - USERS, ENTERPRISES & FINANCIALS
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  full_name: string;
+  role: string;
+  credit_balance: number;
+  is_active: boolean;
+  is_verified: boolean;
+  enterprise_id: number | null;
+  created_at: string;
+}
+
+/** Get all users for admin dashboard */
+export async function getAdminUsers(search?: string): Promise<AdminUser[]> {
+  try {
+    const query = search ? `?search=${encodeURIComponent(search)}&limit=50` : "?limit=50";
+    const res = await api.get<AdminUser[]>(`/api/admin/users${query}`);
+    return Array.isArray(res) ? res : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Get specific user details for Admin Profile Modal */
+export async function getAdminUserDetail(id: number): Promise<any> {
+  return api.get(`/api/admin/users/${id}`);
+}
+
+export interface AdminPendingEnterprise {
+  enterprise_id: number;
+  name: string;
+  domain: string;
+  referral_code: string;
+  member_limit: number;
+  billing_email: string;
+  requested_admin: { id: number; email: string; full_name: string } | null;
+  created_at: string;
+}
+
+/** Get pending enterprises */
+export async function getAdminPendingEnterprises(): Promise<AdminPendingEnterprise[]> {
+  try {
+    const res = await api.get<AdminPendingEnterprise[]>("/api/admin/enterprises/pending");
+    return Array.isArray(res) ? res : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Approve an enterprise */
+export async function approveAdminEnterprise(id: number): Promise<any> {
+  return api.post(`/api/admin/enterprises/${id}/approve`);
+}
+
+export interface AdminFinancials {
+  internal_service_costs_bdt: Record<string, number>;
+  lawyer_verification_split_bdt: { lawyer_payout: number; platform_fee: number };
+  aggregates: {
+    total_revenue_bdt: number;
+    total_credits_sold: number;
+    pending_payouts_bdt: number;
+    paid_payouts_bdt: number;
+    net_platform_position_bdt: number;
+  };
+}
+
+/** Get platform financial overview */
+export async function getAdminFinancials(): Promise<AdminFinancials | null> {
+  try {
+    const res = await api.get<AdminFinancials>("/api/admin/financials");
+    return res;
+  } catch {
+    return null;
+  }
+}
