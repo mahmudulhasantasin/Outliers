@@ -1373,6 +1373,8 @@ export interface AdminUser {
   is_verified: boolean;
   enterprise_id: number | null;
   created_at: string;
+  profile_photo_url?: string | null; // ✅ নতুন যুক্ত হলো
+  phone?: string | null;             // ✅ নতুন যুক্ত হলো
 }
 
 /** Get all users for admin dashboard */

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image"; // ✅ FIX: Next.js Image component
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -44,6 +45,7 @@ interface UserDetailData {
   is_verified: boolean;
   created_at: string;
   enterprise_id: number | null;
+  profile_photo_url?: string | null;
   lawyer_profile: {
     bar_council_id: string;
     experience_years: number;
@@ -428,36 +430,80 @@ export default function AdminPage() {
         {/* ── TAB: ALL USERS ── */}
         {activeTab === "users" && (
           <div className="space-y-4 animate-in fade-in">
-            <h2 className="text-base font-semibold">All Platform Users ({usersList.length})</h2>
-            <div className="overflow-x-auto rounded-2xl border border-(--text-primary)/10 bg-(--bg-card)">
+            <h2 className="text-base font-semibold text-(--text-primary)">All Platform Users ({usersList.length})</h2>
+            <div className="overflow-x-auto rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-sm">
               <table className="w-full text-left text-xs">
                 <thead className="bg-(--bg-surface) border-b border-(--text-primary)/10 text-(--text-muted)">
                   <tr>
-                    <th className="p-4 font-semibold">User</th>
-                    <th className="p-4 font-semibold">Role</th>
-                    <th className="p-4 font-semibold">Credits</th>
-                    <th className="p-4 font-semibold">Status</th>
-                    <th className="p-4 font-semibold text-right">Action</th>
+                    <th className="p-5 font-semibold">User Profile</th>
+                    <th className="p-5 font-semibold">Contact</th>
+                    <th className="p-5 font-semibold">Role</th>
+                    <th className="p-5 font-semibold">Credits</th>
+                    <th className="p-5 font-semibold">Status</th>
+                    <th className="p-5 font-semibold text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-(--text-primary)/5">
                   {usersList.map((u) => (
-                    <tr key={u.id} className="hover:bg-(--text-primary)/5">
-                      <td className="p-4">
-                        <p className="font-bold text-(--text-primary)">{u.full_name}</p>
-                        <p className="text-[10px] text-(--text-muted)">{u.email}</p>
+                    <tr key={u.id} className="hover:bg-(--text-primary)/5 transition-colors group">
+                      
+                      {/* User Avatar & Name */}
+                      <td className="p-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-sm font-bold font-serif border border-indigo-200 dark:border-indigo-800 shrink-0 overflow-hidden shadow-sm">
+                            {u.profile_photo_url ? (
+                              <Image 
+                                src={u.profile_photo_url} 
+                                alt={u.full_name || "User"} 
+                                width={40} 
+                                height={40} 
+                                className="w-full h-full object-cover" 
+                                unoptimized
+                              />
+                            ) : (
+                              u.full_name?.charAt(0) || "U"
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-bold text-(--text-primary) text-sm">{u.full_name}</p>
+                            <p className="text-[10px] text-(--text-muted) font-mono">ID: #{u.id}</p>
+                          </div>
+                        </div>
                       </td>
-                      <td className="p-4 font-mono font-semibold text-indigo-600">{u.role}</td>
-                      <td className="p-4 font-mono font-bold text-amber-600">{u.credit_balance}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${u.is_active ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"}`}>
+
+                      {/* Contact Info */}
+                      <td className="p-5">
+                        <p className="text-(--text-primary) font-medium">{u.email}</p>
+                        <p className="text-[10px] text-(--text-muted)">{u.phone || "No phone"}</p>
+                      </td>
+
+                      {/* Role */}
+                      <td className="p-5">
+                        <span className="font-mono text-[10px] font-bold px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800">
+                          {u.role}
+                        </span>
+                      </td>
+
+                      {/* Credits */}
+                      <td className="p-5">
+                        <p className="font-mono font-bold text-amber-600 dark:text-amber-400 text-sm">
+                          {u.credit_balance} <span className="text-[10px] text-(--text-muted)">cr</span>
+                        </p>
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-5">
+                        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold ${u.is_active ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300" : "bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300"}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${u.is_active ? "bg-emerald-500" : "bg-rose-500"}`} />
                           {u.is_active ? "Active" : "Suspended"}
                         </span>
                       </td>
-                      <td className="p-4 text-right">
+
+                      {/* Action */}
+                      <td className="p-5 text-right">
                         <button 
                           onClick={() => handleViewUser(u.id)}
-                          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-[11px] font-bold border border-(--text-primary)/15 hover:bg-(--text-primary)/5"
+                          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-[11px] font-bold bg-(--bg-surface) border border-(--text-primary)/10 hover:border-(--text-primary)/30 text-(--text-primary) transition-all opacity-70 group-hover:opacity-100 shadow-xs"
                         >
                           <Eye className="w-3.5 h-3.5" /> View Profile
                         </button>
@@ -491,8 +537,19 @@ export default function AdminPage() {
                   <div className="space-y-5 text-sm">
                     {/* Basic Info */}
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl font-bold font-serif border border-indigo-200">
-                        {userDetail.full_name?.charAt(0) || "U"}
+                      <div className="w-14 h-14 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-xl font-bold font-serif border border-indigo-200 overflow-hidden">
+                        {userDetail.profile_photo_url ? (
+                          <Image 
+                            src={userDetail.profile_photo_url} 
+                            alt={userDetail.full_name || "User"} 
+                            width={56} 
+                            height={56} 
+                            className="w-full h-full object-cover" 
+                            unoptimized
+                          />
+                        ) : (
+                          userDetail.full_name?.charAt(0) || "U"
+                        )}
                       </div>
                       <div>
                         <h4 className="text-lg font-bold text-(--text-primary)">{userDetail.full_name}</h4>
