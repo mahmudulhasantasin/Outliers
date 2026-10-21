@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
-import { getContractHistory, deleteContract, HITL_STATUS_CONFIG } from "@/lib/apiServices";
+import { getContractHistory, deleteContract, HITL_STATUS_CONFIG, requestLawyerVerification } from "@/lib/apiServices";
 import {
   FolderClock,
   Search,
@@ -52,7 +52,7 @@ interface ArchivedRecord {
 export default function ArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth(); // ✅ FIX: refreshUser যোগ করা হলো
 
   useEffect(() => {
     const userRole = String(user?.role).toUpperCase();
@@ -68,8 +68,9 @@ export default function ArchivePage() {
   const [printRecord, setPrintRecord] = useState<ArchivedRecord | null>(null);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   
-  // ✅ ডিলিট লোডিং স্টেট
+  // ✅ ডিলিট ও ভেরিফিকেশন লোডিং স্টেট
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [isRequestingVerification, setIsRequestingVerification] = useState<string | null>(null);
 
   // Map backend history item to full ArchivedRecord
   const mapItemToRecord = (item: any): ArchivedRecord => {
@@ -104,7 +105,6 @@ export default function ArchivePage() {
     const isCritical = backendOverallRisk === "CRITICAL" || score >= 90;
     const isHigh = !isCritical && overallRisk === "HIGH";
     const isModerate = overallRisk === "MODERATE";
-    // ✅ FIX: isLow ভ্যারিয়েবলটি রিমুভ করা হয়েছে কারণ এটি কোডে ব্যবহার হয়নি
 
     let highCount = typeof item.high_risk_count === "number" ? item.high_risk_count : cachedAudit?.high_risk_count;
     let medCount = typeof item.medium_risk_count === "number" ? item.medium_risk_count : cachedAudit?.medium_risk_count;
@@ -355,6 +355,24 @@ export default function ArchivePage() {
     };
     sessionStorage.setItem("active_audit_contract", JSON.stringify(contextPayload));
     router.push("/copilot");
+  };
+
+  // ✅ নতুন: Lawyer Verification Request Logic
+  const handleRequestLawyer = async (record: ArchivedRecord) => {
+    if (!confirm(language === "bn" ? "আপনি কি নিশ্চিত এই চুক্তিটি লইয়ারের কাছে ভেরিফিকেশনের জন্য পাঠাতে চান? এটি ১৫০০ ক্রেডিট কাটবে।" : "Are you sure you want to request lawyer verification? This will deduct 1500 credits.")) return;
+    
+    setIsRequestingVerification(record.id);
+    try {
+      await requestLawyerVerification(record.contractId);
+      alert(language === "bn" ? "সফলভাবে লইয়ার ভেরিফিকেশনের জন্য পাঠানো হয়েছে!" : "Successfully dispatched to lawyer queue!");
+      if (refreshUser) refreshUser().catch(() => {});
+      fetchHistory(); // আর্কাইভ রিফ্রেশ করে নতুন স্ট্যাটাস দেখানো
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to request verification";
+      alert(msg);
+    } finally {
+      setIsRequestingVerification(null);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -684,7 +702,25 @@ export default function ArchivePage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    
+                    {/* ✅ নতুন বাটন: Verify by Lawyer */}
+                    {record.hitlStatus === "NOT_REQUESTED" && (
+                      <button
+                        onClick={() => handleRequestLawyer(record)}
+                        disabled={isRequestingVerification === record.id}
+                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50"
+                        title={language === "bn" ? "লইয়ার দ্বারা ভেরিফাই করুন" : "Verify by Lawyer"}
+                      >
+                        {isRequestingVerification === record.id ? (
+                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <ShieldCheck className="w-3.5 h-3.5" />
+                        )}
+                        <span>{language === "bn" ? "লইয়ার ভেরিফাই" : "Verify by Lawyer"}</span>
+                      </button>
+                    )}
+
                     <button
                       onClick={() => handleOpenInCopilot(record)}
                       className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary)"
