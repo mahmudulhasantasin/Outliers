@@ -81,7 +81,9 @@ async function request<T>(
     clearTimeout(timeoutId);
   }
 
-  if (res.status === 401) {
+  // ✅ FIX: Only clear auth if 401 occurs on a protected route (NOT login/register).
+  // If it's a login error, let the generic error handler below extract the actual message.
+  if (res.status === 401 && !path.includes("/api/auth/login") && !path.includes("/api/auth/register")) {
     clearAuth();
     throw new ApiError(401, "Session expired or unauthorized. Please log in.");
   }
@@ -162,5 +164,3 @@ export const api = {
 };
 
 export default api;
-
-
