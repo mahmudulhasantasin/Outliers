@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -28,6 +28,8 @@ import {
   Copy,
   Loader2,
   Ban,
+  Phone,
+  Hash,
 } from "lucide-react";
 
 const DEFAULT_PACKAGES: CreditPackage[] = [
@@ -263,7 +265,6 @@ export default function PricingPage() {
           ? "ট্রানজেকশন সফলভাবে সাবমিট হয়েছে! অ্যাডমিন অনুমোদন করার সাথে সাথে আপনার ব্যালেন্সে ক্রেডিট যুক্ত হবে।"
           : "Transaction ID submitted successfully! Credits will be credited once verified."
       );
-      // Optimistically add to payments list
       const newPayment: Payment = {
         id: activeInitiate.payment_id,
         reference_code: activeInitiate.reference_code,
@@ -374,7 +375,7 @@ export default function PricingPage() {
 
   if (String(user?.role).toUpperCase() === "LAWYER") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -552,16 +553,16 @@ export default function PricingPage() {
 
           {payments.length > 0 ? (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-mono">
+              <table className="w-full text-left text-xs font-mono whitespace-nowrap">
                 <thead>
                   <tr className="border-b border-(--text-primary)/10 text-(--text-muted) uppercase text-[10px]">
-                    <th className="py-2.5">{isBn ? "রেফারেন্স" : "Ref / Code"}</th>
-                    <th className="py-2.5">{isBn ? "প্যাকেজ" : "Package"}</th>
-                    <th className="py-2.5">{isBn ? "পরিমাণ" : "Amount"}</th>
-                    <th className="py-2.5">{isBn ? "ক্রেডিট" : "Credits"}</th>
-                    <th className="py-2.5">{isBn ? "ট্রানজেকশন আইডি" : "TrxID"}</th>
-                    <th className="py-2.5">{isBn ? "তারিখ" : "Date"}</th>
-                    <th className="py-2.5 text-right">{isBn ? "স্ট্যাটাস" : "Status"}</th>
+                    <th className="py-2.5 px-2">{isBn ? "রেফারেন্স" : "Ref / Code"}</th>
+                    <th className="py-2.5 px-2">{isBn ? "প্যাকেজ" : "Package"}</th>
+                    <th className="py-2.5 px-2">{isBn ? "পরিমাণ" : "Amount"}</th>
+                    <th className="py-2.5 px-2">{isBn ? "ক্রেডিট" : "Credits"}</th>
+                    <th className="py-2.5 px-2">{isBn ? "ট্রানজেকশন আইডি" : "TrxID"}</th>
+                    <th className="py-2.5 px-2">{isBn ? "তারিখ" : "Date"}</th>
+                    <th className="py-2.5 px-2 text-right">{isBn ? "স্ট্যাটাস" : "Status"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-(--text-primary)/5">
@@ -571,25 +572,25 @@ export default function PricingPage() {
 
                     return (
                       <tr key={p.id}>
-                        <td className="py-3 font-semibold text-(--text-primary)">
+                        <td className="py-3 px-2 font-semibold text-(--text-primary)">
                           {p.reference_code || `#${p.id}`}
                         </td>
-                        <td className="py-3 font-sans text-(--text-primary)">
+                        <td className="py-3 px-2 font-sans text-(--text-primary)">
                           {p.package_name || p.package?.name || (isBn ? "ক্রেডিট রিচার্জ" : "Credit Recharge")}
                         </td>
-                        <td className="py-3 text-(--text-primary) font-bold">৳{p.amount_bdt}</td>
-                        <td className="py-3 text-emerald-500 font-bold">+{p.total_credits || p.credits || 0}</td>
-                        <td className="py-3 text-(--text-muted)">
+                        <td className="py-3 px-2 text-(--text-primary) font-bold">৳{p.amount_bdt}</td>
+                        <td className="py-3 px-2 text-emerald-500 font-bold">+{p.total_credits || p.credits || 0}</td>
+                        <td className="py-3 px-2 text-(--text-muted)">
                           {p.trx_id || p.bkash_trx_id || (
                             <span className="italic text-[10px] opacity-70">
                               {isBn ? "অপেক্ষমান" : "Pending"}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 text-(--text-muted) font-sans">
+                        <td className="py-3 px-2 text-(--text-muted) font-sans">
                           {new Date(p.created_at || p.initiated_at).toLocaleDateString()}
                         </td>
-                        <td className="py-3 text-right">
+                        <td className="py-3 px-2 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {getStatusBadge(p.status)}
                             {isPending && (
@@ -616,12 +617,13 @@ export default function PricingPage() {
           )}
         </div>
 
-        {/* ── BKASH PAYMENT MODAL ── */}
+        {/* ── BKASH PAYMENT MODAL (RESPONSIVE & COMPACT) ── */}
         {activeInitiate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`w-full max-w-md rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl overflow-hidden`}>
+            <div className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl flex flex-col`}>
+              
               {/* Modal Header */}
-              <div className="p-5 border-b border-(--text-primary)/10 bg-[#E2136E] text-white flex items-center justify-between">
+              <div className="p-4 sm:p-5 border-b border-(--text-primary)/10 bg-[#E2136E] text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
                 <div>
                   <span className="text-[10px] uppercase font-bold tracking-wider opacity-80">
                     bKash Payment Gateway
@@ -640,7 +642,7 @@ export default function PricingPage() {
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 space-y-5">
+              <div className="p-4 sm:p-6 space-y-4">
                 {trxSuccessMessage ? (
                   <div className="text-center py-6 space-y-3">
                     <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
@@ -725,49 +727,64 @@ export default function PricingPage() {
                       <div className="flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400 px-1">
                         <Clock className="w-3.5 h-3.5 shrink-0" />
                         <span>
-                          {isBn ? "এই পেমেন্ট রিকোয়েস্টের মেয়াদ:" : "Payment expires at:"}{" "}
+                          {isBn ? "পেমেন্টের মেয়াদ:" : "Expires at:"}{" "}
                           {new Date(activeInitiate.expires_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
                     )}
 
-                    {/* Instructions */}
-                    <div className="p-3 rounded-xl bg-(--text-primary)/5 text-[11px] text-(--text-muted) leading-relaxed">
-                      {isBn
-                        ? activeInitiate.bkash?.instructions_bn || activeInitiate.instructions || "আপনার বিকাশ অ্যাপ থেকে Send Money / Payment করুন, রেফারেন্স ফিল্ডে রেফারেন্স কোডটি দিন এবং এসএমএসে প্রাপ্ত TrxID নিচে লিখুন।"
-                        : activeInitiate.bkash?.instructions_en || activeInitiate.instructions || "Send money to the bKash number with the Reference Code above, then enter the TrxID below."}
+                    {/* Compact Instructions (Replaced long text with 3 steps) */}
+                    <div className="p-3.5 rounded-xl bg-indigo-500/5 border border-indigo-500/10 space-y-1.5">
+                      <div className="flex items-center gap-2 text-[11px] text-(--text-primary)">
+                        <span className="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-600 flex items-center justify-center text-[9px] font-bold shrink-0">1</span>
+                        <span>{isBn ? "বিকাশ অ্যাপে 'Send Money' করুন" : "Open bKash app and use 'Send Money'"}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-(--text-primary)">
+                        <span className="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-600 flex items-center justify-center text-[9px] font-bold shrink-0">2</span>
+                        <span>{isBn ? "উপরের রেফারেন্স কোডটি দিন" : "Enter the Reference Code above"}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-[11px] text-(--text-primary)">
+                        <span className="w-4 h-4 rounded-full bg-indigo-500/20 text-indigo-600 flex items-center justify-center text-[9px] font-bold shrink-0">3</span>
+                        <span>{isBn ? "প্রাপ্ত TrxID নিচে লিখুন" : "Enter the TrxID below"}</span>
+                      </div>
                     </div>
 
-                    <form onSubmit={handleTrxSubmit} className="space-y-4">
+                    <form onSubmit={handleTrxSubmit} className="space-y-3">
                       <div>
                         <label className="block text-[11px] font-semibold text-(--text-muted) mb-1 uppercase tracking-wider">
-                          {isBn ? "প্রেরকের বিকাশ নম্বর (Sender bKash No)" : "Sender bKash Number"}
+                          {isBn ? "প্রেরকের বিকাশ নম্বর" : "Sender bKash Number"}
                         </label>
-                        <input
-                          type="tel"
-                          required
-                          value={senderNumber}
-                          onChange={(e) => setSenderNumber(e.target.value)}
-                          placeholder="017XXXXXXXX"
-                          className={`w-full px-4 py-2.5 rounded-xl text-sm border font-mono outline-none ${borderClass} bg-(--bg-surface) text-(--text-primary)`}
-                        />
+                        <div className="relative">
+                          <Phone className="w-4 h-4 text-(--text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="tel"
+                            required
+                            value={senderNumber}
+                            onChange={(e) => setSenderNumber(e.target.value)}
+                            placeholder="01XXXXXXXXX"
+                            className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border font-mono outline-none ${borderClass} bg-(--bg-surface) text-(--text-primary) focus:border-[#E2136E]`}
+                          />
+                        </div>
                       </div>
 
                       <div>
                         <label className="block text-[11px] font-semibold text-(--text-muted) mb-1 uppercase tracking-wider">
-                          {isBn ? "বিকাশ ট্রানজেকশন আইডি (TrxID)" : "bKash Transaction ID (TrxID)"}
+                          {isBn ? "বিকাশ ট্রানজেকশন আইডি" : "bKash Transaction ID"}
                         </label>
-                        <input
-                          type="text"
-                          required
-                          value={trxId}
-                          onChange={(e) => setTrxId(e.target.value)}
-                          placeholder="e.g. BL9A7K8XYZ"
-                          className={`w-full px-4 py-2.5 rounded-xl text-sm border font-mono outline-none ${borderClass} bg-(--bg-surface) text-(--text-primary) uppercase`}
-                        />
+                        <div className="relative">
+                          <Hash className="w-4 h-4 text-(--text-muted) absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            required
+                            value={trxId}
+                            onChange={(e) => setTrxId(e.target.value)}
+                            placeholder="e.g. BL9A7K8XYZ"
+                            className={`w-full pl-9 pr-4 py-2.5 rounded-xl text-sm border font-mono outline-none ${borderClass} bg-(--bg-surface) text-(--text-primary) uppercase focus:border-[#E2136E]`}
+                          />
+                        </div>
                       </div>
 
-                      <div className="space-y-2 pt-1">
+                      <div className="space-y-2 pt-2">
                         <button
                           type="submit"
                           disabled={isSubmittingTrx || !trxId.trim()}
@@ -778,7 +795,7 @@ export default function PricingPage() {
                           ) : (
                             <CheckCircle2 className="w-4 h-4" />
                           )}
-                          <span>{isBn ? "ট্রানজেকশন নিশ্চিত করুন" : "Confirm Payment"}</span>
+                          <span>{isBn ? "পেমেন্ট নিশ্চিত করুন" : "Confirm Payment"}</span>
                         </button>
 
                         <button
