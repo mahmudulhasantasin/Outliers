@@ -1398,3 +1398,33 @@ export async function rejectAdminWithdrawal(
 export async function deleteAccount(): Promise<{ status: string; message: string }> {
   return api.delete<{ status: string; message: string }>("/api/auth/me");
 }
+
+// ────────────────────────────────────────────────────────────────────────────
+// SYSTEM ADMIN - PAYMENTS & FINANCIALS
+// ────────────────────────────────────────────────────────────────────────────
+
+export interface AdminPendingPayment {
+  payment_id: number | string;
+  reference_code: string;
+  amount_bdt: number;
+  total_credits: number;
+  payer_type: "user" | "enterprise";
+  trx_id: string;
+  sender_number: string;
+  trx_submitted_at: string;
+}
+
+/** Get pending bKash payments for verification */
+export async function getAdminPendingPayments(): Promise<AdminPendingPayment[]> {
+  try {
+    const res = await api.get<AdminPendingPayment[]>("/api/admin/payments/pending");
+    return Array.isArray(res) ? res : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Approve a pending payment */
+export async function approveAdminPayment(id: string | number, note?: string): Promise<any> {
+  return api.post(`/api/admin/payments/${id}/approve`, { admin_note: note || "Approved via Admin Portal" });
+}
