@@ -3,15 +3,18 @@
 import React from "react";
 import AppDock from "@/components/dock/AppDock";
 
+// ✅ FIX: Explicitly define the props interface to resolve the 'IntrinsicAttributes' error
+interface AppShellProps {
+  children: React.ReactNode;
+  className?: string;
+  mainClassName?: string;
+}
+
 export default function AppShell({
   children,
   className = "",
   mainClassName = ""
-}: {
-  children: React.ReactNode;
-  className?: string;
-  mainClassName?: string;
-}) {
+}: AppShellProps) {
   return (
     <div
       className={`relative flex min-h-screen w-full transition-colors duration-200 overflow-x-hidden print:overflow-visible print:block print:w-full print:min-h-0 ${className}`}
