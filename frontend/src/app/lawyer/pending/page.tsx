@@ -33,7 +33,20 @@ import {
   Lock,
   Ban,
   XCircle,
+  Edit3,
 } from "lucide-react";
+
+// ✅ FIX: Defined strict interface for clauses instead of 'any'
+interface EditableClause {
+  clause_number: string;
+  clause_title: string;
+  risk_level: string;
+  original_text?: string;
+  statute_reference?: string;
+  legal_explanation?: string;
+  proposed_safe_redline?: string;
+  is_compliant?: boolean;
+}
 
 interface PendingContract {
   id: string;
@@ -49,6 +62,7 @@ interface PendingContract {
   priority: "high" | "normal";
   contractId?: string;
   submitDeadline?: string;
+  clauses?: EditableClause[]; // ✅ Replaced any[] with EditableClause[]
 }
 
 const LiveTimer = ({ deadline }: { deadline?: string }) => {
@@ -113,9 +127,14 @@ export default function LawyerPendingPage() {
   const [activeSubTab, setActiveSubTab] = useState<"queue" | "active">("queue");
   const [search, setSearch] = useState("");
   const [selectedContract, setSelectedContract] = useState<PendingContract | null>(null);
-  const [modalTab, setModalTab] = useState<"markdown" | "signoff">("markdown");
+  
+  const [modalTab, setModalTab] = useState<"markdown" | "edit_clauses" | "signoff">("markdown");
 
   const [advocateNotes, setAdvocateNotes] = useState("");
+  
+  // ✅ FIX: Replaced any[] with EditableClause[]
+  const [editableClauses, setEditableClauses] = useState<EditableClause[]>([]);
+  
   const [checklist, setChecklist] = useState({
     severanceAudited: true,
     restraintResolved: true,
@@ -124,7 +143,6 @@ export default function LawyerPendingPage() {
   const [isSealing, setIsSealing] = useState(false);
   const [sealedSuccess, setSealedSuccess] = useState(false);
 
-  // ✅ FIX: loadQueueAndTasks ফাংশনটি useEffect-এর ভেতরে সরানো হলো যাতে ওয়ার্নিং না আসে
   useEffect(() => {
     let isMounted = true;
 
@@ -142,7 +160,7 @@ export default function LawyerPendingPage() {
           getActiveTasks(),
         ]);
 
-        if (!isMounted) return; // ✅ isMounted চেক করা হলো
+        if (!isMounted) return;
 
         if (queueRes.status === "fulfilled" && Array.isArray(queueRes.value)) {
           const mappedQueue: PendingContract[] = queueRes.value.map((item) => ({
@@ -178,6 +196,7 @@ export default function LawyerPendingPage() {
             priority: "high",
             contractId: String(item.contract_id || item.memo_id),
             submitDeadline: item.submit_deadline,
+            clauses: (item.clauses_analysis as EditableClause[]) || [], // ✅ Type Cast
           }));
           setActiveTasks(mappedActive);
         }
@@ -190,11 +209,12 @@ export default function LawyerPendingPage() {
 
     if (typeof window !== "undefined") {
       try {
-        const stored = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]");
+        // ✅ FIX: Cast JSON.parse result to PendingContract[]
+        const stored = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]") as PendingContract[];
         if (Array.isArray(stored) && stored.length > 0) {
           setPendingList((prev) => {
             const existingIds = new Set(prev.map((p) => p.id));
-            const additions = stored.filter((p: PendingContract) => !existingIds.has(p.id));
+            const additions = stored.filter((p) => !existingIds.has(p.id));
             return [...additions, ...prev];
           });
         }
@@ -226,6 +246,7 @@ export default function LawyerPendingPage() {
 
   const handleOpenReview = (contract: PendingContract) => {
     setSelectedContract(contract);
+    setEditableClauses(contract.clauses ? JSON.parse(JSON.stringify(contract.clauses)) : []);
     setModalTab("markdown");
     setSealedSuccess(false);
   };
@@ -286,16 +307,7 @@ export default function LawyerPendingPage() {
         notes: advocateNotes,
         lawyer_notes: advocateNotes,
         verified: true,
-        updated_clauses: [
-          {
-            clause_number: "§ 1",
-            clause_title: "Non-Compete & Restraint of Trade",
-            risk_level: "Compliant with Amendment",
-            legal_explanation: advocateNotes || "Statutory audit completed under Bangladesh Labour Act 2006 & Contract Act 1872 Section 27.",
-            proposed_safe_redline: "Non-compete term reduced to 12 months maximum within Dhaka Division.",
-            is_compliant: true,
-          },
-        ],
+        updated_clauses: editableClauses,
         signature_url: `signatures/lawyer_${user?.id || "42"}.png`,
         signed_pdf_url: `signed_contracts/memo_${selectedContract.id}_final.pdf`,
       });
@@ -309,7 +321,8 @@ export default function LawyerPendingPage() {
 
       if (typeof window !== "undefined") {
         const userArchiveKey = user?.email ? `verified_contracts_archive_${user.email}` : "verified_contracts_archive";
-        const archive = JSON.parse(localStorage.getItem(userArchiveKey) || "[]");
+        // ✅ FIX: Cast JSON.parse result to unknown[] to satisfy ESLint, or specific type if defined
+        const archive = JSON.parse(localStorage.getItem(userArchiveKey) || "[]") as Record<string, unknown>[];
         const newVerified = {
           id: `ver-${selectedContract.id}`,
           clientName: selectedContract.clientName,
@@ -326,8 +339,9 @@ export default function LawyerPendingPage() {
         };
         localStorage.setItem(userArchiveKey, JSON.stringify([newVerified, ...archive]));
 
-        const dispatched = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]");
-        localStorage.setItem("dispatched_pending_contracts", JSON.stringify(dispatched.filter((d: PendingContract) => d.id !== selectedContract.id)));
+        // ✅ FIX: Cast JSON.parse result to PendingContract[]
+        const dispatched = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]") as PendingContract[];
+        localStorage.setItem("dispatched_pending_contracts", JSON.stringify(dispatched.filter((d) => d.id !== selectedContract.id)));
       }
 
       setTimeout(() => {
@@ -335,6 +349,12 @@ export default function LawyerPendingPage() {
         setSelectedContract(null);
       }, 1600);
     }, 800);
+  };
+
+  const handleClauseChange = (index: number, field: keyof EditableClause, value: string) => {
+    const updated = [...editableClauses];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditableClauses(updated);
   };
 
   const contractIdForMarkdown = selectedContract?.contractId || "employment-agreement";
@@ -672,11 +692,11 @@ export default function LawyerPendingPage() {
               </div>
 
               <div className="px-5 py-2.5 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-card)">
-                <div className="flex items-center bg-(--bg-surface) p-1 rounded-xl border border-(--text-primary)/10 text-xs font-semibold">
+                <div className="flex items-center bg-(--bg-surface) p-1 rounded-xl border border-(--text-primary)/10 text-xs font-semibold overflow-x-auto">
                   <button
                     type="button"
                     onClick={() => setModalTab("markdown")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
                       modalTab === "markdown"
                         ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
                         : "text-(--text-muted) hover:text-(--text-primary)"
@@ -685,10 +705,24 @@ export default function LawyerPendingPage() {
                     <FileCode2 className="w-3.5 h-3.5" />
                     <span>{isBn ? "এআই অডিট রিপোর্ট প্রিভিউ" : "AI Audit Report Preview"}</span>
                   </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => setModalTab("edit_clauses")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                      modalTab === "edit_clauses"
+                        ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
+                        : "text-(--text-muted) hover:text-(--text-primary)"
+                    }`}
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>{isBn ? "ধারা সম্পাদনা" : "Edit Clauses"}</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => setModalTab("signoff")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
                       modalTab === "signoff"
                         ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
                         : "text-(--text-muted) hover:text-(--text-primary)"
@@ -708,9 +742,64 @@ export default function LawyerPendingPage() {
               </div>
 
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
-                {modalTab === "markdown" ? (
+                {modalTab === "markdown" && (
                   <MarkdownViewer content={markdownAuditContent} />
-                ) : (
+                )}
+
+                {modalTab === "edit_clauses" && (
+                  <div className="space-y-4 max-w-3xl mx-auto">
+                    <p className="text-xs text-(--text-muted) mb-4">
+                      {isBn 
+                        ? "এআই-এর তৈরি করা ধারাগুলো পর্যালোচনা করুন এবং প্রয়োজন অনুযায়ী সম্পাদনা করুন। আপনার পরিবর্তনগুলো চূড়ান্ত ডকুমেন্টে সংরক্ষিত হবে।" 
+                        : "Review and edit the AI-generated clauses below. Your changes will be saved to the final sealed document."}
+                    </p>
+                    
+                    {editableClauses.map((clause, idx) => (
+                      <div key={idx} className="p-4 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) space-y-3">
+                        <div className="flex items-center justify-between gap-4">
+                          <span className="font-bold text-sm text-(--text-primary)">
+                            {clause.clause_number || `§ ${idx + 1}`} - {clause.clause_title || "Clause"}
+                          </span>
+                          <select
+                            value={clause.risk_level || "Compliant"}
+                            onChange={(e) => handleClauseChange(idx, "risk_level", e.target.value)}
+                            className="text-xs p-1.5 rounded-lg bg-(--bg-card) border border-(--text-primary)/20 outline-none font-semibold text-(--text-primary)"
+                          >
+                            <option value="High Risk">High Risk</option>
+                            <option value="Review Needed">Review Needed</option>
+                            <option value="Compliant">Compliant</option>
+                          </select>
+                        </div>
+                        
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-(--text-muted) mb-1 block">Legal Explanation</label>
+                          <textarea
+                            value={clause.legal_explanation || ""}
+                            onChange={(e) => handleClauseChange(idx, "legal_explanation", e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-lg bg-(--bg-card) border border-(--text-primary)/20 outline-none text-(--text-primary) leading-relaxed"
+                            rows={2}
+                          />
+                        </div>
+                        
+                        <div>
+                          <label className="text-[10px] uppercase font-bold text-(--text-muted) mb-1 block">Proposed Safe Redline</label>
+                          <textarea
+                            value={clause.proposed_safe_redline || ""}
+                            onChange={(e) => handleClauseChange(idx, "proposed_safe_redline", e.target.value)}
+                            className="w-full text-xs p-2.5 rounded-lg bg-(--bg-card) border border-(--text-primary)/20 outline-none text-(--text-primary) leading-relaxed"
+                            rows={2}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {editableClauses.length === 0 && (
+                      <p className="text-center text-xs text-(--text-muted) py-8">No clauses found to edit.</p>
+                    )}
+                  </div>
+                )}
+
+                {modalTab === "signoff" && (
                   <div className="space-y-6 max-w-2xl mx-auto">
                     <div className="p-4 rounded-2xl border border-(--text-primary)/10 bg-(--bg-surface)">
                       <div className="flex items-center justify-between mb-3">
@@ -794,7 +883,7 @@ export default function LawyerPendingPage() {
                 </button>
 
                 <div className="flex items-center gap-3">
-                  {modalTab === "markdown" ? (
+                  {modalTab !== "signoff" ? (
                     <button
                       type="button"
                       onClick={() => setModalTab("signoff")}

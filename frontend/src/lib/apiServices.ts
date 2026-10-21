@@ -259,8 +259,10 @@ export async function getContractDownloadUrl(
 export async function requestLawyerVerification(
   contractId: string | number
 ): Promise<VerificationRequestResponse> {
+  // ✅ FIX: Send an empty object as body to prevent CORS / 422 errors in FastAPI
   return api.post<VerificationRequestResponse>(
-    `/api/contracts/${contractId}/request-verification`
+    `/api/contracts/${contractId}/request-verification`,
+    {}
   );
 }
 
@@ -502,6 +504,7 @@ export interface ActiveTask {
   hitl_status?: string;
   payout_bdt?: number;
   client_notes?: string;
+  clauses_analysis?: any[]; // ✅ FIX: Added to support fetching AI clauses for editing
 }
 
 export interface EarningsDashboard {
