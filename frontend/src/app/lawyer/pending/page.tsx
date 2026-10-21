@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
@@ -48,7 +48,40 @@ interface PendingContract {
   riskCount: number;
   priority: "high" | "normal";
   contractId?: string;
+  submitDeadline?: string;
 }
+
+const LiveTimer = ({ deadline }: { deadline?: string }) => {
+  const [timeLeft, setTimeLeft] = useState<string>("--:--:--");
+
+  useEffect(() => {
+    if (!deadline) return;
+    
+    const calculateTime = () => {
+      const now = new Date().getTime();
+      const distance = new Date(deadline).getTime() - now;
+
+      if (distance < 0) {
+        setTimeLeft("Expired");
+        return false;
+      }
+      const hours = Math.floor(distance / (1000 * 60 * 60));
+      const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+      setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+      return true;
+    };
+
+    calculateTime();
+    const interval = setInterval(() => {
+      if (!calculateTime()) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [deadline]);
+
+  return <span className="font-mono text-rose-600 dark:text-rose-400 font-bold">{timeLeft}</span>;
+};
 
 export default function LawyerPendingPage() {
   const router = useRouter();
@@ -56,14 +89,12 @@ export default function LawyerPendingPage() {
   const { user } = useAuth();
   const isBn = language === "bn";
 
-  // ✅ FIX: স্টেটাসগুলো আলাদাভাবে চেক করা হচ্ছে
   const verificationStatus = user?.lawyerProfile?.verificationStatus || "pending";
   const isVerified = verificationStatus === "verified";
   const isRejected = verificationStatus === "rejected";
   const isSuspended = verificationStatus === "suspended";
   const isPending = verificationStatus === "pending";
 
-  // ✅ FIX: 'any' এরর দূর করতে নির্দিষ্ট টাইপ দেওয়া হলো
   const rejectionReason = (user?.lawyerProfile as { rejectionReason?: string } | undefined)?.rejectionReason;
 
   useEffect(() => {
@@ -84,7 +115,6 @@ export default function LawyerPendingPage() {
   const [selectedContract, setSelectedContract] = useState<PendingContract | null>(null);
   const [modalTab, setModalTab] = useState<"markdown" | "signoff">("markdown");
 
-  // Signoff station state
   const [advocateNotes, setAdvocateNotes] = useState("");
   const [checklist, setChecklist] = useState({
     severanceAudited: true,
@@ -94,15 +124,17 @@ export default function LawyerPendingPage() {
   const [isSealing, setIsSealing] = useState(false);
   const [sealedSuccess, setSealedSuccess] = useState(false);
 
-  // Load any dispatched contracts from localStorage and backend queue
+  // ✅ FIX: loadQueueAndTasks ফাংশনটি useEffect-এর ভেতরে সরানো হলো যাতে ওয়ার্নিং না আসে
   useEffect(() => {
     let isMounted = true;
+
     if (!isVerified) {
       setPendingList([]);
       setActiveTasks([]);
       return;
     }
-    async function loadQueueAndTasks() {
+
+    const loadQueueAndTasks = async () => {
       if (!user || user.role !== "lawyer" || !isVerified) return;
       try {
         const [queueRes, activeRes] = await Promise.allSettled([
@@ -110,7 +142,9 @@ export default function LawyerPendingPage() {
           getActiveTasks(),
         ]);
 
-        if (isMounted && queueRes.status === "fulfilled" && Array.isArray(queueRes.value) && queueRes.value.length > 0) {
+        if (!isMounted) return; // ✅ isMounted চেক করা হলো
+
+        if (queueRes.status === "fulfilled" && Array.isArray(queueRes.value)) {
           const mappedQueue: PendingContract[] = queueRes.value.map((item) => ({
             id: String(item.memo_id),
             clientName: "Enterprise Client",
@@ -123,12 +157,13 @@ export default function LawyerPendingPage() {
             statuteBn: "বাংলাদেশ আইন অডিট কিউ · ৳১,০০০ ফি",
             riskCount: item.risk_score ? Math.round(item.risk_score / 25) : 3,
             priority: item.priority === "URGENT" || item.priority === "HIGH" ? "high" : "normal",
-            contractId: String(item.memo_id),
+            contractId: String(item.contract_id || item.memo_id),
+            submitDeadline: item.offer_expires_at,
           }));
           setPendingList(mappedQueue);
         }
 
-        if (isMounted && activeRes.status === "fulfilled" && Array.isArray(activeRes.value) && activeRes.value.length > 0) {
+        if (activeRes.status === "fulfilled" && Array.isArray(activeRes.value)) {
           const mappedActive: PendingContract[] = activeRes.value.map((item) => ({
             id: String(item.memo_id),
             clientName: "Enterprise Client",
@@ -141,21 +176,21 @@ export default function LawyerPendingPage() {
             statuteBn: "সক্রিয় এসএলএ: ৩ ঘণ্টা সময়সীমা",
             riskCount: 3,
             priority: "high",
-            contractId: String(item.memo_id),
+            contractId: String(item.contract_id || item.memo_id),
+            submitDeadline: item.submit_deadline,
           }));
           setActiveTasks(mappedActive);
         }
       } catch (err) {
         console.warn("Could not fetch lawyer queue from backend:", err);
       }
-    }
+    };
+
     loadQueueAndTasks();
 
     if (typeof window !== "undefined") {
       try {
-        const stored = JSON.parse(
-          localStorage.getItem("dispatched_pending_contracts") || "[]"
-        );
+        const stored = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]");
         if (Array.isArray(stored) && stored.length > 0) {
           setPendingList((prev) => {
             const existingIds = new Set(prev.map((p) => p.id));
@@ -167,13 +202,13 @@ export default function LawyerPendingPage() {
         console.error("Error reading dispatched contracts:", err);
       }
     }
+
     return () => {
       isMounted = false;
     };
   }, [user, isVerified]);
 
   const borderClass = "border-(--text-primary)/10";
-
   const currentList = activeSubTab === "queue" ? pendingList : activeTasks;
 
   const filtered = currentList.filter(
@@ -182,6 +217,12 @@ export default function LawyerPendingPage() {
       c.titleEn.toLowerCase().includes(search.toLowerCase()) ||
       c.titleBn.includes(search)
   );
+
+  const soonestDeadline = useMemo(() => {
+    const deadlines = activeTasks.map(t => t.submitDeadline).filter(Boolean) as string[];
+    if (deadlines.length === 0) return undefined;
+    return deadlines.sort((a, b) => new Date(a).getTime() - new Date(b).getTime())[0];
+  }, [activeTasks]);
 
   const handleOpenReview = (contract: PendingContract) => {
     setSelectedContract(contract);
@@ -192,15 +233,13 @@ export default function LawyerPendingPage() {
   const handleAccept = async (id: string) => {
     try {
       await acceptOffer(id);
-      alert(
-        isBn
-          ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে! এটি আপনার সক্রিয় পর্যালোচনা টাস্কে যুক্ত হয়েছে (সময়সীমা: ৩ ঘণ্টা)।"
-          : "Contract offer accepted! Moved to Active Review Tasks (3-hour SLA window)."
-      );
+      alert(isBn ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে! (সময়সীমা: ৩ ঘণ্টা)।" : "Contract offer accepted! (3-hour SLA window).");
+      
       const acceptedItem = pendingList.find((p) => p.id === id);
       if (acceptedItem) {
         setPendingList((prev) => prev.filter((p) => p.id !== id));
-        setActiveTasks((prev) => [acceptedItem, ...prev]);
+        const newDeadline = new Date(Date.now() + 3 * 60 * 60 * 1000).toISOString();
+        setActiveTasks((prev) => [{ ...acceptedItem, submitDeadline: newDeadline }, ...prev]);
         setActiveSubTab("active");
       }
     } catch (err: unknown) {
@@ -219,14 +258,20 @@ export default function LawyerPendingPage() {
     }
   };
 
-  const handleStartAiChat = async (id: string) => {
+  const handleStartAiChat = async (contract: PendingContract) => {
     try {
-      const res = await startContractReviewChat(id);
-      alert(
-        isBn
-          ? `এআই আইনি গবেষণা সেশন #${res.session_id} সক্রিয় করা হয়েছে! (আইনজীবীদের জন্য বিনামূল্যে ১০ মেসেজ)`
-          : `AI Legal Research Chat Session #${res.session_id} initiated! (Free for lawyers, limit 10 msgs)`
-      );
+      const res = await startContractReviewChat(contract.id);
+      
+      const contextPayload = {
+        id: contract.id,
+        contractId: contract.contractId || contract.id,
+        titleEn: contract.titleEn || "Contract Review Session",
+        titleBn: contract.titleBn || "চুক্তি পর্যালোচনা সেশন",
+        shouldStartNewSession: false,
+        existingSessionId: res.session_id
+      };
+      sessionStorage.setItem("active_audit_contract", JSON.stringify(contextPayload));
+      router.push("/copilot");
     } catch (err: unknown) {
       alert(err instanceof Error ? err.message : "Failed to start AI chat session");
     }
@@ -262,14 +307,9 @@ export default function LawyerPendingPage() {
       setIsSealing(false);
       setSealedSuccess(true);
 
-      // Save to archive (scoped to this lawyer)
       if (typeof window !== "undefined") {
-        const userArchiveKey = user?.email
-          ? `verified_contracts_archive_${user.email}`
-          : "verified_contracts_archive";
-        const archive = JSON.parse(
-          localStorage.getItem(userArchiveKey) || "[]"
-        );
+        const userArchiveKey = user?.email ? `verified_contracts_archive_${user.email}` : "verified_contracts_archive";
+        const archive = JSON.parse(localStorage.getItem(userArchiveKey) || "[]");
         const newVerified = {
           id: `ver-${selectedContract.id}`,
           clientName: selectedContract.clientName,
@@ -284,25 +324,14 @@ export default function LawyerPendingPage() {
           notes: advocateNotes || (isBn ? "আইনগত পর্যালোচনা সম্পন্ন।" : "Statutory review completed."),
           status: "verified",
         };
-        localStorage.setItem(
-          userArchiveKey,
-          JSON.stringify([newVerified, ...archive])
-        );
+        localStorage.setItem(userArchiveKey, JSON.stringify([newVerified, ...archive]));
 
-        const dispatched = JSON.parse(
-          localStorage.getItem("dispatched_pending_contracts") || "[]"
-        );
-        const updatedDispatched = dispatched.filter(
-          (d: PendingContract) => d.id !== selectedContract.id
-        );
-        localStorage.setItem(
-          "dispatched_pending_contracts",
-          JSON.stringify(updatedDispatched)
-        );
+        const dispatched = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]");
+        localStorage.setItem("dispatched_pending_contracts", JSON.stringify(dispatched.filter((d: PendingContract) => d.id !== selectedContract.id)));
       }
 
       setTimeout(() => {
-        setPendingList((prev) => prev.filter((p) => p.id !== selectedContract.id));
+        setActiveTasks((prev) => prev.filter((p) => p.id !== selectedContract.id));
         setSelectedContract(null);
       }, 1600);
     }, 800);
@@ -363,7 +392,7 @@ export default function LawyerPendingPage() {
             <div className="w-px h-8 bg-(--text-primary)/10" />
             <div>
               <div className="text-xl font-mono font-semibold text-(--text-primary)">
-                {isVerified ? "< 2.5h" : "—"}
+                {isVerified && soonestDeadline ? <LiveTimer deadline={soonestDeadline} /> : "—"}
               </div>
               <div className="text-[11px] text-(--text-muted) tracking-wider">
                 {isBn ? "ভেরিফিকেশন" : "Verification"}
@@ -374,7 +403,6 @@ export default function LawyerPendingPage() {
 
         {!isVerified ? (
           <div className="my-6 max-w-2xl mx-auto">
-            {/* ✅ FIX: Pending State */}
             {isPending && (
               <div className="rounded-3xl border border-amber-300/40 dark:border-amber-700/50 bg-(--bg-card) p-8 md:p-12 text-center shadow-sm">
                 <div className="w-16 h-16 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center mb-4 shadow-inner">
@@ -400,7 +428,6 @@ export default function LawyerPendingPage() {
               </div>
             )}
 
-            {/* ✅ FIX: Rejected State */}
             {isRejected && (
               <div className="rounded-3xl border border-rose-300/40 dark:border-rose-700/50 bg-(--bg-card) p-8 md:p-12 text-center shadow-sm">
                 <div className="w-16 h-16 rounded-2xl bg-rose-100 dark:bg-rose-900/40 text-rose-600 dark:text-rose-400 mx-auto flex items-center justify-center mb-4 shadow-inner">
@@ -429,7 +456,6 @@ export default function LawyerPendingPage() {
               </div>
             )}
 
-            {/* ✅ FIX: Suspended State */}
             {isSuspended && (
               <div className="rounded-3xl border border-neutral-300/40 dark:border-neutral-700/50 bg-(--bg-card) p-8 md:p-12 text-center shadow-sm">
                 <div className="w-16 h-16 rounded-2xl bg-neutral-200 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300 mx-auto flex items-center justify-center mb-4 shadow-inner">
@@ -499,12 +525,8 @@ export default function LawyerPendingPage() {
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder={
                   activeSubTab === "queue"
-                    ? isBn
-                      ? "অফার কিউ থেকে চুক্তি খুঁজুন..."
-                      : "Search offer queue..."
-                    : isBn
-                    ? "সক্রিয় টাস্ক থেকে চুক্তি খুঁজুন..."
-                    : "Search active review tasks..."
+                    ? isBn ? "অফার কিউ থেকে চুক্তি খুঁজুন..." : "Search offer queue..."
+                    : isBn ? "সক্রিয় টাস্ক থেকে চুক্তি খুঁজুন..." : "Search active review tasks..."
                 }
                 className={`w-full pl-10 pr-4 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-(--text-primary)/40 bg-(--bg-card) text-(--text-primary)`}
               />
@@ -551,6 +573,12 @@ export default function LawyerPendingPage() {
                         <ShieldAlert className="w-3 h-3" />
                         {contract.riskCount} {isBn ? "টি সম্ভাব্য ঝুঁকি শনাক্ত" : "Risk Flags"}
                       </span>
+                      
+                      {activeSubTab === "active" && contract.submitDeadline && (
+                        <span className="flex items-center gap-1 text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded">
+                          <Clock className="w-3 h-3" /> SLA: <LiveTimer deadline={contract.submitDeadline} />
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -577,7 +605,7 @@ export default function LawyerPendingPage() {
                       <>
                         <button
                           type="button"
-                          onClick={() => handleStartAiChat(contract.id)}
+                          onClick={() => handleStartAiChat(contract)}
                           className="px-3 py-2 rounded-xl text-xs font-semibold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-950/40 hover:bg-purple-100 transition-colors cursor-pointer flex items-center gap-1"
                         >
                           <Sparkles className="w-3.5 h-3.5" />
@@ -616,7 +644,6 @@ export default function LawyerPendingPage() {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
             <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl overflow-hidden`}>
               
-              {/* Modal Header */}
               <div className="p-4 sm:p-5 border-b border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
                 <div className="min-w-0 pr-4">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
@@ -644,7 +671,6 @@ export default function LawyerPendingPage() {
                 </button>
               </div>
 
-              {/* Modal Tab Switcher */}
               <div className="px-5 py-2.5 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-card)">
                 <div className="flex items-center bg-(--bg-surface) p-1 rounded-xl border border-(--text-primary)/10 text-xs font-semibold">
                   <button
@@ -681,13 +707,11 @@ export default function LawyerPendingPage() {
                 )}
               </div>
 
-              {/* Modal Body */}
               <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
                 {modalTab === "markdown" ? (
                   <MarkdownViewer content={markdownAuditContent} />
                 ) : (
                   <div className="space-y-6 max-w-2xl mx-auto">
-                    {/* Bar Council Credentials Card */}
                     <div className="p-4 rounded-2xl border border-(--text-primary)/10 bg-(--bg-surface)">
                       <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold uppercase tracking-wider text-(--text-muted)">
@@ -705,7 +729,6 @@ export default function LawyerPendingPage() {
                       </p>
                     </div>
 
-                    {/* Statutory Verification Checkpoints */}
                     <div className="space-y-3">
                       <label className="text-xs font-semibold text-(--text-primary) block">
                         {isBn ? "সংবিধিবদ্ধ আইনি যাচাইকরণ চেকলিস্ট:" : "Statutory Verification Checkpoints:"}
@@ -729,7 +752,6 @@ export default function LawyerPendingPage() {
                       </div>
                     </div>
 
-                    {/* Advocate Notes Textarea */}
                     <div>
                       <label className="text-xs font-semibold text-(--text-primary) block mb-1.5">
                         {isBn ? "আইনজীবীর মন্তব্য ও রায়:" : "Advocate Statutory Advisory Notes:"}
@@ -743,7 +765,6 @@ export default function LawyerPendingPage() {
                       />
                     </div>
 
-                    {/* Official Seal Graphic Preview if Sealed */}
                     {sealedSuccess && (
                       <div className="p-4 rounded-2xl border-2 border-emerald-500/40 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-900 dark:text-emerald-100 flex items-center gap-3 animate-in fade-in">
                         <div className="w-12 h-12 rounded-full border-2 border-dashed border-emerald-600 flex items-center justify-center shrink-0">
@@ -763,7 +784,6 @@ export default function LawyerPendingPage() {
                 )}
               </div>
 
-              {/* Modal Footer Actions */}
               <div className="p-4 sm:p-5 border-t border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
                 <button
                   type="button"

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+// ✅ FIX: useRouter রিমুভ করা হলো কারণ এটি আর ব্যবহার হচ্ছে না
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
 import ThoughtLine from "@/components/effects/ThoughtLine";
@@ -51,7 +51,6 @@ interface ChatMessage {
   thoughtSeconds?: number;
 }
 
-// ✅ চ্যাট হিস্ট্রি ডেট অনুযায়ী গ্রুপ করার হেল্পার ফাংশন
 function groupSessions(sessions: ChatSession[]) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -79,17 +78,11 @@ function groupSessions(sessions: ChatSession[]) {
 }
 
 export default function CopilotPage() {
-  const router = useRouter();
+  // ✅ FIX: router ভ্যারিয়েবলটি রিমুভ করা হলো
   const { language } = useLanguage();
   const { theme } = useTheme();
   const { user, updateUser } = useAuth();
-
-  useEffect(() => {
-    const userRole = String(user?.role).toUpperCase();
-    if (userRole === "LAWYER") {
-      router.replace("/lawyer/pending");
-    }
-  }, [user, router]);
+  const isLawyer = String(user?.role).toUpperCase() === "LAWYER";
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);
@@ -120,7 +113,34 @@ export default function CopilotPage() {
         const title = language === "bn" ? (parsed.titleBn || parsed.titleEn) : (parsed.titleEn || parsed.titleBn);
         setLoadedContractTitle(title);
 
-        if (parsed.shouldStartNewSession) {
+        if (parsed.existingSessionId) {
+          const sid = String(parsed.existingSessionId);
+          setActiveSessionId(sid);
+          setIsLoadingHistory(true);
+          
+          getChatSessionHistory(sid).then((history) => {
+            if (!isMounted) return;
+            if (history && history.messages) {
+              const mapped: ChatMessage[] = history.messages.map((m, idx) => ({
+                id: `hist-${idx}-${Date.now()}`,
+                sender: m.role === "assistant" ? "copilot" : "user",
+                timestamp: m.created_at
+                  ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : "History",
+                textEn: m.content,
+                textBn: m.content,
+                apiCitations: m.citations || undefined,
+                isThinking: false,
+              }));
+              setMessages(mapped);
+            }
+          }).catch(err => console.warn("Could not load existing session:", err))
+            .finally(() => { if (isMounted) setIsLoadingHistory(false); });
+
+          delete parsed.existingSessionId;
+          sessionStorage.setItem("active_audit_contract", JSON.stringify(parsed));
+        } 
+        else if (parsed.shouldStartNewSession) {
           delete parsed.shouldStartNewSession;
           sessionStorage.setItem("active_audit_contract", JSON.stringify(parsed));
 
@@ -220,6 +240,8 @@ export default function CopilotPage() {
     setActiveSessionId(null);
     setMessages([]);
     setShowHistoryDrawer(false);
+    sessionStorage.removeItem("active_audit_contract");
+    setLoadedContractTitle(null);
   };
 
   const handleCloseSession = async (sessionId: string | number, e: React.MouseEvent) => {
@@ -269,7 +291,6 @@ export default function CopilotPage() {
     setMessages((prev) => [...prev, userMessage, pendingCopilotMessage]);
     setIsTyping(true);
 
-    // ✅ FIX: টাইমার শুরু করা হলো
     const startTime = Date.now();
 
     try {
@@ -284,9 +305,16 @@ export default function CopilotPage() {
 
       let sessionId = activeSessionId;
       if (!sessionId) {
+        let mode: "GENERAL" | "LAWYER_RESEARCH" | "USER_CONTRACT" = "GENERAL";
+        if (isLawyer) {
+          mode = "LAWYER_RESEARCH";
+        } else if (contractId) {
+          mode = "USER_CONTRACT";
+        }
+
         const session = await createChatSession(
           promptText.length > 40 ? promptText.slice(0, 40) + "..." : promptText,
-          contractId ? "USER_CONTRACT" : "GENERAL",
+          mode,
           contractId
         );
         sessionId = String(session.session_id || session.id);
@@ -321,7 +349,6 @@ export default function CopilotPage() {
         updateUser({ creditBalance: result.credits_remaining });
       }
 
-      // ✅ FIX: কত সেকেন্ড সময় লেগেছে তা ক্যালকুলেট করা হলো
       const endTime = Date.now();
       const actualSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
 
@@ -336,7 +363,7 @@ export default function CopilotPage() {
                 apiCitations,
                 nextSteps,
                 isThinking: false,
-                thoughtSeconds: actualSeconds // ✅ ডাইনামিক সেকেন্ড সেট করা হলো
+                thoughtSeconds: actualSeconds
               }
             : msg
         )
@@ -344,7 +371,6 @@ export default function CopilotPage() {
     } catch (err: unknown) {
       console.error("Chat Query failed:", err);
       
-      // ✅ FIX: এরর হলেও কত সেকেন্ড লেগেছে তা দেখাবে
       const endTime = Date.now();
       const actualSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
       
@@ -358,7 +384,7 @@ export default function CopilotPage() {
                 textBn: err instanceof Error ? err.message : "দুঃখিত, আইনি জ্ঞান ভাণ্ডারে সংযোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।",
                 citations: [],
                 isThinking: false,
-                thoughtSeconds: actualSeconds // ✅ এরর এর ক্ষেত্রেও সঠিক টাইম
+                thoughtSeconds: actualSeconds
               }
             : msg
         )
@@ -380,14 +406,6 @@ export default function CopilotPage() {
       currentActiveSession.message_count >= currentActiveSession.message_limit
   );
 
-  if (String(user?.role).toUpperCase() === "LAWYER") {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   const groupedSessions = groupSessions(sessions);
 
   return (
@@ -403,10 +421,15 @@ export default function CopilotPage() {
                 ? currentActiveSession.title
                 : activeSessionId
                 ? `${language === "bn" ? "সেশন" : "Session"} #${activeSessionId}`
+                : isLawyer
+                ? "Advocate AI Research"
                 : language === "bn"
                 ? "নতুন আইনি পরামর্শ"
                 : "New Legal Consultation"}
             </span>
+            {isLawyer && !loadedContractTitle && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">LAWYER MODE</span>
+            )}
             {currentActiveSession && (
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
@@ -416,7 +439,7 @@ export default function CopilotPage() {
                 }`}
               >
                 {currentActiveSession.message_count ?? messages.filter((m) => m.sender === "user").length} /{" "}
-                {currentActiveSession.message_limit ?? 5} {language === "bn" ? "বার্তা" : "msgs"}
+                {currentActiveSession.message_limit ?? (isLawyer ? 20 : 5)} {language === "bn" ? "বার্তা" : "msgs"}
               </span>
             )}
           </div>
@@ -670,11 +693,13 @@ export default function CopilotPage() {
           <div className="flex-1 flex flex-col items-center justify-center -mt-8">
             <div className="text-center mb-8">
               <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2 text-(--text-primary)">
-                {language === "bn" ? "এডভোটেক কোপাইলট" : "Advotech Copilot"}
+                {isLawyer ? "Advocate AI Research" : (language === "bn" ? "এডভোটেক কোপাইলট" : "Advotech Copilot")}
               </h2>
               <p className="text-xs sm:text-sm font-normal text-neutral-500 dark:text-neutral-400">
                 {language === "bn"
                   ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
+                  : isLawyer 
+                  ? "Research statutes, draft notices, and analyze case law with verifiable citations"
                   : "Ask statutory questions with verifiable citations"}
               </p>
             </div>
@@ -779,7 +804,7 @@ export default function CopilotPage() {
                           {groupSessions.map((sess) => {
                             const sid = String(sess.session_id || sess.id);
                             const isActive = String(activeSessionId) === sid;
-                            const isContract = sess.mode === "USER_CONTRACT";
+                            const isContract = sess.mode === "USER_CONTRACT" || sess.mode === "LAWYER_RESEARCH" || sess.mode === "CONTRACT_REVIEW";
                             
                             return (
                               <div
