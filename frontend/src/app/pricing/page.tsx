@@ -19,18 +19,8 @@ import {
   getPaymentSummary,
 } from "@/lib/apiServices";
 import {
-  Coins,
-  Check,
-  Sparkles,
-  ArrowRight,
-  Clock,
-  CheckCircle2,
-  X,
-  Copy,
-  Loader2,
-  Ban,
-  Phone,
-  Hash,
+  Coins, Check, Sparkles, ArrowRight, Clock, CheckCircle2,
+  X, Copy, Loader2, Ban, Phone, Hash,
 } from "lucide-react";
 
 export default function PricingPage() {
@@ -64,13 +54,13 @@ export default function PricingPage() {
 
   const borderClass = "border-(--text-primary)/10";
 
-  // ✅ NEW: Check if user is Enterprise
+  // ✅ Check if user is Enterprise
   const isEnterprise = 
     String(user?.role).toLowerCase().includes("enterprise") || 
     user?.role === "enterprise_admin" || 
     user?.role === "enterprise_member";
 
-  // ✅ NEW: Determine which balance to show (Company Pool vs Personal)
+  // ✅ Determine which balance to show (Company Pool vs Personal)
   const displayBalance = isEnterprise 
     ? (user?.enterprise_credit_balance ?? 0) 
     : (user?.creditBalance ?? summary?.current_balance ?? 0);
@@ -286,6 +276,15 @@ export default function PricingPage() {
     );
   };
 
+  // ✅ Filter packages based on user role
+  const displayPackages = packages.filter((pkg) => {
+    const isEnterprisePack = pkg.name.toLowerCase().includes("enterprise");
+    if (isEnterprise) {
+      return isEnterprisePack; // Enterprise Admin/Member shudhu Enterprise pack dekhabe
+    }
+    return !isEnterprisePack; // Normal/Lawyer ra Enterprise pack dekhabe na
+  });
+
   const approvedPayments = payments.filter((p) => (p.status || "").toUpperCase() === "APPROVED");
   const awaitingPayments = payments.filter((p) => {
     const s = (p.status || "").toUpperCase();
@@ -368,8 +367,8 @@ export default function PricingPage() {
              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
            </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {packages.map((pkg) => {
+          <div className={`grid grid-cols-1 gap-6 ${displayPackages.length === 1 ? "md:grid-cols-1 max-w-md mx-auto" : "md:grid-cols-3"}`}>
+            {displayPackages.map((pkg) => {
               const badge = pkg.badge_text || (pkg.is_popular ? (isBn ? "সর্বাধিক জনপ্রিয়" : "Most Popular") : null);
               const totalCredits = pkg.total_credits || pkg.credits;
 
