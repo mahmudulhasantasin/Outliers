@@ -7,17 +7,6 @@ import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
 import {
-  INITIAL_ORGANIZATION,
-  INITIAL_ENTERPRISE_MEMBERS,
-  INITIAL_COMPANY_PLAYBOOK,
-  INITIAL_SHARED_CONTRACTS,
-  INITIAL_AUDIT_LOGS,
-} from "@/data/enterpriseData";
-import type {
-  EnterpriseOrganization,
-  SharedCompanyContract,
-} from "@/data/enterpriseData";
-import {
   getCompanyDashboard,
   listMembers,
   listPendingMembers,
@@ -27,12 +16,14 @@ import {
   reactivateMember,
   adjustMemberQuota,
   uploadPlaybook,
+  getCompanyAuditLogs,
+  getSharedContracts,
 } from "@/lib/apiServices";
 import {
   Building2, Users, BookOpen, FolderLock, Coins, ShieldAlert,
   ShieldCheck, UserPlus, Lock, Copy, Check, AlertCircle,
   FileText, Search, ArrowUpRight, TrendingUp, CheckCircle2, X,
-  Plus, Upload, Loader2, RefreshCw,
+  Upload, Loader2, RefreshCw,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -73,6 +64,28 @@ interface PendingMember {
   phone?: string | null;
   requested_at: string;
   is_verified: boolean;
+}
+
+interface AuditLogItem {
+  id: number | string;
+  timestamp: string;
+  member_name: string;
+  department: string;
+  module: string;
+  category: string;
+  credits_consumed: number;
+}
+
+interface SharedContractItem {
+  id: number | string;
+  contract_id: number | string;
+  title: string;
+  category: string;
+  submitted_by: string;
+  submitted_at: string;
+  risk_score: number;
+  status: string;
+  advocate_verified: boolean;
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -124,32 +137,28 @@ function mapBackendRuleToFrontend(r: any): PlaybookRule {
 // ─────────────────────────────────────────────────────────────
 export default function EnterpriseAdminPage() {
   const router = useRouter();
-  const { user, loginAsDemoEnterpriseAdmin } = useAuth();
+  const { user } = useAuth();
   const { language } = useLanguage();
   const isBn = language === "bn";
 
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
-  // Data
-  const [organization, setOrganization] = useState<EnterpriseOrganization>(INITIAL_ORGANIZATION);
+  // Data States (No Mock Data)
+  const [organization, setOrganization] = useState<any>(null);
   const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
-  const [members, setMembers] = useState<EnterpriseMember[]>(
-    INITIAL_ENTERPRISE_MEMBERS as unknown as EnterpriseMember[]
-  );
+  const [members, setMembers] = useState<EnterpriseMember[]>([]);
   const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([]);
-  const [playbookRules, setPlaybookRules] = useState<PlaybookRule[]>(
-    INITIAL_COMPANY_PLAYBOOK.rules as unknown as PlaybookRule[]
-  );
-  const [sharedContracts] = useState<SharedCompanyContract[]>(INITIAL_SHARED_CONTRACTS);
+  const [playbookRules, setPlaybookRules] = useState<PlaybookRule[]>([]);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
+  const [sharedContracts, setSharedContracts] = useState<SharedContractItem[]>([]);
 
   // Load state
-  const [isLoadingBackend, setIsLoadingBackend] = useState(false);
+  const [isLoadingBackend, setIsLoadingBackend] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   // UI state
   const [copiedReferCode, setCopiedReferCode] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showAddRuleModal, setShowAddRuleModal] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
   const [editingCreditMemberId, setEditingCreditMemberId] = useState<string | null>(null);
   const [tempCreditCap, setTempCreditCap] = useState<number>(200);
@@ -162,13 +171,6 @@ export default function EnterpriseAdminPage() {
   const [approveQuota, setApproveQuota] = useState(200);
   const [rejectTarget, setRejectTarget] = useState<PendingMember | null>(null);
   const [rejectReason, setRejectReason] = useState("");
-
-  // New rule form (preview only)
-  const [newRuleTitle, setNewRuleTitle] = useState("");
-  const [newRuleStatute, setNewRuleStatute] = useState("Bangladesh Labour Act 2006");
-  const [newRuleRef, setNewRuleRef] = useState("");
-  const [newRuleReq, setNewRuleReq] = useState("");
-  const [newRuleTemplate, setNewRuleTemplate] = useState("");
 
   const borderClass = "border-[var(--text-primary)]/10";
   const roleUpper = user ? String(user.role).toUpperCase() : "";
@@ -190,17 +192,20 @@ export default function EnterpriseAdminPage() {
     }
   }, [user, roleUpper, isAllowed, router]);
 
-  // Refetch all data
+  // Refetch all data from Backend
   const refetchAll = useCallback(async () => {
     setIsLoadingBackend(true);
     setLoadError(null);
     try {
-      const [dashRes, memsRes, pendingRes] = await Promise.allSettled([
+      const [dashRes, memsRes, pendingRes, logsRes, sharedRes] = await Promise.allSettled([
         getCompanyDashboard(),
         listMembers(),
         listPendingMembers(),
+        getCompanyAuditLogs(),
+        getSharedContracts(),
       ]);
 
+      // 1. Dashboard
       if (dashRes.status === "fulfilled" && dashRes.value) {
         const d = dashRes.value as any;
         const ent = d.enterprise || {};
@@ -210,24 +215,27 @@ export default function EnterpriseAdminPage() {
         const monthlyUsed = Number(cred.used_this_month ?? 0);
 
         setUsedThisMonth(monthlyUsed);
-        setOrganization((prev) => ({
-          ...prev,
-          name: ent.name ?? prev.name,
-          referCode: ent.referral_code ?? prev.referCode,
-          usedSeats: memb.active ?? prev.usedSeats,
-          totalSeats: ent.member_limit ?? prev.totalSeats,
+        setOrganization({
+          id: ent.id,
+          name: ent.name,
+          referCode: ent.referral_code,
+          usedSeats: memb.active ?? 0,
+          totalSeats: ent.member_limit ?? 0,
           creditPoolRemaining: poolBalance,
-          creditPoolTotal: poolBalance + monthlyUsed || prev.creditPoolTotal,
-        }));
+          creditPoolTotal: poolBalance + monthlyUsed,
+          registrationNo: ent.registration_no || "—",
+          tinNo: ent.tin_no || "—",
+        });
       } else if (dashRes.status === "rejected") {
         setLoadError(isBn ? "ড্যাশবোর্ড ডাটা লোড ব্যর্থ।" : "Failed to load dashboard.");
       }
 
+      // 2. Members
       if (memsRes.status === "fulfilled" && Array.isArray(memsRes.value)) {
-        const mapped = (memsRes.value as any[]).map(mapBackendMember);
-        if (mapped.length > 0) setMembers(mapped);
+        setMembers((memsRes.value as any[]).map(mapBackendMember));
       }
 
+      // 3. Pending Members
       if (pendingRes.status === "fulfilled" && Array.isArray(pendingRes.value)) {
         const mappedPending = (pendingRes.value as any[]).map((m) => ({
           user_id: m.user_id || m.id,
@@ -239,6 +247,17 @@ export default function EnterpriseAdminPage() {
         }));
         setPendingMembers(mappedPending);
       }
+
+      // 4. Audit Logs
+      if (logsRes.status === "fulfilled" && Array.isArray(logsRes.value)) {
+        setAuditLogs(logsRes.value);
+      }
+
+      // 5. Shared Contracts
+      if (sharedRes.status === "fulfilled" && Array.isArray(sharedRes.value)) {
+        setSharedContracts(sharedRes.value);
+      }
+
     } catch (err) {
       console.error("[Enterprise Admin] refetch error:", err);
       setLoadError(isBn ? "সার্ভারে সংযোগ ব্যর্থ।" : "Backend connection failed.");
@@ -247,28 +266,17 @@ export default function EnterpriseAdminPage() {
     }
   }, [isBn]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (!user || !isAllowed) return;
     refetchAll();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, isAllowed]);
+  }, [user, isAllowed, refetchAll]);
 
   // Handlers
   const copyReferCode = () => {
-    if (!organization.referCode) return;
+    if (!organization?.referCode) return;
     navigator.clipboard.writeText(organization.referCode);
     setCopiedReferCode(true);
     setTimeout(() => setCopiedReferCode(false), 2000);
-  };
-
-  const handleTogglePlaybookEnforce = () => {
-    setOrganization((prev) => ({ ...prev, playbookEnforced: !prev.playbookEnforced }));
-  };
-
-  const handleToggleRuleActive = (ruleId: string) => {
-    setPlaybookRules((prev) =>
-      prev.map((r) => (r.id === ruleId ? { ...r, isActive: !r.isActive } : r))
-    );
   };
 
   const handleToggleMemberStatus = async (memberId: string) => {
@@ -368,34 +376,6 @@ export default function EnterpriseAdminPage() {
     }
   };
 
-  const handleAddRuleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newRuleTitle || !newRuleReq) return;
-    const newRule: PlaybookRule = {
-      id: `local-rule-${Date.now().toString().slice(-6)}`,
-      clauseTypeEn: newRuleTitle,
-      clauseTypeBn: newRuleTitle,
-      statute: newRuleStatute,
-      statutoryReference: newRuleRef || "General Bangladesh Law",
-      companyRequirementEn: newRuleReq,
-      companyRequirementBn: newRuleReq,
-      standardClauseTemplate: newRuleTemplate || newRuleReq,
-      strictness: "mandatory",
-      isActive: true,
-    };
-    setPlaybookRules((prev) => [newRule, ...prev]);
-    setShowAddRuleModal(false);
-    setNewRuleTitle("");
-    setNewRuleRef("");
-    setNewRuleReq("");
-    setNewRuleTemplate("");
-    alert(
-      isBn
-        ? "লোকাল প্রিভিউতে রুল যোগ হয়েছে। স্থায়ীভাবে সংরক্ষণের জন্য প্লেবুক ফাইল আপলোড করুন।"
-        : "Rule added to local preview. To persist, upload a playbook file."
-    );
-  };
-
   const filteredMembers = members.filter(
     (m) =>
       m.name.toLowerCase().includes(memberSearch.toLowerCase()) ||
@@ -411,34 +391,22 @@ export default function EnterpriseAdminPage() {
     );
   }
 
+  // Full Screen Loader
+  if (isLoadingBackend && !organization) {
+    return (
+      <AppShell>
+        <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+          <p className="text-sm text-[var(--text-muted)]">{isBn ? "ড্যাশবোর্ড লোড হচ্ছে..." : "Loading Dashboard..."}</p>
+        </div>
+      </AppShell>
+    );
+  }
+
   return (
     <AppShell>
       <div className="max-w-6xl mx-auto py-8 px-4 space-y-8">
         
-        {/* Non-admin banner */}
-        {!isAdmin && (
-          <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-3">
-              <ShieldAlert className="w-5 h-5 text-amber-500 shrink-0" />
-              <div>
-                <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
-                  {isBn ? "আপনি বর্তমানে এন্টারপ্রাইজ অ্যাডমিন হিসেবে লগইন করেননি" : "You are not logged in as Enterprise Admin"}
-                </p>
-                <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  {isBn ? "এই ড্যাশবোর্ড পরীক্ষা করতে ১-ক্লিকে ডেমো অ্যাডমিনে স্যুইচ করুন।" : "Switch to Demo Enterprise Admin to test controls."}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={loginAsDemoEnterpriseAdmin}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors cursor-pointer"
-            >
-              {isBn ? "ডেমো অ্যাডমিনে স্যুইচ" : "Switch to Demo Admin"}
-            </button>
-          </div>
-        )}
-
         {/* Error banner */}
         {loadError && (
           <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 flex items-center justify-between gap-3">
@@ -466,14 +434,14 @@ export default function EnterpriseAdminPage() {
                   <Building2 className="w-3.5 h-3.5" />
                   {isBn ? "কর্পোরেট এন্টারপ্রাইজ অ্যাডমিন" : "Enterprise Admin Portal"}
                 </span>
-                {organization.registrationNo && (
+                {organization?.registrationNo !== "—" && (
                   <span className="font-mono text-xs text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
                     RJSC: {organization.registrationNo}
                   </span>
                 )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[var(--text-primary)] tracking-tight">
-                {organization.name}
+                {organization?.name || "Company Name"}
               </h1>
               <p className="text-xs text-[var(--text-muted)]">
                 {isBn ? "প্রধান প্রশাসক:" : "Lead Administrator:"}{" "}
@@ -488,7 +456,7 @@ export default function EnterpriseAdminPage() {
                     {isBn ? "কোম্পানি ইনভাইট কোড" : "Company Invite Code"}
                   </p>
                   <p className="font-mono font-bold text-sm text-[var(--text-primary)]">
-                    {organization.referCode || "—"}
+                    {organization?.referCode || "—"}
                   </p>
                 </div>
                 <button
@@ -584,17 +552,17 @@ export default function EnterpriseAdminPage() {
                 <div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-serif font-bold text-[var(--text-primary)]">
-                      {organization.usedSeats}
+                      {organization?.usedSeats || 0}
                     </span>
                     <span className="text-xs text-[var(--text-muted)]">
-                      / {organization.totalSeats} {isBn ? "সিট" : "Seats"}
+                      / {organization?.totalSeats || 0} {isBn ? "সিট" : "Seats"}
                     </span>
                   </div>
                   <div className="w-full bg-[var(--bg-surface)] h-2 rounded-full mt-3 overflow-hidden border border-[var(--text-primary)]/10">
                     <div
                       className="bg-[var(--accent-solid)] h-full rounded-full transition-all"
                       style={{
-                        width: `${organization.totalSeats > 0
+                        width: `${organization?.totalSeats > 0
                           ? Math.min(100, (organization.usedSeats / organization.totalSeats) * 100)
                           : 0}%`,
                       }}
@@ -602,7 +570,7 @@ export default function EnterpriseAdminPage() {
                   </div>
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  {Math.max(0, organization.totalSeats - organization.usedSeats)}{" "}
+                  {Math.max(0, (organization?.totalSeats || 0) - (organization?.usedSeats || 0))}{" "}
                   {isBn ? "টি খালি সিট অবশিষ্ট।" : "available seats remaining."}
                 </p>
               </div>
@@ -618,23 +586,11 @@ export default function EnterpriseAdminPage() {
                 <div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-3xl font-serif font-bold text-amber-600 dark:text-amber-400">
-                      {organization.creditPoolRemaining.toLocaleString()}
+                      {organization?.creditPoolRemaining?.toLocaleString() || 0}
                     </span>
                     <span className="text-xs text-[var(--text-muted)]">
                       {isBn ? "অবশিষ্ট ক্রেডিট" : "credits remaining"}
                     </span>
-                  </div>
-                  <div className="w-full bg-[var(--bg-surface)] h-2 rounded-full mt-3 overflow-hidden border border-[var(--text-primary)]/10">
-                    <div
-                      className="bg-amber-500 h-full rounded-full transition-all"
-                      style={{
-                        width: `${
-                          organization.creditPoolRemaining + usedThisMonth > 0
-                            ? Math.min(100, (usedThisMonth / (organization.creditPoolRemaining + usedThisMonth)) * 100)
-                            : 0
-                        }%`,
-                      }}
-                    />
                   </div>
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)]">
@@ -652,7 +608,7 @@ export default function EnterpriseAdminPage() {
                 </div>
                 <div>
                   <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                    {organization.playbookEnforced
+                    {playbookRules.length > 0
                       ? isBn ? "সক্রিয় ও বাধ্যতামূলক" : "Active & Enforced"
                       : isBn ? "ঐচ্ছিক" : "Advisory Only"}
                   </span>
@@ -661,17 +617,10 @@ export default function EnterpriseAdminPage() {
                     {isBn ? "টি রুল অডিটে সক্রিয়।" : "active rules enforced."}
                   </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleTogglePlaybookEnforce}
-                  className="text-xs font-bold text-[var(--accent-solid)] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  {isBn ? "কনফিগার করুন →" : "Configure →"}
-                </button>
               </div>
             </div>
 
-            {/* Audit Trail */}
+            {/* REAL Audit Trail */}
             <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 space-y-4`}>
               <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
@@ -680,9 +629,6 @@ export default function EnterpriseAdminPage() {
                     {isBn ? "কমপ্লায়েন্স অডিট ট্রেইল" : "Compliance Audit Trail"}
                   </h3>
                 </div>
-                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
-                  {isBn ? "স্যাম্পল ডাটা" : "Sample Data"}
-                </span>
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -697,24 +643,32 @@ export default function EnterpriseAdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--text-primary)]/5">
-                    {INITIAL_AUDIT_LOGS.map((log) => (
-                      <tr key={log.id} className="hover:bg-[var(--text-primary)]/5 transition-colors">
-                        <td className="py-3 font-mono text-[11px] text-[var(--text-muted)]">
-                          {isBn ? log.timestampBn : log.timestampEn}
-                        </td>
-                        <td className="py-3 font-semibold text-[var(--text-primary)]">{log.memberName}</td>
-                        <td className="py-3 text-[var(--text-muted)]">{log.department}</td>
-                        <td className="py-3">
-                          <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 text-[var(--text-primary)]">
-                            {log.module}
-                          </span>
-                        </td>
-                        <td className="py-3 text-[var(--text-muted)]">{log.category}</td>
-                        <td className="py-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
-                          -{log.creditsConsumed}
+                    {auditLogs.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="py-4 text-center text-[var(--text-muted)]">
+                          {isBn ? "কোনো লগ পাওয়া যায়নি।" : "No audit logs found."}
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      auditLogs.map((log) => (
+                        <tr key={log.id} className="hover:bg-[var(--text-primary)]/5 transition-colors">
+                          <td className="py-3 font-mono text-[11px] text-[var(--text-muted)]">
+                            {new Date(log.timestamp).toLocaleString()}
+                          </td>
+                          <td className="py-3 font-semibold text-[var(--text-primary)]">{log.member_name}</td>
+                          <td className="py-3 text-[var(--text-muted)]">{log.department}</td>
+                          <td className="py-3">
+                            <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 text-[var(--text-primary)]">
+                              {log.module}
+                            </span>
+                          </td>
+                          <td className="py-3 text-[var(--text-muted)]">{log.category}</td>
+                          <td className="py-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400">
+                            -{log.credits_consumed}
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -925,25 +879,22 @@ export default function EnterpriseAdminPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                   <BookOpen className="w-4 h-4 text-emerald-500" />
                   <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                    {INITIAL_COMPANY_PLAYBOOK.title}
+                    {isBn ? "কোম্পানি প্লেবুক" : "Company Playbook"}
                   </h3>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950 text-emerald-700 dark:text-emerald-300 font-bold">
-                    {INITIAL_COMPANY_PLAYBOOK.version}
-                  </span>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] max-w-2xl leading-relaxed">
                   {isBn
-                    ? "প্লেবুক ফাইল আপলোড করলে AI স্বয়ংক্রিয়ভাবে রুল এক্সট্রাক্ট করবে। নিচের রুলগুলো প্রথমে ডেমো প্রিভিউ হিসেবে দেখানো হচ্ছে।"
-                    : "Upload a playbook file to auto-extract rules. The rules below are shown as demo preview initially."}
+                    ? "প্লেবুক ফাইল আপলোড করলে AI স্বয়ংক্রিয়ভাবে রুল এক্সট্রাক্ট করবে।"
+                    : "Upload a playbook file to auto-extract compliance rules via AI."}
                 </p>
               </div>
 
               <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                <label className="px-3.5 py-2 rounded-xl text-xs font-bold border border-[var(--text-primary)]/15 text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5">
+                <label className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-colors cursor-pointer flex items-center gap-2 shadow-sm">
                   {isUploadingPlaybook ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Upload className="w-3.5 h-3.5 text-sky-500" />
+                    <Upload className="w-4 h-4" />
                   )}
                   <span>
                     {isUploadingPlaybook
@@ -958,27 +909,6 @@ export default function EnterpriseAdminPage() {
                     disabled={isUploadingPlaybook}
                   />
                 </label>
-
-                <button
-                  onClick={handleTogglePlaybookEnforce}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
-                    organization.playbookEnforced
-                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                      : "border-[var(--text-primary)]/15 text-[var(--text-muted)]"
-                  }`}
-                >
-                  {organization.playbookEnforced
-                    ? isBn ? "✓ বাধ্যতামূলক" : "✓ Mandatory"
-                    : isBn ? "ঐচ্ছিক" : "Advisory"}
-                </button>
-
-                <button
-                  onClick={() => setShowAddRuleModal(true)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 flex items-center gap-1.5 cursor-pointer shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                  <span>{isBn ? "রুল প্রিভিউ" : "Add Rule (Preview)"}</span>
-                </button>
               </div>
             </div>
 
@@ -1031,16 +961,6 @@ export default function EnterpriseAdminPage() {
                         </div>
                       )}
                     </div>
-                    <button
-                      onClick={() => handleToggleRuleActive(rule.id)}
-                      className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                        rule.isActive
-                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
-                          : "bg-[var(--text-primary)]/10 text-[var(--text-muted)] hover:bg-[var(--text-primary)]/20"
-                      }`}
-                    >
-                      {rule.isActive ? (isBn ? "সক্রিয়" : "Active") : (isBn ? "নিষ্ক্রিয়" : "Disabled")}
-                    </button>
                   </div>
                 </div>
               ))}
@@ -1068,6 +988,11 @@ export default function EnterpriseAdminPage() {
             </div>
 
             <div className="grid grid-cols-1 gap-4">
+              {sharedContracts.length === 0 && (
+                <div className="p-8 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] text-center text-xs text-[var(--text-muted)]">
+                  {isBn ? "কোনো শেয়ার্ড চুক্তি নেই।" : "No shared contracts yet."}
+                </div>
+              )}
               {sharedContracts.map((cnt) => (
                 <div
                   key={cnt.id}
@@ -1080,9 +1005,9 @@ export default function EnterpriseAdminPage() {
                           {cnt.id}
                         </span>
                         <span className="text-[11px] font-semibold text-[var(--text-muted)]">
-                          {isBn ? cnt.categoryBn : cnt.categoryEn}
+                          {cnt.category}
                         </span>
-                        {cnt.advocateVerified && (
+                        {cnt.advocate_verified && (
                           <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/60 px-2 py-0.5 rounded-md flex items-center gap-1">
                             <ShieldCheck className="w-3 h-3" />
                             Advocate Sealed
@@ -1100,11 +1025,11 @@ export default function EnterpriseAdminPage() {
                       </div>
 
                       <h4 className="text-sm sm:text-base font-serif font-bold text-[var(--text-primary)]">
-                        {isBn ? cnt.titleBn : cnt.titleEn}
+                        {cnt.title}
                       </h4>
 
                       <p className="text-xs text-[var(--text-muted)]">
-                        {isBn ? "জমা দিয়েছেন:" : "Submitted by:"} <strong className="text-[var(--text-primary)]">{cnt.submittedByName}</strong> · {isBn ? cnt.submittedAtBn : cnt.submittedAtEn}
+                        {isBn ? "জমা দিয়েছেন:" : "Submitted by:"} <strong className="text-[var(--text-primary)]">{cnt.submitted_by}</strong> · {new Date(cnt.submitted_at).toLocaleDateString()}
                       </p>
                     </div>
 
@@ -1113,13 +1038,13 @@ export default function EnterpriseAdminPage() {
                         <p className="text-[10px] uppercase tracking-wider text-[var(--text-muted)] font-semibold">
                           Risk Score
                         </p>
-                        <p className={`font-mono font-bold text-sm ${cnt.riskScore > 70 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
-                          {cnt.riskScore}/100
+                        <p className={`font-mono font-bold text-sm ${cnt.risk_score > 70 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                          {cnt.risk_score}/100
                         </p>
                       </div>
 
                       <button
-                        onClick={() => router.push(`/contractmind?id=${cnt.contractId}`)}
+                        onClick={() => router.push(`/contractmind?id=${cnt.contract_id}`)}
                         className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/15 text-[var(--text-primary)] flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
                         <span>{isBn ? "অডিট রিপোর্ট দেখুন" : "View Audit Memo"}</span>
@@ -1165,7 +1090,7 @@ export default function EnterpriseAdminPage() {
                       {isBn ? "ইনভাইট কোড" : "Invite Code"}
                     </p>
                     <p className="font-mono font-bold text-lg text-[var(--text-primary)]">
-                      {organization.referCode || "—"}
+                      {organization?.referCode || "—"}
                     </p>
                   </div>
                   <button
@@ -1314,115 +1239,6 @@ export default function EnterpriseAdminPage() {
             </div>
           </div>
         )}
-
-        {/* ── ADD RULE PREVIEW MODAL ── */}
-        {showAddRuleModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`w-full max-w-lg rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto`}>
-              <div className="flex items-center justify-between border-b border-[var(--text-primary)]/10 pb-4">
-                <div className="flex items-center gap-2">
-                  <BookOpen className="w-4 h-4 text-emerald-500" />
-                  <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                    {isBn ? "রুল প্রিভিউ যোগ করুন" : "Add Rule (Preview Only)"}
-                  </h3>
-                </div>
-                <button onClick={() => setShowAddRuleModal(false)} className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300">
-                {isBn
-                  ? "সতর্কতা: এই রুলটি শুধুমাত্র লোকাল প্রিভিউ হিসেবে যোগ হবে। স্থায়ীভাবে সেভ করতে একটি প্লেবুক ফাইল আপলোড করুন।"
-                  : "Note: This rule will be added to local preview only. To persist, upload a playbook file."}
-              </div>
-
-              <form onSubmit={handleAddRuleSubmit} className="space-y-4 text-xs">
-                <div>
-                  <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                    {isBn ? "ক্লজ বা রুলের শিরোনাম" : "Clause / Rule Title"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Mandatory Indemnity Cap for IT Vendors"
-                    value={newRuleTitle}
-                    onChange={(e) => setNewRuleTitle(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                      {isBn ? "প্রযোজ্য আইন" : "Governing Statute"}
-                    </label>
-                    <select
-                      value={newRuleStatute}
-                      onChange={(e) => setNewRuleStatute(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                    >
-                      <option value="Bangladesh Labour Act 2006">Bangladesh Labour Act 2006</option>
-                      <option value="The Contract Act 1872">The Contract Act 1872</option>
-                      <option value="The Copyright Act 2000">The Copyright Act 2000</option>
-                      <option value="The Arbitration Act 2001">The Arbitration Act 2001</option>
-                      <option value="Corporate Governance Code 2018">Corporate Governance Code 2018</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                      {isBn ? "ধারা রেফারেন্স" : "Section Reference"}
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Section 73 / 74"
-                      value={newRuleRef}
-                      onChange={(e) => setNewRuleRef(e.target.value)}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                    {isBn ? "কোম্পানির কমপ্লায়েন্স নির্দেশনা" : "Company Compliance Requirement"}
-                  </label>
-                  <textarea
-                    rows={3}
-                    required
-                    placeholder="Describe the exact statutory risk threshold..."
-                    value={newRuleReq}
-                    onChange={(e) => setNewRuleReq(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                    {isBn ? "স্ট্যান্ডার্ড ক্লজ টেমপ্লেট" : "Standard Clause Template"}
-                  </label>
-                  <textarea
-                    rows={3}
-                    placeholder="Standard boilerplate clause text..."
-                    value={newRuleTemplate}
-                    onChange={(e) => setNewRuleTemplate(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] font-mono"
-                  />
-                </div>
-
-                <div className="flex items-center justify-end gap-2.5 pt-3">
-                  <button type="button" onClick={() => setShowAddRuleModal(false)} className="px-4 py-2 rounded-xl border border-[var(--text-primary)]/15 text-[var(--text-muted)] cursor-pointer">
-                    {isBn ? "বাতিল" : "Cancel"}
-                  </button>
-                  <button type="submit" className="px-5 py-2 rounded-xl font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer">
-                    {isBn ? "প্রিভিউ যোগ করুন" : "Add to Preview"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
-
       </div>
     </AppShell>
   );

@@ -1457,3 +1457,43 @@ export async function getAdminFinancials(): Promise<AdminFinancials | null> {
     return null;
   }
 }
+
+export interface AuditLogItem {
+  id: number | string;
+  timestamp: string;
+  member_name: string;
+  department: string;
+  module: string;
+  category: string;
+  credits_consumed: number;
+}
+
+export interface SharedContractItem {
+  id: number | string;
+  contract_id: number | string;
+  title: string;
+  category: string;
+  submitted_by: string;
+  submitted_at: string;
+  risk_score: number;
+  status: string;
+  advocate_verified: boolean;
+}
+
+export async function getCompanyAuditLogs(): Promise<AuditLogItem[]> {
+  try {
+    const res = await api.get<AuditLogItem[]>("/api/company/audit-logs");
+    return Array.isArray(res) ? res : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getSharedContracts(): Promise<SharedContractItem[]> {
+  try {
+    const res = await api.get<SharedContractItem[]>("/api/company/shared-contracts");
+    return Array.isArray(res) ? res : [];
+  } catch {
+    return [];
+  }
+}
