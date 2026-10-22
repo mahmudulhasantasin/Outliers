@@ -259,7 +259,6 @@ export async function getContractDownloadUrl(
 export async function requestLawyerVerification(
   contractId: string | number
 ): Promise<VerificationRequestResponse> {
-  // ✅ FIX: Send an empty object as body to prevent CORS / 422 errors in FastAPI
   return api.post<VerificationRequestResponse>(
     `/api/contracts/${contractId}/request-verification`,
     {}
@@ -504,7 +503,7 @@ export interface ActiveTask {
   hitl_status?: string;
   payout_bdt?: number;
   client_notes?: string;
-  clauses_analysis?: any[]; // ✅ FIX: Added to support fetching AI clauses for editing
+  clauses_analysis?: any[];
 }
 
 export interface EarningsDashboard {
@@ -661,7 +660,6 @@ export async function startContractReviewChat(
 
 /** Get earnings dashboard (GET /api/lawyer/earnings) */
 export async function getLawyerEarnings(): Promise<EarningsDashboard> {
-  // ✅ ভুয়া ডেমো ডেটা রিমুভ করা হলো
   const data = await api.get<any>("/api/lawyer/earnings");
   const walletBdt = Number(data.wallet_balance_bdt ?? data.total_earned_credits ?? 0);
   const totalEarnedBdt = Number(data.total_earned_bdt ?? data.total_earned_credits ?? 0);
@@ -725,39 +723,50 @@ export async function requestWithdrawal(
 // ENTERPRISE ADMIN TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────
 
+// ✅ FIX: Backend response structure matched
 export interface CompanyDashboard {
-  company_name: string;
-  verification_status: string;
-  member_count: number;
-  active_member_count: number;
-  total_credits_used: number;
-  refer_code: string;
-  quota_summary: QuotaSummary;
-}
-
-export interface QuotaSummary {
-  total_allocated: number;
-  total_used: number;
-  total_remaining: number;
-  member_breakdown: MemberQuota[];
-}
-
-export interface MemberQuota {
-  user_id: string;
-  full_name: string;
-  credits_used: number;
-  credits_cap: number;
+  enterprise: {
+    id: number;
+    name: string;
+    referral_code: string;
+    credit_balance: number;
+    member_limit: number;
+  };
+  members: {
+    total: number;
+    active: number;
+    pending_approval: number;
+    slots_remaining: number;
+  };
+  credits: {
+    pool_balance: number;
+    used_this_month: number;
+  };
 }
 
 export interface CompanyMember {
-  user_id: string;
-  full_name: string;
+  user_id: string | number;
   email: string;
-  department?: string;
-  status: string; // "active" | "pending" | "suspended" | "removed"
-  credits_used: number;
-  credits_cap: number;
-  joined_at?: string;
+  full_name: string;
+  phone?: string | null;
+  company_role: "ADMIN" | "MANAGER" | "MEMBER" | null;
+  department?: string | null;
+  approval_status: "PENDING" | "APPROVED" | "REJECTED" | "SUSPENDED" | null;
+  quota_total: number;
+  quota_used: number;
+  quota_remaining: number;
+  joined_at?: string | null;
+  last_login_at?: string | null;
+  is_active: boolean;
+}
+
+export interface PendingMember {
+  user_id: string | number;
+  email: string;
+  full_name: string;
+  phone?: string | null;
+  requested_at: string;
+  is_verified: boolean;
 }
 
 export interface Playbook {
@@ -781,23 +790,29 @@ export async function listMembers(status?: string): Promise<CompanyMember[]> {
 }
 
 /** List pending member join requests */
-export async function listPendingMembers(): Promise<CompanyMember[]> {
-  return api.get<CompanyMember[]>("/api/company/members/pending");
+export async function listPendingMembers(): Promise<PendingMember[]> {
+  return api.get<PendingMember[]>("/api/company/members/pending");
+}
+
+export interface ApproveMemberPayload {
+  company_role: "ADMIN" | "MANAGER" | "MEMBER";
+  department?: string | null;
+  initial_quota?: number;
 }
 
 /** Approve a member */
-export async function approveMember(userId: string): Promise<void> {
-  await api.post(`/api/company/members/${userId}/approve`);
+export async function approveMember(userId: string, payload: ApproveMemberPayload): Promise<void> {
+  await api.post(`/api/company/members/${userId}/approve`, { ...payload });
 }
 
 /** Reject a member */
-export async function rejectMember(userId: string): Promise<void> {
-  await api.post(`/api/company/members/${userId}/reject`);
+export async function rejectMember(userId: string, reason: string): Promise<void> {
+  await api.post(`/api/company/members/${userId}/reject`, { reason });
 }
 
 /** Suspend a member */
-export async function suspendMember(userId: string): Promise<void> {
-  await api.post(`/api/company/members/${userId}/suspend`);
+export async function suspendMember(userId: string, reason: string): Promise<void> {
+  await api.post(`/api/company/members/${userId}/suspend`, { reason });
 }
 
 /** Remove a member */
@@ -824,7 +839,6 @@ export async function uploadPlaybook(file: File, title?: string): Promise<Playbo
   const formData = new FormData();
   formData.append("title", title || file.name.replace(/\.[^/.]+$/, "") || "Corporate Playbook");
   formData.append("file", file);
-  formData.append("file", file);
   return api.upload<Playbook>("/api/company/playbook/upload", formData);
 }
 
@@ -844,8 +858,14 @@ export async function activatePlaybook(playbookId: string): Promise<void> {
 }
 
 /** Get quota summary */
-export async function getQuotaSummary(): Promise<QuotaSummary> {
-  return api.get<QuotaSummary>("/api/company/quota/summary");
+export async function getQuotaSummary(): Promise<{
+  pool_balance: number;
+  total_quota_allocated: number;
+  total_quota_used: number;
+  total_quota_remaining: number;
+  unallocated_pool: number;
+}> {
+  return api.get<any>("/api/company/quota/summary");
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -954,7 +974,7 @@ export interface CreditPackage {
   base_credits?: number;
   bonus_credits?: number;
   total_credits: number;
-  credits: number; // backwards compatibility alias
+  credits: number;
   badge_text?: string | null;
   is_popular?: boolean;
   features?: string[];
@@ -973,12 +993,12 @@ export interface InitiatePaymentResponse {
   reference_code: string;
   amount_bdt: number;
   total_credits: number;
-  credits: number; // backwards compatibility alias
+  credits: number;
   package_name?: string;
   expires_at: string;
   bkash: BkashPaymentInstructions;
-  bkash_number?: string; // backwards compatibility alias
-  instructions?: string; // backwards compatibility alias
+  bkash_number?: string;
+  instructions?: string;
   next_step?: string;
 }
 
@@ -1000,18 +1020,18 @@ export interface Payment {
   credits_to_grant?: number;
   bonus_credits?: number;
   total_credits: number;
-  credits: number; // backwards compatibility alias
+  credits: number;
   package_name?: string;
   package?: { id: number | string; name: string };
   purpose?: string;
   status: "PENDING" | "PENDING_VERIFICATION" | "APPROVED" | "REJECTED" | "EXPIRED" | string;
   method?: string;
   trx_id?: string;
-  bkash_trx_id?: string; // backwards compatibility alias
+  bkash_trx_id?: string;
   sender_number?: string;
   admin_note?: string | null;
   created_at: string;
-  initiated_at: string; // backwards compatibility alias
+  initiated_at: string;
   updated_at?: string;
   trx_submitted_at?: string | null;
   reviewed_at?: string | null;
@@ -1024,10 +1044,10 @@ export interface PaymentSummary {
   approved: number;
   rejected: number;
   total_topup_bdt: number;
-  total_spent_bdt?: number; // alias
-  total_credits_purchased?: number; // alias
-  current_balance?: number; // alias
-  payment_count?: number; // alias
+  total_spent_bdt?: number;
+  total_credits_purchased?: number;
+  current_balance?: number;
+  payment_count?: number;
 }
 
 /** List available credit packages (GET /api/payments/packages) */
@@ -1061,7 +1081,6 @@ export async function initiatePayment(
 ): Promise<InitiatePaymentResponse> {
   const parsedId = typeof packageId === "string" ? parseInt(packageId, 10) || packageId : packageId;
 
-  // ✅ ভুয়া ফলব্যাক রিমুভ করা হলো (এখন এরর হলে সরাসরি থ্রো করবে)
   const data = await api.post<any>("/api/payments/initiate", {
     package_id: parsedId,
   });
@@ -1096,8 +1115,6 @@ export async function submitTrxId(
   senderNumber: string = "01700000000"
 ): Promise<SubmitTrxResponse> {
   const pid = typeof paymentId === "string" ? parseInt(paymentId, 10) || paymentId : paymentId;
-  
-  // ✅ ভুয়া সাকসেস ফলব্যাক রিমুভ করা হলো
   return await api.post<SubmitTrxResponse>(`/api/payments/${pid}/submit-trx`, {
     trx_id: trxId.trim(),
     sender_number: senderNumber.trim(),
@@ -1107,8 +1124,6 @@ export async function submitTrxId(
 /** Cancel a pending payment (POST /api/payments/{payment_id}/cancel) */
 export async function cancelPayment(paymentId: string | number): Promise<CancelPaymentResponse> {
   const pid = typeof paymentId === "string" ? parseInt(paymentId, 10) || paymentId : paymentId;
-  
-  // ✅ ভুয়া সাকসেস ফলব্যাক রিমুভ করা হলো
   return await api.post<CancelPaymentResponse>(`/api/payments/${pid}/cancel`);
 }
 
@@ -1208,7 +1223,7 @@ export async function getPaymentSummary(): Promise<PaymentSummary> {
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// SYSTEM ADMIN TYPES & HOOKS (Docs Section 8)
+// SYSTEM ADMIN TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface AdminPendingLawyer {
@@ -1245,7 +1260,6 @@ export interface AdminDashboardStats {
 
 /** Get admin dashboard overview stats (GET /api/admin/dashboard) */
 export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
-  // ✅ ভুয়া ডেমো স্ট্যাটস রিমুভ করা হলো
   return await api.get<AdminDashboardStats>("/api/admin/dashboard");
 }
 
@@ -1376,8 +1390,8 @@ export interface AdminUser {
   is_verified: boolean;
   enterprise_id: number | null;
   created_at: string;
-  profile_photo_url?: string | null; // ✅ নতুন যুক্ত হলো
-  phone?: string | null;             // ✅ নতুন যুক্ত হলো
+  profile_photo_url?: string | null;
+  phone?: string | null;
 }
 
 /** Get all users for admin dashboard */

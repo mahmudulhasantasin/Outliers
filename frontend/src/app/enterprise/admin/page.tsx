@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
@@ -11,10 +12,10 @@ import {
   INITIAL_COMPANY_PLAYBOOK,
   INITIAL_SHARED_CONTRACTS,
   INITIAL_AUDIT_LOGS,
-  EnterpriseMember,
-  PlaybookRule,
-  SharedCompanyContract,
+} from "@/data/enterpriseData";
+import type {
   EnterpriseOrganization,
+  SharedCompanyContract,
 } from "@/data/enterpriseData";
 import {
   getCompanyDashboard,
@@ -23,43 +24,104 @@ import {
   approveMember,
   rejectMember,
   suspendMember,
+  reactivateMember,
   adjustMemberQuota,
   uploadPlaybook,
-  listPlaybooks,
-  deletePlaybook,
-  activatePlaybook,
 } from "@/lib/apiServices";
 import {
-  Building2,
-  Users,
-  BookOpen,
-  FolderLock,
-  Coins,
-  Shield,
-  ShieldCheck,
-  ShieldAlert,
-  UserPlus,
-  Lock,
-  EyeOff,
-  Copy,
-  Check,
-  AlertCircle,
-  FileText,
-  Search,
-  Filter,
-  ArrowUpRight,
-  TrendingUp,
-  Sliders,
-  CheckCircle2,
-  X,
-  Plus,
-  Sparkles,
-  Upload,
-  Loader2,
+  Building2, Users, BookOpen, FolderLock, Coins, ShieldAlert,
+  ShieldCheck, UserPlus, Lock, Copy, Check, AlertCircle,
+  FileText, Search, ArrowUpRight, TrendingUp, CheckCircle2, X,
+  Plus, Upload, Loader2, RefreshCw,
 } from "lucide-react";
 
+// ─────────────────────────────────────────────────────────────
+// Local types
+// ─────────────────────────────────────────────────────────────
 type AdminTab = "overview" | "members" | "playbook" | "vault";
+type MemberStatus = "active" | "suspended" | "pending" | "inactive";
 
+interface EnterpriseMember {
+  id: string;
+  name: string;
+  email: string;
+  department: string;
+  role: "admin" | "member";
+  status: MemberStatus;
+  monthlyCreditCap: number;
+  creditsUsedThisMonth: number;
+  joinedAt: string;
+}
+
+interface PlaybookRule {
+  id: string;
+  clauseTypeEn: string;
+  clauseTypeBn: string;
+  statute: string;
+  statutoryReference: string;
+  companyRequirementEn: string;
+  companyRequirementBn: string;
+  standardClauseTemplate: string;
+  strictness: "mandatory" | "advisory";
+  isActive: boolean;
+}
+
+interface PendingMember {
+  user_id: number | string;
+  email: string;
+  full_name: string;
+  phone?: string | null;
+  requested_at: string;
+  is_verified: boolean;
+}
+
+// ─────────────────────────────────────────────────────────────
+// Mappers
+// ─────────────────────────────────────────────────────────────
+function mapBackendStatus(m: any): MemberStatus {
+  const approval = String(m.approval_status || "").toUpperCase();
+  const isActive = m.is_active !== false;
+  if (approval === "PENDING") return "pending";
+  if (approval === "REJECTED") return "inactive";
+  if (approval === "SUSPENDED") return "suspended";
+  if (approval === "APPROVED") return isActive ? "active" : "inactive";
+  return "active";
+}
+
+function mapBackendMember(m: any): EnterpriseMember {
+  const companyRole = String(m.company_role || "").toUpperCase();
+  return {
+    id: String(m.user_id ?? m.id ?? ""),
+    name: m.full_name || m.name || "Member",
+    email: m.email || "",
+    department: m.department || "—",
+    role: companyRole === "ADMIN" ? "admin" : "member",
+    status: mapBackendStatus(m),
+    monthlyCreditCap: Number(m.quota_total ?? 0),
+    creditsUsedThisMonth: Number(m.quota_used ?? 0),
+    joinedAt: m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "—",
+  };
+}
+
+function mapBackendRuleToFrontend(r: any): PlaybookRule {
+  const sev = String(r.severity || "").toLowerCase();
+  return {
+    id: String(r.rule_id || `rule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
+    clauseTypeEn: r.category || "General",
+    clauseTypeBn: r.category || "General",
+    statute: r.violated_law || "Bangladesh Law",
+    statutoryReference: r.violated_law || "",
+    companyRequirementEn: r.rule_description || "",
+    companyRequirementBn: r.rule_description || "",
+    standardClauseTemplate: r.suggested_redline || "",
+    strictness: sev === "critical" || sev === "high" ? "mandatory" : "advisory",
+    isActive: true,
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// Component
+// ─────────────────────────────────────────────────────────────
 export default function EnterpriseAdminPage() {
   const router = useRouter();
   const { user, loginAsDemoEnterpriseAdmin } = useAuth();
@@ -67,111 +129,140 @@ export default function EnterpriseAdminPage() {
   const isBn = language === "bn";
 
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
+
+  // Data
   const [organization, setOrganization] = useState<EnterpriseOrganization>(INITIAL_ORGANIZATION);
-  const [members, setMembers] = useState<EnterpriseMember[]>(INITIAL_ENTERPRISE_MEMBERS);
-  const [playbookRules, setPlaybookRules] = useState<PlaybookRule[]>(INITIAL_COMPANY_PLAYBOOK.rules);
-  const [sharedContracts, setSharedContracts] = useState<SharedCompanyContract[]>(INITIAL_SHARED_CONTRACTS);
-  
-  // UI States
+  const [usedThisMonth, setUsedThisMonth] = useState<number>(0);
+  const [members, setMembers] = useState<EnterpriseMember[]>(
+    INITIAL_ENTERPRISE_MEMBERS as unknown as EnterpriseMember[]
+  );
+  const [pendingMembers, setPendingMembers] = useState<PendingMember[]>([]);
+  const [playbookRules, setPlaybookRules] = useState<PlaybookRule[]>(
+    INITIAL_COMPANY_PLAYBOOK.rules as unknown as PlaybookRule[]
+  );
+  const [sharedContracts] = useState<SharedCompanyContract[]>(INITIAL_SHARED_CONTRACTS);
+
+  // Load state
+  const [isLoadingBackend, setIsLoadingBackend] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  // UI state
   const [copiedReferCode, setCopiedReferCode] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [showAddRuleModal, setShowAddRuleModal] = useState(false);
   const [memberSearch, setMemberSearch] = useState("");
   const [editingCreditMemberId, setEditingCreditMemberId] = useState<string | null>(null);
   const [tempCreditCap, setTempCreditCap] = useState<number>(200);
+  const [isUploadingPlaybook, setIsUploadingPlaybook] = useState(false);
 
-  // Invite Form State
-  const [inviteName, setInviteName] = useState("");
-  const [inviteEmail, setInviteEmail] = useState("");
-  const [inviteDept, setInviteDept] = useState("Human Resources");
-  const [inviteCap, setInviteCap] = useState(250);
+  // Approve / Reject modals
+  const [approveTarget, setApproveTarget] = useState<PendingMember | null>(null);
+  const [approveRole, setApproveRole] = useState<"ADMIN" | "MANAGER" | "MEMBER">("MEMBER");
+  const [approveDept, setApproveDept] = useState("");
+  const [approveQuota, setApproveQuota] = useState(200);
+  const [rejectTarget, setRejectTarget] = useState<PendingMember | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
 
-  // New Rule Form State
+  // New rule form (preview only)
   const [newRuleTitle, setNewRuleTitle] = useState("");
   const [newRuleStatute, setNewRuleStatute] = useState("Bangladesh Labour Act 2006");
   const [newRuleRef, setNewRuleRef] = useState("");
   const [newRuleReq, setNewRuleReq] = useState("");
   const [newRuleTemplate, setNewRuleTemplate] = useState("");
 
-  const [isUploadingPlaybook, setIsUploadingPlaybook] = useState(false);
+  const borderClass = "border-[var(--text-primary)]/10";
+  const roleUpper = user ? String(user.role).toUpperCase() : "";
+  const isAdmin = roleUpper === "ENTERPRISE_ADMIN" || roleUpper === "ADMIN";
+  const isAllowed = !!user && (isAdmin || roleUpper === "ENTERPRISE");
 
+  // Redirect guards
   useEffect(() => {
     if (!user) {
       router.replace("/login");
       return;
     }
-    const userRole = String(user.role).toUpperCase();
-    if (userRole === "LAWYER") {
+    if (roleUpper === "LAWYER") {
       router.replace("/lawyer/pending");
       return;
     }
-    if (userRole !== "ENTERPRISE_ADMIN" && userRole !== "ENTERPRISE" && userRole !== "ADMIN") {
+    if (!isAllowed) {
       router.replace("/dashboard");
     }
-  }, [user, router]);
+  }, [user, roleUpper, isAllowed, router]);
 
-  // Fetch real Enterprise dashboard and members from backend
-  useEffect(() => {
-    let isMounted = true;
-    async function loadBackendData() {
-      try {
-        const [dash, mems] = await Promise.allSettled([
-          getCompanyDashboard(),
-          listMembers(),
-        ]);
-        if (!isMounted) return;
-        if (dash.status === "fulfilled" && dash.value) {
-          setOrganization((prev) => ({
-            ...prev,
-            name: dash.value.company_name || prev.name,
-            referCode: dash.value.refer_code || prev.referCode,
-            usedSeats: dash.value.active_member_count ?? prev.usedSeats,
-            creditPoolTotal: dash.value.quota_summary?.total_allocated ?? prev.creditPoolTotal,
-            creditPoolRemaining: dash.value.quota_summary?.total_allocated
-              ? dash.value.quota_summary.total_allocated - (dash.value.total_credits_used ?? 0)
-              : prev.creditPoolRemaining,
-          }));
-        }
-        if (mems.status === "fulfilled" && Array.isArray(mems.value) && mems.value.length > 0) {
-          const mapped: EnterpriseMember[] = mems.value.map((m: any) => ({
-            id: m.user_id || m.id,
-            name: m.full_name || m.name || "Member",
-            email: m.email,
-            department: m.department || "Operations",
-            role: m.role === "admin" ? "admin" : "member",
-            status: m.status === "suspended" ? "suspended" : "active",
-            monthlyCreditCap: m.credits_cap ?? m.monthly_credit_cap ?? 200,
-            creditsUsedThisMonth: m.credits_used ?? m.credits_used_this_month ?? 0,
-            joinedAt: m.joined_at ? new Date(m.joined_at).toLocaleDateString() : "Active",
-          }));
-          setMembers(mapped);
-        }
-      } catch (err) {
-        console.warn("Could not load company dashboard:", err);
+  // Refetch all data
+  const refetchAll = useCallback(async () => {
+    setIsLoadingBackend(true);
+    setLoadError(null);
+    try {
+      const [dashRes, memsRes, pendingRes] = await Promise.allSettled([
+        getCompanyDashboard(),
+        listMembers(),
+        listPendingMembers(),
+      ]);
+
+      if (dashRes.status === "fulfilled" && dashRes.value) {
+        const d = dashRes.value as any;
+        const ent = d.enterprise || {};
+        const memb = d.members || {};
+        const cred = d.credits || {};
+        const poolBalance = Number(cred.pool_balance ?? ent.credit_balance ?? 0);
+        const monthlyUsed = Number(cred.used_this_month ?? 0);
+
+        setUsedThisMonth(monthlyUsed);
+        setOrganization((prev) => ({
+          ...prev,
+          name: ent.name ?? prev.name,
+          referCode: ent.referral_code ?? prev.referCode,
+          usedSeats: memb.active ?? prev.usedSeats,
+          totalSeats: ent.member_limit ?? prev.totalSeats,
+          creditPoolRemaining: poolBalance,
+          creditPoolTotal: poolBalance + monthlyUsed || prev.creditPoolTotal,
+        }));
+      } else if (dashRes.status === "rejected") {
+        setLoadError(isBn ? "ড্যাশবোর্ড ডাটা লোড ব্যর্থ।" : "Failed to load dashboard.");
       }
+
+      if (memsRes.status === "fulfilled" && Array.isArray(memsRes.value)) {
+        const mapped = (memsRes.value as any[]).map(mapBackendMember);
+        if (mapped.length > 0) setMembers(mapped);
+      }
+
+      if (pendingRes.status === "fulfilled" && Array.isArray(pendingRes.value)) {
+        const mappedPending = (pendingRes.value as any[]).map((m) => ({
+          user_id: m.user_id || m.id,
+          email: m.email,
+          full_name: m.full_name,
+          phone: m.phone,
+          requested_at: m.requested_at || m.joined_at || new Date().toISOString(),
+          is_verified: m.is_verified ?? false,
+        }));
+        setPendingMembers(mappedPending);
+      }
+    } catch (err) {
+      console.error("[Enterprise Admin] refetch error:", err);
+      setLoadError(isBn ? "সার্ভারে সংযোগ ব্যর্থ।" : "Backend connection failed.");
+    } finally {
+      setIsLoadingBackend(false);
     }
-    loadBackendData();
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  }, [isBn]);
 
-  const borderClass = "border-[var(--text-primary)]/10";
-  const isAdmin =
-    user?.role === "enterprise_admin" ||
-    (user?.role === "enterprise" && !user?.enterpriseProfile?.isTeamMember);
+  useEffect(() => {
+    if (!user || !isAllowed) return;
+    refetchAll();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, isAllowed]);
 
+  // Handlers
   const copyReferCode = () => {
+    if (!organization.referCode) return;
     navigator.clipboard.writeText(organization.referCode);
     setCopiedReferCode(true);
     setTimeout(() => setCopiedReferCode(false), 2000);
   };
 
   const handleTogglePlaybookEnforce = () => {
-    setOrganization((prev) => ({
-      ...prev,
-      playbookEnforced: !prev.playbookEnforced,
-    }));
+    setOrganization((prev) => ({ ...prev, playbookEnforced: !prev.playbookEnforced }));
   };
 
   const handleToggleRuleActive = (ruleId: string) => {
@@ -181,36 +272,77 @@ export default function EnterpriseAdminPage() {
   };
 
   const handleToggleMemberStatus = async (memberId: string) => {
-    try {
-      await suspendMember(memberId);
-    } catch (e: any) {
-      alert(e.message || (isBn ? "মেম্বার স্ট্যাটাস পরিবর্তন ব্যর্থ হয়েছে।" : "Failed to update member status."));
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+    if (member.role === "admin") {
+      alert(isBn ? "অ্যাডমিন স্ট্যাটাস পরিবর্তন করা যাবে না।" : "Admin status cannot be modified.");
       return;
     }
-    setMembers((prev) =>
-      prev.map((m) => {
-        if (m.id === memberId) {
-          const nextStatus = m.status === "active" ? "suspended" : "active";
-          return { ...m, status: nextStatus };
-        }
-        return m;
-      })
-    );
+
+    try {
+      if (member.status === "active") {
+        const reason = prompt(
+          isBn ? "সাময়িক স্থগিত করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর):" : "Enter reason for suspension (min 3 characters):"
+        );
+        if (!reason || reason.trim().length < 3) return;
+        await suspendMember(memberId, reason.trim());
+      } else if (member.status === "suspended") {
+        await reactivateMember(memberId);
+      } else {
+        return;
+      }
+      await refetchAll();
+    } catch (e: any) {
+      alert(e?.message || (isBn ? "স্ট্যাটাস পরিবর্তন ব্যর্থ।" : "Failed to update status."));
+    }
   };
 
   const handleSaveMemberCreditCap = async (memberId: string) => {
-    const currentMember = members.find((m) => m.id === memberId);
-    const delta = tempCreditCap - (currentMember?.monthlyCreditCap ?? 200);
-    try {
-      await adjustMemberQuota(memberId, delta, "Quota adjustment via Admin panel");
-    } catch (e: any) {
-      alert(e.message || (isBn ? "কোটা পরিবর্তন ব্যর্থ হয়েছে।" : "Failed to adjust member quota."));
+    const current = members.find((m) => m.id === memberId);
+    const delta = tempCreditCap - (current?.monthlyCreditCap ?? 0);
+    if (delta === 0) {
+      setEditingCreditMemberId(null);
       return;
     }
-    setMembers((prev) =>
-      prev.map((m) => (m.id === memberId ? { ...m, monthlyCreditCap: tempCreditCap } : m))
-    );
-    setEditingCreditMemberId(null);
+    try {
+      await adjustMemberQuota(memberId, delta, "Quota adjustment via Admin panel");
+      await refetchAll();
+      setEditingCreditMemberId(null);
+    } catch (e: any) {
+      alert(e?.message || (isBn ? "কোটা পরিবর্তন ব্যর্থ।" : "Failed to adjust quota."));
+    }
+  };
+
+  const handleApproveSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!approveTarget) return;
+    try {
+      await approveMember(String(approveTarget.user_id), {
+        company_role: approveRole,
+        department: approveDept.trim() || null,
+        initial_quota: approveQuota,
+      });
+      setApproveTarget(null);
+      setApproveRole("MEMBER");
+      setApproveDept("");
+      setApproveQuota(200);
+      await refetchAll();
+    } catch (e: any) {
+      alert(e?.message || (isBn ? "অনুমোদন ব্যর্থ।" : "Failed to approve."));
+    }
+  };
+
+  const handleRejectSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rejectTarget || rejectReason.trim().length < 3) return;
+    try {
+      await rejectMember(String(rejectTarget.user_id), rejectReason.trim());
+      setRejectTarget(null);
+      setRejectReason("");
+      await refetchAll();
+    } catch (e: any) {
+      alert(e?.message || (isBn ? "প্রত্যাখ্যান ব্যর্থ।" : "Failed to reject."));
+    }
   };
 
   const handlePlaybookUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -218,41 +350,29 @@ export default function EnterpriseAdminPage() {
     if (!file) return;
     try {
       setIsUploadingPlaybook(true);
-      await uploadPlaybook(file);
-      alert(isBn ? "প্লেবুক সফলভাবে আপলোড হয়েছে!" : "Playbook uploaded successfully!");
+      const resp = (await uploadPlaybook(file, file.name.replace(/\.[^.]+$/, ""))) as any;
+      const extracted = resp?.rules;
+      if (Array.isArray(extracted) && extracted.length > 0) {
+        setPlaybookRules(extracted.map(mapBackendRuleToFrontend));
+      }
+      alert(
+        isBn
+          ? `প্লেবুক সফলভাবে আপলোড হয়েছে! ${extracted?.length ?? 0} টি রুল পাওয়া গেছে।`
+          : `Playbook uploaded! ${extracted?.length ?? 0} rules extracted.`
+      );
     } catch (err: any) {
-      alert(err.message || "Failed to upload playbook");
+      alert(err?.message || "Failed to upload playbook");
     } finally {
       setIsUploadingPlaybook(false);
+      e.target.value = "";
     }
-  };
-
-  const handleInviteSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!inviteName || !inviteEmail) return;
-    const newMem: EnterpriseMember = {
-      id: `mem-${Date.now().toString().slice(-4)}`,
-      name: inviteName,
-      email: inviteEmail,
-      department: inviteDept,
-      role: "member",
-      status: "active",
-      monthlyCreditCap: inviteCap,
-      creditsUsedThisMonth: 0,
-      joinedAt: "Just now",
-    };
-    setMembers((prev) => [newMem, ...prev]);
-    setOrganization((prev) => ({ ...prev, usedSeats: prev.usedSeats + 1 }));
-    setShowInviteModal(false);
-    setInviteName("");
-    setInviteEmail("");
   };
 
   const handleAddRuleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRuleTitle || !newRuleReq) return;
     const newRule: PlaybookRule = {
-      id: `rule-${Date.now().toString().slice(-4)}`,
+      id: `local-rule-${Date.now().toString().slice(-6)}`,
       clauseTypeEn: newRuleTitle,
       clauseTypeBn: newRuleTitle,
       statute: newRuleStatute,
@@ -269,6 +389,11 @@ export default function EnterpriseAdminPage() {
     setNewRuleRef("");
     setNewRuleReq("");
     setNewRuleTemplate("");
+    alert(
+      isBn
+        ? "লোকাল প্রিভিউতে রুল যোগ হয়েছে। স্থায়ীভাবে সংরক্ষণের জন্য প্লেবুক ফাইল আপলোড করুন।"
+        : "Rule added to local preview. To persist, upload a playbook file."
+    );
   };
 
   const filteredMembers = members.filter(
@@ -278,8 +403,7 @@ export default function EnterpriseAdminPage() {
       m.department.toLowerCase().includes(memberSearch.toLowerCase())
   );
 
-  const roleUpper = user ? String(user.role).toUpperCase() : "";
-  if (!user || roleUpper === "LAWYER" || (roleUpper !== "ENTERPRISE_ADMIN" && roleUpper !== "ENTERPRISE" && roleUpper !== "ADMIN")) {
+  if (!user || roleUpper === "LAWYER" || !isAllowed) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[var(--bg-primary)]">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -291,7 +415,7 @@ export default function EnterpriseAdminPage() {
     <AppShell>
       <div className="max-w-6xl mx-auto py-8 px-4 space-y-8">
         
-        {/* If user is not Enterprise Admin, show quick switch card */}
+        {/* Non-admin banner */}
         {!isAdmin && (
           <div className="p-4 rounded-2xl border border-amber-500/30 bg-amber-500/10 flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
@@ -301,7 +425,7 @@ export default function EnterpriseAdminPage() {
                   {isBn ? "আপনি বর্তমানে এন্টারপ্রাইজ অ্যাডমিন হিসেবে লগইন করেননি" : "You are not logged in as Enterprise Admin"}
                 </p>
                 <p className="text-[11px] text-amber-700 dark:text-amber-400">
-                  {isBn ? "এই ড্যাশবোর্ড ও মেম্বার কন্ট্রোল পরীক্ষা করতে ১-ক্লিকে ডেমো এন্টারপ্রাইজ অ্যাডমিনে স্যুইচ করুন।" : "Switch to Demo Enterprise Admin in 1-click to test controls."}
+                  {isBn ? "এই ড্যাশবোর্ড পরীক্ষা করতে ১-ক্লিকে ডেমো অ্যাডমিনে স্যুইচ করুন।" : "Switch to Demo Enterprise Admin to test controls."}
                 </p>
               </div>
             </div>
@@ -310,12 +434,30 @@ export default function EnterpriseAdminPage() {
               onClick={loginAsDemoEnterpriseAdmin}
               className="px-4 py-2 rounded-xl text-xs font-bold bg-amber-600 text-white hover:bg-amber-700 transition-colors cursor-pointer"
             >
-              {isBn ? "ডেমো অ্যাডমিন হিসেবে প্রবেশ করুন" : "Switch to Demo Admin"}
+              {isBn ? "ডেমো অ্যাডমিনে স্যুইচ" : "Switch to Demo Admin"}
             </button>
           </div>
         )}
 
-        {/* ── Enterprise Header ── */}
+        {/* Error banner */}
+        {loadError && (
+          <div className="p-3 rounded-xl border border-rose-500/30 bg-rose-500/10 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-xs text-rose-700 dark:text-rose-300">
+              <AlertCircle className="w-4 h-4" />
+              <span>{loadError}</span>
+            </div>
+            <button
+              onClick={refetchAll}
+              disabled={isLoadingBackend}
+              className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 flex items-center gap-1"
+            >
+              {isLoadingBackend ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+              {isBn ? "রি-ট্রাই" : "Retry"}
+            </button>
+          </div>
+        )}
+
+        {/* Header */}
         <div className={`p-6 sm:p-8 rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-sm space-y-6`}>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div className="space-y-2">
@@ -324,35 +466,35 @@ export default function EnterpriseAdminPage() {
                   <Building2 className="w-3.5 h-3.5" />
                   {isBn ? "কর্পোরেট এন্টারপ্রাইজ অ্যাডমিন" : "Enterprise Admin Portal"}
                 </span>
-                <span className="font-mono text-xs text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
-                  RJSC: {organization.registrationNo}
-                </span>
-                <span className="font-mono text-xs text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
-                  TIN: {organization.tinNo}
-                </span>
+                {organization.registrationNo && (
+                  <span className="font-mono text-xs text-[var(--text-muted)] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
+                    RJSC: {organization.registrationNo}
+                  </span>
+                )}
               </div>
               <h1 className="text-2xl sm:text-3xl font-serif font-bold text-[var(--text-primary)] tracking-tight">
                 {organization.name}
               </h1>
               <p className="text-xs text-[var(--text-muted)]">
-                {isBn ? "প্রধান প্রশাসক:" : "Lead Administrator:"} <strong className="text-[var(--text-primary)]">{organization.adminName}</strong> ({organization.adminEmail})
+                {isBn ? "প্রধান প্রশাসক:" : "Lead Administrator:"}{" "}
+                <strong className="text-[var(--text-primary)]">{user.name}</strong> ({user.email})
               </p>
             </div>
 
-            {/* Refer Code & Quick Invite */}
             <div className="flex items-center gap-3 flex-wrap">
               <div className="p-3 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)] flex items-center gap-3">
                 <div>
                   <p className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-muted)]">
-                    {isBn ? "কোম্পানি রেফারেল / ইনভাইট কোড" : "Company Invite Code"}
+                    {isBn ? "কোম্পানি ইনভাইট কোড" : "Company Invite Code"}
                   </p>
-                  <p className="font-mono font-bold text-sm text-[var(--text-primary)]">{organization.referCode}</p>
+                  <p className="font-mono font-bold text-sm text-[var(--text-primary)]">
+                    {organization.referCode || "—"}
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={copyReferCode}
                   className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/10 transition-colors cursor-pointer"
-                  title="Copy Invite Code"
                 >
                   {copiedReferCode ? <Check className="w-4 h-4 text-emerald-500" /> : <Copy className="w-4 h-4" />}
                 </button>
@@ -360,108 +502,78 @@ export default function EnterpriseAdminPage() {
 
               <button
                 type="button"
-                onClick={() => setShowInviteModal(true)}
+                onClick={() => setShowShareModal(true)}
                 className="px-4 py-3 rounded-2xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 flex items-center gap-2 transition-opacity cursor-pointer shadow-sm"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{isBn ? "সদস্য যুক্ত করুন" : "Invite Member"}</span>
+                <span>{isBn ? "সদস্য ইনভাইট করুন" : "Invite Member"}</span>
               </button>
             </div>
           </div>
 
-          {/* Tab Navigation */}
+          {/* Tabs */}
           <div className="flex items-center gap-2 border-t border-[var(--text-primary)]/10 pt-4 overflow-x-auto">
-            <button
-              type="button"
-              onClick={() => setActiveTab("overview")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === "overview"
-                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
-              }`}
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span>{isBn ? "ওভারভিউ ও ক্রেডিট পুল" : "Overview & Credit Pool"}</span>
-            </button>
+            {(["overview", "members", "playbook", "vault"] as AdminTab[]).map((tab) => {
+              const icons = { overview: TrendingUp, members: Users, playbook: BookOpen, vault: FolderLock };
+              const Icon = icons[tab];
+              const labels = {
+                overview: isBn ? "ওভারভিউ ও ক্রেডিট পুল" : "Overview & Credit Pool",
+                members: isBn ? "সদস্য ও পারমিশন" : "Members & Permissions",
+                playbook: isBn ? "কোম্পানি প্লেবুক" : "Company Playbook",
+                vault: isBn ? "কোম্পানি ভল্ট" : "Company Vault",
+              };
+              const showPendingBadge = tab === "members" && pendingMembers.length > 0;
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("members")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === "members"
-                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>{isBn ? "সদস্য ও পারমিশন" : "Members & Permissions"}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-surface)] text-[var(--text-muted)] font-mono">
-                {members.length}
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("playbook")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === "playbook"
-                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
-              }`}
-            >
-              <BookOpen className="w-4 h-4" />
-              <span>{isBn ? "কোম্পানি লিগ্যাল প্লেবুক" : "Company Playbook"}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono">
-                Active
-              </span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setActiveTab("vault")}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
-                activeTab === "vault"
-                  ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
-                  : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
-              }`}
-            >
-              <FolderLock className="w-4 h-4" />
-              <span>{isBn ? "কোম্পানি শেয়ার্ড ভল্ট" : "Company Shared Vault"}</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-[var(--bg-surface)] text-[var(--text-muted)] font-mono">
-                {sharedContracts.length}
-              </span>
-            </button>
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                    activeTab === tab
+                      ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] shadow-sm"
+                      : "text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                  <span>{labels[tab]}</span>
+                  {showPendingBadge && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-rose-500 text-white font-mono font-bold">
+                      {pendingMembers.length}
+                    </span>
+                  )}
+                  {tab === "members" && !showPendingBadge && (
+                    <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[var(--bg-surface)] text-[var(--text-muted)] font-mono">
+                      {members.length}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* ── ZERO-KNOWLEDGE PRIVACY SAFEGUARD NOTICE ── */}
+        {/* Privacy notice */}
         <div className="p-4 rounded-2xl border border-indigo-500/20 bg-indigo-50/50 dark:bg-indigo-950/20 flex items-start gap-3.5">
           <div className="w-8 h-8 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0 mt-0.5">
             <Lock className="w-4 h-4" />
           </div>
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
-                {isBn ? "জিরো-নলেজ মেম্বার প্রাইভেসি পলিসি সক্রিয়" : "Zero-Knowledge Member Privacy Enforced"}
-              </h4>
-              <span className="text-[10px] px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300 font-semibold">
-                Protected by Design
-              </span>
-            </div>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+              {isBn ? "জিরো-নলেজ মেম্বার প্রাইভেসি সক্রিয়" : "Zero-Knowledge Member Privacy Enforced"}
+            </h4>
             <p className="text-xs text-indigo-900/80 dark:text-indigo-200/80 leading-relaxed">
               {isBn
-                ? "কোম্পানি পলিসি অনুযায়ী এন্টারপ্রাইজ অ্যাডমিন কোনো সদস্যের ব্যক্তিগত চ্যাট বা ড্রাফট চুক্তিপত্র সরাসরি দেখতে বা পড়তে পারবেন না। সদস্য নিজে যখন 'Share to Company Vault' বাটনে ক্লিক করবেন, কেবল তখনই তা পুরো কোম্পানির ভল্টে দৃশ্যমান হবে। অ্যাডমিন কেবল ক্রেডিট ব্যবহার এবং মেটাডেটা লগ নিরীক্ষণ করতে পারেন।"
-                : "Enterprise Admins cannot inspect individual members' private chat sessions or unshared contract drafts. Contracts only become visible when explicitly shared to the Company Vault by the member. Admins can monitor aggregate credit usage and compliance metadata logs."}
+                ? "এন্টারপ্রাইজ অ্যাডমিন সদস্যদের ব্যক্তিগত চ্যাট বা চুক্তিপত্র দেখতে পারেন না। সদস্য নিজে শেয়ার করলে কেবল কোম্পানি ভল্টে দৃশ্যমান হবে।"
+                : "Enterprise Admins cannot inspect individual members' private chats or unshared contracts. Contracts become visible only when shared to the Company Vault."}
             </p>
           </div>
         </div>
 
-        {/* ── TAB 1: OVERVIEW & CREDIT POOL ── */}
+        {/* ── OVERVIEW TAB ── */}
         {activeTab === "overview" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Top 3 Stat Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-              {/* Seats Card */}
+              {/* Seats */}
               <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] space-y-3`}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
@@ -481,16 +593,21 @@ export default function EnterpriseAdminPage() {
                   <div className="w-full bg-[var(--bg-surface)] h-2 rounded-full mt-3 overflow-hidden border border-[var(--text-primary)]/10">
                     <div
                       className="bg-[var(--accent-solid)] h-full rounded-full transition-all"
-                      style={{ width: `${(organization.usedSeats / organization.totalSeats) * 100}%` }}
+                      style={{
+                        width: `${organization.totalSeats > 0
+                          ? Math.min(100, (organization.usedSeats / organization.totalSeats) * 100)
+                          : 0}%`,
+                      }}
                     />
                   </div>
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  {organization.totalSeats - organization.usedSeats} {isBn ? "টি খালি সিট অবশিষ্ট রয়েছে।" : "available seats remaining."}
+                  {Math.max(0, organization.totalSeats - organization.usedSeats)}{" "}
+                  {isBn ? "টি খালি সিট অবশিষ্ট।" : "available seats remaining."}
                 </p>
               </div>
 
-              {/* Credit Pool Card */}
+              {/* Credit Pool */}
               <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] space-y-3`}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
@@ -504,22 +621,28 @@ export default function EnterpriseAdminPage() {
                       {organization.creditPoolRemaining.toLocaleString()}
                     </span>
                     <span className="text-xs text-[var(--text-muted)]">
-                      / {organization.creditPoolTotal.toLocaleString()} {isBn ? "ক্রেডিট" : "Credits"}
+                      {isBn ? "অবশিষ্ট ক্রেডিট" : "credits remaining"}
                     </span>
                   </div>
                   <div className="w-full bg-[var(--bg-surface)] h-2 rounded-full mt-3 overflow-hidden border border-[var(--text-primary)]/10">
                     <div
                       className="bg-amber-500 h-full rounded-full transition-all"
-                      style={{ width: `${(organization.creditPoolRemaining / organization.creditPoolTotal) * 100}%` }}
+                      style={{
+                        width: `${
+                          organization.creditPoolRemaining + usedThisMonth > 0
+                            ? Math.min(100, (usedThisMonth / (organization.creditPoolRemaining + usedThisMonth)) * 100)
+                            : 0
+                        }%`,
+                      }}
                     />
                   </div>
                 </div>
                 <p className="text-[11px] text-[var(--text-muted)]">
-                  {isBn ? "নবায়ন তারিখ: ১ নভেম্বর ২০২৬" : "Renews on: 01 November 2026"}
+                  {usedThisMonth.toLocaleString()} {isBn ? "ক্রেডিট এ মাসে ব্যবহৃত।" : "credits used this month."}
                 </p>
               </div>
 
-              {/* Playbook Status Card */}
+              {/* Playbook */}
               <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] space-y-3`}>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
@@ -528,13 +651,14 @@ export default function EnterpriseAdminPage() {
                   <ShieldCheck className="w-4 h-4 text-emerald-500" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
-                      {organization.playbookEnforced ? (isBn ? "সক্রিয় ও বাধ্যতামূলক" : "Active & Enforced") : (isBn ? "ঐচ্ছিক" : "Advisory Only")}
-                    </span>
-                  </div>
+                  <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">
+                    {organization.playbookEnforced
+                      ? isBn ? "সক্রিয় ও বাধ্যতামূলক" : "Active & Enforced"
+                      : isBn ? "ঐচ্ছিক" : "Advisory Only"}
+                  </span>
                   <p className="text-xs text-[var(--text-muted)] mt-2">
-                    {playbookRules.filter((r) => r.isActive).length} {isBn ? "টি সংবিধিবদ্ধ রুল টিমের অডিটে যুক্ত আছে।" : "statutory rules enforced across team audits."}
+                    {playbookRules.filter((r) => r.isActive).length}{" "}
+                    {isBn ? "টি রুল অডিটে সক্রিয়।" : "active rules enforced."}
                   </p>
                 </div>
                 <button
@@ -542,27 +666,24 @@ export default function EnterpriseAdminPage() {
                   onClick={handleTogglePlaybookEnforce}
                   className="text-xs font-bold text-[var(--accent-solid)] hover:underline flex items-center gap-1 cursor-pointer"
                 >
-                  {organization.playbookEnforced ? (isBn ? "নীতি পরিবর্তন করুন →" : "Configure Rules →") : (isBn ? "বাধ্যতামূলক করুন →" : "Make Mandatory →")}
+                  {isBn ? "কনফিগার করুন →" : "Configure →"}
                 </button>
               </div>
             </div>
 
-            {/* Privacy-Safe Metadata Audit Log */}
+            {/* Audit Trail */}
             <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 space-y-4`}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <div>
                   <h3 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
                     <FileText className="w-4 h-4 text-[var(--text-muted)]" />
-                    <span>{isBn ? "কমপ্লায়েন্স অডিট ট্রেইল (প্রাইভেসি-সেইফ মেটাডেটা)" : "Compliance Audit Trail (Privacy-Safe Metadata)"}</span>
+                    {isBn ? "কমপ্লায়েন্স অডিট ট্রেইল" : "Compliance Audit Trail"}
                   </h3>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5">
-                    {isBn
-                      ? "কোন সদস্য কত ক্রেডিট ব্যবহার করেছেন তার রেকর্ড। চুক্তির ভেতরের লেখা সম্পূর্ণভাবে কর্মচারীর কাছে সুরক্ষিত।"
-                      : "Shows credit consumption events without exposing member private contract bodies or chat text."}
-                  </p>
                 </div>
+                <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+                  {isBn ? "স্যাম্পল ডাটা" : "Sample Data"}
+                </span>
               </div>
-
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead>
@@ -571,8 +692,8 @@ export default function EnterpriseAdminPage() {
                       <th className="pb-3 font-semibold">{isBn ? "সদস্য" : "Member"}</th>
                       <th className="pb-3 font-semibold">{isBn ? "বিভাগ" : "Department"}</th>
                       <th className="pb-3 font-semibold">{isBn ? "মডিউল" : "Module"}</th>
-                      <th className="pb-3 font-semibold">{isBn ? "আইন ক্যাটাগরি" : "Statute Category"}</th>
-                      <th className="pb-3 font-semibold text-right">{isBn ? "ব্যয়িত ক্রেডিট" : "Credits"}</th>
+                      <th className="pb-3 font-semibold">{isBn ? "আইন ক্যাটাগরি" : "Category"}</th>
+                      <th className="pb-3 font-semibold text-right">{isBn ? "ক্রেডিট" : "Credits"}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--text-primary)]/5">
@@ -581,9 +702,7 @@ export default function EnterpriseAdminPage() {
                         <td className="py-3 font-mono text-[11px] text-[var(--text-muted)]">
                           {isBn ? log.timestampBn : log.timestampEn}
                         </td>
-                        <td className="py-3 font-semibold text-[var(--text-primary)]">
-                          {log.memberName}
-                        </td>
+                        <td className="py-3 font-semibold text-[var(--text-primary)]">{log.memberName}</td>
                         <td className="py-3 text-[var(--text-muted)]">{log.department}</td>
                         <td className="py-3">
                           <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 text-[var(--text-primary)]">
@@ -603,33 +722,74 @@ export default function EnterpriseAdminPage() {
           </div>
         )}
 
-        {/* ── TAB 2: MEMBER MANAGEMENT ── */}
+        {/* ── MEMBERS TAB ── */}
         {activeTab === "members" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Search and Action Bar */}
+            
+            {pendingMembers.length > 0 && (
+              <div className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                  <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                    {isBn
+                      ? `অপেক্ষমাণ সদস্য অনুরোধ (${pendingMembers.length})`
+                      : `Pending Membership Requests (${pendingMembers.length})`}
+                  </h3>
+                </div>
+                <div className="grid grid-cols-1 gap-2.5">
+                  {pendingMembers.map((pm) => (
+                    <div
+                      key={String(pm.user_id)}
+                      className="p-3.5 rounded-xl bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-center justify-between gap-3 flex-wrap"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-[var(--text-primary)] truncate">
+                          {pm.full_name}
+                        </p>
+                        <p className="text-[11px] font-mono text-[var(--text-muted)] truncate">
+                          {pm.email}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setApproveTarget(pm)}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer"
+                        >
+                          {isBn ? "অনুমোদন" : "Approve"}
+                        </button>
+                        <button
+                          onClick={() => setRejectTarget(pm)}
+                          className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer"
+                        >
+                          {isBn ? "প্রত্যাখ্যান" : "Reject"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
               <div className="relative flex-1 max-w-md">
                 <Search className="w-4 h-4 text-[var(--text-muted)] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  placeholder={isBn ? "সদস্যের নাম, ইমেইল বা বিভাগ দিয়ে খুঁজুন..." : "Search members by name, email, department..."}
+                  placeholder={isBn ? "সদস্য খুঁজুন..." : "Search members..."}
                   value={memberSearch}
                   onChange={(e) => setMemberSearch(e.target.value)}
                   className="w-full pl-10 pr-4 py-2.5 rounded-2xl border border-[var(--text-primary)]/15 bg-[var(--bg-card)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:border-[var(--text-primary)]/30"
                 />
               </div>
-
               <button
-                type="button"
-                onClick={() => setShowInviteModal(true)}
+                onClick={() => setShowShareModal(true)}
                 className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer shadow-sm"
               >
                 <UserPlus className="w-4 h-4" />
-                <span>{isBn ? "নতুন সদস্য যুক্ত করুন" : "Add Member"}</span>
+                <span>{isBn ? "সদস্য আমন্ত্রণ" : "Invite Member"}</span>
               </button>
             </div>
 
-            {/* Member Table */}
             <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] overflow-hidden`}>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -639,12 +799,19 @@ export default function EnterpriseAdminPage() {
                       <th className="p-4 font-semibold">{isBn ? "বিভাগ" : "Department"}</th>
                       <th className="p-4 font-semibold">{isBn ? "রোল" : "Role"}</th>
                       <th className="p-4 font-semibold">{isBn ? "স্ট্যাটাস" : "Status"}</th>
-                      <th className="p-4 font-semibold">{isBn ? "মাসিক কোটা" : "Monthly Cap"}</th>
-                      <th className="p-4 font-semibold">{isBn ? "ব্যয়িত ক্রেডিট" : "Credits Used"}</th>
+                      <th className="p-4 font-semibold">{isBn ? "কোটা" : "Quota"}</th>
+                      <th className="p-4 font-semibold">{isBn ? "ব্যয়িত" : "Used"}</th>
                       <th className="p-4 font-semibold text-right">{isBn ? "অ্যাকশন" : "Actions"}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[var(--text-primary)]/5">
+                    {filteredMembers.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="p-8 text-center text-xs text-[var(--text-muted)]">
+                          {isBn ? "কোনো সদস্য পাওয়া যায়নি।" : "No members found."}
+                        </td>
+                      </tr>
+                    )}
                     {filteredMembers.map((mem) => (
                       <tr key={mem.id} className="hover:bg-[var(--text-primary)]/5 transition-colors">
                         <td className="p-4">
@@ -653,26 +820,31 @@ export default function EnterpriseAdminPage() {
                         </td>
                         <td className="p-4 text-[var(--text-muted)]">{mem.department}</td>
                         <td className="p-4">
-                          {mem.role === "admin" ? (
-                            <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300">
-                              Admin
-                            </span>
-                          ) : (
-                            <span className="px-2 py-0.5 rounded-md font-bold text-[10px] bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300">
-                              Member
-                            </span>
-                          )}
+                          <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] ${
+                            mem.role === "admin"
+                              ? "bg-purple-100 dark:bg-purple-950/60 text-purple-700 dark:text-purple-300"
+                              : "bg-neutral-100 dark:bg-neutral-800 text-neutral-700 dark:text-neutral-300"
+                          }`}>
+                            {mem.role === "admin" ? "Admin" : "Member"}
+                          </span>
                         </td>
                         <td className="p-4">
-                          {mem.status === "active" ? (
+                          {mem.status === "active" && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                               Active
                             </span>
-                          ) : (
+                          )}
+                          {mem.status === "suspended" && (
                             <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400">
                               <span className="w-2 h-2 rounded-full bg-rose-500" />
                               Suspended
+                            </span>
+                          )}
+                          {mem.status === "pending" && (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              Pending
                             </span>
                           )}
                         </td>
@@ -686,14 +858,12 @@ export default function EnterpriseAdminPage() {
                                 className="w-16 px-2 py-1 rounded-lg border border-[var(--text-primary)]/20 bg-[var(--bg-surface)] text-xs font-mono"
                               />
                               <button
-                                type="button"
                                 onClick={() => handleSaveMemberCreditCap(mem.id)}
                                 className="p-1 rounded-md bg-emerald-500 text-white hover:bg-emerald-600"
                               >
                                 <Check className="w-3.5 h-3.5" />
                               </button>
                               <button
-                                type="button"
                                 onClick={() => setEditingCreditMemberId(null)}
                                 className="p-1 rounded-md text-[var(--text-muted)] hover:text-[var(--text-primary)]"
                               >
@@ -705,16 +875,17 @@ export default function EnterpriseAdminPage() {
                               <span className="font-mono font-semibold text-[var(--text-primary)]">
                                 {mem.monthlyCreditCap}
                               </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setEditingCreditMemberId(mem.id);
-                                  setTempCreditCap(mem.monthlyCreditCap);
-                                }}
-                                className="text-[10px] text-[var(--accent-solid)] hover:underline cursor-pointer"
-                              >
-                                Edit
-                              </button>
+                              {mem.role !== "admin" && (
+                                <button
+                                  onClick={() => {
+                                    setEditingCreditMemberId(mem.id);
+                                    setTempCreditCap(mem.monthlyCreditCap);
+                                  }}
+                                  className="text-[10px] text-[var(--accent-solid)] hover:underline cursor-pointer"
+                                >
+                                  Edit
+                                </button>
+                              )}
                             </div>
                           )}
                         </td>
@@ -722,20 +893,19 @@ export default function EnterpriseAdminPage() {
                           {mem.creditsUsedThisMonth} / {mem.monthlyCreditCap}
                         </td>
                         <td className="p-4 text-right">
-                          {mem.role !== "admin" && (
-                            <div className="inline-flex items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleToggleMemberStatus(mem.id)}
-                                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
-                                  mem.status === "active"
-                                    ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
-                                    : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-                                }`}
-                              >
-                                {mem.status === "active" ? (isBn ? "সাময়িক স্থগিত" : "Suspend") : (isBn ? "পুনরায় চালু" : "Activate")}
-                              </button>
-                            </div>
+                          {mem.role !== "admin" && (mem.status === "active" || mem.status === "suspended") && (
+                            <button
+                              onClick={() => handleToggleMemberStatus(mem.id)}
+                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                                mem.status === "active"
+                                  ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+                                  : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                              }`}
+                            >
+                              {mem.status === "active"
+                                ? isBn ? "স্থগিত" : "Suspend"
+                                : isBn ? "পুনরায় চালু" : "Activate"}
+                            </button>
                           )}
                         </td>
                       </tr>
@@ -747,13 +917,12 @@ export default function EnterpriseAdminPage() {
           </div>
         )}
 
-        {/* ── TAB 3: COMPANY LEGAL PLAYBOOK ENGINE ── */}
+        {/* ── PLAYBOOK TAB ── */}
         {activeTab === "playbook" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Playbook Header & Add Rule Action */}
             <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] flex flex-col md:flex-row md:items-center justify-between gap-5`}>
               <div className="space-y-1">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <BookOpen className="w-4 h-4 text-emerald-500" />
                   <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
                     {INITIAL_COMPANY_PLAYBOOK.title}
@@ -764,8 +933,8 @@ export default function EnterpriseAdminPage() {
                 </div>
                 <p className="text-xs text-[var(--text-muted)] max-w-2xl leading-relaxed">
                   {isBn
-                    ? "কোম্পানির নিজস্ব আইনি বিধিমালা ও রিস্ক লিমিট। আপনার টিমের সদস্যরা যখন কোনো চুক্তি অডিট করবেন, এআই ইঞ্জিন এই রুলগুলো বাধ্যতামূলকভাবে চেক করবে এবং কোনো ব্যত্যয় ঘটলে রেডলাইন পরামর্শ দেবে।"
-                    : "Corporate compliance guidelines and risk tolerances. When members audit contracts in ContractMind, the AI engine verifies both Bangladesh statutes and these corporate playbook rules."}
+                    ? "প্লেবুক ফাইল আপলোড করলে AI স্বয়ংক্রিয়ভাবে রুল এক্সট্রাক্ট করবে। নিচের রুলগুলো প্রথমে ডেমো প্রিভিউ হিসেবে দেখানো হচ্ছে।"
+                    : "Upload a playbook file to auto-extract rules. The rules below are shown as demo preview initially."}
                 </p>
               </div>
 
@@ -776,7 +945,11 @@ export default function EnterpriseAdminPage() {
                   ) : (
                     <Upload className="w-3.5 h-3.5 text-sky-500" />
                   )}
-                  <span>{isUploadingPlaybook ? (isBn ? "আপলোড হচ্ছে..." : "Uploading...") : (isBn ? "প্লেবুক ফাইল আপলোড" : "Upload Playbook")}</span>
+                  <span>
+                    {isUploadingPlaybook
+                      ? isBn ? "আপলোড হচ্ছে..." : "Uploading..."
+                      : isBn ? "প্লেবুক ফাইল আপলোড" : "Upload Playbook"}
+                  </span>
                   <input
                     type="file"
                     accept=".pdf,.docx,.txt"
@@ -787,7 +960,6 @@ export default function EnterpriseAdminPage() {
                 </label>
 
                 <button
-                  type="button"
                   onClick={handleTogglePlaybookEnforce}
                   className={`px-3.5 py-2 rounded-xl text-xs font-bold border transition-colors cursor-pointer ${
                     organization.playbookEnforced
@@ -796,23 +968,28 @@ export default function EnterpriseAdminPage() {
                   }`}
                 >
                   {organization.playbookEnforced
-                    ? isBn ? "✓ অডিটে বাধ্যতামূলক" : "✓ Mandatory in Audits"
-                    : isBn ? "ঐচ্ছিক মোড" : "Advisory Mode"}
+                    ? isBn ? "✓ বাধ্যতামূলক" : "✓ Mandatory"
+                    : isBn ? "ঐচ্ছিক" : "Advisory"}
                 </button>
 
                 <button
-                  type="button"
                   onClick={() => setShowAddRuleModal(true)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 flex items-center gap-1.5 transition-opacity cursor-pointer shadow-sm"
+                  className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 flex items-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>{isBn ? "নতুন রুল যুক্ত করুন" : "Add Playbook Rule"}</span>
+                  <span>{isBn ? "রুল প্রিভিউ" : "Add Rule (Preview)"}</span>
                 </button>
               </div>
             </div>
 
-            {/* List of Playbook Rules */}
             <div className="grid grid-cols-1 gap-4">
+              {playbookRules.length === 0 && (
+                <div className="p-8 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] text-center text-xs text-[var(--text-muted)]">
+                  {isBn
+                    ? "কোনো রুল নেই। একটি প্লেবুক ফাইল আপলোড করুন।"
+                    : "No rules yet. Upload a playbook file to extract rules."}
+                </div>
+              )}
               {playbookRules.map((rule, idx) => (
                 <div
                   key={rule.id}
@@ -830,46 +1007,40 @@ export default function EnterpriseAdminPage() {
                           {isBn ? rule.clauseTypeBn : rule.clauseTypeEn}
                         </h4>
                         <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 font-mono">
-                          {rule.statute} ({rule.statutoryReference})
+                          {rule.statute} {rule.statutoryReference ? `(${rule.statutoryReference})` : ""}
                         </span>
-                        <span
-                          className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md ${
-                            rule.strictness === "mandatory"
-                              ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
-                              : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
-                          }`}
-                        >
+                        <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md ${
+                          rule.strictness === "mandatory"
+                            ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                            : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                        }`}>
                           {rule.strictness}
                         </span>
                       </div>
-
                       <p className="text-xs text-[var(--text-primary)]/90 leading-relaxed">
                         {isBn ? rule.companyRequirementBn : rule.companyRequirementEn}
                       </p>
-
-                      <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
-                        <p className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] mb-1">
-                          {isBn ? "অনুমোদিত স্ট্যান্ডার্ড ক্লজ টেমপ্লেট:" : "Approved Boilerplate Clause:"}
-                        </p>
-                        <p className="text-xs font-mono text-[var(--text-muted)] leading-relaxed italic">
-                          "{rule.standardClauseTemplate}"
-                        </p>
-                      </div>
+                      {rule.standardClauseTemplate && (
+                        <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] mb-1">
+                            {isBn ? "স্ট্যান্ডার্ড ক্লজ টেমপ্লেট:" : "Standard Clause:"}
+                          </p>
+                          <p className="text-xs font-mono text-[var(--text-muted)] leading-relaxed italic">
+                            "{rule.standardClauseTemplate}"
+                          </p>
+                        </div>
+                      )}
                     </div>
-
-                    <div className="shrink-0 flex items-center sm:flex-col gap-2">
-                      <button
-                        type="button"
-                        onClick={() => handleToggleRuleActive(rule.id)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
-                          rule.isActive
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
-                            : "bg-[var(--text-primary)]/10 text-[var(--text-muted)] hover:bg-[var(--text-primary)]/20"
-                        }`}
-                      >
-                        {rule.isActive ? (isBn ? "সক্রিয়" : "Active") : (isBn ? "নিষ্ক্রিয়" : "Disabled")}
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => handleToggleRuleActive(rule.id)}
+                      className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                        rule.isActive
+                          ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/25"
+                          : "bg-[var(--text-primary)]/10 text-[var(--text-muted)] hover:bg-[var(--text-primary)]/20"
+                      }`}
+                    >
+                      {rule.isActive ? (isBn ? "সক্রিয়" : "Active") : (isBn ? "নিষ্ক্রিয়" : "Disabled")}
+                    </button>
                   </div>
                 </div>
               ))}
@@ -877,7 +1048,7 @@ export default function EnterpriseAdminPage() {
           </div>
         )}
 
-        {/* ── TAB 4: COMPANY SHARED VAULT ── */}
+        {/* ── VAULT TAB ── */}
         {activeTab === "vault" && (
           <div className="space-y-6 animate-in fade-in duration-200">
             <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)]`}>
@@ -885,13 +1056,13 @@ export default function EnterpriseAdminPage() {
                 <div className="flex items-center gap-2">
                   <FolderLock className="w-4 h-4 text-purple-500" />
                   <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                    {isBn ? "অনুমোদিত ও শেয়ার্ড করপোরেট কন্ট্রাক্ট ভল্ট" : "Company Shared Contract Vault"}
+                    {isBn ? "অনুমোদিত ও শেয়ার্ড কর্পোরেট কন্ট্রাক্ট ভল্ট" : "Company Shared Contract Vault"}
                   </h3>
                 </div>
                 <p className="text-xs text-[var(--text-muted)] max-w-2xl leading-relaxed">
                   {isBn
-                    ? "এই চুক্তিগুলো টিম মেম্বাররা স্বেচ্ছায় কোম্পানির সেন্ট্রাল ভল্টে জমা দিয়েছেন বা আইনি মতামতের জন্য সাবমিট করেছেন। কোনো সদস্যের অপ্রকাশিত ব্যক্তিগত ড্রাফট এখানে সংরক্ষিত হয় না।"
-                    : "Repository of contracts voluntarily deposited by team members or submitted for legal review. Unshared employee drafts are strictly excluded."}
+                    ? "এই চুক্তিগুলো টিম মেম্বাররা স্বেচ্ছায় কোম্পানির সেন্ট্রাল ভল্টে জমা দিয়েছেন।"
+                    : "Repository of contracts voluntarily deposited by team members."}
                 </p>
               </div>
             </div>
@@ -948,7 +1119,6 @@ export default function EnterpriseAdminPage() {
                       </div>
 
                       <button
-                        type="button"
                         onClick={() => router.push(`/contractmind?id=${cnt.contractId}`)}
                         className="px-3.5 py-2 rounded-xl text-xs font-bold bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/15 text-[var(--text-primary)] flex items-center gap-1.5 transition-colors cursor-pointer"
                       >
@@ -963,105 +1133,131 @@ export default function EnterpriseAdminPage() {
           </div>
         )}
 
-        {/* ── INVITE MEMBER MODAL ── */}
-        {showInviteModal && (
+        {/* ── SHARE INVITE MODAL ── */}
+        {showShareModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
             <div className={`w-full max-w-md rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 shadow-2xl space-y-5`}>
               <div className="flex items-center justify-between border-b border-[var(--text-primary)]/10 pb-4">
                 <div className="flex items-center gap-2">
                   <UserPlus className="w-4 h-4 text-purple-500" />
                   <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                    {isBn ? "কোম্পানিতে নতুন সদস্য যুক্ত করুন" : "Invite Enterprise Member"}
+                    {isBn ? "সদস্য আমন্ত্রণ জানান" : "Invite Enterprise Member"}
                   </h3>
                 </div>
                 <button
-                  type="button"
-                  onClick={() => setShowInviteModal(false)}
+                  onClick={() => setShowShareModal(false)}
                   className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <form onSubmit={handleInviteSubmit} className="space-y-4 text-xs">
-                <div>
-                  <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                    {isBn ? "সদস্যের পুরো নাম" : "Full Name"}
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Mahfuzur Rahman"
-                    value={inviteName}
-                    onChange={(e) => setInviteName(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                  />
+              <div className="space-y-4 text-xs">
+                <p className="text-[var(--text-muted)] leading-relaxed">
+                  {isBn
+                    ? "আপনার কোম্পানির সদস্যদের এই ইনভাইট কোডটি দিন। তারা রেজিস্ট্রেশন পেজে এই কোডটি ব্যবহার করে রেজিস্ট্রেশন করবেন। এরপর তারা পেন্ডিং লিস্টে আসবে, সেখান থেকে আপনি অনুমোদন করতে পারবেন।"
+                    : "Share this invite code with your team members. They will use it during registration. Once registered, they'll appear in the Pending Approvals section for your review."}
+                </p>
+
+                <div className="p-4 rounded-2xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 flex items-center justify-between">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-[var(--text-muted)]">
+                      {isBn ? "ইনভাইট কোড" : "Invite Code"}
+                    </p>
+                    <p className="font-mono font-bold text-lg text-[var(--text-primary)]">
+                      {organization.referCode || "—"}
+                    </p>
+                  </div>
+                  <button
+                    onClick={copyReferCode}
+                    className="p-3 rounded-xl bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity"
+                  >
+                    {copiedReferCode ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  </button>
                 </div>
 
-                <div>
-                  <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                    {isBn ? "কর্পোরেট ইমেইল ঠিকানা" : "Work Email"}
-                  </label>
-                  <input
-                    type="email"
-                    required
-                    placeholder="mahfuz@apexholdings.bd"
-                    value={inviteEmail}
-                    onChange={(e) => setInviteEmail(e.target.value)}
-                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
-                  />
+                <div className="flex items-center justify-end pt-2">
+                  <button
+                    onClick={() => setShowShareModal(false)}
+                    className="px-5 py-2.5 rounded-xl font-bold bg-[var(--text-primary)]/10 text-[var(--text-primary)] hover:bg-[var(--text-primary)]/15 cursor-pointer"
+                  >
+                    {isBn ? "বন্ধ করুন" : "Close"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── APPROVE MEMBER MODAL ── */}
+        {approveTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className={`w-full max-w-md rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 shadow-2xl space-y-5`}>
+              <div className="flex items-center justify-between border-b border-[var(--text-primary)]/10 pb-4">
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
+                    {isBn ? "সদস্য অনুমোদন" : "Approve Member"}
+                  </h3>
+                </div>
+                <button onClick={() => setApproveTarget(null)} className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleApproveSubmit} className="space-y-4 text-xs">
+                <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
+                  <p className="font-bold text-[var(--text-primary)]">{approveTarget.full_name}</p>
+                  <p className="font-mono text-[var(--text-muted)]">{approveTarget.email}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                      {isBn ? "বিভাগ" : "Department"}
+                      {isBn ? "রোল" : "Role"}
                     </label>
                     <select
-                      value={inviteDept}
-                      onChange={(e) => setInviteDept(e.target.value)}
+                      value={approveRole}
+                      onChange={(e) => setApproveRole(e.target.value as any)}
                       className="w-full px-3 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
                     >
-                      <option value="Human Resources">Human Resources</option>
-                      <option value="Procurement">Procurement</option>
-                      <option value="Corporate Legal">Corporate Legal</option>
-                      <option value="Finance & Accounts">Finance & Accounts</option>
-                      <option value="Operations">Operations</option>
+                      <option value="MEMBER">Member</option>
+                      <option value="MANAGER">Manager</option>
+                      <option value="ADMIN">Admin</option>
                     </select>
                   </div>
-
                   <div>
                     <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                      {isBn ? "মাসিক ক্রেডিট কোটা" : "Monthly Credit Cap"}
+                      {isBn ? "প্রাথমিক কোটা" : "Initial Quota"}
                     </label>
                     <input
                       type="number"
-                      value={inviteCap}
-                      onChange={(e) => setInviteCap(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] font-mono"
+                      value={approveQuota}
+                      onChange={(e) => setApproveQuota(Number(e.target.value))}
+                      className="w-full px-3 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] font-mono"
                     />
                   </div>
                 </div>
 
-                <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-[11px] text-purple-900 dark:text-purple-300">
-                  {isBn
-                    ? `সদস্যকে স্বয়ংক্রিয়ভাবে কোম্পানি রেফারেল কোড (${organization.referCode}) সহ আমন্ত্রণ পাঠানো হবে।`
-                    : `The invite will include company code (${organization.referCode}) and allocate ${inviteCap} credits/month.`}
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-primary)]">
+                    {isBn ? "বিভাগ (ঐচ্ছিক)" : "Department (Optional)"}
+                  </label>
+                  <input
+                    type="text"
+                    value={approveDept}
+                    onChange={(e) => setApproveDept(e.target.value)}
+                    placeholder="e.g. Legal, HR, Procurement"
+                    className="w-full px-3 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
+                  />
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowInviteModal(false)}
-                    className="px-4 py-2 rounded-xl border border-[var(--text-primary)]/15 text-[var(--text-muted)] cursor-pointer"
-                  >
+                  <button type="button" onClick={() => setApproveTarget(null)} className="px-4 py-2 rounded-xl border border-[var(--text-primary)]/15 text-[var(--text-muted)] cursor-pointer">
                     {isBn ? "বাতিল" : "Cancel"}
                   </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer"
-                  >
-                    {isBn ? "ইনভাইট পাঠান" : "Send Invite"}
+                  <button type="submit" className="px-5 py-2 rounded-xl font-bold bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer">
+                    {isBn ? "অনুমোদন করুন" : "Approve"}
                   </button>
                 </div>
               </form>
@@ -1069,24 +1265,76 @@ export default function EnterpriseAdminPage() {
           </div>
         )}
 
-        {/* ── ADD RULE MODAL ── */}
+        {/* ── REJECT MEMBER MODAL ── */}
+        {rejectTarget && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className={`w-full max-w-md rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 shadow-2xl space-y-5`}>
+              <div className="flex items-center justify-between border-b border-[var(--text-primary)]/10 pb-4">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 text-rose-500" />
+                  <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
+                    {isBn ? "সদস্য প্রত্যাখ্যান" : "Reject Member"}
+                  </h3>
+                </div>
+                <button onClick={() => setRejectTarget(null)} className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleRejectSubmit} className="space-y-4 text-xs">
+                <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
+                  <p className="font-bold text-[var(--text-primary)]">{rejectTarget.full_name}</p>
+                  <p className="font-mono text-[var(--text-muted)]">{rejectTarget.email}</p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold mb-1 text-[var(--text-primary)]">
+                    {isBn ? "প্রত্যাখ্যানের কারণ" : "Rejection Reason"} <span className="text-rose-500">*</span>
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    minLength={3}
+                    value={rejectReason}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
+                    placeholder="Provide a clear reason..."
+                  />
+                </div>
+
+                <div className="flex items-center justify-end gap-2.5 pt-3">
+                  <button type="button" onClick={() => setRejectTarget(null)} className="px-4 py-2 rounded-xl border border-[var(--text-primary)]/15 text-[var(--text-muted)] cursor-pointer">
+                    {isBn ? "বাতিল" : "Cancel"}
+                  </button>
+                  <button type="submit" disabled={rejectReason.trim().length < 3} className="px-5 py-2 rounded-xl font-bold bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50 cursor-pointer">
+                    {isBn ? "প্রত্যাখ্যান করুন" : "Reject"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* ── ADD RULE PREVIEW MODAL ── */}
         {showAddRuleModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`w-full max-w-lg rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 shadow-2xl space-y-5`}>
+            <div className={`w-full max-w-lg rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-6 shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto`}>
               <div className="flex items-center justify-between border-b border-[var(--text-primary)]/10 pb-4">
                 <div className="flex items-center gap-2">
                   <BookOpen className="w-4 h-4 text-emerald-500" />
                   <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                    {isBn ? "প্লেবুকে নতুন সংবিধিবদ্ধ রুল যুক্ত করুন" : "Add Statutory Playbook Rule"}
+                    {isBn ? "রুল প্রিভিউ যোগ করুন" : "Add Rule (Preview Only)"}
                   </h3>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setShowAddRuleModal(false)}
-                  className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer"
-                >
+                <button onClick={() => setShowAddRuleModal(false)} className="p-1 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
                   <X className="w-4 h-4" />
                 </button>
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-[11px] text-amber-800 dark:text-amber-300">
+                {isBn
+                  ? "সতর্কতা: এই রুলটি শুধুমাত্র লোকাল প্রিভিউ হিসেবে যোগ হবে। স্থায়ীভাবে সেভ করতে একটি প্লেবুক ফাইল আপলোড করুন।"
+                  : "Note: This rule will be added to local preview only. To persist, upload a playbook file."}
               </div>
 
               <form onSubmit={handleAddRuleSubmit} className="space-y-4 text-xs">
@@ -1121,7 +1369,6 @@ export default function EnterpriseAdminPage() {
                       <option value="Corporate Governance Code 2018">Corporate Governance Code 2018</option>
                     </select>
                   </div>
-
                   <div>
                     <label className="block font-semibold mb-1 text-[var(--text-primary)]">
                       {isBn ? "ধারা রেফারেন্স" : "Section Reference"}
@@ -1143,7 +1390,7 @@ export default function EnterpriseAdminPage() {
                   <textarea
                     rows={3}
                     required
-                    placeholder="Describe the exact statutory risk threshold and requirement..."
+                    placeholder="Describe the exact statutory risk threshold..."
                     value={newRuleReq}
                     onChange={(e) => setNewRuleReq(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)]"
@@ -1152,11 +1399,11 @@ export default function EnterpriseAdminPage() {
 
                 <div>
                   <label className="block font-semibold mb-1 text-[var(--text-primary)]">
-                    {isBn ? "অনুমোদিত স্ট্যান্ডার্ড ক্লজ টেমপ্লেট" : "Standard Approved Clause Template"}
+                    {isBn ? "স্ট্যান্ডার্ড ক্লজ টেমপ্লেট" : "Standard Clause Template"}
                   </label>
                   <textarea
                     rows={3}
-                    placeholder="Standard boilerplate clause text to recommend during AI audit..."
+                    placeholder="Standard boilerplate clause text..."
                     value={newRuleTemplate}
                     onChange={(e) => setNewRuleTemplate(e.target.value)}
                     className="w-full px-3.5 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] font-mono"
@@ -1164,18 +1411,11 @@ export default function EnterpriseAdminPage() {
                 </div>
 
                 <div className="flex items-center justify-end gap-2.5 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowAddRuleModal(false)}
-                    className="px-4 py-2 rounded-xl border border-[var(--text-primary)]/15 text-[var(--text-muted)] cursor-pointer"
-                  >
+                  <button type="button" onClick={() => setShowAddRuleModal(false)} className="px-4 py-2 rounded-xl border border-[var(--text-primary)]/15 text-[var(--text-muted)] cursor-pointer">
                     {isBn ? "বাতিল" : "Cancel"}
                   </button>
-                  <button
-                    type="submit"
-                    className="px-5 py-2 rounded-xl font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer"
-                  >
-                    {isBn ? "রুল সক্রিয় করুন" : "Activate Rule"}
+                  <button type="submit" className="px-5 py-2 rounded-xl font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 cursor-pointer">
+                    {isBn ? "প্রিভিউ যোগ করুন" : "Add to Preview"}
                   </button>
                 </div>
               </form>
