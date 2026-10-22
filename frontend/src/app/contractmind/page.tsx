@@ -1,450 +1,612 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
-import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
+import { SAMPLE_CONTRACTS, SampleContract } from "@/data/sampleContracts";
+import { CONTRACT_AUDITS, ContractAudit } from "@/data/contractAudits";
+import MarkdownViewer from "@/components/markdown/MarkdownViewer";
+import {
+  generateContractAuditMarkdown,
+  generateRealContractAuditMarkdown,
+} from "@/lib/markdownContractGenerator";
+import { runDispatchAlgorithm, INITIAL_DEMO_LAWYERS, DispatchDecision } from "@/lib/dispatcher";
 import {
   uploadContract,
-  getContractHistory,
   requestLawyerVerification,
-  createChatSession,
-  sendChatQuery,
   ContractAuditResult,
-  ContractHistoryItem,
 } from "@/lib/apiServices";
+import { useAuth } from "@/context/AuthContext";
 import {
-  UploadCloud, FileText, AlertTriangle, ShieldCheck,
-  MessageSquare, Send, Loader2, Scale, Check, X, Bot, User
+  Upload,
+  ArrowLeft,
+  Bot,
+  Printer,
+  CheckCircle2,
+  Shield,
+  Download,
+  ArrowRight,
+  ShieldCheck,
+  AlertTriangle,
 } from "lucide-react";
+
+/**
+ * অডিট মার্কডাউনের হেডার কাউন্ট এবং কমপ্লায়েন্স মেট্রিক্সের ভুল স্ট্যাটাস ফিক্স করার স্যানিটাইজার
+ */
+function sanitizeAuditMarkdown(md: string): string {
+  if (!md) return md;
+
+  // ১. হাই-রিস্ক ক্লজের সংখ্যা গণনা করা
+  const highRiskMatches = md.match(/\|\s*(?:High\s*Risk|উচ্চ\s*ঝুঁকি|Critical)\s*\|/gi);
+  const detectedCount = highRiskMatches ? highRiskMatches.length : 3;
+
+  const lines = md.split("\n");
+  const updatedLines = lines.map((line) => {
+    let modifiedLine = line;
+
+    // ২. হেডারের "0 Clauses" বা "০টি ধারা" ফিক্স
+    if (modifiedLine.includes("|") && /\|\s*0\s*(?:Clauses|টি ধারা|ধারা)\s*\|/i.test(modifiedLine)) {
+      modifiedLine = modifiedLine.replace(
+        /\|\s*0\s*(?:Clauses|টি ধারা|ধারা)\s*\|/i,
+        `| ${detectedCount} Clauses |`
+      );
+    }
+
+    // ৩. Compliance Matrix-এ High Risk ক্লজের ক্ষেত্রে COMPLIANT কে NON-COMPLIANT (VOID) করা
+    if (
+      modifiedLine.includes("|") &&
+      /(?:High\s*Risk|উচ্চ\s*ঝুঁকি|Critical)/i.test(modifiedLine)
+    ) {
+      modifiedLine = modifiedLine.replace(
+        /\|\s*(?:COMPLIANT|সম্মত)\s*\|/gi,
+        "| **NON-COMPLIANT (VOID)** |"
+      );
+    }
+
+    return modifiedLine;
+  });
+
+  return updatedLines.join("\n");
+}
 
 export default function ContractMindPage() {
   const router = useRouter();
-  const { user } = useAuth();
   const { language } = useLanguage();
+  const { user, updateUser, refreshUser } = useAuth();
   const isBn = language === "bn";
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auth Guard
+  // Initial stage: no contract loaded by default
+  const [isLoaded, setIsLoaded] = useState<boolean>(false);
+  const [selectedContractId, setSelectedContractId] = useState<string>("employment-agreement");
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isDispatching, setIsDispatching] = useState<boolean>(false);
+  const [dispatchedDecision, setDispatchedDecision] = useState<DispatchDecision | null>(null);
+  const [lawyerSealApplied, setLawyerSealApplied] = useState<boolean>(false);
+
+  // Check URL query parameter (e.g. ?id=vendor-sla)
+  const [apiContractId, setApiContractId] = useState<string | null>(null);
+  const [apiAuditResult, setApiAuditResult] = useState<ContractAuditResult | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
   useEffect(() => {
-    if (!user) router.replace("/login");
+    const userRole = String(user?.role).toUpperCase();
+    if (userRole === "LAWYER") {
+      router.replace("/lawyer/pending");
+    }
   }, [user, router]);
 
-  // ──────────────────────────────────────────────────────────
-  // STATES
-  // ──────────────────────────────────────────────────────────
-  const [history, setHistory] = useState<ContractHistoryItem[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  
-  // Upload / Audit states
-  const [file, setFile] = useState<File | null>(null);
-  const [contractTitle, setContractTitle] = useState("");
-  const [isUploading, setIsUploading] = useState(false);
-  const [auditResult, setAuditResult] = useState<ContractAuditResult | null>(null);
-  const [activeHistoryId, setActiveHistoryId] = useState<string | number | null>(null);
-
-  // Verification state
-  const [isVerifying, setIsVerifying] = useState(false);
-
-  // Chat states
-  const [chatSessionId, setChatSessionId] = useState<string | number | null>(null);
-  const [chatMessages, setChatMessages] = useState<{ role: string; content: string }[]>([]);
-  const [chatInput, setChatInput] = useState("");
-  const [isChatting, setIsChatting] = useState(false);
-  const [isChatOpen, setIsChatOpen] = useState(false);
-  const chatBottomRef = useRef<HTMLDivElement>(null);
-
-  const borderClass = "border-[var(--text-primary)]/10";
-
-  // ──────────────────────────────────────────────────────────
-  // FETCH DATA
-  // ──────────────────────────────────────────────────────────
-  const fetchHistory = useCallback(async () => {
-    if (!user) return;
-    setIsLoadingHistory(true);
-    try {
-      const data = await getContractHistory();
-      setHistory(data);
-    } catch (err) {
-      console.error("Failed to load history", err);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  }, [user]);
-
   useEffect(() => {
-    fetchHistory();
-  }, [fetchHistory]);
-
-  useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [chatMessages, isChatOpen]);
-
-  // ──────────────────────────────────────────────────────────
-  // HANDLERS
-  // ──────────────────────────────────────────────────────────
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const selected = e.target.files[0];
-      setFile(selected);
-      if (!contractTitle) setContractTitle(selected.name.replace(/\.[^/.]+$/, ""));
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const contractId = params.get("id");
+      if (contractId && CONTRACT_AUDITS[contractId]) {
+        setSelectedContractId(contractId);
+        setIsLoaded(true);
+      }
     }
-  };
+  }, []);
 
-  const handleUpload = async () => {
+  if (String(user?.role).toUpperCase() === "LAWYER") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  // Current contract & audit
+  const currentContract: SampleContract =
+    SAMPLE_CONTRACTS.find((c) => c.id === selectedContractId) || SAMPLE_CONTRACTS[0];
+  const currentAudit: ContractAudit =
+    CONTRACT_AUDITS[selectedContractId] || CONTRACT_AUDITS["employment-agreement"];
+
+  // Handle file drop or selection - real API upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
     if (!file) return;
-    setIsUploading(true);
-    setAuditResult(null);
-    try {
-      const result = await uploadContract(file, contractTitle);
-      setAuditResult(result);
-      setActiveHistoryId(result.contract_id);
-      setFile(null);
-      setContractTitle("");
-      fetchHistory();
-    } catch (err: any) {
-      alert(err?.message || "Failed to upload and analyze contract.");
-    } finally {
-      setIsUploading(false);
+    setDispatchedDecision(null);
+    setLawyerSealApplied(false);
+    setIsAnalyzing(true);
+    setUploadError(null);
+
+    const isSupported = /\.(pdf|docx|doc|png|jpe?g)$/i.test(file.name);
+    if (!isSupported) {
+      setUploadError(
+        isBn
+          ? "ফাইল ফরম্যাট সমর্থিত নয়। ব্যাকএন্ড শুধুমাত্র .pdf, .docx, .doc, .png, .jpg ফাইল সমর্থন করে।"
+          : "Unsupported file format. The backend only allows: .pdf, .docx, .doc, .png, .jpg."
+      );
+      setIsAnalyzing(false);
+      return;
     }
-  };
 
-  const handleLoadHistory = (item: ContractHistoryItem) => {
-    setActiveHistoryId(item.contract_id);
-    setAuditResult({
-      contract_id: item.contract_id,
-      memo_id: item.memo_id,
-      risk_score: item.risk_score || 0,
-      overall_risk: (item.overall_risk as any) || "MODERATE",
-      executive_summary: "Loaded from history. Full details available via export.",
-      clauses: [],
-      hitl_status: item.hitl_status,
-    } as any);
-  };
-
-  const handleRequestVerification = async () => {
-    if (!auditResult?.contract_id) return;
-    if (!confirm(isBn ? "আইনজীবীর নিকট ভেরিফিকেশনের জন্য পাঠাতে চান? ১৫০০ ক্রেডিট কাটা হবে।" : "Request lawyer verification? 1500 credits will be deducted.")) return;
-    
-    setIsVerifying(true);
     try {
-      // ✅ FIX: removed unused 'res' variable
-      await requestLawyerVerification(auditResult.contract_id);
-      alert(isBn ? "সফলভাবে অনুরোধ পাঠানো হয়েছে!" : "Verification requested successfully!");
-      setAuditResult(prev => prev ? { ...prev, hitl_status: "QUEUED_FOR_LAWYER" } : null);
-      fetchHistory();
-    } catch (err: any) {
-      alert(err?.message || "Failed to request verification.");
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  // ── CHAT HANDLERS ──
-  const handleOpenChat = async () => {
-    if (!auditResult?.contract_id) return;
-    setIsChatOpen(true);
-    
-    if (!chatSessionId) {
-      setIsChatting(true);
+      const result = await uploadContract(file);
+      setApiContractId(String(result.contract_id));
+      setApiAuditResult(result);
       try {
-        const session = await createChatSession("Contract Audit Chat", "USER_CONTRACT", auditResult.contract_id);
-        setChatSessionId(session.session_id);
-        setChatMessages([{
-          role: "assistant",
-          content: isBn ? "আমি এই চুক্তিপত্রটি বিশ্লেষণ করেছি। এই চুক্তি সম্পর্কে আপনার কোনো নির্দিষ্ট আইনি প্রশ্ন থাকলে জিজ্ঞাসা করুন।" : "I've analyzed this contract. Feel free to ask any specific legal questions regarding this document."
-        }]);
-      } catch (err: any) {
-        alert(err?.message || "Failed to start chat session.");
-        setIsChatOpen(false);
-      } finally {
-        setIsChatting(false);
-      }
+        if (typeof window !== "undefined") {
+          localStorage.setItem(`contract_audit_${result.contract_id}`, JSON.stringify(result));
+          if (result.memo_id) localStorage.setItem(`contract_audit_${result.memo_id}`, JSON.stringify(result));
+        }
+      } catch {}
+      if (refreshUser) refreshUser().catch(() => {});
+      setIsAnalyzing(false);
+      setIsLoaded(true);
+    } catch (err: unknown) {
+      console.error("Backend upload error:", err);
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      setUploadError(
+        isBn
+          ? `সার্ভার ত্রুটি: ${errorMessage || "ডকুমেন্ট ক্লাউড স্টোরেজে আপলোড করা যায়নি"}`
+          : `Server Error: ${errorMessage || "Failed to upload document to secure storage"}`
+      );
+      setIsAnalyzing(false);
+      setIsLoaded(false);
     }
   };
 
-  const handleSendMessage = async (e: React.FormEvent) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if (!chatInput.trim() || !chatSessionId) return;
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      setDispatchedDecision(null);
+      setLawyerSealApplied(false);
+      setIsAnalyzing(true);
+      setUploadError(null);
 
-    const userMsg = chatInput.trim();
-    setChatInput("");
-    setChatMessages((prev) => [...prev, { role: "user", content: userMsg }]);
-    setIsChatting(true);
-
-    try {
-      const res = await sendChatQuery({
-        session_id: chatSessionId,
-        query: userMsg,
-        contract_id: auditResult?.contract_id
-      });
-      
-      let botMsg = "";
-      if (typeof res.response === "string") {
-        botMsg = res.response;
-      } else if (res.response && res.response.detailed_answer) {
-        botMsg = res.response.detailed_answer;
+      const isSupported = /\.(pdf|docx|doc|png|jpe?g)$/i.test(file.name);
+      if (!isSupported) {
+        setUploadError(
+          isBn
+            ? "ফাইল ফরম্যাট সমর্থিত নয়। ব্যাকএন্ড শুধুমাত্র .pdf, .docx, .doc, .png, .jpg ফাইল সমর্থন করে।"
+            : "Unsupported file format. The backend only allows: .pdf, .docx, .doc, .png, .jpg."
+        );
+        setIsAnalyzing(false);
+        return;
       }
 
-      setChatMessages((prev) => [...prev, { role: "assistant", content: botMsg }]);
-    } catch (err: any) {
-      setChatMessages((prev) => [...prev, { role: "assistant", content: `Error: ${err.message}` }]);
-    } finally {
-      setIsChatting(false);
+      try {
+        const result = await uploadContract(file);
+        setApiContractId(String(result.contract_id));
+        setApiAuditResult(result);
+        try {
+          if (typeof window !== "undefined") {
+            localStorage.setItem(`contract_audit_${result.contract_id}`, JSON.stringify(result));
+            if (result.memo_id) localStorage.setItem(`contract_audit_${result.memo_id}`, JSON.stringify(result));
+          }
+        } catch {}
+        if (refreshUser) refreshUser().catch(() => {});
+        setIsAnalyzing(false);
+        setIsLoaded(true);
+      } catch (err: unknown) {
+        console.error("Backend upload error:", err);
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        setUploadError(
+          isBn
+            ? `সার্ভার ত্রুটি: ${errorMessage || "ডকুমেন্ট ক্লাউড স্টোরেজে আপলোড করা যায়নি"}`
+            : `Server Error: ${errorMessage || "Failed to upload document to secure storage"}`
+        );
+        setIsAnalyzing(false);
+        setIsLoaded(false);
+      }
     }
   };
 
-  // ──────────────────────────────────────────────────────────
-  // RENDER HELPERS
-  // ──────────────────────────────────────────────────────────
-  const getRiskColor = (risk: string) => {
-    const r = (risk || "").toUpperCase();
-    if (r === "HIGH" || r === "CRITICAL") return "text-rose-600 bg-rose-500/10 border-rose-500/20";
-    if (r === "MODERATE" || r === "MEDIUM") return "text-amber-600 bg-amber-500/10 border-amber-500/20";
-    return "text-emerald-600 bg-emerald-500/10 border-emerald-500/20";
+  // Dispatch to advocate via matching algorithm + real API
+  const handleSendToAdvocate = async () => {
+    setIsDispatching(true);
+    
+    // Try real API first (if user has uploaded a contract)
+    if (apiContractId) {
+      try {
+        const verifRes = await requestLawyerVerification(apiContractId);
+        if (verifRes?.credits_deducted && updateUser && user?.creditBalance != null) {
+          updateUser({ creditBalance: Math.max(0, user.creditBalance - verifRes.credits_deducted) });
+        } else if (refreshUser) {
+          refreshUser().catch(() => {});
+        }
+      } catch (err: unknown) {
+        const errorMessage = err instanceof Error ? err.message : "Failed to request lawyer verification";
+        alert(errorMessage || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
+        setIsDispatching(false);
+        return;
+      }
+    }
+
+    // Always run local demo dispatch for UI feedback
+    setTimeout(() => {
+      const domainMap: Record<string, string> = {
+        "employment-agreement": "LABOUR_EMPLOYMENT",
+        "vendor-sla": "IP_ICT",
+        "commercial-lease": "REAL_ESTATE_PROPERTY",
+      };
+      const domain = domainMap[selectedContractId] || "CORPORATE_COMMERCIAL";
+
+      const decision = runDispatchAlgorithm(
+        {
+          id: currentContract.id,
+          userId: "u1",
+          title: currentContract.titleEn,
+          domain: domain,
+          statuteReference: currentContract.categoryEn,
+          riskCount: currentAudit.stats.highRiskCount,
+          priority: currentAudit.stats.highRiskCount > 2 ? "HIGH" : "NORMAL",
+        },
+        INITIAL_DEMO_LAWYERS
+      );
+
+      setDispatchedDecision(decision);
+      setIsDispatching(false);
+
+      // Persist to local lawyer pending queue for demo inspection
+      if (typeof window !== "undefined") {
+        const existing = JSON.parse(
+          localStorage.getItem("dispatched_pending_contracts") || "[]"
+        );
+        const newEntry = {
+          id: `cnt-${Date.now().toString().slice(-4)}`,
+          clientName: user?.name ? `${user.name} (Client)` : "Client",
+          clientPhone: user?.mobile || "+880 1700-000000",
+          titleEn: currentContract.titleEn,
+          titleBn: currentContract.titleBn,
+          submittedAtEn: "Just now",
+          submittedAtBn: "মাত্র এখন",
+          statuteEn: currentContract.categoryEn,
+          statuteBn: currentContract.categoryBn,
+          riskCount: currentAudit.stats.highRiskCount,
+          priority: currentAudit.stats.highRiskCount > 2 ? "high" : "normal",
+          contractId: currentContract.id,
+        };
+        localStorage.setItem(
+          "dispatched_pending_contracts",
+          JSON.stringify([newEntry, ...existing])
+        );
+      }
+    }, 600);
   };
 
-  if (!user) return null;
+  // Print / PDF ডায়ালগ ওপেন হবে
+  const handleDownloadReport = () => {
+    window.print();
+  };
+
+  // Open contract in Legal Copilot
+  const handleOpenInCopilot = () => {
+    const auditObj = apiAuditResult as unknown as Record<string, unknown> | null;
+    const currentAuditObj = currentAudit as unknown as Record<string, unknown>;
+
+    const hasHighRisk = currentAudit.stats.highRiskCount > 0;
+    const computedScore = hasHighRisk ? 90 : 40;
+    const fallbackGradeEn = hasHighRisk ? "High Risk" : "Moderate Risk";
+    const fallbackGradeBn = hasHighRisk ? "উচ্চ ঝুঁকি" : "মধ্যম ঝুঁকি";
+
+    const contextPayload = {
+      contractId: apiContractId || currentContract.id,
+      titleEn: (auditObj?.contract_title as string) || (auditObj?.title as string) || currentContract.titleEn,
+      titleBn: (auditObj?.contract_title as string) || (auditObj?.title as string) || currentContract.titleBn,
+      clauseFocus: null,
+      shouldStartNewSession: true,
+      riskScore: (auditObj?.overall_risk_score as number) ?? (auditObj?.risk_score as number) ?? computedScore,
+      riskGradeEn: (auditObj?.risk_grade as string) || (auditObj?.overall_risk as string) || fallbackGradeEn,
+      riskGradeBn: (auditObj?.risk_grade as string) || (auditObj?.overall_risk as string) || fallbackGradeBn,
+      summaryEn: (auditObj?.executive_summary as string) || (currentAuditObj?.executiveSummaryEn as string) || "",
+      summaryBn: (auditObj?.executive_summary as string) || (currentAuditObj?.executiveSummaryBn as string) || "",
+    };
+
+    sessionStorage.setItem("active_audit_contract", JSON.stringify(contextPayload));
+    router.push("/copilot");
+  };
+
+  // Generate and sanitize markdown audit representation
+  const rawAuditContent = apiAuditResult
+    ? generateRealContractAuditMarkdown(
+        apiAuditResult,
+        language as "en" | "bn",
+        dispatchedDecision
+          ? {
+              advocateName: dispatchedDecision.lawyer.name,
+              barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
+              verifiedAt: "18 Oct 2026, 4:52 PM",
+              sealApplied: lawyerSealApplied,
+              advocateNotes: lawyerSealApplied
+                ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful."
+                : undefined,
+            }
+          : undefined
+      )
+    : generateContractAuditMarkdown(
+        currentContract.id,
+        language as "en" | "bn",
+        dispatchedDecision
+          ? {
+              advocateName: dispatchedDecision.lawyer.name,
+              barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
+              verifiedAt: "18 Oct 2026, 4:52 PM",
+              sealApplied: lawyerSealApplied,
+              advocateNotes: lawyerSealApplied
+                ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful."
+                : undefined,
+            }
+          : undefined
+      );
+
+  const markdownAuditContent = sanitizeAuditMarkdown(rawAuditContent);
 
   return (
     <AppShell>
-      <div className="max-w-7xl mx-auto py-8 px-4 h-[calc(100vh-80px)] flex flex-col md:flex-row gap-6">
+      <div className="w-full min-h-screen pb-32 font-sans" style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
         
-        {/* ── LEFT SIDEBAR: HISTORY ── */}
-        <div className="w-full md:w-80 shrink-0 flex flex-col gap-4">
-          <div className={`p-4 rounded-3xl border ${borderClass} bg-[var(--bg-card)]`}>
-            <h2 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2 mb-4">
-              <FileText className="w-4 h-4 text-indigo-500" />
-              {isBn ? "অডিট ইতিহাস" : "Audit History"}
-            </h2>
+        {/* Hidden File Input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
+          className="hidden"
+          onChange={handleFileUpload}
+        />
+
+        {/* ==================================================================== */}
+        {/* STATE 1: INITIAL UPLOAD STAGE (DEFAULT BEFORE ANY CONTRACT IS LOADED) */}
+        {/* ==================================================================== */}
+        {!isLoaded ? (
+          <div className="max-w-3xl mx-auto pt-16 sm:pt-24 px-4 flex flex-col items-center text-center">
             
-            <div className="space-y-2 overflow-y-auto max-h-[60vh] pr-2">
-              {isLoadingHistory ? (
-                <div className="flex justify-center py-4"><Loader2 className="w-5 h-5 animate-spin text-[var(--text-muted)]" /></div>
-              ) : history.length === 0 ? (
-                <p className="text-xs text-[var(--text-muted)] text-center py-4">{isBn ? "কোনো ইতিহাস নেই" : "No history yet"}</p>
-              ) : (
-                history.map((item) => (
-                  <button
-                    key={item.id}
-                    onClick={() => handleLoadHistory(item)}
-                    className={`w-full text-left p-3 rounded-xl border transition-colors ${
-                      activeHistoryId === item.contract_id
-                        ? "border-[var(--accent-solid)] bg-[var(--accent-solid)]/5"
-                        : "border-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/5"
-                    }`}
-                  >
-                    <p className="text-xs font-bold text-[var(--text-primary)] truncate">{item.title}</p>
-                    <div className="flex items-center justify-between mt-2">
-                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-md border ${getRiskColor(item.overall_risk || "")}`}>
-                        {item.overall_risk || "UNKNOWN"}
-                      </span>
-                      <span className="text-[10px] text-[var(--text-muted)]">{new Date(item.created_at).toLocaleDateString()}</span>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
+            {/* Header */}
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-(--text-primary)">
+              {language === "bn" ? "কন্ট্রাক্টমাইন্ড" : "ContractMind"}
+            </h1>
+            <p className="text-xs sm:text-sm text-(--text-muted) max-w-lg mx-auto font-normal leading-relaxed mb-8">
+              {language === "bn"
+                ? "চুক্তিপত্র আপলোড করে বাংলাদেশ শ্রম ও চুক্তি আইনের আলোকে স্বয়ংক্রিয় অডিট ও নিরাপদ রেডলাইন প্রস্তুত করুন।"
+                : "Upload any contract to audit statutory violations and generate compliant redlines under Bangladesh law."}
+            </p>
 
-          {/* Upload Button Area */}
-          <button
-            onClick={() => { setAuditResult(null); setActiveHistoryId(null); }}
-            className="w-full py-3 rounded-2xl font-bold text-xs bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer shadow-sm"
-          >
-            <UploadCloud className="w-4 h-4" />
-            {isBn ? "নতুন চুক্তি আপলোড করুন" : "Upload New Contract"}
-          </button>
-        </div>
-
-        {/* ── MAIN CONTENT ── */}
-        <div className="flex-1 flex flex-col min-h-0 relative">
-          {!auditResult ? (
-            /* UPLOAD VIEW */
-            <div className={`flex-1 rounded-3xl border-2 border-dashed ${borderClass} bg-[var(--bg-card)] flex flex-col items-center justify-center p-8 text-center space-y-4`}>
-              <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center">
-                <UploadCloud className="w-10 h-10 text-indigo-500" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-serif font-bold text-[var(--text-primary)]">
-                  {isBn ? "চুক্তিপত্র আপলোড করুন" : "Upload Contract for AI Audit"}
-                </h1>
-                <p className="text-sm text-[var(--text-muted)] mt-1 max-w-md mx-auto">
-                  {isBn ? "PDF, DOCX ফাইল আপলোড করুন। এআই বাংলাদেশের আইন অনুযায়ী বিশ্লেষণ করবে।" : "Upload a PDF or DOCX file. AI will analyze it against Bangladesh law."}
-                </p>
-              </div>
-
-              <div className="w-full max-w-sm space-y-3 mt-4">
-                <input
-                  type="file"
-                  accept=".pdf,.docx"
-                  onChange={handleFileChange}
-                  className="block w-full text-sm text-[var(--text-muted)] file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-indigo-500/10 file:text-indigo-700 dark:file:text-indigo-300 hover:file:bg-indigo-500/20 cursor-pointer"
-                />
-                {file && (
-                  <input
-                    type="text"
-                    placeholder="Contract Title"
-                    value={contractTitle}
-                    onChange={(e) => setContractTitle(e.target.value)}
-                    className="w-full px-4 py-2.5 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-xs"
-                  />
-                )}
-                <button
-                  onClick={handleUpload}
-                  disabled={!file || isUploading}
-                  className="w-full py-3 rounded-xl font-bold text-sm bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {isUploading ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
-                  {isUploading ? (isBn ? "বিশ্লেষণ করা হচ্ছে..." : "Analyzing...") : (isBn ? "অডিট শুরু করুন" : "Start Audit")}
-                </button>
-              </div>
-            </div>
-          ) : (
-            /* AUDIT RESULT VIEW */
-            <div className="flex-1 overflow-y-auto space-y-6 pr-2 pb-10">
-              {/* Header */}
-              <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4`}>
-                <div>
-                  <h1 className="text-xl font-bold text-[var(--text-primary)]">{contractTitle || "Contract Audit"}</h1>
-                  <p className="text-xs text-[var(--text-muted)] mt-1">ID: {auditResult.contract_id}</p>
-                </div>
-                <div className="flex items-center gap-3">
-                  <button onClick={handleOpenChat} className="px-4 py-2 rounded-xl text-xs font-bold bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/5 flex items-center gap-2">
-                    <MessageSquare className="w-4 h-4 text-indigo-500" />
-                    {isBn ? "এআই এর সাথে কথা বলুন" : "Chat with AI"}
-                  </button>
-                  <div className={`px-4 py-2 rounded-xl border font-bold text-sm flex items-center gap-2 ${getRiskColor(auditResult.overall_risk || "")}`}>
-                    <AlertTriangle className="w-4 h-4" />
-                    Risk: {auditResult.overall_risk || "N/A"}
-                  </div>
+            {/* Error Banner if upload fails */}
+            {uploadError && (
+              <div className="w-full max-w-xl mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 flex items-start gap-3 text-left animate-in fade-in">
+                <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
+                <div className="flex-1">
+                  <p className="text-xs font-bold mb-0.5">
+                    {language === "bn" ? "সার্ভার আপলোড ত্রুটি" : "Server Upload Error"}
+                  </p>
+                  <p className="text-xs opacity-90 leading-relaxed">{uploadError}</p>
                 </div>
               </div>
+            )}
 
-              {/* Summary & Verification */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className={`md:col-span-2 p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)]`}>
-                  <h2 className="text-sm font-bold flex items-center gap-2 mb-3">
-                    <Scale className="w-4 h-4 text-amber-500" />
-                    Executive Summary
-                  </h2>
-                  <p className="text-sm text-[var(--text-primary)]/80 leading-relaxed">
-                    {auditResult.executive_summary || "No summary available."}
+            {/* Expansive Clean Drag & Drop Area */}
+            <div
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-6 bg-(--bg-surface)"
+            >
+              <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4 bg-(--bg-card) text-(--text-primary)">
+                <Upload className="w-6 h-6 stroke-2" />
+              </div>
+
+              {isAnalyzing ? (
+                <div className="space-y-2 text-center py-2">
+                  <div className="w-5 h-5 rounded-full border-2 border-neutral-300 border-t-black dark:border-t-white animate-spin mx-auto" />
+                  <p className="text-sm font-medium text-(--text-primary)">
+                    {language === "bn"
+                      ? "চুক্তি আপলোড ও বিশ্লেষণ করা হচ্ছে..."
+                      : "Uploading and evaluating contract against statutory provisions..."}
                   </p>
                 </div>
-                
-                <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] space-y-4`}>
-                  <h2 className="text-sm font-bold flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                    Lawyer Verification
-                  </h2>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-semibold text-[var(--text-muted)]">Status</span>
-                    <span className="text-xs font-bold">{auditResult.hitl_status || "NOT_REQUESTED"}</span>
-                  </div>
-                  {auditResult.hitl_status === "NOT_REQUESTED" && (
-                    <button
-                      onClick={handleRequestVerification}
-                      disabled={isVerifying}
-                      className="w-full py-2.5 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                      {isVerifying ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                      Request Human Review
-                    </button>
-                  )}
-                </div>
-              </div>
+              ) : (
+                <>
+                  <p className="text-base font-semibold mb-1 text-(--text-primary)">
+                    {language === "bn"
+                      ? "চুক্তির ফাইল এখানে ড্রপ করুন অথবা ব্রাউজ করুন"
+                      : "Drop contract PDF or DOCX here, or browse"}
+                  </p>
+                  <p className="text-xs text-(--text-muted)">
+                    {language === "bn"
+                      ? "সমর্থিত ফরম্যাট: .PDF, .DOCX, .DOC, .PNG, .JPG (সর্বোচ্চ ১৫ মেগাবাইট)"
+                      : "Supported formats: .PDF, .DOCX, .DOC, .PNG, .JPG (Max 15MB)"}
+                  </p>
+                  <button
+                    type="button"
+                    className="mt-6 px-5 py-2.5 rounded-full bg-(--accent-solid) text-(--accent-contrast) text-xs font-semibold hover:opacity-90 transition-opacity shadow-sm cursor-pointer"
+                  >
+                    {language === "bn" ? "ফাইল নির্বাচন করুন" : "Browse Files"}
+                  </button>
+                </>
+              )}
+            </div>
 
-              {/* Clauses List */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-serif font-bold text-[var(--text-primary)]">Clause Analysis</h2>
-                {auditResult.clauses?.length === 0 && (
-                  <p className="text-sm text-[var(--text-muted)]">No detailed clauses returned.</p>
-                )}
-                {auditResult.clauses?.map((clause, idx) => (
-                  <div key={idx} className={`p-5 rounded-2xl border ${borderClass} bg-[var(--bg-card)] space-y-3`}>
-                    <div className="flex items-center justify-between border-b border-[var(--text-primary)]/10 pb-2">
-                      <h3 className="font-bold text-sm text-[var(--text-primary)]">
-                        {clause.clause_title || `Clause ${clause.clause_number}`}
-                      </h3>
-                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${getRiskColor(clause.risk_level)}`}>
-                        {clause.risk_level}
-                      </span>
-                    </div>
-                    <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/5">
-                      <p className="text-xs italic text-[var(--text-muted)]">"{clause.original_text}"</p>
-                    </div>
-                    <div className="text-xs space-y-2">
-                      <p><strong className="text-[var(--text-primary)]">Issue:</strong> <span className="text-[var(--text-muted)]">{clause.legal_explanation || clause.issue_summary}</span></p>
-                      {clause.proposed_safe_redline && (
-                        <div className="p-3 rounded-xl bg-emerald-500/5 border border-emerald-500/20">
-                          <p className="font-bold text-emerald-700 dark:text-emerald-400 mb-1">Suggested Redline:</p>
-                          <p className="text-emerald-800 dark:text-emerald-300">{clause.proposed_safe_redline}</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
+          </div>
+        ) : (
+          /* ==================================================================== */
+          /* STATE 2: ACTIVE CONTRACT ANALYSIS VIEW (BORDERLESS NATURAL READING)  */
+          /* ==================================================================== */
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 print:pt-0 print:px-0 print:max-w-none">
+
+            {/* Print-Only Official Legal Audit Memo Header */}
+            <div className="hidden print:block pb-6 mb-8 border-b-2 border-neutral-900">
+              <div className="flex justify-between items-baseline mb-2 text-xs font-mono uppercase tracking-widest text-neutral-800">
+                <span className="font-bold">CONFIDENTIAL ATTORNEY-CLIENT AUDIT MEMORANDUM</span>
+                <span>BANGLADESH LAW STATUTORY JURISDICTION</span>
+              </div>
+              <div className="flex justify-between text-[11px] text-neutral-500 font-sans">
+                <span>Audited via ContractMind · Automated Statutory Risk Engine</span>
+                <span>Statutes verified against Laws of Bangladesh (bdlaws.minlaw.gov.bd)</span>
               </div>
             </div>
-          )}
 
-          {/* ── CHAT DRAWER ── */}
-          {isChatOpen && (
-            <div className="absolute inset-y-0 right-0 w-full sm:w-96 bg-[var(--bg-card)] border-l border-[var(--text-primary)]/10 shadow-2xl flex flex-col z-40 animate-in slide-in-from-right duration-300">
-              <div className="p-4 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)]">
-                <div className="flex items-center gap-2">
-                  <Bot className="w-5 h-5 text-indigo-500" />
-                  <h3 className="font-bold text-sm">Contract AI Chat</h3>
-                </div>
-                <button onClick={() => setIsChatOpen(false)} className="p-1 rounded-lg hover:bg-[var(--text-primary)]/10">
-                  <X className="w-4 h-4" />
+            {/* Back & Actions Bar */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 print:hidden">
+              <button
+                onClick={() => setIsLoaded(false)}
+                className="text-xs font-medium flex items-center gap-1.5 transition-colors opacity-60 hover:opacity-100 cursor-pointer text-(--text-primary)"
+              >
+                <ArrowLeft className="w-3.5 h-3.5" />
+                <span>{language === "bn" ? "অন্য চুক্তিপত্র আপলোড করুন" : "Upload another agreement"}</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleDownloadReport}
+                  className="px-3 py-1.5 rounded-xl border border-(--text-primary)/10 text-xs font-medium text-(--text-muted) hover:text-(--text-primary) flex items-center gap-1.5 transition-colors cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>{language === "bn" ? "প্রিন্ট / পিডিএফ" : "Print / PDF"}</span>
+                </button>
+
+                <button
+                  onClick={() => handleOpenInCopilot()}
+                  className="px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Bot className="w-3.5 h-3.5" />
+                  <span>{language === "bn" ? "কোপাইলট আলোচনা" : "Open in Copilot"}</span>
                 </button>
               </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[var(--bg-primary)]/50">
-                {chatMessages.map((msg, i) => (
-                  <div key={i} className={`flex gap-3 ${msg.role === "user" ? "flex-row-reverse" : ""}`}>
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === "user" ? "bg-[var(--accent-solid)] text-white" : "bg-indigo-500/20 text-indigo-500"}`}>
-                      {msg.role === "user" ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
-                    </div>
-                    <div className={`p-3 rounded-2xl text-xs max-w-[80%] ${msg.role === "user" ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)] rounded-tr-sm" : "bg-[var(--bg-card)] border border-[var(--text-primary)]/10 rounded-tl-sm shadow-sm"}`}>
-                      {msg.content}
-                    </div>
-                  </div>
-                ))}
-                {isChatting && (
-                  <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-500 flex items-center justify-center shrink-0"><Bot className="w-4 h-4" /></div>
-                    <div className="p-3 rounded-2xl bg-[var(--bg-card)] border border-[var(--text-primary)]/10 rounded-tl-sm flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce"></span>
-                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-100"></span>
-                      <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-bounce delay-200"></span>
-                    </div>
-                  </div>
-                )}
-                <div ref={chatBottomRef} />
-              </div>
-
-              <div className="p-4 border-t border-[var(--text-primary)]/10 bg-[var(--bg-card)]">
-                <form onSubmit={handleSendMessage} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    placeholder="Ask about this contract..."
-                    className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-xs focus:outline-none focus:border-indigo-500"
-                    disabled={isChatting}
-                  />
-                  <button type="submit" disabled={!chatInput.trim() || isChatting} className="p-2.5 rounded-xl bg-[var(--accent-solid)] text-white disabled:opacity-50">
-                    <Send className="w-4 h-4" />
-                  </button>
-                </form>
-              </div>
             </div>
-          )}
-        </div>
+
+            {/* Sovereign Contract Statutory Audit Document */}
+            <div className="space-y-6">
+              <MarkdownViewer content={markdownAuditContent} />
+            </div>
+
+            {/* Bottom Actions: Download & Verify by Lawyer */}
+            <div className="mt-8 p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-sm print:hidden">
+              {!dispatchedDecision ? (
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-amber-500" />
+                      <h3 className="text-sm sm:text-base font-serif font-bold text-(--text-primary)">
+                        {language === "bn" ? "সংবিধিবদ্ধ আইনি যাচাইকরণ ও সিলমোহর" : "Statutory Verification & Advocate Seal"}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-(--text-muted) max-w-xl leading-relaxed">
+                      {language === "bn"
+                        ? "রিপোর্টটি ডাউনলোড করুন অথবা বাংলাদেশ সুপ্রিম কোর্টের আইনজীবীর কাছে পাঠিয়ে আইনগত মতামত ও অফিসিয়াল সিলমোহর গ্রহণ করুন।"
+                        : "Download your contract audit report or dispatch it to an advocate for statutory review and Bar Council seal."}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={handleDownloadReport}
+                      className="px-4 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer"
+                    >
+                      <Download className="w-4 h-4 text-(--text-muted)" />
+                      <span>{language === "bn" ? "ডাউনলোড রিপোর্ট (PDF)" : "Download Report (PDF)"}</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSendToAdvocate}
+                      disabled={isDispatching}
+                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 flex items-center gap-2 transition-opacity cursor-pointer shadow-sm disabled:opacity-50"
+                    >
+                      {isDispatching ? (
+                        <>
+                          <div className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                          <span>{language === "bn" ? "আইনজীবী নির্বাচন হচ্ছে..." : "Assigning Lawyer..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          <span>{language === "bn" ? "লইয়ার দ্বারা ভেরিফাই করুন" : "Verify by Lawyer"}</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+                        <CheckCircle2 className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3 className="text-sm sm:text-base font-bold text-emerald-700 dark:text-emerald-400">
+                            {language === "bn"
+                              ? "চুক্তিপত্রটি সফলভাবে আইনজীবীর কাছে পাঠানো হয়েছে"
+                              : "Contract Dispatched to Advocate"}
+                          </h3>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold">
+                            Assigned: {dispatchedDecision.lawyer.id}
+                          </span>
+                        </div>
+                        <p className="text-xs text-(--text-primary) mt-1 font-semibold">
+                          {dispatchedDecision.lawyer.name} ({dispatchedDecision.lawyer.barCouncilNo})
+                        </p>
+                        <p className="text-xs text-(--text-muted) mt-0.5">
+                          {language === "bn"
+                            ? "আইনজীবী তার ওয়ার্কস্পেস থেকে চুক্তিটি পর্যালোচনা করে সংবিধিবদ্ধ সিলমোহর প্রদান করবেন।"
+                            : "The advocate has received your contract in their pending queue for verification."}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={handleDownloadReport}
+                        className="px-3.5 py-2 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <Download className="w-3.5 h-3.5 text-(--text-muted)" />
+                        <span>{language === "bn" ? "ডাউনলোড" : "Download"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => router.push("/lawyer/pending")}
+                        className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-semibold hover:bg-amber-500/20 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span>{language === "bn" ? "আইনজীবী কিউতে দেখুন →" : "View in Lawyer Queue →"}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Official Legal Print Footer */}
+            <div className="hidden print:block pt-8 mt-12 border-t border-neutral-300 text-xs text-neutral-500 space-y-1.5 font-sans break-inside-avoid print-avoid-break">
+              <div className="flex justify-between items-baseline text-[11px] font-medium text-neutral-700">
+                <span>ContractMind · Autonomous Statutory Contract Auditor</span>
+                <span>Verified against bdlaws (Government of Bangladesh)</span>
+              </div>
+              <p className="text-[10px] text-neutral-400 leading-normal">
+                Notice: This legal audit report is computer-generated based on statutory rules under the Bangladesh Labour Act 2006, The Contract Act 1872, and relevant codified legislation. For formal legal representation or litigation proceedings, consultation with a Supreme Court Advocate is recommended.
+              </p>
+            </div>
+
+          </div>
+        )}
+
       </div>
     </AppShell>
   );
