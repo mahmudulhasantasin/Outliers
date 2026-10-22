@@ -75,7 +75,6 @@ export default function AppDock() {
       isActive: pathname === "/lawyer/pending",
       onClick: () => router.push("/lawyer/pending"),
     },
-    // ✅ FIX: লইয়ারের জন্য Copilot বাটন যুক্ত করা হলো
     {
       icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
       label: isBn ? "এডভোটেক কোপাইলট (AI Research)" : "AI Research Copilot",
@@ -109,6 +108,13 @@ export default function AppDock() {
       label: isBn ? "এন্টারপ্রাইজ অ্যাডমিন পোর্টাল" : "Enterprise Admin Portal",
       isActive: pathname.startsWith("/enterprise/admin"),
       onClick: () => router.push("/enterprise/admin"),
+    },
+    // ✅ FIX: এন্টারপ্রাইজ অ্যাডমিনের জন্য Copilot বাটন যুক্ত করা হলো
+    {
+      icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "এডভোটেক কোপাইলট (Q&A)" : "Advotech Copilot",
+      isActive: pathname === "/copilot" || pathname === "/app",
+      onClick: () => router.push("/copilot"),
     },
     {
       icon: <FileText className="w-5 h-5 stroke-[2.4]" />,

@@ -9,7 +9,8 @@ import {
   type SpringOptions,
   AnimatePresence
 } from 'framer-motion';
-import React, { Children, cloneElement, useEffect, useMemo, useRef, useState } from 'react';
+// ✅ FIX: Removed unused useEffect and useMemo imports
+import React, { Children, cloneElement, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
