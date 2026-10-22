@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation"; // ✅ FIX: useRouter ইমপোর্ট করা হলো
+import { useRouter } from "next/navigation";
 import api, { ApiError } from "@/lib/api";
 import {
   saveTokenResponse,
@@ -75,6 +75,7 @@ export interface UserProfile {
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   creditBalance: number;
+  enterprise_credit_balance?: number | null; // ✅ NEW: Company Pool Balance
   lawyerProfile?: LawyerProfile;
   enterpriseProfile?: EnterpriseProfile;
 }
@@ -228,6 +229,7 @@ function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserP
     isEmailVerified: u.is_verified,
     isPhoneVerified: u.is_phone_verified,
     creditBalance: u.credit_balance,
+    enterprise_credit_balance: null, // Will be fetched from /me
     lawyerProfile: normRole === "lawyer" ? {
       barCouncilNo: "",
       fieldOfLaw: "",
@@ -274,6 +276,7 @@ function meResponseToProfile(data: any): UserProfile {
     isEmailVerified: data.is_verified ?? false,
     isPhoneVerified: data.is_phone_verified ?? false,
     creditBalance: data.credit_balance ?? 0,
+    enterprise_credit_balance: data.enterprise_credit_balance ?? null, // ✅ NEW
     lawyerProfile,
     enterpriseProfile: data.enterprise_profile
       ? {
@@ -306,6 +309,7 @@ const DEMO_GENERAL: UserProfile = {
   isEmailVerified: true,
   isPhoneVerified: false,
   creditBalance: 500,
+  enterprise_credit_balance: null,
 };
 
 const DEMO_LAWYER: UserProfile = {
@@ -322,6 +326,7 @@ const DEMO_LAWYER: UserProfile = {
   isEmailVerified: true,
   isPhoneVerified: true,
   creditBalance: 0,
+  enterprise_credit_balance: null,
   lawyerProfile: {
     barCouncilNo: "BC-48291/2019",
     fieldOfLaw: "Corporate & Labour Law",
@@ -344,7 +349,8 @@ const DEMO_ENTERPRISE_ADMIN: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: true,
-  creditBalance: 2000,
+  creditBalance: 0, // Admin personal credit 0
+  enterprise_credit_balance: 5000, // ✅ NEW: Demo Company Pool Balance
   enterpriseProfile: {
     companyName: "Apex Holdings Ltd.",
     companyType: "Private Limited",
@@ -371,7 +377,8 @@ const DEMO_ENTERPRISE_MEMBER: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: true,
-  creditBalance: 250,
+  creditBalance: 0, // Member personal credit 0
+  enterprise_credit_balance: 5000, // ✅ NEW: Demo Company Pool Balance
   enterpriseProfile: {
     companyName: "Apex Holdings Ltd.",
     companyType: "Private Limited",
@@ -399,11 +406,12 @@ const DEMO_ADMIN: UserProfile = {
   isEmailVerified: true,
   isPhoneVerified: true,
   creditBalance: 99999,
+  enterprise_credit_balance: null,
 };
 
 // ─── Provider ─────────────────────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const router = useRouter(); // ✅ FIX: Router ইনিশিয়ালাইজ করা হলো
+  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState<UserProfile | null>(null);
@@ -592,7 +600,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     setIsAuthenticated(false);
     setUser(null);
-    router.replace("/login"); // ✅ FIX: Next.js Router দিয়ে রিডাইরেক্ট
+    router.replace("/login");
   };
 
   const updateUser = (partial: Partial<UserProfile>) => {

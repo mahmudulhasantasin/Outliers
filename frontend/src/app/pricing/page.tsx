@@ -1,4 +1,5 @@
-﻿"use client";
+﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+"use client";
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
@@ -32,97 +33,6 @@ import {
   Hash,
 } from "lucide-react";
 
-const DEFAULT_PACKAGES: CreditPackage[] = [
-  {
-    id: 1,
-    name: "Starter Pack",
-    credits: 440,
-    total_credits: 440,
-    base_credits: 400,
-    bonus_credits: 40,
-    price_bdt: 500,
-    description: "Ideal for individual contracts and statutory legal inquiries.",
-    badge_text: null,
-    is_popular: false,
-    features: [
-      "440 AI Credits (40 Bonus)",
-      "15 AI Contract Audits",
-      "50 Chat queries with citation",
-      "Standard email support",
-    ],
-  },
-  {
-    id: 2,
-    name: "Standard Pack",
-    credits: 950,
-    total_credits: 950,
-    base_credits: 800,
-    bonus_credits: 150,
-    price_bdt: 1000,
-    description: "Best for growing businesses, startups, and advocate consultations.",
-    badge_text: "Most Popular",
-    is_popular: true,
-    features: [
-      "950 AI Credits (150 Bonus)",
-      "35 AI Contract Audits",
-      "120 Chat queries with citation",
-      "Priority support & statutory alerts",
-    ],
-  },
-  {
-    id: 3,
-    name: "Pro Pack",
-    credits: 2600,
-    total_credits: 2600,
-    base_credits: 2000,
-    bonus_credits: 600,
-    price_bdt: 2500,
-    description: "Maximum compliance suite with playbook enforcement and team quota.",
-    badge_text: "Best Value",
-    is_popular: false,
-    features: [
-      "2600 AI Credits (600 Bonus)",
-      "100 AI Contract Audits",
-      "Unlimited statutory citations",
-      "Lawyer HITL Verification Capable",
-      "Bar Council compliance audit report",
-    ],
-  },
-];
-
-function generateFallbackInitiate(pkg: CreditPackage): InitiatePaymentResponse {
-  const timestamp = Date.now();
-  const randomCode = `PAY-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
-  const creds = pkg.total_credits || pkg.credits || 0;
-  return {
-    payment_id: `pay-${timestamp}`,
-    reference_code: randomCode,
-    amount_bdt: pkg.price_bdt,
-    total_credits: creds,
-    credits: creds,
-    package_name: pkg.name,
-    expires_at: new Date(timestamp + 86400000).toISOString(),
-    bkash: {
-      bkash_number: "01711000000",
-      bkash_type: "Merchant",
-      instructions_en:
-        "1. Open bKash app.\n2. Choose 'Send Money' or 'Payment' to 01711000000.\n3. Enter exact amount ৳" +
-        pkg.price_bdt +
-        ".\n4. Enter Reference: " +
-        randomCode +
-        ".\n5. Enter your TrxID below.",
-      instructions_bn:
-        "১. বিকাশ অ্যাপ খুলুন।\n২. 'Send Money' বা 'Payment' করুন 01711000000 নম্বরে।\n৩. টাকার পরিমাণ ৳" +
-        pkg.price_bdt +
-        " দিন।\n৪. রেফারেন্স কোড হিসেবে " +
-        randomCode +
-        " লিখুন।\n৫. প্রাপ্ত TrxID নিচে লিখুন।",
-    },
-    bkash_number: "01711000000",
-    instructions: "Send Money to 01711000000 with Reference: " + randomCode,
-  };
-}
-
 export default function PricingPage() {
   const router = useRouter();
   const { user, refreshUser } = useAuth();
@@ -136,7 +46,8 @@ export default function PricingPage() {
     }
   }, [user, router]);
 
-  const [packages, setPackages] = useState<CreditPackage[]>(DEFAULT_PACKAGES);
+  const [packages, setPackages] = useState<CreditPackage[]>([]);
+  const [isLoadingPackages, setIsLoadingPackages] = useState(true);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [summary, setSummary] = useState<PaymentSummary | null>(null);
 
@@ -153,6 +64,21 @@ export default function PricingPage() {
 
   const borderClass = "border-(--text-primary)/10";
 
+  // ✅ NEW: Check if user is Enterprise
+  const isEnterprise = 
+    String(user?.role).toLowerCase().includes("enterprise") || 
+    user?.role === "enterprise_admin" || 
+    user?.role === "enterprise_member";
+
+  // ✅ NEW: Determine which balance to show (Company Pool vs Personal)
+  const displayBalance = isEnterprise 
+    ? (user?.enterprise_credit_balance ?? 0) 
+    : (user?.creditBalance ?? summary?.current_balance ?? 0);
+
+  const balanceLabel = isEnterprise 
+    ? (isBn ? "কোম্পানি পুল ব্যালেন্স" : "Company Pool Balance")
+    : (isBn ? "বর্তমান ব্যালেন্স" : "Current Balance");
+
   const refreshData = async () => {
     try {
       if (refreshUser) {
@@ -164,7 +90,7 @@ export default function PricingPage() {
         getPaymentSummary(),
       ]);
 
-      if (pkgsRes.status === "fulfilled" && Array.isArray(pkgsRes.value) && pkgsRes.value.length > 0) {
+      if (pkgsRes.status === "fulfilled" && Array.isArray(pkgsRes.value)) {
         setPackages(pkgsRes.value);
       }
       if (paysRes.status === "fulfilled" && Array.isArray(paysRes.value)) {
@@ -186,6 +112,7 @@ export default function PricingPage() {
 
     const fetchInitialData = async () => {
       try {
+        setIsLoadingPackages(true);
         const [pkgsRes, paysRes, sumRes] = await Promise.allSettled([
           listPackages(),
           listMyPayments(),
@@ -193,7 +120,7 @@ export default function PricingPage() {
         ]);
         if (!isMounted) return;
 
-        if (pkgsRes.status === "fulfilled" && Array.isArray(pkgsRes.value) && pkgsRes.value.length > 0) {
+        if (pkgsRes.status === "fulfilled" && Array.isArray(pkgsRes.value)) {
           setPackages(pkgsRes.value);
         }
         if (paysRes.status === "fulfilled" && Array.isArray(paysRes.value)) {
@@ -204,6 +131,8 @@ export default function PricingPage() {
         }
       } catch (err: unknown) {
         console.warn("Could not load initial pricing data:", err);
+      } finally {
+        if (isMounted) setIsLoadingPackages(false);
       }
     };
 
@@ -221,12 +150,8 @@ export default function PricingPage() {
       setTrxId("");
       setSenderNumber(user?.mobile || "");
       setTrxSuccessMessage(null);
-    } catch (err: unknown) {
-      console.warn("Initiate payment fallback:", err);
-      setActiveInitiate(generateFallbackInitiate(pkg));
-      setTrxId("");
-      setSenderNumber(user?.mobile || "");
-      setTrxSuccessMessage(null);
+    } catch (err: any) {
+      alert(err?.message || "Failed to initiate payment.");
     } finally {
       setInitiatingPkgId(null);
     }
@@ -371,7 +296,6 @@ export default function PricingPage() {
   const displayApproved = summary?.approved ?? approvedPayments.length;
   const displayAwaiting = summary?.awaiting_admin ?? summary?.pending_submission ?? awaitingPayments.length;
   const displayTotalTopup = summary?.total_topup_bdt ?? summary?.total_spent_bdt ?? totalTopupFromPayments;
-  const displayBalance = user?.creditBalance ?? summary?.current_balance ?? 0;
 
   if (String(user?.role).toUpperCase() === "LAWYER") {
     return (
@@ -406,7 +330,7 @@ export default function PricingPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto">
           <div className={`p-4 rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
             <span className="text-[11px] text-(--text-muted) font-medium">
-              {isBn ? "বর্তমান ব্যালেন্স" : "Current Balance"}
+              {balanceLabel}
             </span>
             <span className="font-mono font-bold text-emerald-500 text-lg sm:text-xl mt-1">
               {displayBalance} {isBn ? "ক্রেডিট" : "Credits"}
@@ -439,102 +363,108 @@ export default function PricingPage() {
         </div>
 
         {/* Pricing Cards Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {packages.map((pkg) => {
-            const badge = pkg.badge_text || (pkg.is_popular ? (isBn ? "সর্বাধিক জনপ্রিয়" : "Most Popular") : null);
-            const totalCredits = pkg.total_credits || pkg.credits;
+        {isLoadingPackages ? (
+           <div className="flex justify-center py-20">
+             <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
+           </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {packages.map((pkg) => {
+              const badge = pkg.badge_text || (pkg.is_popular ? (isBn ? "সর্বাধিক জনপ্রিয়" : "Most Popular") : null);
+              const totalCredits = pkg.total_credits || pkg.credits;
 
-            return (
-              <div
-                key={pkg.id}
-                className={`p-6 sm:p-7 rounded-3xl border flex flex-col justify-between transition-all relative ${
-                  pkg.is_popular
-                    ? "border-[#E2136E] bg-(--bg-card) shadow-lg shadow-pink-500/5 ring-1 ring-[#E2136E]/30"
-                    : `${borderClass} bg-(--bg-card)`
-                }`}
-              >
-                {badge && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#E2136E] text-white shadow-sm">
-                    {badge}
-                  </div>
-                )}
-
-                <div>
-                  <h3 className="text-lg font-serif font-bold text-(--text-primary) mb-1">
-                    {pkg.name}
-                  </h3>
-                  <p className="text-xs text-(--text-muted) mb-5 min-h-8">
-                    {pkg.description}
-                  </p>
-
-                  <div className="flex items-baseline gap-1 mb-6">
-                    <span className="text-3xl font-mono font-bold text-(--text-primary)">
-                      ৳{pkg.price_bdt}
-                    </span>
-                    <span className="text-xs text-(--text-muted) font-mono">
-                      / {totalCredits} {isBn ? "ক্রেডিট" : "credits"}
-                    </span>
-                  </div>
-
-                  <div className="space-y-2.5 text-xs text-(--text-muted) mb-6">
-                    {pkg.features && pkg.features.length > 0 ? (
-                      pkg.features.map((feat, idx) => (
-                        <div key={idx} className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <span>{feat}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <span>{totalCredits} AI Contract Audits</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <span>Statutory Redline Suggestions</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                          <span>Bangladesh Laws Citations</span>
-                        </div>
-                        {totalCredits >= 500 && (
-                          <div className="flex items-center gap-2 text-(--text-primary) font-medium">
-                            <Sparkles className="w-4 h-4 text-[#E2136E] shrink-0" />
-                            <span>Lawyer HITL Verification Capable</span>
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={initiatingPkgId !== null}
-                  onClick={() => handleInitiate(pkg)}
-                  className={`w-full py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 ${
+              return (
+                <div
+                  key={pkg.id}
+                  className={`p-6 sm:p-7 rounded-3xl border flex flex-col justify-between transition-all relative ${
                     pkg.is_popular
-                      ? "bg-[#E2136E] text-white hover:opacity-90 shadow-md shadow-pink-500/20"
-                      : "bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90"
+                      ? "border-[#E2136E] bg-(--bg-card) shadow-lg shadow-pink-500/5 ring-1 ring-[#E2136E]/30"
+                      : `${borderClass} bg-(--bg-card)`
                   }`}
                 >
-                  {initiatingPkgId === pkg.id ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>{isBn ? "বিকাশ সংযোগ হচ্ছে..." : "Connecting bKash..."}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>{isBn ? "বিকাশ দিয়ে কিনুন" : "Buy with bKash"}</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
+                  {badge && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#E2136E] text-white shadow-sm">
+                      {badge}
+                    </div>
                   )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
+
+                  <div>
+                    <h3 className="text-lg font-serif font-bold text-(--text-primary) mb-1">
+                      {pkg.name}
+                    </h3>
+                    <p className="text-xs text-(--text-muted) mb-5 min-h-8">
+                      {pkg.description}
+                    </p>
+
+                    <div className="flex items-baseline gap-1 mb-6">
+                      <span className="text-3xl font-mono font-bold text-(--text-primary)">
+                        ৳{pkg.price_bdt}
+                      </span>
+                      <span className="text-xs text-(--text-muted) font-mono">
+                        / {totalCredits} {isBn ? "ক্রেডিট" : "credits"}
+                      </span>
+                    </div>
+
+                    <div className="space-y-2.5 text-xs text-(--text-muted) mb-6">
+                      {pkg.features && pkg.features.length > 0 ? (
+                        pkg.features.map((feat, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>{feat}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>{totalCredits} AI Contract Audits</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>Statutory Redline Suggestions</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>Bangladesh Laws Citations</span>
+                          </div>
+                          {totalCredits >= 500 && (
+                            <div className="flex items-center gap-2 text-(--text-primary) font-medium">
+                              <Sparkles className="w-4 h-4 text-[#E2136E] shrink-0" />
+                              <span>Lawyer HITL Verification Capable</span>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    disabled={initiatingPkgId !== null}
+                    onClick={() => handleInitiate(pkg)}
+                    className={`w-full py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 ${
+                      pkg.is_popular
+                        ? "bg-[#E2136E] text-white hover:opacity-90 shadow-md shadow-pink-500/20"
+                        : "bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90"
+                    }`}
+                  >
+                    {initiatingPkgId === pkg.id ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        <span>{isBn ? "বিকাশ সংযোগ হচ্ছে..." : "Connecting bKash..."}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>{isBn ? "বিকাশ দিয়ে কিনুন" : "Buy with bKash"}</span>
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Previous Payment History */}
         <div className={`p-6 sm:p-8 rounded-3xl border ${borderClass} bg-(--bg-card) space-y-4`}>

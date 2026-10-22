@@ -62,7 +62,6 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState("");
 
-  // ✅ FIX: ছবি লোড ফেইল করলে ট্র্যাক করার স্টেট
   const [imgError, setImgError] = useState(false);
 
   const avatarUrl = user?.profile_photo_url || user?.avatarUrl || "";
@@ -70,6 +69,26 @@ export default function SettingsPage() {
   const initials = user?.name
     ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "U";
+
+  // ✅ NEW: Check if user is Enterprise
+  const isEnterprise = 
+    String(user?.role).toLowerCase().includes("enterprise") || 
+    user?.role === "enterprise_admin" || 
+    user?.role === "enterprise_member";
+
+  // ✅ NEW: Determine which balance to show
+  const displayBalance = isEnterprise 
+    ? (user?.enterprise_credit_balance ?? 0) 
+    : (user?.creditBalance ?? 0);
+
+  const balanceLabel = isEnterprise 
+    ? (isBn ? "কোম্পানি পুল ক্রেডিট ব্যালেন্স:" : "Company Pool Credit Balance:")
+    : (isBn ? "উপলব্ধ অ্যাকাউন্ট ক্রেডিট ব্যালেন্স:" : "Available Credit Balance:");
+
+  const balanceDesc = isEnterprise
+    ? (isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ক্রেডিট কাটা হবে" : "Deducted from company shared credit pool")
+    : (isBn ? "৫০ ক্রেডিট = ১টি সম্পূর্ণ চুক্তি অডিট" : "50 credits = 1 full contract statutory audit");
+
 
   const handleProfilePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -83,7 +102,7 @@ export default function SettingsPage() {
     setIsUploadingPhoto(true);
     setPhotoError("");
     setPhotoSuccess(false);
-    setImgError(false); // নতুন ছবি দিলে এরর স্টেট রিসেট হবে
+    setImgError(false);
 
     try {
       const res = await uploadProfilePhoto(file);
@@ -278,7 +297,6 @@ export default function SettingsPage() {
           <div className="flex items-center gap-4 min-w-0">
             <div className="relative shrink-0">
               <div className="w-16 h-16 rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-2 border-(--bg-primary) shadow-sm flex items-center justify-center text-xl font-bold font-serif text-(--text-primary) overflow-hidden relative">
-                {/* ✅ FIX: imgError চেক করা হয়েছে */}
                 {(!imgError && avatarUrl) ? (
                   <Image
                     src={avatarUrl}
@@ -312,7 +330,7 @@ export default function SettingsPage() {
               <p className="text-xs text-(--text-muted) truncate mt-0.5">{user?.email || "user@example.com"}</p>
               <div className="mt-1.5 flex items-center gap-2 flex-wrap">
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-(--accent-solid)/10 text-(--accent-solid) border border-(--accent-solid)/20">
-                  {String(user?.role).toUpperCase() === "LAWYER" ? (isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer") : String(user?.role).toUpperCase() === "ADMIN" ? (isBn ? "সিস্টেম অ্যাডমিন" : "System Admin") : String(user?.role).toUpperCase().includes("ENTERPRISE") ? (isBn ? "এন্টারপ্রাইজ ব্যবহারকারী" : "Enterprise") : (isBn ? "সাধারণ ব্যবহারকারী" : "General User")}
+                  {String(user?.role).toUpperCase() === "LAWYER" ? (isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer") : String(user?.role).toUpperCase() === "ADMIN" ? (isBn ? "সিস্টেম অ্যাডমিন" : "System Admin") : isEnterprise ? (isBn ? "এন্টারপ্রাইজ ব্যবহারকারী" : "Enterprise") : (isBn ? "সাধারণ ব্যবহারকারী" : "General User")}
                 </span>
                 {photoSuccess && <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold animate-in fade-in">{isBn ? "ছবি সফলভাবে আপলোড হয়েছে ✓" : "Photo uploaded successfully ✓"}</span>}
                 {photoError && <span className="text-[11px] text-rose-500 font-medium">{photoError}</span>}
@@ -418,16 +436,17 @@ export default function SettingsPage() {
           </Section>
         )}
 
+        {/* ✅ FIX: Credits & Billing Hub Update */}
         <Section title={isBn ? "ক্রেডিট ও পেমেন্ট ম্যানেজমেন্ট" : "Credits & Billing Hub"}>
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/5">
               <div>
-                <p className="text-xs text-(--text-muted) mb-1 font-medium">{isBn ? "উপলব্ধ অ্যাকাউন্ট ক্রেডিট ব্যালেন্স:" : "Available Credit Balance:"}</p>
+                <p className="text-xs text-(--text-muted) mb-1 font-medium">{balanceLabel}</p>
                 <div className="flex items-baseline gap-2">
-                  <p className="text-3xl font-mono font-bold text-(--text-primary)">{user?.creditBalance ?? 0}</p>
+                  <p className="text-3xl font-mono font-bold text-(--text-primary)">{displayBalance}</p>
                   <span className="text-xs font-semibold text-amber-600 dark:text-amber-400">{isBn ? "ক্রেডিট" : "Credits"}</span>
                 </div>
-                <p className="text-[11px] text-(--text-muted) mt-1">{isBn ? "৫০ ক্রেডিট = ১টি সম্পূর্ণ চুক্তি অডিট" : "50 credits = 1 full contract statutory audit"}</p>
+                <p className="text-[11px] text-(--text-muted) mt-1">{balanceDesc}</p>
               </div>
               <button type="button" onClick={() => router.push("/pricing")} className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto shrink-0 shadow-xs">
                 <Coins className="w-4 h-4 text-amber-400" />

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image"; // ✅ FIX: Next.js Image ইমপোর্ট করা হলো
+import Image from "next/image";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
 import { useLanguage } from "@/context/LanguageContext";
@@ -127,6 +127,31 @@ export default function ProfilePage() {
   }
 
   const isLawyer = String(user.role).toUpperCase() === "LAWYER";
+  
+  // ✅ NEW: Check if the user is an Enterprise Admin or Member
+  const isEnterprise = 
+    String(user.role).toLowerCase().includes("enterprise") || 
+    user.role === "enterprise_admin" || 
+    user.role === "enterprise_member";
+
+  // ✅ NEW: Determine which balance to show
+  const displayBalance = isEnterprise 
+    ? (user.enterprise_credit_balance ?? 0) 
+    : (user.creditBalance ?? 0);
+
+  const balanceLabel = isEnterprise 
+    ? (isBn ? "কোম্পানি পুল ক্রেডিট" : "Company Pool Credits")
+    : (isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance");
+
+  const balanceDesc = isEnterprise
+    ? (isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ব্যবহৃত হয়" : "Shared company credit pool")
+    : (isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations");
+
+  const topUpLabel = isEnterprise
+    ? (isBn ? "কোম্পানি পুল রিচার্জ" : "Top up Company Pool")
+    : (isBn ? "প্যাকেজ কিনুন" : "Top up credits");
+
+
   const lawyerProfile = user.lawyerProfile || {
     barCouncilNo: isBn ? "প্রদান করা হয়নি" : "Not Provided",
     fieldOfLaw: isBn ? "সাধারণ আইন" : "General Practice",
@@ -382,19 +407,16 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2 flex-wrap text-xs text-(--text-muted) mt-1">
                 {/* Role Pill */}
                 {isLawyer ? (
-                  // ✅ FIX: text-(--text-primary) রিমুভ করা হয়েছে
                   <span className="inline-flex items-center gap-1 font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
                     <Gavel className="w-3 h-3" />
                     <span>{isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer"}</span>
                   </span>
                 ) : user.role === "enterprise_admin" || (user.role === "enterprise" && !user.enterpriseProfile?.isTeamMember) ? (
-                  // ✅ FIX: text-(--text-primary) রিমুভ করা হয়েছে
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
                     <span>{isBn ? "এন্টারপ্রাইজ অ্যাডমিন" : "Enterprise Admin"}</span>
                   </span>
                 ) : user.role === "enterprise_member" || (user.role === "enterprise" && user.enterpriseProfile?.isTeamMember) ? (
-                  // ✅ FIX: text-(--text-primary) রিমুভ করা হয়েছে
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
                     <span>{isBn ? "এন্টারপ্রাইজ সদস্য" : "Enterprise Member"}</span>
@@ -446,18 +468,18 @@ export default function ProfilePage() {
               <span className="text-xs font-medium uppercase tracking-wider">
                 {isLawyer
                   ? isBn ? "উপার্জন ও পে-আউট" : "Earnings & Payouts"
-                  : isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance"}
+                  : balanceLabel}
               </span>
               <Coins className="w-4 h-4 text-amber-500" />
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-(--text-primary)">
-                {isLawyer ? (isBn ? "সক্রিয় পোর্টাল" : "Active Hub") : (user.creditBalance ?? 0)}
+                {isLawyer ? (isBn ? "সক্রিয় পোর্টাল" : "Active Hub") : displayBalance}
               </p>
               <p className="text-[11px] text-(--text-muted) mt-0.5">
                 {isLawyer
                   ? isBn ? "bKash উত্তোলন ও আয়ের হিসাব" : "bKash payout & earnings ledger"
-                  : isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations"}
+                  : balanceDesc}
               </p>
             </div>
             <button
@@ -465,7 +487,7 @@ export default function ProfilePage() {
               onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/pricing")}
               className="inline-flex items-center gap-1 text-xs font-semibold text-(--accent-solid) hover:underline cursor-pointer pt-1"
             >
-              <span>{isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : (isBn ? "প্যাকেজ কিনুন" : "Top up credits")}</span>
+              <span>{isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : topUpLabel}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
