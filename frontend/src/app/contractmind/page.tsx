@@ -15,20 +15,13 @@ import { runDispatchAlgorithm, INITIAL_DEMO_LAWYERS, DispatchDecision } from "@/
 import {
   uploadContract,
   requestLawyerVerification,
+  getContractDetail,
   ContractAuditResult,
 } from "@/lib/apiServices";
 import { useAuth } from "@/context/AuthContext";
 import {
-  Upload,
-  ArrowLeft,
-  Bot,
-  Printer,
-  CheckCircle2,
-  Shield,
-  Download,
-  ArrowRight,
-  ShieldCheck,
-  AlertTriangle,
+  Upload, ArrowLeft, Bot, Printer, CheckCircle2, Shield,
+  Download, ArrowRight, ShieldCheck, AlertTriangle,
 } from "lucide-react";
 
 /**
@@ -37,7 +30,6 @@ import {
 function sanitizeAuditMarkdown(md: string): string {
   if (!md) return md;
 
-  // ১. হাই-রিস্ক ক্লজের সংখ্যা গণনা করা
   const highRiskMatches = md.match(/\|\s*(?:High\s*Risk|উচ্চ\s*ঝুঁকি|Critical)\s*\|/gi);
   const detectedCount = highRiskMatches ? highRiskMatches.length : 3;
 
@@ -45,7 +37,6 @@ function sanitizeAuditMarkdown(md: string): string {
   const updatedLines = lines.map((line) => {
     let modifiedLine = line;
 
-    // ২. হেডারের "0 Clauses" বা "০টি ধারা" ফিক্স
     if (modifiedLine.includes("|") && /\|\s*0\s*(?:Clauses|টি ধারা|ধারা)\s*\|/i.test(modifiedLine)) {
       modifiedLine = modifiedLine.replace(
         /\|\s*0\s*(?:Clauses|টি ধারা|ধারা)\s*\|/i,
@@ -53,7 +44,6 @@ function sanitizeAuditMarkdown(md: string): string {
       );
     }
 
-    // ৩. Compliance Matrix-এ High Risk ক্লজের ক্ষেত্রে COMPLIANT কে NON-COMPLIANT (VOID) করা
     if (
       modifiedLine.includes("|") &&
       /(?:High\s*Risk|উচ্চ\s*ঝুঁকি|Critical)/i.test(modifiedLine)
@@ -77,7 +67,6 @@ export default function ContractMindPage() {
   const isBn = language === "bn";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initial stage: no contract loaded by default
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [selectedContractId, setSelectedContractId] = useState<string>("employment-agreement");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
@@ -85,7 +74,6 @@ export default function ContractMindPage() {
   const [dispatchedDecision, setDispatchedDecision] = useState<DispatchDecision | null>(null);
   const [lawyerSealApplied, setLawyerSealApplied] = useState<boolean>(false);
 
-  // Check URL query parameter (e.g. ?id=vendor-sla)
   const [apiContractId, setApiContractId] = useState<string | null>(null);
   const [apiAuditResult, setApiAuditResult] = useState<ContractAuditResult | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -101,12 +89,32 @@ export default function ContractMindPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const contractId = params.get("id");
-      if (contractId && CONTRACT_AUDITS[contractId]) {
-        setSelectedContractId(contractId);
-        setIsLoaded(true);
+      
+      if (contractId) {
+        if (CONTRACT_AUDITS[contractId]) {
+          setSelectedContractId(contractId);
+          setIsLoaded(true);
+        } else if (!isNaN(Number(contractId))) {
+          setIsAnalyzing(true);
+          getContractDetail(contractId)
+            .then((data) => {
+              setApiContractId(String(data.contract_id));
+              setApiAuditResult(data);
+              setIsLoaded(true);
+            })
+            .catch((err) => {
+              console.error("Failed to fetch contract from backend:", err);
+              setUploadError(
+                isBn ? "চুক্তিপত্রটি লোড করা যায়নি বা আপনার অ্যাক্সেস নেই।" : "Failed to load contract or access denied."
+              );
+            })
+            .finally(() => {
+              setIsAnalyzing(false);
+            });
+        }
       }
     }
-  }, []);
+  }, [isBn]);
 
   if (String(user?.role).toUpperCase() === "LAWYER") {
     return (
@@ -116,19 +124,15 @@ export default function ContractMindPage() {
     );
   }
 
-  // Current contract & audit
   const currentContract: SampleContract =
     SAMPLE_CONTRACTS.find((c) => c.id === selectedContractId) || SAMPLE_CONTRACTS[0];
   const currentAudit: ContractAudit =
     CONTRACT_AUDITS[selectedContractId] || CONTRACT_AUDITS["employment-agreement"];
 
-  // Handle file drop or selection - real API upload
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const processFile = async (file: File) => {
     if (!file) return;
     setDispatchedDecision(null);
     setLawyerSealApplied(false);
-    setIsAnalyzing(true);
     setUploadError(null);
 
     const isSupported = /\.(pdf|docx|doc|png|jpe?g)$/i.test(file.name);
@@ -142,16 +146,19 @@ export default function ContractMindPage() {
       return;
     }
 
+    setIsAnalyzing(true);
     try {
       const result = await uploadContract(file);
       setApiContractId(String(result.contract_id));
       setApiAuditResult(result);
+      
       try {
         if (typeof window !== "undefined") {
           localStorage.setItem(`contract_audit_${result.contract_id}`, JSON.stringify(result));
           if (result.memo_id) localStorage.setItem(`contract_audit_${result.memo_id}`, JSON.stringify(result));
         }
       } catch {}
+      
       if (refreshUser) refreshUser().catch(() => {});
       setIsAnalyzing(false);
       setIsLoaded(true);
@@ -168,58 +175,21 @@ export default function ContractMindPage() {
     }
   };
 
-  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processFile(file);
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      setDispatchedDecision(null);
-      setLawyerSealApplied(false);
-      setIsAnalyzing(true);
-      setUploadError(null);
-
-      const isSupported = /\.(pdf|docx|doc|png|jpe?g)$/i.test(file.name);
-      if (!isSupported) {
-        setUploadError(
-          isBn
-            ? "ফাইল ফরম্যাট সমর্থিত নয়। ব্যাকএন্ড শুধুমাত্র .pdf, .docx, .doc, .png, .jpg ফাইল সমর্থন করে।"
-            : "Unsupported file format. The backend only allows: .pdf, .docx, .doc, .png, .jpg."
-        );
-        setIsAnalyzing(false);
-        return;
-      }
-
-      try {
-        const result = await uploadContract(file);
-        setApiContractId(String(result.contract_id));
-        setApiAuditResult(result);
-        try {
-          if (typeof window !== "undefined") {
-            localStorage.setItem(`contract_audit_${result.contract_id}`, JSON.stringify(result));
-            if (result.memo_id) localStorage.setItem(`contract_audit_${result.memo_id}`, JSON.stringify(result));
-          }
-        } catch {}
-        if (refreshUser) refreshUser().catch(() => {});
-        setIsAnalyzing(false);
-        setIsLoaded(true);
-      } catch (err: unknown) {
-        console.error("Backend upload error:", err);
-        const errorMessage = err instanceof Error ? err.message : "Unknown error";
-        setUploadError(
-          isBn
-            ? `সার্ভার ত্রুটি: ${errorMessage || "ডকুমেন্ট ক্লাউড স্টোরেজে আপলোড করা যায়নি"}`
-            : `Server Error: ${errorMessage || "Failed to upload document to secure storage"}`
-        );
-        setIsAnalyzing(false);
-        setIsLoaded(false);
-      }
+      processFile(e.dataTransfer.files[0]);
     }
   };
 
-  // Dispatch to advocate via matching algorithm + real API
   const handleSendToAdvocate = async () => {
     setIsDispatching(true);
     
-    // Try real API first (if user has uploaded a contract)
     if (apiContractId) {
       try {
         const verifRes = await requestLawyerVerification(apiContractId);
@@ -236,7 +206,6 @@ export default function ContractMindPage() {
       }
     }
 
-    // Always run local demo dispatch for UI feedback
     setTimeout(() => {
       const domainMap: Record<string, string> = {
         "employment-agreement": "LABOUR_EMPLOYMENT",
@@ -261,11 +230,8 @@ export default function ContractMindPage() {
       setDispatchedDecision(decision);
       setIsDispatching(false);
 
-      // Persist to local lawyer pending queue for demo inspection
       if (typeof window !== "undefined") {
-        const existing = JSON.parse(
-          localStorage.getItem("dispatched_pending_contracts") || "[]"
-        );
+        const existing = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]");
         const newEntry = {
           id: `cnt-${Date.now().toString().slice(-4)}`,
           clientName: user?.name ? `${user.name} (Client)` : "Client",
@@ -280,20 +246,13 @@ export default function ContractMindPage() {
           priority: currentAudit.stats.highRiskCount > 2 ? "high" : "normal",
           contractId: currentContract.id,
         };
-        localStorage.setItem(
-          "dispatched_pending_contracts",
-          JSON.stringify([newEntry, ...existing])
-        );
+        localStorage.setItem("dispatched_pending_contracts", JSON.stringify([newEntry, ...existing]));
       }
     }, 600);
   };
 
-  // Print / PDF ডায়ালগ ওপেন হবে
-  const handleDownloadReport = () => {
-    window.print();
-  };
+  const handleDownloadReport = () => window.print();
 
-  // Open contract in Legal Copilot
   const handleOpenInCopilot = () => {
     const auditObj = apiAuditResult as unknown as Record<string, unknown> | null;
     const currentAuditObj = currentAudit as unknown as Record<string, unknown>;
@@ -320,37 +279,28 @@ export default function ContractMindPage() {
     router.push("/copilot");
   };
 
-  // Generate and sanitize markdown audit representation
   const rawAuditContent = apiAuditResult
     ? generateRealContractAuditMarkdown(
         apiAuditResult,
         language as "en" | "bn",
-        dispatchedDecision
-          ? {
-              advocateName: dispatchedDecision.lawyer.name,
-              barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
-              verifiedAt: "18 Oct 2026, 4:52 PM",
-              sealApplied: lawyerSealApplied,
-              advocateNotes: lawyerSealApplied
-                ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful."
-                : undefined,
-            }
-          : undefined
+        dispatchedDecision ? {
+          advocateName: dispatchedDecision.lawyer.name,
+          barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
+          verifiedAt: "18 Oct 2026, 4:52 PM",
+          sealApplied: lawyerSealApplied,
+          advocateNotes: lawyerSealApplied ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful." : undefined,
+        } : undefined
       )
     : generateContractAuditMarkdown(
         currentContract.id,
         language as "en" | "bn",
-        dispatchedDecision
-          ? {
-              advocateName: dispatchedDecision.lawyer.name,
-              barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
-              verifiedAt: "18 Oct 2026, 4:52 PM",
-              sealApplied: lawyerSealApplied,
-              advocateNotes: lawyerSealApplied
-                ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful."
-                : undefined,
-            }
-          : undefined
+        dispatchedDecision ? {
+          advocateName: dispatchedDecision.lawyer.name,
+          barCouncilNo: dispatchedDecision.lawyer.barCouncilNo,
+          verifiedAt: "18 Oct 2026, 4:52 PM",
+          sealApplied: lawyerSealApplied,
+          advocateNotes: lawyerSealApplied ? "Reviewed and cross-examined against relevant Bangladesh Statutes. Redlines confirmed lawful." : undefined,
+        } : undefined
       );
 
   const markdownAuditContent = sanitizeAuditMarkdown(rawAuditContent);
@@ -359,22 +309,10 @@ export default function ContractMindPage() {
     <AppShell>
       <div className="w-full min-h-screen pb-32 font-sans" style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
         
-        {/* Hidden File Input */}
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
-          className="hidden"
-          onChange={handleFileUpload}
-        />
+        <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg" className="hidden" onChange={handleFileUpload} />
 
-        {/* ==================================================================== */}
-        {/* STATE 1: INITIAL UPLOAD STAGE (DEFAULT BEFORE ANY CONTRACT IS LOADED) */}
-        {/* ==================================================================== */}
         {!isLoaded ? (
           <div className="max-w-3xl mx-auto pt-16 sm:pt-24 px-4 flex flex-col items-center text-center">
-            
-            {/* Header */}
             <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-(--text-primary)">
               {language === "bn" ? "কন্ট্রাক্টমাইন্ড" : "ContractMind"}
             </h1>
@@ -384,25 +322,21 @@ export default function ContractMindPage() {
                 : "Upload any contract to audit statutory violations and generate compliant redlines under Bangladesh law."}
             </p>
 
-            {/* Error Banner if upload fails */}
             {uploadError && (
               <div className="w-full max-w-xl mb-6 p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/50 text-rose-700 dark:text-rose-300 flex items-start gap-3 text-left animate-in fade-in">
                 <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5 text-rose-600 dark:text-rose-400" />
                 <div className="flex-1">
-                  <p className="text-xs font-bold mb-0.5">
-                    {language === "bn" ? "সার্ভার আপলোড ত্রুটি" : "Server Upload Error"}
-                  </p>
+                  <p className="text-xs font-bold mb-0.5">{language === "bn" ? "সার্ভার আপলোড ত্রুটি" : "Server Upload Error"}</p>
                   <p className="text-xs opacity-90 leading-relaxed">{uploadError}</p>
                 </div>
               </div>
             )}
 
-            {/* Expansive Clean Drag & Drop Area */}
             <div
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              className="w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center cursor-pointer group shadow-sm mb-6 bg-(--bg-surface)"
+              onClick={() => !isAnalyzing && fileInputRef.current?.click()}
+              className={`w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center group shadow-sm mb-6 bg-(--bg-surface) ${isAnalyzing ? "cursor-wait opacity-80" : "cursor-pointer"}`}
             >
               <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4 bg-(--bg-card) text-(--text-primary)">
                 <Upload className="w-6 h-6 stroke-2" />
@@ -412,41 +346,26 @@ export default function ContractMindPage() {
                 <div className="space-y-2 text-center py-2">
                   <div className="w-5 h-5 rounded-full border-2 border-neutral-300 border-t-black dark:border-t-white animate-spin mx-auto" />
                   <p className="text-sm font-medium text-(--text-primary)">
-                    {language === "bn"
-                      ? "চুক্তি আপলোড ও বিশ্লেষণ করা হচ্ছে..."
-                      : "Uploading and evaluating contract against statutory provisions..."}
+                    {language === "bn" ? "চুক্তি লোড ও বিশ্লেষণ করা হচ্ছে..." : "Loading and evaluating contract..."}
                   </p>
                 </div>
               ) : (
                 <>
                   <p className="text-base font-semibold mb-1 text-(--text-primary)">
-                    {language === "bn"
-                      ? "চুক্তির ফাইল এখানে ড্রপ করুন অথবা ব্রাউজ করুন"
-                      : "Drop contract PDF or DOCX here, or browse"}
+                    {language === "bn" ? "চুক্তির ফাইল এখানে ড্রপ করুন অথবা ব্রাউজ করুন" : "Drop contract PDF or DOCX here, or browse"}
                   </p>
                   <p className="text-xs text-(--text-muted)">
-                    {language === "bn"
-                      ? "সমর্থিত ফরম্যাট: .PDF, .DOCX, .DOC, .PNG, .JPG (সর্বোচ্চ ১৫ মেগাবাইট)"
-                      : "Supported formats: .PDF, .DOCX, .DOC, .PNG, .JPG (Max 15MB)"}
+                    {language === "bn" ? "সমর্থিত ফরম্যাট: .PDF, .DOCX, .DOC, .PNG, .JPG (সর্বোচ্চ ১৫ মেগাবাইট)" : "Supported formats: .PDF, .DOCX, .DOC, .PNG, .JPG (Max 15MB)"}
                   </p>
-                  <button
-                    type="button"
-                    className="mt-6 px-5 py-2.5 rounded-full bg-(--accent-solid) text-(--accent-contrast) text-xs font-semibold hover:opacity-90 transition-opacity shadow-sm cursor-pointer"
-                  >
+                  <button type="button" className="mt-6 px-5 py-2.5 rounded-full bg-(--accent-solid) text-(--accent-contrast) text-xs font-semibold hover:opacity-90 transition-opacity shadow-sm cursor-pointer">
                     {language === "bn" ? "ফাইল নির্বাচন করুন" : "Browse Files"}
                   </button>
                 </>
               )}
             </div>
-
           </div>
         ) : (
-          /* ==================================================================== */
-          /* STATE 2: ACTIVE CONTRACT ANALYSIS VIEW (BORDERLESS NATURAL READING)  */
-          /* ==================================================================== */
           <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 print:pt-0 print:px-0 print:max-w-none">
-
-            {/* Print-Only Official Legal Audit Memo Header */}
             <div className="hidden print:block pb-6 mb-8 border-b-2 border-neutral-900">
               <div className="flex justify-between items-baseline mb-2 text-xs font-mono uppercase tracking-widest text-neutral-800">
                 <span className="font-bold">CONFIDENTIAL ATTORNEY-CLIENT AUDIT MEMORANDUM</span>
@@ -458,10 +377,15 @@ export default function ContractMindPage() {
               </div>
             </div>
 
-            {/* Back & Actions Bar */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 print:hidden">
               <button
-                onClick={() => setIsLoaded(false)}
+                onClick={() => {
+                  setIsLoaded(false);
+                  setApiAuditResult(null);
+                  setApiContractId(null);
+                  setDispatchedDecision(null);
+                  router.push("/contractmind");
+                }}
                 className="text-xs font-medium flex items-center gap-1.5 transition-colors opacity-60 hover:opacity-100 cursor-pointer text-(--text-primary)"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
@@ -469,30 +393,21 @@ export default function ContractMindPage() {
               </button>
 
               <div className="flex items-center gap-2">
-                <button
-                  onClick={handleDownloadReport}
-                  className="px-3 py-1.5 rounded-xl border border-(--text-primary)/10 text-xs font-medium text-(--text-muted) hover:text-(--text-primary) flex items-center gap-1.5 transition-colors cursor-pointer"
-                >
+                <button onClick={handleDownloadReport} className="px-3 py-1.5 rounded-xl border border-(--text-primary)/10 text-xs font-medium text-(--text-muted) hover:text-(--text-primary) flex items-center gap-1.5 transition-colors cursor-pointer">
                   <Printer className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "প্রিন্ট / পিডিএফ" : "Print / PDF"}</span>
                 </button>
-
-                <button
-                  onClick={() => handleOpenInCopilot()}
-                  className="px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer"
-                >
+                <button onClick={() => handleOpenInCopilot()} className="px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer">
                   <Bot className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "কোপাইলট আলোচনা" : "Open in Copilot"}</span>
                 </button>
               </div>
             </div>
 
-            {/* Sovereign Contract Statutory Audit Document */}
             <div className="space-y-6">
               <MarkdownViewer content={markdownAuditContent} />
             </div>
 
-            {/* Bottom Actions: Download & Verify by Lawyer */}
             <div className="mt-8 p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-sm print:hidden">
               {!dispatchedDecision ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -511,21 +426,11 @@ export default function ContractMindPage() {
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                    <button
-                      type="button"
-                      onClick={handleDownloadReport}
-                      className="px-4 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer"
-                    >
+                    <button onClick={handleDownloadReport} className="px-4 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer">
                       <Download className="w-4 h-4 text-(--text-muted)" />
                       <span>{language === "bn" ? "ডাউনলোড রিপোর্ট (PDF)" : "Download Report (PDF)"}</span>
                     </button>
-
-                    <button
-                      type="button"
-                      onClick={handleSendToAdvocate}
-                      disabled={isDispatching}
-                      className="px-5 py-2.5 rounded-xl text-xs font-bold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 flex items-center gap-2 transition-opacity cursor-pointer shadow-sm disabled:opacity-50"
-                    >
+                    <button onClick={handleSendToAdvocate} disabled={isDispatching} className="px-5 py-2.5 rounded-xl text-xs font-bold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 flex items-center gap-2 transition-opacity cursor-pointer shadow-sm disabled:opacity-50">
                       {isDispatching ? (
                         <>
                           <div className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
@@ -551,9 +456,7 @@ export default function ContractMindPage() {
                       <div>
                         <div className="flex items-center gap-2 flex-wrap">
                           <h3 className="text-sm sm:text-base font-bold text-emerald-700 dark:text-emerald-400">
-                            {language === "bn"
-                              ? "চুক্তিপত্রটি সফলভাবে আইনজীবীর কাছে পাঠানো হয়েছে"
-                              : "Contract Dispatched to Advocate"}
+                            {language === "bn" ? "চুক্তিপত্রটি সফলভাবে আইনজীবীর কাছে পাঠানো হয়েছে" : "Contract Dispatched to Advocate"}
                           </h3>
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 font-bold">
                             Assigned: {dispatchedDecision.lawyer.id}
@@ -563,28 +466,17 @@ export default function ContractMindPage() {
                           {dispatchedDecision.lawyer.name} ({dispatchedDecision.lawyer.barCouncilNo})
                         </p>
                         <p className="text-xs text-(--text-muted) mt-0.5">
-                          {language === "bn"
-                            ? "আইনজীবী তার ওয়ার্কস্পেস থেকে চুক্তিটি পর্যালোচনা করে সংবিধিবদ্ধ সিলমোহর প্রদান করবেন।"
-                            : "The advocate has received your contract in their pending queue for verification."}
+                          {language === "bn" ? "আইনজীবী তার ওয়ার্কস্পেস থেকে চুক্তিটি পর্যালোচনা করে সংবিধিবদ্ধ সিলমোহর প্রদান করবেন।" : "The advocate has received your contract in their pending queue for verification."}
                         </p>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={handleDownloadReport}
-                        className="px-3.5 py-2 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
+                      <button onClick={handleDownloadReport} className="px-3.5 py-2 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-1.5 transition-colors cursor-pointer">
                         <Download className="w-3.5 h-3.5 text-(--text-muted)" />
                         <span>{language === "bn" ? "ডাউনলোড" : "Download"}</span>
                       </button>
-
-                      <button
-                        type="button"
-                        onClick={() => router.push("/lawyer/pending")}
-                        className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-semibold hover:bg-amber-500/20 flex items-center gap-1.5 transition-colors cursor-pointer"
-                      >
+                      <button onClick={() => router.push("/lawyer/pending")} className="px-4 py-2 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-300 text-xs font-semibold hover:bg-amber-500/20 flex items-center gap-1.5 transition-colors cursor-pointer">
                         <span>{language === "bn" ? "আইনজীবী কিউতে দেখুন →" : "View in Lawyer Queue →"}</span>
                       </button>
                     </div>
@@ -593,7 +485,6 @@ export default function ContractMindPage() {
               )}
             </div>
 
-            {/* Official Legal Print Footer */}
             <div className="hidden print:block pt-8 mt-12 border-t border-neutral-300 text-xs text-neutral-500 space-y-1.5 font-sans break-inside-avoid print-avoid-break">
               <div className="flex justify-between items-baseline text-[11px] font-medium text-neutral-700">
                 <span>ContractMind · Autonomous Statutory Contract Auditor</span>
@@ -603,10 +494,8 @@ export default function ContractMindPage() {
                 Notice: This legal audit report is computer-generated based on statutory rules under the Bangladesh Labour Act 2006, The Contract Act 1872, and relevant codified legislation. For formal legal representation or litigation proceedings, consultation with a Supreme Court Advocate is recommended.
               </p>
             </div>
-
           </div>
         )}
-
       </div>
     </AppShell>
   );

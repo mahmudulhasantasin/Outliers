@@ -1497,3 +1497,8 @@ export async function getSharedContracts(): Promise<SharedContractItem[]> {
     return [];
   }
 }
+
+/** Get specific contract details by ID (GET /api/contracts/{id}) */
+export async function getContractDetail(contractId: string | number): Promise<ContractAuditResult> {
+  return api.get<ContractAuditResult>(`/api/contracts/${contractId}`);
+}
