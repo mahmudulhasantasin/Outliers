@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
@@ -128,29 +129,29 @@ export default function ProfilePage() {
 
   const isLawyer = String(user.role).toUpperCase() === "LAWYER";
   
-  // ✅ NEW: Check if the user is an Enterprise Admin or Member
-  const isEnterprise = 
-    String(user.role).toLowerCase().includes("enterprise") || 
-    user.role === "enterprise_admin" || 
-    user.role === "enterprise_member";
+  // ✅ FIX: Separate Admin and Member logic
+  const isEnterpriseAdmin = String(user.role).toLowerCase() === "enterprise_admin";
+  const isEnterpriseMember = String(user.role).toLowerCase() === "enterprise_member";
 
-  // ✅ NEW: Determine which balance to show
-  const displayBalance = isEnterprise 
-    ? (user.enterprise_credit_balance ?? 0) 
-    : (user.creditBalance ?? 0);
+  // ✅ FIX: Dynamic Balance Logic
+  let displayBalance = user?.creditBalance ?? 0;
+  let balanceLabel = isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance";
+  let balanceDesc = isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations";
+  let topUpLabel = isBn ? "প্যাকেজ কিনুন" : "Top up credits";
 
-  const balanceLabel = isEnterprise 
-    ? (isBn ? "কোম্পানি পুল ক্রেডিট" : "Company Pool Credits")
-    : (isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance");
-
-  const balanceDesc = isEnterprise
-    ? (isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ব্যবহৃত হয়" : "Shared company credit pool")
-    : (isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations");
-
-  const topUpLabel = isEnterprise
-    ? (isBn ? "কোম্পানি পুল রিচার্জ" : "Top up Company Pool")
-    : (isBn ? "প্যাকেজ কিনুন" : "Top up credits");
-
+  if (isEnterpriseAdmin) {
+    displayBalance = user?.enterprise_credit_balance ?? 0;
+    balanceLabel = isBn ? "কোম্পানি পুল ক্রেডিট" : "Company Pool Credits";
+    balanceDesc = isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ব্যবহৃত হয়" : "Shared company credit pool";
+    topUpLabel = isBn ? "কোম্পানি পুল রিচার্জ" : "Top up Company Pool";
+  } else if (isEnterpriseMember) {
+    const quota = user?.member_credit_quota ?? 0;
+    const used = user?.member_credit_used ?? 0;
+    displayBalance = Math.max(0, quota - used); // ✅ Member sees remaining quota
+    balanceLabel = isBn ? "আপনার কোটা" : "Your Quota";
+    balanceDesc = isBn ? `মোট বরাদ্দ: ${quota} ক্রেডিট` : `Total Allocated: ${quota} credits`;
+    topUpLabel = isBn ? "কোটা দেখুন" : "View Quota";
+  }
 
   const lawyerProfile = user.lawyerProfile || {
     barCouncilNo: isBn ? "প্রদান করা হয়নি" : "Not Provided",
@@ -411,12 +412,12 @@ export default function ProfilePage() {
                     <Gavel className="w-3 h-3" />
                     <span>{isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer"}</span>
                   </span>
-                ) : user.role === "enterprise_admin" || (user.role === "enterprise" && !user.enterpriseProfile?.isTeamMember) ? (
+                ) : isEnterpriseAdmin ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
                     <span>{isBn ? "এন্টারপ্রাইজ অ্যাডমিন" : "Enterprise Admin"}</span>
                   </span>
-                ) : user.role === "enterprise_member" || (user.role === "enterprise" && user.enterpriseProfile?.isTeamMember) ? (
+                ) : isEnterpriseMember ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
                     <span>{isBn ? "এন্টারপ্রাইজ সদস্য" : "Enterprise Member"}</span>

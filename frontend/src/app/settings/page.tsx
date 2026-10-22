@@ -70,25 +70,27 @@ export default function SettingsPage() {
     ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "U";
 
-  // ✅ NEW: Check if user is Enterprise
-  const isEnterprise = 
-    String(user?.role).toLowerCase().includes("enterprise") || 
-    user?.role === "enterprise_admin" || 
-    user?.role === "enterprise_member";
+  // ✅ FIX: Separate Admin and Member logic
+  const isEnterpriseAdmin = String(user?.role).toLowerCase() === "enterprise_admin";
+  const isEnterpriseMember = String(user?.role).toLowerCase() === "enterprise_member";
+  const isEnterprise = isEnterpriseAdmin || isEnterpriseMember;
 
-  // ✅ NEW: Determine which balance to show
-  const displayBalance = isEnterprise 
-    ? (user?.enterprise_credit_balance ?? 0) 
-    : (user?.creditBalance ?? 0);
+  // ✅ FIX: Dynamic Balance Logic
+  let displayBalance = user?.creditBalance ?? 0;
+  let balanceLabel = isBn ? "উপলব্ধ অ্যাকাউন্ট ক্রেডিট ব্যালেন্স:" : "Available Credit Balance:";
+  let balanceDesc = isBn ? "৫০ ক্রেডিট = ১টি সম্পূর্ণ চুক্তি অডিট" : "50 credits = 1 full contract statutory audit";
 
-  const balanceLabel = isEnterprise 
-    ? (isBn ? "কোম্পানি পুল ক্রেডিট ব্যালেন্স:" : "Company Pool Credit Balance:")
-    : (isBn ? "উপলব্ধ অ্যাকাউন্ট ক্রেডিট ব্যালেন্স:" : "Available Credit Balance:");
-
-  const balanceDesc = isEnterprise
-    ? (isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ক্রেডিট কাটা হবে" : "Deducted from company shared credit pool")
-    : (isBn ? "৫০ ক্রেডিট = ১টি সম্পূর্ণ চুক্তি অডিট" : "50 credits = 1 full contract statutory audit");
-
+  if (isEnterpriseAdmin) {
+    displayBalance = user?.enterprise_credit_balance ?? 0;
+    balanceLabel = isBn ? "কোম্পানি পুল ক্রেডিট ব্যালেন্স:" : "Company Pool Credit Balance:";
+    balanceDesc = isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ক্রেডিট কাটা হবে" : "Deducted from company shared credit pool";
+  } else if (isEnterpriseMember) {
+    const quota = user?.member_credit_quota ?? 0;
+    const used = user?.member_credit_used ?? 0;
+    displayBalance = Math.max(0, quota - used);
+    balanceLabel = isBn ? "আপনার অবশিষ্ট কোটা:" : "Your Remaining Quota:";
+    balanceDesc = isBn ? "পুল টপ-আপ করতে আপনার কোম্পানি অ্যাডমিনের সাথে যোগাযোগ করুন।" : "Contact your company admin to top up the pool.";
+  }
 
   const handleProfilePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -448,13 +450,19 @@ export default function SettingsPage() {
                 </div>
                 <p className="text-[11px] text-(--text-muted) mt-1">{balanceDesc}</p>
               </div>
-              <button type="button" onClick={() => router.push("/pricing")} className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto shrink-0 shadow-xs">
-                <Coins className="w-4 h-4 text-amber-400" />
-                <span>{isBn ? "প্যাকেজ কিনুন (bKash)" : "Buy Packages"}</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </button>
+              
+              {/* ✅ MEMBER er jonno Buy button hide koro */}
+              {!isEnterpriseMember && (
+                <button type="button" onClick={() => router.push("/pricing")} className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto shrink-0 shadow-xs">
+                  <Coins className="w-4 h-4 text-amber-400" />
+                  <span>{isEnterpriseAdmin ? (isBn ? "পুল রিচার্জ করুন" : "Top up Pool") : (isBn ? "প্যাকেজ কিনুন" : "Buy Packages")}</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            {paymentSummary && paymentSummary.total_topup_bdt > 0 && (
+            
+            {/* History show only for non-members (since members don't top up) */}
+            {paymentSummary && paymentSummary.total_topup_bdt > 0 && !isEnterpriseMember && (
               <div className="grid grid-cols-2 gap-3 text-xs">
                 <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/5">
                   <span className="text-(--text-muted) block mb-0.5">{isBn ? "মোট টপ-আপ" : "Total Top-up"}</span>

@@ -272,6 +272,11 @@ export async function deleteContract(
   return api.delete<{ status: string; message: string }>(`/api/contracts/${contractId}`);
 }
 
+/** Get specific contract details by ID (GET /api/contracts/{id}) */
+export async function getContractDetail(contractId: string | number): Promise<ContractAuditResult> {
+  return api.get<ContractAuditResult>(`/api/contracts/${contractId}`);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // CHAT TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────
@@ -723,7 +728,6 @@ export async function requestWithdrawal(
 // ENTERPRISE ADMIN TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────
 
-// ✅ FIX: Backend response structure matched
 export interface CompanyDashboard {
   enterprise: {
     id: number;
@@ -1498,7 +1502,7 @@ export async function getSharedContracts(): Promise<SharedContractItem[]> {
   }
 }
 
-/** Get specific contract details by ID (GET /api/contracts/{id}) */
+/** Get specific contract details by ID (GET /api/contracts/{id}) 
 export async function getContractDetail(contractId: string | number): Promise<ContractAuditResult> {
   return api.get<ContractAuditResult>(`/api/contracts/${contractId}`);
-}
+}*/

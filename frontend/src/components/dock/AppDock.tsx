@@ -109,7 +109,6 @@ export default function AppDock() {
       isActive: pathname.startsWith("/enterprise/admin"),
       onClick: () => router.push("/enterprise/admin"),
     },
-    // ✅ FIX: এন্টারপ্রাইজ অ্যাডমিনের জন্য Copilot বাটন যুক্ত করা হলো
     {
       icon: <Bot className="w-5 h-5 stroke-[2.4]" />,
       label: isBn ? "এডভোটেক কোপাইলট (Q&A)" : "Advotech Copilot",
@@ -167,6 +166,13 @@ export default function AppDock() {
       label: isBn ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
       isActive: pathname === "/archive",
       onClick: () => router.push("/archive"),
+    },
+    // ✅ FIX: Enterprise Member er jonno Settings add kora holo
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
     },
     {
       icon: <User className="w-5 h-5" />,

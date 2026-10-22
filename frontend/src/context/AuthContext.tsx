@@ -76,6 +76,11 @@ export interface UserProfile {
   isPhoneVerified: boolean;
   creditBalance: number;
   enterprise_credit_balance?: number | null; // ✅ NEW: Company Pool Balance
+  
+  // ✅ NEW: Member Quota Fields
+  member_credit_quota?: number | null;
+  member_credit_used?: number | null;
+
   lawyerProfile?: LawyerProfile;
   enterpriseProfile?: EnterpriseProfile;
 }
@@ -230,6 +235,8 @@ function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserP
     isPhoneVerified: u.is_phone_verified,
     creditBalance: u.credit_balance,
     enterprise_credit_balance: null, // Will be fetched from /me
+    member_credit_quota: null,       // ✅ NEW
+    member_credit_used: null,        // ✅ NEW
     lawyerProfile: normRole === "lawyer" ? {
       barCouncilNo: "",
       fieldOfLaw: "",
@@ -276,7 +283,12 @@ function meResponseToProfile(data: any): UserProfile {
     isEmailVerified: data.is_verified ?? false,
     isPhoneVerified: data.is_phone_verified ?? false,
     creditBalance: data.credit_balance ?? 0,
-    enterprise_credit_balance: data.enterprise_credit_balance ?? null, // ✅ NEW
+    enterprise_credit_balance: data.enterprise_credit_balance ?? null,
+    
+    // ✅ NEW: Mapping member quota fields
+    member_credit_quota: data.member_credit_quota ?? null,
+    member_credit_used: data.member_credit_used ?? null,
+
     lawyerProfile,
     enterpriseProfile: data.enterprise_profile
       ? {
@@ -310,6 +322,8 @@ const DEMO_GENERAL: UserProfile = {
   isPhoneVerified: false,
   creditBalance: 500,
   enterprise_credit_balance: null,
+  member_credit_quota: null,
+  member_credit_used: null,
 };
 
 const DEMO_LAWYER: UserProfile = {
@@ -327,6 +341,8 @@ const DEMO_LAWYER: UserProfile = {
   isPhoneVerified: true,
   creditBalance: 0,
   enterprise_credit_balance: null,
+  member_credit_quota: null,
+  member_credit_used: null,
   lawyerProfile: {
     barCouncilNo: "BC-48291/2019",
     fieldOfLaw: "Corporate & Labour Law",
@@ -349,8 +365,10 @@ const DEMO_ENTERPRISE_ADMIN: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: true,
-  creditBalance: 0, // Admin personal credit 0
-  enterprise_credit_balance: 5000, // ✅ NEW: Demo Company Pool Balance
+  creditBalance: 0,
+  enterprise_credit_balance: 5000,
+  member_credit_quota: null,
+  member_credit_used: null,
   enterpriseProfile: {
     companyName: "Apex Holdings Ltd.",
     companyType: "Private Limited",
@@ -377,8 +395,13 @@ const DEMO_ENTERPRISE_MEMBER: UserProfile = {
   avatarUrl: "",
   isEmailVerified: true,
   isPhoneVerified: true,
-  creditBalance: 0, // Member personal credit 0
-  enterprise_credit_balance: 5000, // ✅ NEW: Demo Company Pool Balance
+  creditBalance: 0,
+  enterprise_credit_balance: 5000,
+  
+  // ✅ NEW: Demo Quota Data
+  member_credit_quota: 250,
+  member_credit_used: 120,
+
   enterpriseProfile: {
     companyName: "Apex Holdings Ltd.",
     companyType: "Private Limited",
@@ -407,6 +430,8 @@ const DEMO_ADMIN: UserProfile = {
   isPhoneVerified: true,
   creditBalance: 99999,
   enterprise_credit_balance: null,
+  member_credit_quota: null,
+  member_credit_used: null,
 };
 
 // ─── Provider ─────────────────────────────────────────────────────────────
