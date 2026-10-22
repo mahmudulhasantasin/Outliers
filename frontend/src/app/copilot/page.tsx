@@ -51,6 +51,36 @@ interface ChatMessage {
   thoughtSeconds?: number;
 }
 
+function parseServerContent(content: unknown) {
+  let target = content;
+  if (typeof target === "string") {
+    try {
+      target = JSON.parse(target);
+    } catch {
+      return {
+        answerText: content as string,
+        apiCitations: [] as CitedSection[],
+        nextSteps: [] as string[],
+      };
+    }
+  }
+
+  if (target && typeof target === "object") {
+    const obj = target as Record<string, unknown>;
+    return {
+      answerText: (obj.detailed_answer as string) || (obj.response as string) || "",
+      apiCitations: (obj.cited_sections as CitedSection[]) || [],
+      nextSteps: (obj.suggested_next_steps as string[]) || [],
+    };
+  }
+
+  return {
+    answerText: String(content || ""),
+    apiCitations: [] as CitedSection[],
+    nextSteps: [] as string[],
+  };
+}
+
 function groupSessions(sessions: ChatSession[]) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -78,7 +108,7 @@ function groupSessions(sessions: ChatSession[]) {
 }
 
 export default function CopilotPage() {
-  // ✅ FIX: router ভ্যারিয়েবলটি রিমুভ করা হলো
+  // ✅ FIX: router ভ্যারিয়েবলটি রিমুভ করা হলো
   const { language } = useLanguage();
   const { theme } = useTheme();
   const { user, updateUser } = useAuth();
@@ -121,17 +151,21 @@ export default function CopilotPage() {
           getChatSessionHistory(sid).then((history) => {
             if (!isMounted) return;
             if (history && history.messages) {
-              const mapped: ChatMessage[] = history.messages.map((m, idx) => ({
-                id: `hist-${idx}-${Date.now()}`,
-                sender: m.role === "assistant" ? "copilot" : "user",
-                timestamp: m.created_at
-                  ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                  : "History",
-                textEn: m.content,
-                textBn: m.content,
-                apiCitations: m.citations || undefined,
-                isThinking: false,
-              }));
+              const mapped: ChatMessage[] = history.messages.map((m, idx) => {
+                const parsedData = parseServerContent(m.content);
+                return {
+                  id: `hist-${idx}-${Date.now()}`,
+                  sender: m.role === "assistant" ? "copilot" : "user",
+                  timestamp: m.created_at
+                    ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                    : "History",
+                  textEn: parsedData.answerText || m.content,
+                  textBn: parsedData.answerText || m.content,
+                  apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
+                  nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
+                  isThinking: false,
+                };
+              });
               setMessages(mapped);
             }
           }).catch(err => console.warn("Could not load existing session:", err))
@@ -162,7 +196,7 @@ export default function CopilotPage() {
 
               const introEn = `📋 **Contract Context Attached: ${parsed.titleEn || title}**\n\n${partiesText ? `- **Parties:** ${partiesText}\n` : ""}${riskText ? `- **Assessed Risk:** ${parsed.riskGradeEn || "Audited"} (${riskText})\n` : ""}${summaryText ? `- **Audit Summary:** ${summaryText}\n` : ""}\nI have loaded this agreement and its statutory audit records into our new consultation session. You can ask me to redline any clause under Bangladesh statutes (Labour Act 2006, Contract Act 1872), explain non-compliance liabilities, or draft protective terms. How can I help you?`;
 
-              const introBn = `📋 **চুক্তিপত্রের কনটেক্সট সংযুক্ত হয়েছে: ${parsed.titleBn || title}**\n\n${partiesText ? `- **পক্ষসমূহ:** ${partiesText}\n` : ""}${riskText ? `- **আইনি ঝুঁকি:** ${parsed.riskGradeBn || "অডিট সম্পন্ন"} (${riskText})\n` : ""}${summaryText ? `- **অডিট সারাংশ:** ${summaryText}\n` : ""}\nএই চুক্তিপত্র এবং এর অডিট রেকর্ড নতুন চ্যাট সেশনে লোড করা হয়েছে। আপনি বাংলাদেশ আইন (শ্রম আইন ২০০৬, চুক্তি আইন ১৮৭২) অনুযায়ী ধারা সংশোধন, লিগ্যাল ঝুঁকি এবং ড্রাফটিং নিয়ে প্রশ্ন করতে পারেন। আমি কীভাবে সাহায্য করতে পারি?`;
+              const introBn = `📋 **চুক্তিপত্রের কনটেক্সট সংযুক্ত হয়েছে: ${parsed.titleBn || title}**\n\n${partiesText ? `- **পক্ষসমূহ:** ${partiesText}\n` : ""}${riskText ? `- **আইনি ঝুঁকি:** ${parsed.riskGradeBn || "অডিট সম্পন্ন"} (${riskText})\n` : ""}${summaryText ? `- **অডিট সারাংশ:** ${summaryText}\n` : ""}\nএই চুক্তিপত্র এবং এর অডিট রেকর্ড নতুন চ্যাট সেশনে লোড করা হয়েছে। আপনি বাংলাদেশ আইন (শ্রম আইন ২০০৬, চুক্তি আইন ১৮৭২) অনুযায়ী ধারা সংশোধন, লিগ্যাল ঝুঁকি এবং ড্রাফটিং নিয়ে প্রশ্ন করতে পারেন। আমি কীভাবে সাহায্য করতে পারি?`;
 
               setMessages([
                 {
@@ -216,17 +250,21 @@ export default function CopilotPage() {
     try {
       const history = await getChatSessionHistory(sid);
       if (history && history.messages) {
-        const mapped: ChatMessage[] = history.messages.map((m, idx) => ({
-          id: `hist-${idx}-${Date.now()}`,
-          sender: m.role === "assistant" ? "copilot" : "user",
-          timestamp: m.created_at
-            ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-            : "History",
-          textEn: m.content,
-          textBn: m.content,
-          apiCitations: m.citations || undefined,
-          isThinking: false,
-        }));
+        const mapped: ChatMessage[] = history.messages.map((m, idx) => {
+          const parsedData = parseServerContent(m.content);
+          return {
+            id: `hist-${idx}-${Date.now()}`,
+            sender: m.role === "assistant" ? "copilot" : "user",
+            timestamp: m.created_at
+              ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+              : "History",
+            textEn: parsedData.answerText || m.content,
+            textBn: parsedData.answerText || m.content,
+            apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
+            nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
+            isThinking: false,
+          };
+        });
         setMessages(mapped);
       }
     } catch (err: unknown) {
@@ -337,12 +375,22 @@ export default function CopilotPage() {
       let apiCitations: CitedSection[] = [];
       let nextSteps: string[] = [];
 
-      if (typeof result.response === "string") {
-        answerText = result.response;
-      } else if (result.response && typeof result.response === "object") {
-        answerText = result.response.detailed_answer || "";
-        apiCitations = result.response.cited_sections || [];
-        nextSteps = result.response.suggested_next_steps || [];
+      let parsedPayload: unknown = result.response;
+      if (typeof parsedPayload === "string") {
+        try {
+          parsedPayload = JSON.parse(parsedPayload);
+        } catch {
+          // Plain text response fallback
+        }
+      }
+
+      if (parsedPayload && typeof parsedPayload === "object") {
+        const obj = parsedPayload as Record<string, unknown>;
+        answerText = (obj.detailed_answer as string) || (obj.response as string) || "";
+        apiCitations = (obj.cited_sections as CitedSection[]) || [];
+        nextSteps = (obj.suggested_next_steps as string[]) || [];
+      } else if (typeof parsedPayload === "string") {
+        answerText = parsedPayload;
       }
 
       if (typeof result.credits_remaining === "number" && updateUser) {
@@ -489,7 +537,7 @@ export default function CopilotPage() {
             <div className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-(--text-primary)" />
               <span className="font-semibold text-(--text-primary)">
-                {language === "bn" ? "চুক্তির কনটেক্সট সক্রিয়:" : "Active Contract:"}
+                {language === "bn" ? "চুক্তির কনটেক্সট সক্রিয়:" : "Active Contract:"}
               </span>
               <span className="text-(--text-muted)">{loadedContractTitle}</span>
             </div>
@@ -697,7 +745,7 @@ export default function CopilotPage() {
               </h2>
               <p className="text-xs sm:text-sm font-normal text-neutral-500 dark:text-neutral-400">
                 {language === "bn"
-                  ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
+                  ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
                   : isLawyer 
                   ? "Research statutes, draft notices, and analyze case law with verifiable citations"
                   : "Ask statutory questions with verifiable citations"}
@@ -756,14 +804,14 @@ export default function CopilotPage() {
         )}
 
         {/* ==================================================================== */}
-        {/* ✅ ফ্লোটিং চ্যাট হিস্ট্রি ড্রয়ার */}
+        {/* ✅ ফ্লোটিং চ্যাট হিস্ট্রি ড্রয়ার */}
         {/* ==================================================================== */}
         {showHistoryDrawer && (
           <div className="fixed inset-0 z-50 flex justify-end items-center p-3 sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
             {/* ফ্লোটিং প্যানেল কন্টেইনার */}
             <div className="w-full sm:w-105 h-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col rounded-3xl overflow-hidden bg-(--bg-card) border border-(--text-primary)/10 animate-in slide-in-from-right duration-300">
               
-              {/* ড্রয়ার হেডার */}
+              {/* ড্রয়ার হেডার */}
               <div className="p-5 border-b border-(--text-primary)/10 bg-(--bg-card)/95 backdrop-blur-md flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <History className="w-5 h-5 text-indigo-500" />
@@ -850,7 +898,7 @@ export default function CopilotPage() {
                 )}
               </div>
 
-              {/* ড্রয়ার ফুটার */}
+              {/* ড্রয়ার ফুটার */}
               <div className="p-4 border-t border-(--text-primary)/10 bg-(--bg-card) shrink-0">
                 <button onClick={() => setShowHistoryDrawer(false)} className="w-full py-2.5 rounded-xl text-xs font-medium border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer">
                   {language === "bn" ? "বন্ধ করুন" : "Close"}
