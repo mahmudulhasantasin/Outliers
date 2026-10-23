@@ -2,605 +2,583 @@
 
 import React, { useState } from "react";
 import {
-  Check,
-  AlertTriangle,
-  Info,
-  AlertCircle,
-  ShieldAlert,
-  Sparkles,
-  Copy,
-  ExternalLink,
+  Check,
+  AlertTriangle,
+  Info,
+  AlertCircle,
+  ShieldAlert,
+  Sparkles,
+  Copy,
+  ExternalLink,
 } from "lucide-react";
 
 interface MarkdownViewerProps {
-  content: string;
-  className?: string;
-  variant?: "document" | "chat";
+  content: string;
+  className?: string;
+  variant?: "document" | "chat";
 }
 
 function DiffRedlineBlock({
-  lines,
-  isChat,
+  lines,
+  isChat,
 }: {
-  lines: string[];
-  isChat: boolean;
+  lines: string[];
+  isChat: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
-  const textToCopy = lines.map((l) => l.replace(/^[+-]\s?/, "")).join("\n");
+  const [copied, setCopied] = useState(false);
+  const textToCopy = lines.map((l) => l.replace(/^[+-]\s?/, "")).join("\n");
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(textToCopy);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleCopy = () => {
+    navigator.clipboard.writeText(textToCopy);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  return (
-    <div
-      className={`my-3 sm:my-4 rounded-xl sm:rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 shadow-sm overflow-hidden text-xs print:border print:border-neutral-300 print:bg-white print:shadow-none print:my-3 print:rounded-lg print:break-inside-avoid ${
-        isChat ? "max-w-full" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between px-3.5 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/60 text-[11px] text-neutral-600 dark:text-neutral-400 print:bg-neutral-100 print:border-b print:border-neutral-300 print:text-neutral-800">
-        <div className="flex items-center gap-1.5 font-semibold tracking-wider text-[10px] uppercase">
-          <span className="w-2 h-2 rounded-full bg-amber-500 print:hidden" />
-          <span>Statutory Redline Comparison</span>
-        </div>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="flex items-center gap-1 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-[10px] print:hidden"
-          title="Copy clean draft text"
-        >
-          {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
-          <span>{copied ? "Copied" : "Copy Draft"}</span>
-        </button>
-      </div>
+  return (
+    <div
+      className={`my-3 sm:my-4 rounded-xl sm:rounded-2xl border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900/80 shadow-sm overflow-hidden text-xs print:border print:border-neutral-300 print:bg-white print:shadow-none print:my-3 print:rounded-lg print:break-inside-avoid ${
+        isChat ? "max-w-full" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between px-3.5 py-2 border-b border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-950/60 text-[11px] text-neutral-600 dark:text-neutral-400 print:bg-neutral-100 print:border-b print:border-neutral-300 print:text-neutral-800">
+        <div className="flex items-center gap-1.5 font-semibold tracking-wider text-[10px] uppercase">
+          <span className="w-2 h-2 rounded-full bg-amber-500 print:hidden" />
+          <span>Statutory Redline Comparison</span>
+        </div>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 hover:text-neutral-900 dark:hover:text-white transition-colors cursor-pointer text-[10px] print:hidden"
+          title="Copy clean draft text"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3" />}
+          <span>{copied ? "Copied" : "Copy Draft"}</span>
+        </button>
+      </div>
 
-      <div className="divide-y divide-neutral-100 dark:divide-neutral-800/60 print:divide-neutral-200 font-mono text-[11px] sm:text-xs">
-        {lines.map((line, idx) => {
-          if (line.startsWith("+")) {
-            return (
-              <div
-                key={idx}
-                className="flex items-start gap-2 px-3.5 py-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 print:bg-emerald-50 print:text-emerald-950 print:border-l-4 print:border-emerald-600"
-              >
-                <span className="select-none font-bold text-emerald-600 dark:text-emerald-400 print:text-emerald-700 shrink-0">
-                  +
-                </span>
-                <span className="flex-1 font-sans sm:font-mono font-medium leading-relaxed whitespace-pre-wrap">
-                  {line.slice(1).trim()}
-                </span>
-              </div>
-            );
-          }
-          if (line.startsWith("-")) {
-            return (
-              <div
-                key={idx}
-                className="flex items-start gap-2 px-3.5 py-2.5 bg-rose-50/90 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-l-4 border-rose-500 line-through decoration-rose-500/70 opacity-90 print:bg-rose-50 print:text-rose-950 print:border-l-4 print:border-rose-600 print:line-through"
-              >
-                <span className="select-none font-bold text-rose-600 dark:text-rose-400 print:text-rose-700 shrink-0">
-                  -
-                </span>
-                <span className="flex-1 font-sans sm:font-mono leading-relaxed whitespace-pre-wrap">
-                  {line.slice(1).trim()}
-                </span>
-              </div>
-            );
-          }
-          return (
-            <div
-              key={idx}
-              className="px-3.5 py-1.5 text-neutral-600 dark:text-neutral-400 print:text-neutral-800 leading-relaxed whitespace-pre-wrap"
-            >
-              {line}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+      <div className="divide-y divide-neutral-100 dark:divide-neutral-800/60 print:divide-neutral-200 font-mono text-[11px] sm:text-xs">
+        {lines.map((line, idx) => {
+          if (line.startsWith("+")) {
+            return (
+              <div
+                key={idx}
+                className="flex items-start gap-2 px-3.5 py-2.5 bg-emerald-50/90 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-l-4 border-emerald-500 print:bg-emerald-50 print:text-emerald-950 print:border-l-4 print:border-emerald-600"
+              >
+                <span className="select-none font-bold text-emerald-600 dark:text-emerald-400 print:text-emerald-700 shrink-0">
+                  +
+                </span>
+                <span className="flex-1 font-sans sm:font-mono font-medium leading-relaxed whitespace-pre-wrap">
+                  {line.slice(1).trim()}
+                </span>
+              </div>
+            );
+          }
+          if (line.startsWith("-")) {
+            return (
+              <div
+                key={idx}
+                className="flex items-start gap-2 px-3.5 py-2.5 bg-rose-50/90 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200 border-l-4 border-rose-500 line-through decoration-rose-500/70 opacity-90 print:bg-rose-50 print:text-rose-950 print:border-l-4 print:border-rose-600 print:line-through"
+              >
+                <span className="select-none font-bold text-rose-600 dark:text-rose-400 print:text-rose-700 shrink-0">
+                  -
+                </span>
+                <span className="flex-1 font-sans sm:font-mono leading-relaxed whitespace-pre-wrap">
+                  {line.slice(1).trim()}
+                </span>
+              </div>
+            );
+          }
+          return (
+            <div
+              key={idx}
+              className="px-3.5 py-1.5 text-neutral-600 dark:text-neutral-400 print:text-neutral-800 leading-relaxed whitespace-pre-wrap"
+            >
+              {line}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function CodeBlockItem({
-  lang,
-  lines,
-  isChat,
+  lang,
+  lines,
+  isChat,
 }: {
-  lang: string;
-  lines: string[];
-  isChat: boolean;
+  lang: string;
+  lines: string[];
+  isChat: boolean;
 }) {
-  const [copied, setCopied] = useState(false);
-  const codeText = lines.join("\n");
+  const [copied, setCopied] = useState(false);
+  const codeText = lines.join("\n");
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(codeText);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const handleCopy = () => {
+    navigator.clipboard.writeText(codeText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
-  return (
-    <div
-      className={`my-3 rounded-xl border border-[var(--text-primary)]/15 bg-neutral-900 text-neutral-100 font-mono text-xs overflow-hidden shadow-inner print:bg-white print:text-neutral-900 print:border-neutral-300 print:shadow-none print:break-inside-avoid ${
-        isChat ? "max-w-full" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-neutral-800 bg-neutral-950/70 text-[11px] text-neutral-400 print:bg-neutral-100 print:border-neutral-300 print:text-neutral-700">
-        <span className="uppercase font-semibold tracking-wider text-[10px]">
-          {lang || "code"}
-        </span>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer text-[10px] print:hidden"
-        >
-          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-          <span>{copied ? "Copied" : "Copy"}</span>
-        </button>
-      </div>
-      <pre className="p-3.5 overflow-x-auto leading-relaxed print:bg-white print:text-neutral-900 print:overflow-visible print:whitespace-pre-wrap">
-        <code>
-          {lines.map((line, idx) => {
-            let lineClass = "text-neutral-300 print:text-neutral-800";
-            if (line.startsWith("+"))
-              lineClass = "text-emerald-400 font-semibold bg-emerald-950/40 print:bg-emerald-50 print:text-emerald-950 block -mx-3.5 px-3.5";
-            else if (line.startsWith("-"))
-              lineClass = "text-rose-400 line-through opacity-80 bg-rose-950/40 print:bg-rose-50 print:text-rose-950 block -mx-3.5 px-3.5";
-            return (
-              <span key={idx} className={lineClass}>
-                {line}
-                {"\n"}
-              </span>
-            );
-          })}
-        </code>
-      </pre>
-    </div>
-  );
+  return (
+    <div
+      className={`my-3 rounded-xl border border-[var(--text-primary)]/15 bg-neutral-900 text-neutral-100 font-mono text-xs overflow-hidden shadow-inner print:bg-white print:text-neutral-900 print:border-neutral-300 print:shadow-none print:break-inside-avoid ${
+        isChat ? "max-w-full" : ""
+      }`}
+    >
+      <div className="flex items-center justify-between px-3.5 py-1.5 border-b border-neutral-800 bg-neutral-950/70 text-[11px] text-neutral-400 print:bg-neutral-100 print:border-neutral-300 print:text-neutral-700">
+        <span className="uppercase font-semibold tracking-wider text-[10px]">
+          {lang || "code"}
+        </span>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer text-[10px] print:hidden"
+        >
+          {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+          <span>{copied ? "Copied" : "Copy"}</span>
+        </button>
+      </div>
+      <pre className="p-3.5 overflow-x-auto leading-relaxed print:bg-white print:text-neutral-900 print:overflow-visible print:whitespace-pre-wrap">
+        <code>
+          {lines.map((line, idx) => {
+            let lineClass = "text-neutral-300 print:text-neutral-800";
+            if (line.startsWith("+"))
+              lineClass = "text-emerald-400 font-semibold bg-emerald-950/40 print:bg-emerald-50 print:text-emerald-950 block -mx-3.5 px-3.5";
+            else if (line.startsWith("-"))
+              lineClass = "text-rose-400 line-through opacity-80 bg-rose-950/40 print:bg-rose-50 print:text-rose-950 block -mx-3.5 px-3.5";
+            return (
+              <span key={idx} className={lineClass}>
+                {line}
+                {"\n"}
+              </span>
+            );
+          })}
+        </code>
+      </pre>
+    </div>
+  );
 }
 
 export default function MarkdownViewer({
-  content,
-  className = "",
-  variant = "document",
+  content,
+  className = "",
+  variant = "document",
 }: MarkdownViewerProps) {
-  if (!content) return null;
+  if (!content) return null;
 
-  const isChat = variant === "chat";
+  const isChat = variant === "chat";
 
-  // Helper for inline markdown: **bold**, `code`, *italic*, [link](url), and auto-detect raw URLs
-  const formatInlineText = (text: string): React.ReactNode[] => {
-    // Regex for [text](url), `code`, **bold**, *italic*, https?://..., or domain.gov.bd/etc.
-    const regex = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|https?:\/\/[^\s\)\],]+|(?:\b[a-zA-Z0-9-]+\.)+(?:gov\.bd|org|com|net|edu)(?:\/[^\s\)\],]*)?)/g;
-    const parts = text.split(regex);
+  // Helper for inline markdown: **bold**, `code`, *italic*, [link](url)
+  const formatInlineText = (text: string): React.ReactNode[] => {
+    // Regex for [text](url), `code`, **bold**, *italic*
+    const regex = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    const parts = text.split(regex);
 
-    return parts.map((part, idx) => {
-      if (!part) return null;
+    return parts.map((part, idx) => {
+      if (!part) return null;
 
-      // 1. Explicit Markdown Link: [text](url)
-      if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
-        const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
-        if (match) {
-          const href = match[2].startsWith("http") ? match[2] : `https://${match[2]}`;
-          return (
-            <a
-              key={idx}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5 font-medium"
-            >
-              <span>{match[1]}</span>
-              <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />
-            </a>
-          );
-        }
-      }
+      // Link: [text](url)
+      if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
+        const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
+        if (match) {
+          return (
+            <a
+              key={idx}
+              href={match[2]}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
+            >
+              <span>{match[1]}</span>
+              <ExternalLink className="w-2.5 h-2.5 inline" />
+            </a>
+          );
+        }
+      }
 
-      // 2. Raw URLs or Domain links: bdlaws.minlaw.gov.bd, supremecourt.gov.bd, https://...
-      if (
-        /^https?:\/\//i.test(part) ||
-        /^(?:[a-zA-Z0-9-]+\.)+(?:gov\.bd|org|com|net|edu)(?:\/[^\s]*)?$/i.test(part)
-      ) {
-        const cleanUrl = part.replace(/[.,;:)\]]+$/, ""); // ট্রেইলিং বিরামচিহ্ন পরিষ্কার করা
-        const href = cleanUrl.startsWith("http") ? cleanUrl : `https://${cleanUrl}`;
-        return (
-          <a
-            key={idx}
-            href={href}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5 font-medium"
-          >
-            <span>{cleanUrl}</span>
-            <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />
-          </a>
-        );
-      }
+      // Code: `code`
+      if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
+        return (
+          <code
+            key={idx}
+            className="px-1.5 py-0.5 mx-0.5 rounded-md font-mono text-[11px] sm:text-xs bg-[var(--text-primary)]/8 border border-[var(--text-primary)]/10 text-pink-600 dark:text-pink-400"
+          >
+            {part.slice(1, -1)}
+          </code>
+        );
+      }
 
-      // Code: `code`
-      if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
-        return (
-          <code
-            key={idx}
-            className="px-1.5 py-0.5 mx-0.5 rounded-md font-mono text-[11px] sm:text-xs bg-[var(--text-primary)]/8 border border-[var(--text-primary)]/10 text-pink-600 dark:text-pink-400"
-          >
-            {part.slice(1, -1)}
-          </code>
-        );
-      }
+      // Bold: **bold**
+      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
+        return (
+          <strong key={idx} className="font-semibold text-[var(--text-primary)]">
+            {part.slice(2, -2)}
+          </strong>
+        );
+      }
 
-      // Bold: **bold**
-      if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
-        return (
-          <strong key={idx} className="font-semibold text-[var(--text-primary)]">
-            {part.slice(2, -2)}
-          </strong>
-        );
-      }
+      // Italic: *italic*
+      if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
+        return (
+          <em key={idx} className="italic text-[var(--text-primary)]/90">
+            {part.slice(1, -1)}
+          </em>
+        );
+      }
 
-      // Italic: *italic*
-      if (part.startsWith("*") && part.endsWith("*") && part.length >= 2) {
-        return (
-          <em key={idx} className="italic text-[var(--text-primary)]/90">
-            {part.slice(1, -1)}
-          </em>
-        );
-      }
+      return part;
+    });
+  };
 
-      return part;
-    });
-  };
+  // Render raw markdown parser
+  const renderMarkdownContent = (raw: string) => {
+    const lines = raw.split("\n");
+    const elements: React.ReactNode[] = [];
 
-  // Render raw markdown parser
-  const renderMarkdownContent = (raw: string) => {
-    const lines = raw.split("\n");
-    const elements: React.ReactNode[] = [];
+    let inTable = false;
+    let tableRows: string[][] = [];
+    let inCodeBlock = false;
+    let codeBlockLang = "";
+    let codeLines: string[] = [];
 
-    let inTable = false;
-    let tableRows: string[][] = [];
-    let inCodeBlock = false;
-    let codeBlockLang = "";
-    let codeLines: string[] = [];
+    const flushTable = (key: string) => {
+      if (tableRows.length > 0) {
+        const headerRow = tableRows[0];
+        // filter out separator row (e.g. |---|---|)
+        const bodyRows = tableRows.slice(1).filter(
+          (row) => !row.every((cell) => /^[:\s-]+$/.test(cell))
+        );
 
-    const flushTable = (key: string) => {
-      if (tableRows.length > 0) {
-        const headerRow = tableRows[0];
-        // filter out separator row (e.g. |---|---|)
-        const bodyRows = tableRows.slice(1).filter(
-          (row) => !row.every((cell) => /^[:\s-]+$/.test(cell))
-        );
+        elements.push(
+          <div
+            key={`table-${key}`}
+            className="my-3 overflow-x-auto rounded-xl border border-[var(--text-primary)]/10"
+          >
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-[var(--text-primary)]/15 bg-[var(--bg-surface)]">
+                  {headerRow.map((cell, idx) => (
+                    <th key={idx} className="p-2.5 font-semibold text-[var(--text-primary)]">
+                      {formatInlineText(cell.trim())}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--text-primary)]/8">
+                {bodyRows.map((row, rIdx) => (
+                  <tr key={rIdx} className="hover:bg-[var(--text-primary)]/[0.02] transition-colors">
+                    {row.map((cell, cIdx) => (
+                      <td key={cIdx} className="p-2.5 text-[var(--text-primary)]/85 align-top">
+                        {formatInlineText(cell.trim())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        );
+        tableRows = [];
+        inTable = false;
+      }
+    };
 
-        elements.push(
-          <div
-            key={`table-${key}`}
-            className="my-3 overflow-x-auto rounded-xl border border-[var(--text-primary)]/10"
-          >
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-[var(--text-primary)]/15 bg-[var(--bg-surface)]">
-                  {headerRow.map((cell, idx) => (
-                    <th key={idx} className="p-2.5 font-semibold text-[var(--text-primary)]">
-                      {formatInlineText(cell.trim())}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[var(--text-primary)]/8">
-                {bodyRows.map((row, rIdx) => (
-                  <tr key={rIdx} className="hover:bg-[var(--text-primary)]/[0.02] transition-colors">
-                    {row.map((cell, cIdx) => (
-                      <td key={cIdx} className="p-2.5 text-[var(--text-primary)]/85 align-top">
-                        {formatInlineText(cell.trim())}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        );
-        tableRows = [];
-        inTable = false;
-      }
-    };
+    const flushCodeBlock = (key: string) => {
+      if (inCodeBlock) {
+        if (codeBlockLang && codeBlockLang.toLowerCase() === "diff") {
+          elements.push(
+            <DiffRedlineBlock
+              key={`diff-${key}`}
+              lines={[...codeLines]}
+              isChat={isChat}
+            />
+          );
+        } else {
+          elements.push(
+            <CodeBlockItem
+              key={`code-${key}`}
+              lang={codeBlockLang}
+              lines={[...codeLines]}
+              isChat={isChat}
+            />
+          );
+        }
+        codeLines = [];
+        inCodeBlock = false;
+        codeBlockLang = "";
+      }
+    };
 
-    const flushCodeBlock = (key: string) => {
-      if (inCodeBlock) {
-        if (codeBlockLang && codeBlockLang.toLowerCase() === "diff") {
-          elements.push(
-            <DiffRedlineBlock
-              key={`diff-${key}`}
-              lines={[...codeLines]}
-              isChat={isChat}
-            />
-          );
-        } else {
-          elements.push(
-            <CodeBlockItem
-              key={`code-${key}`}
-              lang={codeBlockLang}
-              lines={[...codeLines]}
-              isChat={isChat}
-            />
-          );
-        }
-        codeLines = [];
-        inCodeBlock = false;
-        codeBlockLang = "";
-      }
-    };
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+      // Code block start/end
+      if (line.trim().startsWith("```")) {
+        if (!inCodeBlock) {
+          flushTable(`before-code-${i}`);
+          inCodeBlock = true;
+          codeBlockLang = line.trim().slice(3).trim();
+          codeLines = [];
+        } else {
+          flushCodeBlock(`end-code-${i}`);
+        }
+        continue;
+      }
 
-      // Code block start/end
-      if (line.trim().startsWith("```")) {
-        if (!inCodeBlock) {
-          flushTable(`before-code-${i}`);
-          inCodeBlock = true;
-          codeBlockLang = line.trim().slice(3).trim();
-          codeLines = [];
-        } else {
-          flushCodeBlock(`end-code-${i}`);
-        }
-        continue;
-      }
+      if (inCodeBlock) {
+        codeLines.push(line);
+        continue;
+      }
 
-      if (inCodeBlock) {
-        codeLines.push(line);
-        continue;
-      }
+      // Table line (starts and ends with |)
+      if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+        inTable = true;
+        const cells = line
+          .trim()
+          .slice(1, -1)
+          .split("|");
+        tableRows.push(cells);
+        continue;
+      } else if (inTable) {
+        flushTable(`flush-tbl-${i}`);
+      }
 
-      // Table line (starts and ends with |)
-      if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
-        inTable = true;
-        const cells = line
-          .trim()
-          .slice(1, -1)
-          .split("|");
-        tableRows.push(cells);
-        continue;
-      } else if (inTable) {
-        flushTable(`flush-tbl-${i}`);
-      }
+      // Empty line
+      if (line.trim() === "") {
+        elements.push(<div key={`space-${i}`} className={isChat ? "h-1" : "h-2"} />);
+        continue;
+      }
 
-      // Empty line
-      if (line.trim() === "") {
-        elements.push(<div key={`space-${i}`} className={isChat ? "h-1" : "h-2"} />);
-        continue;
-      }
+      // Horizontal Rule
+      if (line.trim() === "---" || line.trim() === "***") {
+        elements.push(
+          <hr
+            key={`hr-${i}`}
+            className="my-3 border-t border-[var(--text-primary)]/10"
+          />
+        );
+        continue;
+      }
 
-      // Horizontal Rule
-      if (line.trim() === "---" || line.trim() === "***") {
-        elements.push(
-          <hr
-            key={`hr-${i}`}
-            className="my-3 border-t border-[var(--text-primary)]/10"
-          />
-        );
-        continue;
-      }
+      // GitHub Alert Callouts: > [!WARNING], > [!NOTE], > [!TIP], > [!CAUTION], > [!IMPORTANT]
+      if (line.trim().startsWith("> [!")) {
+        const alertType = line.trim().replace(/^>\s*\[!/, "").replace(/\]\s*$/, "").toUpperCase();
+        // Collect following lines with >
+        const alertLines: string[] = [];
+        let j = i + 1;
+        while (j < lines.length && lines[j].trim().startsWith(">")) {
+          alertLines.push(lines[j].replace(/^>\s?/, ""));
+          j++;
+        }
+        i = j - 1;
 
-      // GitHub Alert Callouts: > [!WARNING], > [!NOTE], > [!TIP], > [!CAUTION], > [!IMPORTANT]
-      if (line.trim().startsWith("> [!")) {
-        const alertType = line.trim().replace(/^>\s*\[!/, "").replace(/\]\s*$/, "").toUpperCase();
-        // Collect following lines with >
-        const alertLines: string[] = [];
-        let j = i + 1;
-        while (j < lines.length && lines[j].trim().startsWith(">")) {
-          alertLines.push(lines[j].replace(/^>\s?/, ""));
-          j++;
-        }
-        i = j - 1;
+        let icon = <Info className="w-4 h-4 shrink-0" />;
+        let alertBorder = "border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-200";
+        let titleColor = "text-blue-700 dark:text-blue-300";
+        let title = "Note";
 
-        let icon = <Info className="w-4 h-4 shrink-0"/>;
-        let alertBorder = "border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-200";
-        let titleColor = "text-blue-700 dark:text-blue-300";
-        let title = "Note";
+        if (alertType === "WARNING") {
+          icon = <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />;
+          alertBorder = "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100";
+          titleColor = "text-amber-700 dark:text-amber-400";
+          title = "Statutory Warning";
+        } else if (alertType === "CAUTION") {
+          icon = <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />;
+          alertBorder = "border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-100";
+          titleColor = "text-rose-700 dark:text-rose-400";
+          title = "Statutory Risk";
+        } else if (alertType === "TIP") {
+          icon = <Sparkles className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />;
+          alertBorder = "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100";
+          titleColor = "text-emerald-700 dark:text-emerald-400";
+          title = "Compliant Guidance";
+        } else if (alertType === "IMPORTANT") {
+          icon = <AlertCircle className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400" />;
+          alertBorder = "border-purple-500/30 bg-purple-500/10 text-purple-950 dark:text-purple-100";
+          titleColor = "text-purple-700 dark:text-purple-400";
+          title = "Important Notice";
+        }
 
-        if (alertType === "WARNING") {
-          icon = <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400"/>;
-          alertBorder = "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100";
-          titleColor = "text-amber-700 dark:text-amber-400";
-          title = "Statutory Warning";
-        } else if (alertType === "CAUTION") {
-          icon = <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400"/>;
-          alertBorder = "border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-100";
-          titleColor = "text-rose-700 dark:text-rose-400";
-          title = "Statutory Risk";
-        } else if (alertType === "TIP") {
-          icon = <Sparkles className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400"/>;
-          alertBorder = "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100";
-          titleColor = "text-emerald-700 dark:text-emerald-400";
-          title = "Compliant Guidance";
-        } else if (alertType === "IMPORTANT") {
-          icon = <AlertCircle className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400"/>;
-          alertBorder = "border-purple-500/30 bg-purple-500/10 text-purple-950 dark:text-purple-100";
-          titleColor = "text-purple-700 dark:text-purple-400";
-          title = "Important Notice";
-        }
+        elements.push(
+          <div
+            key={`alert-${i}`}
+            className={`my-3 p-3 rounded-xl border-l-4 ${alertBorder} flex flex-col gap-1`}
+          >
+            <div className={`flex items-center gap-2 font-semibold text-xs uppercase tracking-wider ${titleColor}`}>
+              {icon}
+              <span>{title}</span>
+            </div>
+            <div className="text-xs leading-relaxed opacity-90 pl-6">
+              {alertLines.map((al, idx) => (
+                <p key={idx} className={idx > 0 ? "mt-1" : ""}>
+                  {formatInlineText(al)}
+                </p>
+              ))}
+            </div>
+          </div>
+        );
+        continue;
+      }
 
-        elements.push(
-          <div
-            key={`alert-${i}`}
-            className={`my-3 p-3 rounded-xl border-l-4 ${alertBorder} flex flex-col gap-1`}
-          >
-            <div className={`flex items-center gap-2 font-semibold text-xs uppercase tracking-wider ${titleColor}`}>
-              {icon}
-              <span>{title}</span>
-            </div>
-            <div className="text-xs leading-relaxed opacity-90 pl-6">
-              {alertLines.map((al, idx) => (
-                <p key={idx} className={idx > 0 ? "mt-1" : ""}>
-                  {formatInlineText(al)}
-                </p>
-              ))}
-            </div>
-          </div>
-        );
-        continue;
-      }
+      // Standard Blockquote: > text
+      if (line.trim().startsWith(">")) {
+        const bqText = line.trim().replace(/^>\s?/, "");
+        elements.push(
+          <blockquote
+            key={`bq-${i}`}
+            className="my-2 pl-3.5 border-l-2 border-[var(--text-primary)]/30 text-xs italic text-[var(--text-primary)]/80"
+          >
+            {formatInlineText(bqText)}
+          </blockquote>
+        );
+        continue;
+      }
 
-      // Standard Blockquote: > text
-      if (line.trim().startsWith(">")) {
-        const bqText = line.trim().replace(/^>\s?/, "");
-        elements.push(
-          <blockquote
-            key={`bq-${i}`}
-            className="my-2 pl-3.5 border-l-2 border-[var(--text-primary)]/30 text-xs italic text-[var(--text-primary)]/80"
-          >
-            {formatInlineText(bqText)}
-          </blockquote>
-        );
-        continue;
-      }
+      // Headers: #, ##, ###, ####
+      if (line.startsWith("# ")) {
+        elements.push(
+          <h1
+            key={`h1-${i}`}
+            className={`${
+              isChat ? "text-base sm:text-lg mt-3 mb-1.5" : "text-2xl mt-6 mb-3"
+            } font-serif font-bold text-[var(--text-primary)] pb-1 border-b border-[var(--text-primary)]/10`}
+          >
+            {formatInlineText(line.slice(2))}
+          </h1>
+        );
+        continue;
+      }
+      if (line.startsWith("## ")) {
+        elements.push(
+          <h2
+            key={`h2-${i}`}
+            className={`${
+              isChat ? "text-sm sm:text-base mt-2.5 mb-1" : "text-lg mt-6 mb-2"
+            } font-serif font-semibold text-[var(--text-primary)] pb-1 border-b border-[var(--text-primary)]/10`}
+          >
+            {formatInlineText(line.slice(3))}
+          </h2>
+        );
+        continue;
+      }
+      if (line.startsWith("### ")) {
+        elements.push(
+          <h3
+            key={`h3-${i}`}
+            className={`${
+              isChat ? "text-xs sm:text-sm mt-2 mb-0.5" : "text-sm mt-5 mb-2"
+            } font-sans font-bold text-[var(--text-primary)]`}
+          >
+            {formatInlineText(line.slice(4))}
+          </h3>
+        );
+        continue;
+      }
+      if (line.startsWith("#### ")) {
+        elements.push(
+          <h4
+            key={`h4-${i}`}
+            className="text-xs font-semibold text-[var(--text-primary)] mt-1.5 mb-0.5"
+          >
+            {formatInlineText(line.slice(5))}
+          </h4>
+        );
+        continue;
+      }
 
-      // Headers: #, ##, ###, ####
-      if (line.startsWith("# ")) {
-        elements.push(
-          <h1
-            key={`h1-${i}`}
-            className={`${
-              isChat ? "text-base sm:text-lg mt-3 mb-1.5" : "text-2xl mt-6 mb-3"
-            } font-serif font-bold text-[var(--text-primary)] pb-1 border-b border-[var(--text-primary)]/10`}
-          >
-            {formatInlineText(line.slice(2))}
-          </h1>
-        );
-        continue;
-      }
-      if (line.startsWith("## ")) {
-        elements.push(
-          <h2
-            key={`h2-${i}`}
-            className={`${
-              isChat ? "text-sm sm:text-base mt-2.5 mb-1" : "text-lg mt-6 mb-2"
-            } font-serif font-semibold text-[var(--text-primary)] pb-1 border-b border-[var(--text-primary)]/10`}
-          >
-            {formatInlineText(line.slice(3))}
-          </h2>
-        );
-        continue;
-      }
-      if (line.startsWith("### ")) {
-        elements.push(
-          <h3
-            key={`h3-${i}`}
-            className={`${
-              isChat ? "text-xs sm:text-sm mt-2 mb-0.5" : "text-sm mt-5 mb-2"
-            } font-sans font-bold text-[var(--text-primary)]`}
-          >
-            {formatInlineText(line.slice(4))}
-          </h3>
-        );
-        continue;
-      }
-      if (line.startsWith("#### ")) {
-        elements.push(
-          <h4
-            key={`h4-${i}`}
-            className="text-xs font-semibold text-[var(--text-primary)] mt-1.5 mb-0.5"
-          >
-            {formatInlineText(line.slice(5))}
-          </h4>
-        );
-        continue;
-      }
+      // Checklists: - [x] or - [ ]
+      if (/^-\s*\[([ xX])\]\s*(.*)$/.test(line.trim())) {
+        const match = line.trim().match(/^-\s*\[([ xX])\]\s*(.*)$/);
+        if (match) {
+          const isChecked = match[1].toLowerCase() === "x";
+          const checkText = match[2];
+          elements.push(
+            <div key={`check-${i}`} className="flex items-start gap-2.5 my-1 text-xs text-[var(--text-primary)]/90">
+              <span
+                className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
+                  isChecked
+                    ? "bg-emerald-600 border-emerald-600 text-white"
+                    : "border-[var(--text-primary)]/30 bg-[var(--bg-surface)]"
+                }`}
+              >
+                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+              </span>
+              <span>{formatInlineText(checkText)}</span>
+            </div>
+          );
+          continue;
+        }
+      }
 
-      // Checklists: - [x] or - [ ]
-      if (/^-\s*\[([ xX])\]\s*(.*)$/.test(line.trim())) {
-        const match = line.trim().match(/^-\s*\[([ xX])\]\s*(.*)$/);
-        if (match) {
-          const isChecked = match[1].toLowerCase() === "x";
-          const checkText = match[2];
-          elements.push(
-            <div key={`check-${i}`} className="flex items-start gap-2.5 my-1 text-xs text-[var(--text-primary)]/90">
-              <span
-                className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
-                  isChecked
-                    ? "bg-emerald-600 border-emerald-600 text-white"
-                    : "border-[var(--text-primary)]/30 bg-[var(--bg-surface)]"
-                }`}
-              >
-                {isChecked && <Check className="w-3 h-3 stroke-[3]"/>}
-              </span>
-              <span>{formatInlineText(checkText)}</span>
-            </div>
-          );
-          continue;
-        }
-      }
+      // Numbered List item: 1. or 1)
+      if (/^(\d+)[\.\)]\s+(.*)$/.test(line.trim())) {
+        const match = line.trim().match(/^(\d+)[\.\)]\s+(.*)$/);
+        if (match) {
+          elements.push(
+            <div key={`ol-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-[var(--text-primary)]/90 ml-1">
+              <span className="font-mono font-bold text-[var(--text-primary)]/70 text-[11px] shrink-0 min-w-[18px]">
+                {match[1]}.
+              </span>
+              <div className="flex-1">
+                {formatInlineText(match[2])}
+              </div>
+            </div>
+          );
+          continue;
+        }
+      }
 
-      // Numbered List item: 1. or 1)
-      if (/^(\d+)[\.\)]\s+(.*)$/.test(line.trim())) {
-        const match = line.trim().match(/^(\d+)[\.\)]\s+(.*)$/);
-        if (match) {
-          elements.push(
-            <div key={`ol-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-[var(--text-primary)]/90 ml-1">
-              <span className="font-mono font-bold text-[var(--text-primary)]/70 text-[11px] shrink-0 min-w-[18px]">
-                {match[1]}.
-              </span>
-              <div className="flex-1">
-                {formatInlineText(match[2])}
-              </div>
-            </div>
-          );
-          continue;
-        }
-      }
+      // Bullet List item: - or *
+      if (/^[\-\*]\s+(.*)$/.test(line.trim())) {
+        const match = line.trim().match(/^[\-\*]\s+(.*)$/);
+        if (match) {
+          elements.push(
+            <div key={`li-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-[var(--text-primary)]/90 ml-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)]/50 mt-1.5 shrink-0" />
+              <div className="flex-1">
+                {formatInlineText(match[1])}
+              </div>
+            </div>
+          );
+          continue;
+        }
+      }
 
-      // Bullet List item: - or *
-      if (/^[\-\*]\s+(.*)$/.test(line.trim())) {
-        const match = line.trim().match(/^[\-\*]\s+(.*)$/);
-        if (match) {
-          elements.push(
-            <div key={`li-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-[var(--text-primary)]/90 ml-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-primary)]/50 mt-1.5 shrink-0" />
-              <div className="flex-1">
-                {formatInlineText(match[1])}
-              </div>
-            </div>
-          );
-          continue;
-        }
-      }
+      // Standard Paragraph
+      elements.push(
+        <p
+          key={`p-${i}`}
+          className={`${
+            isChat ? "text-sm sm:text-[14px]" : "text-xs"
+          } text-[var(--text-primary)]/90 my-1 leading-relaxed`}
+        >
+          {formatInlineText(line)}
+        </p>
+      );
+    }
 
-      // Standard Paragraph
-      elements.push(
-        <p
-          key={`p-${i}`}
-          className={`${
-            isChat ? "text-sm sm:text-[14px]" : "text-xs"
-          } text-[var(--text-primary)]/90 my-1 leading-relaxed`}
-        >
-          {formatInlineText(line)}
-        </p>
-      );
-    }
+    if (inTable) flushTable("end-table");
+    if (inCodeBlock) flushCodeBlock("end-code");
 
-    if (inTable) flushTable("end-table");
-    if (inCodeBlock) flushCodeBlock("end-code");
+    return elements;
+  };
 
-    return elements;
-  };
+  if (isChat) {
+    return (
+      <div className={`font-sans leading-relaxed text-sm sm:text-[14px] space-y-1 ${className}`}>
+        {renderMarkdownContent(content)}
+      </div>
+    );
+  }
 
-  if (isChat) {
-    return (
-      <div className={`font-sans leading-relaxed text-sm sm:text-[14px] space-y-1 ${className}`}>
-        {renderMarkdownContent(content)}
-      </div>
-    );
-  }
-
-  return (
-    <div
-      className={`p-6 md:p-10 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-sm font-sans leading-relaxed print:p-0 print:border-none print:shadow-none print:bg-transparent print:rounded-none ${className}`}
-    >
-      <div className="max-w-4xl mx-auto space-y-1 print:max-w-none">
-        {renderMarkdownContent(content)}
-      </div>
-    </div>
-  );
+  return (
+    <div
+      className={`p-6 md:p-10 rounded-3xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] shadow-sm font-sans leading-relaxed print:p-0 print:border-none print:shadow-none print:bg-transparent print:rounded-none ${className}`}
+    >
+      <div className="max-w-4xl mx-auto space-y-1 print:max-w-none">
+        {renderMarkdownContent(content)}
+      </div>
+    </div>
+  );
 }
