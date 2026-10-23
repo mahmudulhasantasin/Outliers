@@ -169,32 +169,54 @@ export default function MarkdownViewer({
 
   const isChat = variant === "chat";
 
-  // Helper for inline markdown: **bold**, `code`, *italic*, [link](url)
+  // Helper for inline markdown: **bold**, `code`, *italic*, [link](url), and auto-detect raw URLs
   const formatInlineText = (text: string): React.ReactNode[] => {
-    // Regex for [text](url), `code`, **bold**, *italic*
-    const regex = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    // Regex for [text](url), `code`, **bold**, *italic*, https?://..., or domain.gov.bd/etc.
+    const regex = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|https?:\/\/[^\s\)\],]+|(?:\b[a-zA-Z0-9-]+\.)+(?:gov\.bd|org|com|net|edu)(?:\/[^\s\)\],]*)?)/g;
     const parts = text.split(regex);
 
     return parts.map((part, idx) => {
       if (!part) return null;
 
-      // Link: [text](url)
+      // 1. Explicit Markdown Link: [text](url)
       if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
         const match = part.match(/^\[([^\]]+)\]\(([^)]+)\)$/);
         if (match) {
+          const href = match[2].startsWith("http") ? match[2] : `https://${match[2]}`;
           return (
             <a
               key={idx}
-              href={match[2]}
+              href={href}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5"
+              className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5 font-medium"
             >
               <span>{match[1]}</span>
-              <ExternalLink className="w-2.5 h-2.5 inline" />
+              <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />
             </a>
           );
         }
+      }
+
+      // 2. Raw URLs or Domain links: bdlaws.minlaw.gov.bd, supremecourt.gov.bd, https://...
+      if (
+        /^https?:\/\//i.test(part) ||
+        /^(?:[a-zA-Z0-9-]+\.)+(?:gov\.bd|org|com|net|edu)(?:\/[^\s]*)?$/i.test(part)
+      ) {
+        const cleanUrl = part.replace(/[.,;:)\]]+$/, ""); // ট্রেইলিং বিরামচিহ্ন পরিষ্কার করা
+        const href = cleanUrl.startsWith("http") ? cleanUrl : `https://${cleanUrl}`;
+        return (
+          <a
+            key={idx}
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 dark:text-indigo-400 underline underline-offset-2 hover:opacity-80 inline-flex items-center gap-0.5 font-medium"
+          >
+            <span>{cleanUrl}</span>
+            <ExternalLink className="w-2.5 h-2.5 inline shrink-0" />
+          </a>
+        );
       }
 
       // Code: `code`
@@ -373,28 +395,28 @@ export default function MarkdownViewer({
         }
         i = j - 1;
 
-        let icon = <Info className="w-4 h-4 shrink-0" />;
+        let icon = <Info className="w-4 h-4 shrink-0"/>;
         let alertBorder = "border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20 text-blue-900 dark:text-blue-200";
         let titleColor = "text-blue-700 dark:text-blue-300";
         let title = "Note";
 
         if (alertType === "WARNING") {
-          icon = <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />;
+          icon = <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400"/>;
           alertBorder = "border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100";
           titleColor = "text-amber-700 dark:text-amber-400";
           title = "Statutory Warning";
         } else if (alertType === "CAUTION") {
-          icon = <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400" />;
+          icon = <ShieldAlert className="w-4 h-4 shrink-0 text-rose-600 dark:text-rose-400"/>;
           alertBorder = "border-rose-500/30 bg-rose-500/10 text-rose-950 dark:text-rose-100";
           titleColor = "text-rose-700 dark:text-rose-400";
           title = "Statutory Risk";
         } else if (alertType === "TIP") {
-          icon = <Sparkles className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />;
+          icon = <Sparkles className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400"/>;
           alertBorder = "border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100";
           titleColor = "text-emerald-700 dark:text-emerald-400";
           title = "Compliant Guidance";
         } else if (alertType === "IMPORTANT") {
-          icon = <AlertCircle className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400" />;
+          icon = <AlertCircle className="w-4 h-4 shrink-0 text-purple-600 dark:text-purple-400"/>;
           alertBorder = "border-purple-500/30 bg-purple-500/10 text-purple-950 dark:text-purple-100";
           titleColor = "text-purple-700 dark:text-purple-400";
           title = "Important Notice";
@@ -502,7 +524,7 @@ export default function MarkdownViewer({
                     : "border-[var(--text-primary)]/30 bg-[var(--bg-surface)]"
                 }`}
               >
-                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                {isChecked && <Check className="w-3 h-3 stroke-[3]"/>}
               </span>
               <span>{formatInlineText(checkText)}</span>
             </div>
