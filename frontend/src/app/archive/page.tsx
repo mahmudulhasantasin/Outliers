@@ -617,7 +617,7 @@ export default function ArchivePage() {
           <div className="my-3.5 sm:my-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs w-full">
             <div className="flex items-center gap-2 text-neutral-800 dark:text-neutral-200">
               <Search className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span className="break-words">
+              <span className="wrap-break-word">
                 {language === "bn"
                   ? `"${searchQuery.trim()}" অনুসন্ধান ফলাফল: ${filteredRecords.length}টি চুক্তি পাওয়া গেছে`
                   : `Showing ${filteredRecords.length} contract${filteredRecords.length === 1 ? "" : "s"} matching "${searchQuery.trim()}"`}
@@ -686,10 +686,10 @@ export default function ArchivePage() {
 
                 {/* Contract Title */}
                 <div className="w-full min-w-0">
-                  <h2 className="text-lg sm:text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary) break-words">
+                  <h2 className="text-lg sm:text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary) wrap-break-word">
                     {language === "bn" ? record.titleBn : record.titleEn}
                   </h2>
-                  <p className="text-xs text-neutral-500 mt-1 break-words">
+                  <p className="text-xs text-neutral-500 mt-1 wrap-break-word">
                     {language === "bn"
                       ? `পক্ষসমূহ: ${record.firstPartyBn} ও ${record.secondPartyBn}`
                       : `Parties: ${record.firstPartyEn} & ${record.secondPartyEn}`}
@@ -697,7 +697,7 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Statutory Risk Takeaway */}
-                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl break-words">
+                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl wrap-break-word">
                   {language === "bn" ? record.summaryBn : record.summaryEn}
                 </p>
 
@@ -788,7 +788,7 @@ export default function ArchivePage() {
               <p className="text-sm font-medium text-(--text-primary)">
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
-              <p className="text-xs text-neutral-400 max-w-sm mx-auto break-words">
+              <p className="text-xs text-neutral-400 max-w-sm mx-auto wrap-break-word">
                 {searchQuery.trim().length > 0
                   ? language === "bn"
                     ? `"${searchQuery.trim()}" দিয়ে কোনো চুক্তি মেলেনি। বানান পরীক্ষা করুন অথবা সার্চ ক্লিয়ার করুন।`
