@@ -329,7 +329,7 @@ export default function PricingPage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 md:py-12 space-y-8 sm:space-y-10">
+      <div className="w-full max-w-5xl mx-auto px-4 py-6 sm:py-8 md:py-12 space-y-8 sm:space-y-10 min-w-0">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/10 text-[#E2136E] border border-pink-500/20">

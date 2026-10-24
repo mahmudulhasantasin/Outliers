@@ -489,7 +489,7 @@ export default function ArchivePage() {
       </div>
 
       {/* 2. INTERACTIVE SCREEN UI */}
-      <div className="legal-screen-only w-full max-w-4xl mx-auto px-0 sm:px-6 pt-2 sm:pt-8 pb-24 sm:pb-32 font-sans overflow-x-hidden">
+      <div className="legal-screen-only w-full max-w-4xl mx-auto px-1 sm:px-6 pt-2 sm:pt-8 pb-24 sm:pb-32 font-sans min-w-0">
         
         {/* Page Header */}
         <div className="pb-6 sm:pb-8 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
@@ -521,23 +521,23 @@ export default function ArchivePage() {
 
           {/* Quick Stats Strip */}
           <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 sm:gap-6 pt-5 sm:pt-6 mt-5 sm:mt-6 border-t text-xs" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
-            <div>
+            <div className="min-w-0">
               <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">{records.length}</span>
               <span>{language === "bn" ? "মোট অডিট" : "Total Audits"}</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
                 {tabCounts.HIGH}
               </span>
               <span>{language === "bn" ? "উচ্চ ঝুঁকিপূর্ণ চুক্তি" : "High Risk Contracts"}</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
                 {tabCounts.MODERATE}
               </span>
               <span>{language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}</span>
             </div>
-            <div>
+            <div className="min-w-0">
               <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
                 {tabCounts.LOW}
               </span>
@@ -547,9 +547,9 @@ export default function ArchivePage() {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="py-5 sm:py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-b w-full" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        <div className="py-5 sm:py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-b w-full min-w-0" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           {/* Search Box */}
-          <div className="relative flex-1 max-w-full sm:max-w-md w-full">
+          <div className="relative flex-1 max-w-full sm:max-w-md w-full min-w-0">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -581,7 +581,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Filter Pills with real counts */}
-          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 pr-2 sm:pr-0 w-full max-w-full no-scrollbar">
+          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 pr-2 sm:pr-0 w-full max-w-full no-scrollbar min-w-0">
             {[
               { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
               { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
@@ -639,11 +639,11 @@ export default function ArchivePage() {
             filteredRecords.map((record) => (
               <div
                 key={record.id}
-                className="py-6 sm:py-8 space-y-3.5 sm:space-y-4 group transition-colors w-full"
+                className="py-6 sm:py-8 space-y-3.5 sm:space-y-4 group transition-colors w-full min-w-0"
               >
                 {/* Item Top Metadata */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
-                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap min-w-0">
                     <span className="text-xs font-semibold text-neutral-400">
                       {language === "bn" ? record.auditDateBn : record.auditDateEn}
                     </span>
@@ -685,7 +685,7 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Contract Title */}
-                <div className="w-full">
+                <div className="w-full min-w-0">
                   <h2 className="text-lg sm:text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary) break-words">
                     {language === "bn" ? record.titleBn : record.titleEn}
                   </h2>
@@ -702,8 +702,8 @@ export default function ArchivePage() {
                 </p>
 
                 {/* Breakdown & Action Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 pt-2 w-full">
-                  <div className="flex items-center gap-2 sm:gap-3 text-xs text-neutral-400 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 pt-2 w-full min-w-0">
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs text-neutral-400 flex-wrap min-w-0">
                     <span>
                       {record.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকি" : "High Risk"}
                     </span>
@@ -718,13 +718,13 @@ export default function ArchivePage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto min-w-0">
                     
                     {record.hitlStatus === "NOT_REQUESTED" && (
                       <button
                         onClick={() => handleRequestLawyer(record)}
                         disabled={isRequestingVerification === record.id}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 shrink-0"
+                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50"
                         title={language === "bn" ? "লইয়ার দ্বারা ভেরিফাই করুন" : "Verify by Lawyer"}
                       >
                         {isRequestingVerification === record.id ? (
@@ -738,7 +738,7 @@ export default function ArchivePage() {
 
                     <button
                       onClick={() => handleOpenInCopilot(record)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary) shrink-0"
+                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary)"
                       title={language === "bn" ? "কোপাইলটের সাথে আলোচনা করুন" : "Discuss in Advotech Copilot"}
                     >
                       <Bot className="w-3.5 h-3.5" />
@@ -747,14 +747,14 @@ export default function ArchivePage() {
 
                     <button
                       onClick={() => setPreviewRecord(record)}
-                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90 shrink-0"
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90"
                       title={language === "bn" ? "সম্পূর্ণ অডিট রিপোর্ট দেখুন" : "View Full Audit Report"}
                     >
                       <span>{language === "bn" ? "অডিট দেখুন" : "View Audit"}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
 
-                    <div className="flex items-center gap-1 sm:gap-1.5 ml-auto sm:ml-0">
+                    <div className="flex items-center gap-1 sm:gap-1.5">
                       <button
                         type="button"
                         onClick={() => handlePrintMemo(record)}
