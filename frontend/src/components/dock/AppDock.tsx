@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import VerticalDock, { VerticalDockItemData } from "./VerticalDock";
 import { useLanguage } from "@/context/LanguageContext";
@@ -16,6 +16,8 @@ import {
   Building2,
   Coins,
   ShieldAlert,
+  Menu,
+  X,
 } from "lucide-react";
 
 export default function AppDock() {
@@ -23,6 +25,8 @@ export default function AppDock() {
   const pathname = usePathname();
   const { language } = useLanguage();
   const { user } = useAuth();
+
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const isBn = language === "bn";
   const role = user?.role ?? "general";
@@ -167,7 +171,6 @@ export default function AppDock() {
       isActive: pathname === "/archive",
       onClick: () => router.push("/archive"),
     },
-    // ✅ FIX: Enterprise Member er jonno Settings add kora holo
     {
       icon: <Settings className="w-5 h-5" />,
       label: isBn ? "সেটিংস" : "Settings",
@@ -222,5 +225,50 @@ export default function AppDock() {
       ? enterpriseAdminItems
       : generalItems;
 
-  return <VerticalDock items={items} panelWidth={60} baseItemSize={42} magnification={54} />;
+  return (
+    <>
+      {/* ✅ Mobile Top Hamburger Button */}
+      <div className="md:hidden fixed top-4 left-4 z-100">
+        <button
+          onClick={() => setIsMobileOpen(true)}
+          className="p-2.5 rounded-xl bg-(--bg-card) border border-(--text-primary)/10 shadow-lg text-(--text-primary) hover:bg-(--bg-surface) transition-colors"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* ✅ Mobile Backdrop Overlay */}
+      {isMobileOpen && (
+        <div
+          onClick={() => setIsMobileOpen(false)}
+          className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-90 animate-in fade-in"
+        />
+      )}
+
+      {/* ✅ Dock Wrapper */}
+      <div
+        className={`
+          fixed md:relative z-95 transition-transform duration-300 ease-in-out
+          ${isMobileOpen ? "translate-x-0" : "translate-x-[-150%] md:translate-x-0"}
+        `}
+      >
+        {/* ✅ Close Button */}
+        <div className="md:hidden absolute top-4 -right-12.5">
+           <button
+             onClick={() => setIsMobileOpen(false)}
+             className="p-2 rounded-lg bg-(--bg-card) shadow-md text-(--text-muted) hover:text-rose-500 cursor-pointer"
+           >
+             <X className="w-5 h-5" />
+           </button>
+        </div>
+
+        <VerticalDock
+          items={items}
+          panelWidth={60}
+          baseItemSize={42}
+          magnification={54}
+        />
+      </div>
+    </>
+  );
 }

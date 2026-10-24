@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-// ✅ FIX: useRouter রিমুভ করা হলো কারণ এটি আর ব্যবহার হচ্ছে না
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
 import ThoughtLine from "@/components/effects/ThoughtLine";
@@ -108,7 +107,6 @@ function groupSessions(sessions: ChatSession[]) {
 }
 
 export default function CopilotPage() {
-  // ✅ FIX: router ভ্যারিয়েবলটি রিমুভ করা হলো
   const { language } = useLanguage();
   const { theme } = useTheme();
   const { user, updateUser } = useAuth();
@@ -458,13 +456,15 @@ export default function CopilotPage() {
 
   return (
     <AppShell>
-      <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto font-sans">
+      {/* ✅ FIX: Added px-3 sm:px-4 for mobile padding and overflow-x-hidden to prevent horizontal scroll */}
+      <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto font-sans px-3 sm:px-4 overflow-x-hidden">
         
         {/* Top Control Bar */}
-        <div className="mb-2 px-3.5 py-2 rounded-2xl flex items-center justify-between gap-3 text-xs bg-(--bg-card) border border-(--text-primary)/10 shadow-xs">
-          <div className="flex items-center gap-2 truncate">
+        <div className="mb-2 px-3 sm:px-3.5 py-2 rounded-2xl flex items-center justify-between gap-2 sm:gap-3 text-xs bg-(--bg-card) border border-(--text-primary)/10 shadow-xs">
+          {/* ✅ FIX: min-w-0 to allow truncation on mobile */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
             <MessageSquare className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span className="font-semibold truncate max-w-50 text-(--text-primary)">
+            <span className="font-semibold truncate max-w-full text-(--text-primary)">
               {currentActiveSession
                 ? currentActiveSession.title
                 : activeSessionId
@@ -476,11 +476,13 @@ export default function CopilotPage() {
                 : "New Legal Consultation"}
             </span>
             {isLawyer && !loadedContractTitle && (
-              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200">LAWYER MODE</span>
+              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 whitespace-nowrap">
+                LAWYER MODE
+              </span>
             )}
             {currentActiveSession && (
               <span
-                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                className={`hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
                   messageLimitReached
                     ? "bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300"
                     : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
@@ -534,19 +536,19 @@ export default function CopilotPage() {
         {/* Context Bar if contract is loaded */}
         {loadedContractTitle && (
           <div className="mb-3 px-4 py-2 rounded-xl shadow-xs flex items-center justify-between text-xs bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)">
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-(--text-primary)" />
-              <span className="font-semibold text-(--text-primary)">
+            <div className="flex items-center gap-2 truncate">
+              <FileText className="w-4 h-4 text-(--text-primary) shrink-0" />
+              <span className="font-semibold text-(--text-primary) hidden sm:inline">
                 {language === "bn" ? "চুক্তির কনটেক্সট সক্রিয়:" : "Active Contract:"}
               </span>
-              <span className="text-(--text-muted)">{loadedContractTitle}</span>
+              <span className="text-(--text-muted) truncate">{loadedContractTitle}</span>
             </div>
             <button
               onClick={() => {
                 sessionStorage.removeItem("active_audit_contract");
                 setLoadedContractTitle(null);
               }}
-              className="text-neutral-400 hover:text-black dark:hover:text-white transition-colors"
+              className="text-neutral-400 hover:text-black dark:hover:text-white transition-colors shrink-0 ml-2"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -555,19 +557,19 @@ export default function CopilotPage() {
 
         {/* Chat Messages or Initial Center Screen */}
         {hasMessages ? (
-          <div className="flex-1 overflow-y-auto px-1 space-y-5 pb-6">
+          <div className="flex-1 overflow-y-auto px-1 space-y-4 sm:space-y-5 pb-6">
             {messages.map((msg) => (
               <div
                 key={msg.id}
                 className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
               >
                 <div
-                  className={`max-w-[85%] sm:max-w-[78%] transition-all duration-300 ${
+                  className={`max-w-[90%] sm:max-w-[78%] transition-all duration-300 ${
                     msg.sender === "user"
-                      ? "p-5 rounded-3xl rounded-br-md shadow-md"
+                      ? "p-4 sm:p-5 rounded-3xl rounded-br-md shadow-md"
                       : msg.isThinking
                       ? "p-2 shadow-none"
-                      : "p-5 rounded-3xl shadow-md rounded-bl-md"
+                      : "p-4 sm:p-5 rounded-3xl shadow-md rounded-bl-md"
                   }`}
                   style={
                     msg.sender === "user"
@@ -605,7 +607,7 @@ export default function CopilotPage() {
                   )}
 
                   {msg.sender === "user" && (
-                    <div className="space-y-2">
+                    <div className="space-y-2 break-words">
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pb-1">
                           {msg.attachments.map((file, idx) => (
@@ -627,7 +629,8 @@ export default function CopilotPage() {
 
                   {msg.sender === "copilot" && !msg.isThinking && (msg.textEn || msg.textBn) && (
                     <>
-                      <div className="copilot-markdown-reply">
+                      {/* ✅ FIX: Added break-words to prevent long URLs/text from breaking layout */}
+                      <div className="copilot-markdown-reply break-words overflow-x-auto">
                         <MarkdownViewer
                           variant="chat"
                           content={language === "bn" ? msg.textBn : msg.textEn}
@@ -688,10 +691,10 @@ export default function CopilotPage() {
                                 key={cIdx}
                                 className="p-2.5 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) text-xs space-y-1 shadow-sm"
                               >
-                                <div className="flex items-center justify-between font-bold text-(--text-primary)">
-                                  <span className="text-indigo-600 dark:text-indigo-400">{cite.section_number || cite.section || "Section"}</span>
+                                <div className="flex items-center justify-between font-bold text-(--text-primary) gap-2">
+                                  <span className="text-indigo-600 dark:text-indigo-400 shrink-0">{cite.section_number || cite.section || "Section"}</span>
                                   {cite.act && (
-                                    <span className="text-[10px] text-(--text-muted) truncate max-w-35" title={cite.act}>
+                                    <span className="text-[10px] text-(--text-muted) truncate max-w-[150px]" title={cite.act}>
                                       {cite.act}
                                     </span>
                                   )}
@@ -722,7 +725,7 @@ export default function CopilotPage() {
                               key={sIdx}
                               type="button"
                               onClick={() => handleSendPrompt(step)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-(--text-primary)/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs"
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-(--text-primary)/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left"
                             >
                               💡 {step}
                             </button>
@@ -738,7 +741,7 @@ export default function CopilotPage() {
             <div ref={messagesEndRef} />
           </div>
         ) : (
-          <div className="flex-1 flex flex-col items-center justify-center -mt-8">
+          <div className="flex-1 flex flex-col items-center justify-center -mt-8 px-2 sm:px-0">
             <div className="text-center mb-8">
               <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2 text-(--text-primary)">
                 {isLawyer ? "Advocate AI Research" : (language === "bn" ? "এডভোটেক কোপাইলট" : "Advotech Copilot")}
@@ -752,15 +755,14 @@ export default function CopilotPage() {
               </p>
             </div>
 
-            <div className="w-full max-w-155 shadow-sm rounded-[22px]">
+            {/* ✅ FIX: Removed width props and classes, just using max-w so it scales down on mobile */}
+            <div className="w-full max-w-[620px] shadow-sm rounded-[22px] mx-auto">
               <PromptBar
                 placeholder={
                   language === "bn"
                     ? "আইনি প্রশ্ন বা চুক্তির ধারা জানতে লিখুন..."
                     : "Ask anything about contracts or Bangladesh statutes..."
                 }
-                width={620}
-                className="w-full max-w-none!"
                 busy={isTyping}
                 onSend={handleSendPrompt}
               />
@@ -780,7 +782,7 @@ export default function CopilotPage() {
             </div>
             <button
               onClick={handleNewSession}
-              className="px-3.5 py-1.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 transition-colors shadow-xs cursor-pointer flex items-center gap-1.5"
+              className="px-3.5 py-1.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 transition-colors shadow-xs cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center mt-2 sm:mt-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>{language === "bn" ? "নতুন সেশন" : "New Session"}</span>
@@ -788,30 +790,28 @@ export default function CopilotPage() {
           </div>
         )}
 
+        {/* ✅ FIX: Removed width prop from bottom PromptBar and wrapped in max-w-[720px] */}
         {hasMessages && !messageLimitReached && (
-          <div className="pt-2 flex justify-center w-full">
-            <PromptBar
-              placeholder={
-                language === "bn"
-                  ? "আইনি প্রশ্ন বা চুক্তির ধারা জানতে লিখুন..."
-                  : "Ask follow-up question..."
-              }
-              width={720}
-              busy={isTyping}
-              onSend={handleSendPrompt}
-            />
+          <div className="pt-2 pb-2 flex justify-center w-full">
+            <div className="w-full max-w-[720px]">
+              <PromptBar
+                placeholder={
+                  language === "bn"
+                    ? "আইনি প্রশ্ন বা চুক্তির ধারা জানতে লিখুন..."
+                    : "Ask follow-up question..."
+                }
+                busy={isTyping}
+                onSend={handleSendPrompt}
+              />
+            </div>
           </div>
         )}
 
-        {/* ==================================================================== */}
-        {/* ✅ ফ্লোটিং চ্যাট হিস্ট্রি ড্রয়ার */}
-        {/* ==================================================================== */}
+        {/* ফ্লোটিং চ্যাট হিস্ট্রি ড্রয়ার */}
         {showHistoryDrawer && (
           <div className="fixed inset-0 z-50 flex justify-end items-center p-3 sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            {/* ফ্লোটিং প্যানেল কন্টেইনার */}
-            <div className="w-full sm:w-105 h-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col rounded-3xl overflow-hidden bg-(--bg-card) border border-(--text-primary)/10 animate-in slide-in-from-right duration-300">
+            <div className="w-full sm:w-[420px] h-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col rounded-3xl overflow-hidden bg-(--bg-card) border border-(--text-primary)/10 animate-in slide-in-from-right duration-300">
               
-              {/* ড্রয়ার হেডার */}
               <div className="p-5 border-b border-(--text-primary)/10 bg-(--bg-card)/95 backdrop-blur-md flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
                   <History className="w-5 h-5 text-indigo-500" />
@@ -820,15 +820,12 @@ export default function CopilotPage() {
                 <button onClick={() => setShowHistoryDrawer(false)} className="p-1.5 rounded-lg text-(--text-muted) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
               </div>
 
-              {/* স্ক্রলেবল কন্টেন্ট */}
               <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                {/* নতুন চ্যাট বাটন */}
                 <button onClick={handleNewSession} className="w-full py-3 px-4 rounded-2xl text-xs font-bold border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 transition-all flex items-center justify-center gap-2 cursor-pointer">
                   <Plus className="w-4 h-4" />
                   <span>{language === "bn" ? "নতুন পরামর্শ শুরু করুন" : "Start New Consultation"}</span>
                 </button>
 
-                {/* সেশন লিস্ট (গ্রুপ করা) */}
                 {isLoadingSessions ? (
                   <div className="py-12 flex flex-col items-center justify-center gap-2 text-(--text-muted) text-xs">
                     <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
@@ -898,7 +895,6 @@ export default function CopilotPage() {
                 )}
               </div>
 
-              {/* ড্রয়ার ফুটার */}
               <div className="p-4 border-t border-(--text-primary)/10 bg-(--bg-card) shrink-0">
                 <button onClick={() => setShowHistoryDrawer(false)} className="w-full py-2.5 rounded-xl text-xs font-medium border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer">
                   {language === "bn" ? "বন্ধ করুন" : "Close"}
@@ -910,7 +906,7 @@ export default function CopilotPage() {
 
         {/* Citation Modal */}
         {activeCitation && (
-          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-120 shadow-2xl p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 bg-(--bg-card) text-(--text-primary)">
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] shadow-2xl p-5 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 bg-(--bg-card) text-(--text-primary)">
             <div className="space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-(--text-primary)/10">
                 <div className="flex items-center gap-2 text-xs font-semibold text-(--text-primary)">

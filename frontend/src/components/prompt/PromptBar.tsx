@@ -296,8 +296,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
           '--pb-bg': background,
           '--pb-ink': color,
           '--pb-menu': menuBackground,
-          width: `${width}px`,
-          maxWidth: '100%',
+          // ✅ FIX: width: 100% and maxWidth for responsive mobile support
+          width: '100%',
+          maxWidth: `${width}px`,
           '--pb-radius': `${radius}px`,
           '--pb-press': pressScale
         } as CSSProperties
@@ -365,7 +366,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
 
         {/* ২. ভেতরের মূল বডি (Inner Content) - ✅ Flex Row, Compact Layout */}
         <div
-          className="relative isolate flex cursor-text items-end gap-2 py-2 pl-4 pr-2 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
+          className="relative isolate flex cursor-text items-end gap-2 py-2 pl-3 pr-1.5 sm:pl-4 sm:pr-2 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
           style={{ borderRadius: 'var(--pb-radius)' }}
           role="presentation"
           onPointerDown={e => {
@@ -375,7 +376,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
         >
           <textarea
             ref={inputRef}
-            className="prompt-bar-input block w-full resize-none border-0 bg-transparent py-1.5 text-[15px] leading-5.5 outline-none font-sans flex-1"
+            className="prompt-bar-input block w-full resize-none border-0 bg-transparent py-1.5 text-[16px] sm:text-[15px] leading-5.5 outline-none font-sans flex-1"
             style={{
               color: "var(--text-primary)",
               caretColor: "var(--text-primary)"
