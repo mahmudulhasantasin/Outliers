@@ -240,6 +240,29 @@ export default function ArchivePage() {
     return () => window.removeEventListener("afterprint", handleAfterPrint);
   }, []);
 
+  // Close preview modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && previewRecord) {
+        setPreviewRecord(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewRecord]);
+
+  // Lock body scroll when preview modal is open
+  useEffect(() => {
+    if (previewRecord) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [previewRecord]);
+
   const tabCounts = useMemo(() => {
     let high = 0;
     let moderate = 0;
@@ -558,7 +581,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Filter Pills with real counts */}
-          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 w-full max-w-full no-scrollbar">
+          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 pr-2 sm:pr-0 w-full max-w-full no-scrollbar">
             {[
               { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
               { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
@@ -791,8 +814,14 @@ export default function ArchivePage() {
 
       {/* 3. MARKDOWN AUDIT MODAL */}
       {previewRecord && (
-        <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl h-[92vh] sm:h-auto sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-2xl overflow-hidden">
+        <div
+          onClick={() => setPreviewRecord(null)}
+          className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-4xl h-[92vh] sm:h-auto sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-2xl overflow-hidden"
+          >
             <div className="p-3.5 sm:p-4 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-surface) w-full shrink-0">
               <div className="min-w-0 flex-1 pr-1">
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-(--bg-card) text-(--text-muted) border border-(--text-primary)/10">

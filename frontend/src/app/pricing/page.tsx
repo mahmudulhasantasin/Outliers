@@ -1,4 +1,4 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -51,6 +51,29 @@ export default function PricingPage() {
   const [trxSuccessMessage, setTrxSuccessMessage] = useState<string | null>(null);
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
+
+  // Close modal on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && activeInitiate) {
+        setActiveInitiate(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeInitiate]);
+
+  // Lock body scroll when modal is open
+  useEffect(() => {
+    if (activeInitiate) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [activeInitiate]);
 
   const borderClass = "border-(--text-primary)/10";
 
@@ -306,7 +329,7 @@ export default function PricingPage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto px-4 py-8 md:py-12 space-y-10">
+      <div className="max-w-5xl mx-auto px-4 py-6 sm:py-8 md:py-12 space-y-8 sm:space-y-10">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-pink-500/10 text-[#E2136E] border border-pink-500/20">
@@ -314,7 +337,7 @@ export default function PricingPage() {
             <span>{isBn ? "বিকাশ ইনস্ট্যান্ট পেমেন্ট ও প্যাকেজ" : "bKash Instant Billing"}</span>
           </div>
 
-          <h1 className="text-3xl md:text-4xl font-serif font-bold text-(--text-primary)">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-bold text-(--text-primary)">
             {isBn ? "স্বচ্ছ ক্রেডিট প্যাকেজ ও মূল্যতালিকা" : "Transparent Credit Pricing"}
           </h1>
 
@@ -327,35 +350,35 @@ export default function PricingPage() {
 
         {/* Stats Strip */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto">
-          <div className={`p-4 rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
+          <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
             <span className="text-[11px] text-(--text-muted) font-medium">
               {balanceLabel}
             </span>
-            <span className="font-mono font-bold text-emerald-500 text-lg sm:text-xl mt-1">
+            <span className="font-mono font-bold text-emerald-500 text-base sm:text-xl mt-1 truncate">
               {displayBalance} {isBn ? "ক্রেডিট" : "Credits"}
             </span>
           </div>
-          <div className={`p-4 rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
+          <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
             <span className="text-[11px] text-(--text-muted) font-medium">
               {isBn ? "মোট টপ-আপ" : "Total Top-up"}
             </span>
-            <span className="font-mono font-bold text-(--text-primary) text-lg sm:text-xl mt-1">
+            <span className="font-mono font-bold text-(--text-primary) text-base sm:text-xl mt-1 truncate">
               ৳{displayTotalTopup}
             </span>
           </div>
-          <div className={`p-4 rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
+          <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
             <span className="text-[11px] text-(--text-muted) font-medium">
               {isBn ? "অনুমোদিত পেমেন্ট" : "Approved Orders"}
             </span>
-            <span className="font-mono font-bold text-sky-500 text-lg sm:text-xl mt-1">
+            <span className="font-mono font-bold text-sky-500 text-base sm:text-xl mt-1 truncate">
               {displayApproved}
             </span>
           </div>
-          <div className={`p-4 rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
+          <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-(--bg-card) flex flex-col justify-between`}>
             <span className="text-[11px] text-(--text-muted) font-medium">
               {isBn ? "অপেক্ষমান যাচাই" : "Awaiting Verification"}
             </span>
-            <span className="font-mono font-bold text-amber-500 text-lg sm:text-xl mt-1">
+            <span className="font-mono font-bold text-amber-500 text-base sm:text-xl mt-1 truncate">
               {displayAwaiting}
             </span>
           </div>
@@ -375,14 +398,14 @@ export default function PricingPage() {
               return (
                 <div
                   key={pkg.id}
-                  className={`p-6 sm:p-7 rounded-3xl border flex flex-col justify-between transition-all relative ${
+                  className={`p-5 sm:p-7 rounded-2xl sm:rounded-3xl border flex flex-col justify-between transition-all relative ${
                     pkg.is_popular
                       ? "border-[#E2136E] bg-(--bg-card) shadow-lg shadow-pink-500/5 ring-1 ring-[#E2136E]/30"
                       : `${borderClass} bg-(--bg-card)`
                   }`}
                 >
                   {badge && (
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#E2136E] text-white shadow-sm">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wider bg-[#E2136E] text-white shadow-sm whitespace-nowrap">
                       {badge}
                     </div>
                   )}
@@ -396,7 +419,7 @@ export default function PricingPage() {
                     </p>
 
                     <div className="flex items-baseline gap-1 mb-6">
-                      <span className="text-3xl font-mono font-bold text-(--text-primary)">
+                      <span className="text-2xl sm:text-3xl font-mono font-bold text-(--text-primary)">
                         ৳{pkg.price_bdt}
                       </span>
                       <span className="text-xs text-(--text-muted) font-mono">
@@ -441,7 +464,7 @@ export default function PricingPage() {
                     type="button"
                     disabled={initiatingPkgId !== null}
                     onClick={() => handleInitiate(pkg)}
-                    className={`w-full py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 ${
+                    className={`w-full py-3 rounded-xl sm:rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 ${
                       pkg.is_popular
                         ? "bg-[#E2136E] text-white hover:opacity-90 shadow-md shadow-pink-500/20"
                         : "bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90"
@@ -466,7 +489,7 @@ export default function PricingPage() {
         )}
 
         {/* Previous Payment History */}
-        <div className={`p-6 sm:p-8 rounded-3xl border ${borderClass} bg-(--bg-card) space-y-4`}>
+        <div className={`p-5 sm:p-8 rounded-2xl sm:rounded-3xl border ${borderClass} bg-(--bg-card) space-y-4`}>
           <div className="flex items-center justify-between">
             <div>
               <h3 className="text-base font-serif font-bold text-(--text-primary)">
@@ -481,17 +504,17 @@ export default function PricingPage() {
           </div>
 
           {payments.length > 0 ? (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto no-scrollbar">
               <table className="w-full text-left text-xs font-mono whitespace-nowrap">
                 <thead>
                   <tr className="border-b border-(--text-primary)/10 text-(--text-muted) uppercase text-[10px]">
-                    <th className="py-2.5 px-2">{isBn ? "রেফারেন্স" : "Ref / Code"}</th>
-                    <th className="py-2.5 px-2">{isBn ? "প্যাকেজ" : "Package"}</th>
-                    <th className="py-2.5 px-2">{isBn ? "পরিমাণ" : "Amount"}</th>
-                    <th className="py-2.5 px-2">{isBn ? "ক্রেডিট" : "Credits"}</th>
-                    <th className="py-2.5 px-2">{isBn ? "ট্রানজেকশন আইডি" : "TrxID"}</th>
-                    <th className="py-2.5 px-2">{isBn ? "তারিখ" : "Date"}</th>
-                    <th className="py-2.5 px-2 text-right">{isBn ? "স্ট্যাটাস" : "Status"}</th>
+                    <th className="py-2.5 px-3">{isBn ? "রেফারেন্স" : "Ref / Code"}</th>
+                    <th className="py-2.5 px-3">{isBn ? "প্যাকেজ" : "Package"}</th>
+                    <th className="py-2.5 px-3">{isBn ? "পরিমাণ" : "Amount"}</th>
+                    <th className="py-2.5 px-3">{isBn ? "ক্রেডিট" : "Credits"}</th>
+                    <th className="py-2.5 px-3">{isBn ? "ট্রানজেকশন আইডি" : "TrxID"}</th>
+                    <th className="py-2.5 px-3">{isBn ? "তারিখ" : "Date"}</th>
+                    <th className="py-2.5 px-3 text-right">{isBn ? "স্ট্যাটাস" : "Status"}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-(--text-primary)/5">
@@ -501,32 +524,32 @@ export default function PricingPage() {
 
                     return (
                       <tr key={p.id}>
-                        <td className="py-3 px-2 font-semibold text-(--text-primary)">
+                        <td className="py-3 px-3 font-semibold text-(--text-primary)">
                           {p.reference_code || `#${p.id}`}
                         </td>
-                        <td className="py-3 px-2 font-sans text-(--text-primary)">
+                        <td className="py-3 px-3 font-sans text-(--text-primary)">
                           {p.package_name || p.package?.name || (isBn ? "ক্রেডিট রিচার্জ" : "Credit Recharge")}
                         </td>
-                        <td className="py-3 px-2 text-(--text-primary) font-bold">৳{p.amount_bdt}</td>
-                        <td className="py-3 px-2 text-emerald-500 font-bold">+{p.total_credits || p.credits || 0}</td>
-                        <td className="py-3 px-2 text-(--text-muted)">
+                        <td className="py-3 px-3 text-(--text-primary) font-bold">৳{p.amount_bdt}</td>
+                        <td className="py-3 px-3 text-emerald-500 font-bold">+{p.total_credits || p.credits || 0}</td>
+                        <td className="py-3 px-3 text-(--text-muted)">
                           {p.trx_id || p.bkash_trx_id || (
                             <span className="italic text-[10px] opacity-70">
                               {isBn ? "অপেক্ষমান" : "Pending"}
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-2 text-(--text-muted) font-sans">
+                        <td className="py-3 px-3 text-(--text-muted) font-sans">
                           {new Date(p.created_at || p.initiated_at).toLocaleDateString()}
                         </td>
-                        <td className="py-3 px-2 text-right">
+                        <td className="py-3 px-3 text-right">
                           <div className="flex items-center justify-end gap-2">
                             {getStatusBadge(p.status)}
                             {isPending && (
                               <button
                                 type="button"
                                 onClick={() => handleResumePending(p)}
-                                className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#E2136E]/10 text-[#E2136E] hover:bg-[#E2136E]/20 transition-colors cursor-pointer"
+                                className="px-2.5 py-1 rounded text-[10px] font-bold bg-[#E2136E]/10 text-[#E2136E] hover:bg-[#E2136E]/20 transition-colors cursor-pointer shrink-0"
                               >
                                 {isBn ? "জমা দিন" : "Submit"}
                               </button>
@@ -548,23 +571,29 @@ export default function PricingPage() {
 
         {/* ── BKASH PAYMENT MODAL (RESPONSIVE & COMPACT) ── */}
         {activeInitiate && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`w-full max-w-md max-h-[90vh] overflow-y-auto rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl flex flex-col`}>
+          <div
+            onClick={() => setActiveInitiate(null)}
+            className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200"
+          >
+            <div
+              onClick={(e) => e.stopPropagation()}
+              className={`w-full max-w-md max-h-[92vh] sm:max-h-[90vh] overflow-y-auto rounded-2xl sm:rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl flex flex-col`}
+            >
               
               {/* Modal Header */}
               <div className="p-4 sm:p-5 border-b border-(--text-primary)/10 bg-[#E2136E] text-white flex items-center justify-between shrink-0 sticky top-0 z-10">
-                <div>
-                  <span className="text-[10px] uppercase font-bold tracking-wider opacity-80">
+                <div className="min-w-0 flex-1 pr-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider opacity-80 block truncate">
                     bKash Payment Gateway
                   </span>
-                  <h3 className="text-base font-bold">
+                  <h3 className="text-base font-bold truncate">
                     {activeInitiate.package_name || (isBn ? "ক্রেডিট রিচার্জ" : "Credit Package Recharge")}
                   </h3>
                 </div>
                 <button
                   type="button"
                   onClick={() => setActiveInitiate(null)}
-                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer"
+                  className="p-1.5 rounded-xl bg-white/10 hover:bg-white/20 transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-4 h-4 text-white" />
                 </button>
@@ -593,7 +622,7 @@ export default function PricingPage() {
                   <>
                     {/* Amount & Total Credits */}
                     <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 space-y-3">
-                      <div className="flex justify-between items-baseline">
+                      <div className="flex flex-wrap sm:flex-nowrap justify-between items-baseline gap-1">
                         <span className="text-xs text-(--text-muted)">
                           {isBn ? "পরিশোধযোগ্য টাকা:" : "Amount to Send:"}
                         </span>
@@ -608,22 +637,22 @@ export default function PricingPage() {
                       </div>
 
                       {/* Recipient bKash Number */}
-                      <div className="flex justify-between items-center pt-2 border-t border-(--text-primary)/5">
-                        <div>
-                          <p className="text-[10px] uppercase font-bold text-(--text-muted) flex items-center gap-1.5">
+                      <div className="flex justify-between items-center gap-2 pt-2 border-t border-(--text-primary)/5">
+                        <div className="min-w-0 flex-1 pr-1">
+                          <p className="text-[10px] uppercase font-bold text-(--text-muted) flex items-center gap-1.5 flex-wrap">
                             <span>{isBn ? "বিকাশ নম্বর" : "bKash Number"}</span>
                             <span className="px-1.5 py-0.2 rounded text-[9px] bg-[#E2136E]/10 text-[#E2136E] font-sans">
                               {activeInitiate.bkash?.bkash_type || "Merchant"}
                             </span>
                           </p>
-                          <p className="font-mono font-bold text-sm text-(--text-primary)">
+                          <p className="font-mono font-bold text-sm text-(--text-primary) truncate">
                             {activeInitiate.bkash?.bkash_number || activeInitiate.bkash_number || "01700000000"}
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => copyText(activeInitiate.bkash?.bkash_number || activeInitiate.bkash_number || "01700000000", "number")}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-(--text-primary)/10 hover:bg-(--text-primary)/20 text-(--text-primary) flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-(--text-primary)/10 hover:bg-(--text-primary)/20 text-(--text-primary) flex items-center gap-1 cursor-pointer shrink-0"
                         >
                           {copiedNumber ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                           <span>{copiedNumber ? (isBn ? "কপি হয়েছে" : "Copied") : (isBn ? "কপি" : "Copy")}</span>
@@ -631,19 +660,19 @@ export default function PricingPage() {
                       </div>
 
                       {/* Reference Code */}
-                      <div className="flex justify-between items-center pt-2 border-t border-amber-500/20 bg-amber-500/5 -mx-4 -mb-4 p-3 rounded-b-2xl">
-                        <div>
-                          <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400">
+                      <div className="flex justify-between items-center gap-2 pt-2 border-t border-amber-500/20 bg-amber-500/5 -mx-4 -mb-4 p-3 rounded-b-2xl">
+                        <div className="min-w-0 flex-1 pr-1">
+                          <p className="text-[10px] uppercase font-bold text-amber-600 dark:text-amber-400 truncate">
                             {isBn ? "রেফারেন্স কোড (বিকাশে অবশ্যই দিন)" : "bKash Reference Code (Required)"}
                           </p>
-                          <p className="font-mono font-bold text-sm text-(--text-primary)">
+                          <p className="font-mono font-bold text-sm text-(--text-primary) truncate">
                             {activeInitiate.reference_code || `TOPUP-${activeInitiate.payment_id}`}
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => copyText(activeInitiate.reference_code || `TOPUP-${activeInitiate.payment_id}`, "ref")}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 flex items-center gap-1 cursor-pointer"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-amber-500/15 hover:bg-amber-500/25 text-amber-700 dark:text-amber-300 flex items-center gap-1 cursor-pointer shrink-0"
                         >
                           {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
                           <span>{copiedRef ? (isBn ? "কপি হয়েছে" : "Copied") : (isBn ? "কপি" : "Copy")}</span>
