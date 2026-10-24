@@ -456,12 +456,10 @@ export default function CopilotPage() {
 
   return (
     <AppShell>
-      {/* ✅ FIX: Added px-3 sm:px-4 for mobile padding and overflow-x-hidden to prevent horizontal scroll */}
       <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto font-sans px-3 sm:px-4 overflow-x-hidden">
         
         {/* Top Control Bar */}
         <div className="mb-2 px-3 sm:px-3.5 py-2 rounded-2xl flex items-center justify-between gap-2 sm:gap-3 text-xs bg-(--bg-card) border border-(--text-primary)/10 shadow-xs">
-          {/* ✅ FIX: min-w-0 to allow truncation on mobile */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <MessageSquare className="w-4 h-4 text-indigo-500 shrink-0" />
             <span className="font-semibold truncate max-w-full text-(--text-primary)">
@@ -607,7 +605,7 @@ export default function CopilotPage() {
                   )}
 
                   {msg.sender === "user" && (
-                    <div className="space-y-2 break-words">
+                    <div className="space-y-2 wrap-break-word">
                       {msg.attachments && msg.attachments.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 pb-1">
                           {msg.attachments.map((file, idx) => (
@@ -629,8 +627,7 @@ export default function CopilotPage() {
 
                   {msg.sender === "copilot" && !msg.isThinking && (msg.textEn || msg.textBn) && (
                     <>
-                      {/* ✅ FIX: Added break-words to prevent long URLs/text from breaking layout */}
-                      <div className="copilot-markdown-reply break-words overflow-x-auto">
+                      <div className="copilot-markdown-reply wrap-break-word overflow-x-auto">
                         <MarkdownViewer
                           variant="chat"
                           content={language === "bn" ? msg.textBn : msg.textEn}
@@ -694,7 +691,7 @@ export default function CopilotPage() {
                                 <div className="flex items-center justify-between font-bold text-(--text-primary) gap-2">
                                   <span className="text-indigo-600 dark:text-indigo-400 shrink-0">{cite.section_number || cite.section || "Section"}</span>
                                   {cite.act && (
-                                    <span className="text-[10px] text-(--text-muted) truncate max-w-[150px]" title={cite.act}>
+                                    <span className="text-[10px] text-(--text-muted) truncate max-w-37.5" title={cite.act}>
                                       {cite.act}
                                     </span>
                                   )}
@@ -755,8 +752,7 @@ export default function CopilotPage() {
               </p>
             </div>
 
-            {/* ✅ FIX: Removed width props and classes, just using max-w so it scales down on mobile */}
-            <div className="w-full max-w-[620px] shadow-sm rounded-[22px] mx-auto">
+            <div className="w-full max-w-155 shadow-sm rounded-[22px] mx-auto">
               <PromptBar
                 placeholder={
                   language === "bn"
@@ -790,10 +786,9 @@ export default function CopilotPage() {
           </div>
         )}
 
-        {/* ✅ FIX: Removed width prop from bottom PromptBar and wrapped in max-w-[720px] */}
         {hasMessages && !messageLimitReached && (
           <div className="pt-2 pb-2 flex justify-center w-full">
-            <div className="w-full max-w-[720px]">
+            <div className="w-full max-w-180">
               <PromptBar
                 placeholder={
                   language === "bn"
@@ -810,7 +805,7 @@ export default function CopilotPage() {
         {/* ফ্লোটিং চ্যাট হিস্ট্রি ড্রয়ার */}
         {showHistoryDrawer && (
           <div className="fixed inset-0 z-50 flex justify-end items-center p-3 sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full sm:w-[420px] h-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col rounded-3xl overflow-hidden bg-(--bg-card) border border-(--text-primary)/10 animate-in slide-in-from-right duration-300">
+            <div className="w-full sm:w-105 h-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col rounded-3xl overflow-hidden bg-(--bg-card) border border-(--text-primary)/10 animate-in slide-in-from-right duration-300">
               
               <div className="p-5 border-b border-(--text-primary)/10 bg-(--bg-card)/95 backdrop-blur-md flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2">
@@ -906,7 +901,7 @@ export default function CopilotPage() {
 
         {/* Citation Modal */}
         {activeCitation && (
-          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-[480px] shadow-2xl p-5 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 bg-(--bg-card) text-(--text-primary)">
+          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-120 shadow-2xl p-5 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 bg-(--bg-card) text-(--text-primary)">
             <div className="space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-(--text-primary)/10">
                 <div className="flex items-center gap-2 text-xs font-semibold text-(--text-primary)">

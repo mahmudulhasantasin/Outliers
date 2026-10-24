@@ -9,7 +9,6 @@ import {
   type SpringOptions,
   AnimatePresence
 } from 'framer-motion';
-// ✅ FIX: Removed unused useEffect and useMemo imports
 import React, { Children, cloneElement, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -164,7 +163,7 @@ export default function VerticalDock({
 
   return (
     <aside
-      className={`fixed left-4 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center select-none ${className}`}
+      className={`hidden md:flex fixed left-4 top-1/2 -translate-y-1/2 z-40 flex-col items-center select-none ${className}`}
       aria-label="Application vertical dock"
     >
       <motion.div
@@ -193,7 +192,8 @@ export default function VerticalDock({
             priority
           />
         </Link>
-        <div className="w-6 h-[1px] bg-[var(--text-primary)]/10 mb-0.5" />
+        {/* ✅ FIX: Updated Tailwind classes to v4 canonical format (h-px and bg-(--var)) */}
+        <div className="w-6 h-px bg-(--text-primary)/10 mb-0.5" />
 
         {items.map((item, index) => (
           <VerticalDockItem

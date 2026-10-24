@@ -267,7 +267,7 @@ export default function MarkdownViewer({
               </thead>
               <tbody className="divide-y divide-(--text-primary)/8">
                 {bodyRows.map((row, rIdx) => (
-                  <tr key={rIdx} className="hover:bg-(--text-primary)/[0.02] transition-colors">
+                  <tr key={rIdx} className="hover:bg-(--text-primary)/2 transition-colors">
                     {row.map((cell, cIdx) => (
                       <td key={cIdx} className="p-2.5 text-(--text-primary)/85 align-top">
                         {formatInlineText(cell.trim())}
@@ -502,7 +502,7 @@ export default function MarkdownViewer({
                     : "border-(--text-primary)/30 bg-(--bg-surface)"
                 }`}
               >
-                {isChecked && <Check className="w-3 h-3 stroke-[3]" />}
+                {isChecked && <Check className="w-3 h-3 stroke-3" />}
               </span>
               <span>{formatInlineText(checkText)}</span>
             </div>
@@ -517,7 +517,7 @@ export default function MarkdownViewer({
         if (match) {
           elements.push(
             <div key={`ol-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-(--text-primary)/90 ml-1">
-              <span className="font-mono font-bold text-(--text-primary)/70 text-[11px] shrink-0 min-w-[18px]">
+              <span className="font-mono font-bold text-(--text-primary)/70 text-[11px] shrink-0 min-w-4.5">
                 {match[1]}.
               </span>
               <div className="flex-1">

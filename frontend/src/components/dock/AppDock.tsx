@@ -231,37 +231,57 @@ export default function AppDock() {
       <div className="md:hidden fixed top-4 left-4 z-100">
         <button
           onClick={() => setIsMobileOpen(true)}
-          className="p-2.5 rounded-xl bg-(--bg-card) border border-(--text-primary)/10 shadow-lg text-(--text-primary) hover:bg-(--bg-surface) transition-colors"
+          className="p-2.5 rounded-xl bg-(--bg-card) border border-(--text-primary)/10 shadow-lg text-(--text-primary) hover:bg-(--bg-surface) transition-colors cursor-pointer"
         >
           <Menu className="w-5 h-5" />
         </button>
       </div>
 
-      {/* ✅ Mobile Backdrop Overlay */}
+      {/* ✅ Mobile Fullscreen Drawer Menu */}
       {isMobileOpen && (
-        <div
-          onClick={() => setIsMobileOpen(false)}
-          className="md:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-90 animate-in fade-in"
-        />
+        <div className="md:hidden fixed inset-0 z-100 flex bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          {/* Drawer Sidebar */}
+          <div className="w-72 h-full bg-(--bg-card) p-5 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
+            <div className="flex items-center justify-between mb-6">
+              <span className="font-bold text-lg text-(--text-primary)">
+                {isBn ? "মেনু" : "Menu"}
+              </span>
+              <button
+                onClick={() => setIsMobileOpen(false)}
+                className="p-1.5 rounded-lg text-(--text-muted) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-2 overflow-y-auto">
+              {items.map((item, index) => (
+                <button
+                  key={index} // ✅ FIX: Changed from item.label to index to resolve TS error
+                  onClick={() => {
+                    item.onClick();
+                    setIsMobileOpen(false);
+                  }}
+                  className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
+                    item.isActive
+                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 font-semibold"
+                      : "text-(--text-primary) hover:bg-(--bg-surface)"
+                  }`}
+                >
+                  <span className="shrink-0">{item.icon}</span>
+                  <span className="text-sm truncate">{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Backdrop click to close */}
+          <div className="flex-1" onClick={() => setIsMobileOpen(false)} />
+        </div>
       )}
 
-      {/* ✅ Dock Wrapper */}
-      <div
-        className={`
-          fixed md:relative z-95 transition-transform duration-300 ease-in-out
-          ${isMobileOpen ? "translate-x-0" : "translate-x-[-150%] md:translate-x-0"}
-        `}
-      >
-        {/* ✅ Close Button */}
-        <div className="md:hidden absolute top-4 -right-12.5">
-           <button
-             onClick={() => setIsMobileOpen(false)}
-             className="p-2 rounded-lg bg-(--bg-card) shadow-md text-(--text-muted) hover:text-rose-500 cursor-pointer"
-           >
-             <X className="w-5 h-5" />
-           </button>
-        </div>
-
+      {/* ✅ Desktop Floating Dock */}
+      <div className="hidden md:block">
         <VerticalDock
           items={items}
           panelWidth={60}
