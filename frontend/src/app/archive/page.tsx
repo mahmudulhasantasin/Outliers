@@ -466,10 +466,10 @@ export default function ArchivePage() {
       </div>
 
       {/* 2. INTERACTIVE SCREEN UI */}
-      <div className="legal-screen-only w-full max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans overflow-hidden">
+      <div className="legal-screen-only w-full max-w-4xl mx-auto px-0 sm:px-6 pt-2 sm:pt-8 pb-24 sm:pb-32 font-sans overflow-x-hidden">
         
         {/* Page Header */}
-        <div className="pb-8 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        <div className="pb-6 sm:pb-8 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-wider font-semibold">
               <FolderClock className="w-4 h-4" />
@@ -486,18 +486,18 @@ export default function ArchivePage() {
             </button>
           </div>
 
-          <h1 className="text-3xl sm:text-4xl font-serif font-normal tracking-tight leading-snug mb-3 text-(--text-primary)">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-serif font-normal tracking-tight leading-snug mb-2.5 sm:mb-3 text-(--text-primary)">
             {language === "bn" ? "সংরক্ষিত চুক্তি ও অডিট মেমো" : "Archived Audits & Legal Memos"}
           </h1>
 
-          <p className="text-sm text-neutral-500 font-sans leading-relaxed max-w-2xl">
+          <p className="text-xs sm:text-sm text-neutral-500 font-sans leading-relaxed max-w-2xl">
             {language === "bn"
               ? "পূর্বে বিশ্লেষিত চুক্তিপত্র, বাংলাদেশ আইনের আওতায় চিহ্নিত ঝুঁকি এবং সংবিধিবদ্ধ রেডলাইন প্রতিবেদনের পূর্ণাঙ্গ আর্কাইভ।"
               : "Repository of audited contracts, statutory compliance assessments, and legally protected redlines under Bangladesh statutes."}
           </p>
 
           {/* Quick Stats Strip */}
-          <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-6 mt-6 border-t text-xs" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 sm:gap-6 pt-5 sm:pt-6 mt-5 sm:mt-6 border-t text-xs" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
             <div>
               <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">{records.length}</span>
               <span>{language === "bn" ? "মোট অডিট" : "Total Audits"}</span>
@@ -524,9 +524,9 @@ export default function ArchivePage() {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b w-full" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        <div className="py-5 sm:py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-b w-full" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           {/* Search Box */}
-          <div className="relative flex-1 max-w-md w-full sm:w-auto">
+          <div className="relative flex-1 max-w-full sm:max-w-md w-full">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -558,7 +558,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Filter Pills with real counts */}
-          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 w-full max-w-full">
+          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 w-full max-w-full no-scrollbar">
             {[
               { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
               { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
@@ -568,7 +568,7 @@ export default function ArchivePage() {
               <button
                 key={filter.id}
                 onClick={() => setSelectedRisk(filter.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
                   selectedRisk === filter.id
                     ? "bg-(--text-primary) text-(--bg-primary) font-semibold shadow-xs"
                     : "opacity-60 hover:opacity-100 bg-neutral-200/50 dark:bg-neutral-800/50"
@@ -591,10 +591,10 @@ export default function ArchivePage() {
 
         {/* Active Search Results Indicator */}
         {searchQuery.trim().length > 0 && (
-          <div className="my-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs w-full">
+          <div className="my-3.5 sm:my-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-3.5 sm:px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs w-full">
             <div className="flex items-center gap-2 text-neutral-800 dark:text-neutral-200">
               <Search className="w-3.5 h-3.5 text-amber-500 shrink-0" />
-              <span>
+              <span className="break-words">
                 {language === "bn"
                   ? `"${searchQuery.trim()}" অনুসন্ধান ফলাফল: ${filteredRecords.length}টি চুক্তি পাওয়া গেছে`
                   : `Showing ${filteredRecords.length} contract${filteredRecords.length === 1 ? "" : "s"} matching "${searchQuery.trim()}"`}
@@ -616,11 +616,11 @@ export default function ArchivePage() {
             filteredRecords.map((record) => (
               <div
                 key={record.id}
-                className="py-8 space-y-4 group transition-colors w-full"
+                className="py-6 sm:py-8 space-y-3.5 sm:space-y-4 group transition-colors w-full"
               >
                 {/* Item Top Metadata */}
-                <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 w-full">
-                  <div className="flex items-center gap-2.5 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full">
+                  <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap">
                     <span className="text-xs font-semibold text-neutral-400">
                       {language === "bn" ? record.auditDateBn : record.auditDateEn}
                     </span>
@@ -648,7 +648,7 @@ export default function ArchivePage() {
                     )}
                   </div>
 
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
                     <span className="text-xs font-semibold px-2 py-0.5 rounded-md" style={{
                       backgroundColor: record.riskScore >= 70 ? "rgba(239, 68, 68, 0.15)" : record.riskScore >= 40 ? "rgba(245, 158, 11, 0.15)" : "rgba(34, 197, 94, 0.15)",
                       color: record.riskScore >= 70 ? "#ef4444" : record.riskScore >= 40 ? "#f59e0b" : "#22c55e"
@@ -663,10 +663,10 @@ export default function ArchivePage() {
 
                 {/* Contract Title */}
                 <div className="w-full">
-                  <h2 className="text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary) wrap-break-word">
+                  <h2 className="text-lg sm:text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary) break-words">
                     {language === "bn" ? record.titleBn : record.titleEn}
                   </h2>
-                  <p className="text-xs text-neutral-500 mt-1 wrap-break-word">
+                  <p className="text-xs text-neutral-500 mt-1 break-words">
                     {language === "bn"
                       ? `পক্ষসমূহ: ${record.firstPartyBn} ও ${record.secondPartyBn}`
                       : `Parties: ${record.firstPartyEn} & ${record.secondPartyEn}`}
@@ -674,13 +674,13 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Statutory Risk Takeaway */}
-                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl wrap-break-word">
+                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl break-words">
                   {language === "bn" ? record.summaryBn : record.summaryEn}
                 </p>
 
                 {/* Breakdown & Action Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 w-full">
-                  <div className="flex items-center gap-3 text-xs text-neutral-400 flex-wrap">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 pt-2 w-full">
+                  <div className="flex items-center gap-2 sm:gap-3 text-xs text-neutral-400 flex-wrap">
                     <span>
                       {record.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকি" : "High Risk"}
                     </span>
@@ -701,7 +701,7 @@ export default function ArchivePage() {
                       <button
                         onClick={() => handleRequestLawyer(record)}
                         disabled={isRequestingVerification === record.id}
-                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50"
+                        className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 shrink-0"
                         title={language === "bn" ? "লইয়ার দ্বারা ভেরিফাই করুন" : "Verify by Lawyer"}
                       >
                         {isRequestingVerification === record.id ? (
@@ -715,7 +715,7 @@ export default function ArchivePage() {
 
                     <button
                       onClick={() => handleOpenInCopilot(record)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary)"
+                      className="px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary) shrink-0"
                       title={language === "bn" ? "কোপাইলটের সাথে আলোচনা করুন" : "Discuss in Advotech Copilot"}
                     >
                       <Bot className="w-3.5 h-3.5" />
@@ -724,34 +724,36 @@ export default function ArchivePage() {
 
                     <button
                       onClick={() => setPreviewRecord(record)}
-                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90"
+                      className="px-3.5 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm bg-neutral-900 text-white dark:bg-white dark:text-neutral-900 hover:opacity-90 shrink-0"
                       title={language === "bn" ? "সম্পূর্ণ অডিট রিপোর্ট দেখুন" : "View Full Audit Report"}
                     >
                       <span>{language === "bn" ? "অডিট দেখুন" : "View Audit"}</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handlePrintMemo(record)}
-                      className="p-1.5 rounded-full text-neutral-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-                      title={language === "bn" ? "অডিট মেমো প্রিন্ট / PDF সংরক্ষণ করুন" : "Print / Save Audit Memo as PDF"}
-                    >
-                      <Printer className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 sm:gap-1.5 ml-auto sm:ml-0">
+                      <button
+                        type="button"
+                        onClick={() => handlePrintMemo(record)}
+                        className="p-1.5 sm:p-2 rounded-full text-neutral-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                        title={language === "bn" ? "অডিট মেমো প্রিন্ট / PDF সংরক্ষণ করুন" : "Print / Save Audit Memo as PDF"}
+                      >
+                        <Printer className="w-4 h-4" />
+                      </button>
 
-                    <button
-                      onClick={() => handleDelete(record.id)}
-                      disabled={deletingId === record.id}
-                      className="p-1.5 rounded-full text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
-                      title="Remove from archive"
-                    >
-                      {deletingId === record.id ? (
-                        <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-3.5 h-3.5" />
-                      )}
-                    </button>
+                      <button
+                        onClick={() => handleDelete(record.id)}
+                        disabled={deletingId === record.id}
+                        className="p-1.5 sm:p-2 rounded-full text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer disabled:opacity-50"
+                        title="Remove from archive"
+                      >
+                        {deletingId === record.id ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -763,7 +765,7 @@ export default function ArchivePage() {
               <p className="text-sm font-medium text-(--text-primary)">
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
-              <p className="text-xs text-neutral-400 max-w-sm mx-auto wrap-break-word">
+              <p className="text-xs text-neutral-400 max-w-sm mx-auto break-words">
                 {searchQuery.trim().length > 0
                   ? language === "bn"
                     ? `"${searchQuery.trim()}" দিয়ে কোনো চুক্তি মেলেনি। বানান পরীক্ষা করুন অথবা সার্চ ক্লিয়ার করুন।`
@@ -789,22 +791,22 @@ export default function ArchivePage() {
 
       {/* 3. MARKDOWN AUDIT MODAL */}
       {previewRecord && (
-        <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-(--text-primary)/10 flex flex-wrap items-center justify-between gap-2 bg-(--bg-surface) w-full">
-              <div className="min-w-0 pr-4">
+        <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-4xl h-[92vh] sm:h-auto sm:max-h-[90vh] flex flex-col rounded-2xl sm:rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-2xl overflow-hidden">
+            <div className="p-3.5 sm:p-4 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-surface) w-full shrink-0">
+              <div className="min-w-0 flex-1 pr-1">
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-(--bg-card) text-(--text-muted) border border-(--text-primary)/10">
                   {previewRecord.id}
                 </span>
-                <h3 className="text-base font-serif font-bold text-(--text-primary) truncate mt-1">
+                <h3 className="text-sm sm:text-base font-serif font-bold text-(--text-primary) truncate mt-1">
                   {language === "bn" ? previewRecord.titleBn : previewRecord.titleEn}
                 </h3>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => handlePrintMemo(previewRecord)}
-                  className="p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                  className="p-1.5 sm:p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
                   title={language === "bn" ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
                 >
                   <Printer className="w-4 h-4 text-sky-500" />
@@ -813,13 +815,14 @@ export default function ArchivePage() {
                 <button
                   type="button"
                   onClick={() => setPreviewRecord(null)}
-                  className="p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) transition-colors cursor-pointer"
+                  className="p-1.5 sm:p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"
+                  title={language === "bn" ? "বন্ধ করুন" : "Close"}
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 w-full">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 w-full">
               <MarkdownViewer
                 content={generateContractAuditMarkdown(
                   previewRecord.contractId,

@@ -25,9 +25,9 @@ export default function AppShell({
         <AppDock />
       </div>
 
-      {/* Main Workspace Area with clearance for the left dock - Reset on Print */}
+      {/* Main Workspace Area with clearance for the left dock on desktop and top hamburger clearance on mobile - Reset on Print */}
       <main
-        className={`flex-1 min-h-screen pl-24 pr-6 py-6 md:pl-28 md:pr-10 md:py-8 max-w-[1600px] mx-auto flex flex-col print:p-0 print:m-0 print:w-full print:max-w-none print:min-h-0 ${mainClassName}`}
+        className={`flex-1 min-h-screen px-4 pt-16 pb-6 md:pt-8 md:pl-28 md:pr-10 md:pb-8 max-w-[1600px] mx-auto flex flex-col print:p-0 print:m-0 print:w-full print:max-w-none print:min-h-0 ${mainClassName}`}
         style={{ backgroundColor: "var(--bg-primary)" }}
       >
         {/* Dynamic Page Content directly without any top header bar */}
