@@ -391,51 +391,51 @@ export default function LawyerArchivePage() {
         {activeTab === "earnings" && (
           <div className="space-y-8 animate-in fade-in duration-200">
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div className={`p-4 rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+              <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
                 <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
                   {isBn ? "মোট উপার্জিত অর্থ" : "Total Earned"}
                 </p>
-                <p className="text-xl sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
+                <p className="text-lg sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1 truncate">
                   ৳{(earnings?.total_earned_bdt ?? earnings?.total_earned_credits ?? 7000).toLocaleString()}
                 </p>
-                <span className="text-[10px] text-emerald-500 font-semibold">
+                <span className="text-[10px] text-emerald-500 font-semibold truncate block">
                   {isBn ? "আইনি ফি থেকে" : "From statutory reviews"}
                 </span>
               </div>
 
-              <div className={`p-4 rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
+              <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
                 <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
                   {isBn ? "উত্তোলনযোগ্য ব্যালেন্স" : "Wallet Balance"}
                 </p>
-                <p className="text-xl sm:text-2xl font-bold font-mono text-amber-500 mt-1">
+                <p className="text-lg sm:text-2xl font-bold font-mono text-amber-500 mt-1 truncate">
                   ৳{(earnings?.wallet_balance_bdt ?? earnings?.pending_payout_credits ?? 2500).toLocaleString()}
                 </p>
-                <span className="text-[10px] text-[var(--text-muted)]">
+                <span className="text-[10px] text-[var(--text-muted)] truncate block">
                   {isBn ? "বিকাশ পে-আউট যোগ্য" : "Available to withdraw"}
                 </span>
               </div>
 
-              <div className={`p-4 rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
+              <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
                 <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
                   {isBn ? "সম্পন্ন অডিট" : "Reviews Sealed"}
                 </p>
-                <p className="text-xl sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
+                <p className="text-lg sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1 truncate">
                   {earnings?.completed_reviews ?? 7}
                 </p>
-                <span className="text-[10px] text-sky-500 font-semibold">
+                <span className="text-[10px] text-sky-500 font-semibold truncate block">
                   {isBn ? "আইনগত সিলমোহরকৃত" : "Digitally sealed"}
                 </span>
               </div>
 
-              <div className={`p-4 rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
+              <div className={`p-3.5 sm:p-4 rounded-xl sm:rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
                 <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
                   {isBn ? "রেটিং ও বিশ্বাসযোগ্যতা" : "Advocate Rating"}
                 </p>
-                <p className="text-xl sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1">
+                <p className="text-lg sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1 truncate">
                   {earnings?.rating ?? earnings?.avg_rating ?? 4.8} ★
                 </p>
-                <span className="text-[10px] text-[var(--text-muted)]">
+                <span className="text-[10px] text-[var(--text-muted)] truncate block">
                   {isBn ? "ক্লায়েন্ট সন্তুষ্টি" : "Client feedback"}
                 </span>
               </div>
@@ -567,10 +567,10 @@ export default function LawyerArchivePage() {
         </>
       )}
         {selectedPreview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 print:static print:inset-auto print:bg-white print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:block print:z-auto">
-            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden print:border-none print:shadow-none print:rounded-none print:max-h-none print:w-full print:bg-white`}>
-              <div className="p-4 sm:p-5 border-b border-[var(--text-primary)]/10 flex items-center justify-between bg-[var(--bg-surface)] print:border-b-2 print:border-neutral-900 print:bg-white print:pb-3 print:mb-4">
-                <div className="min-w-0 pr-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 print:static print:inset-auto print:bg-white print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:block print:z-auto">
+            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden print:border-none print:shadow-none print:rounded-none print:max-h-none print:w-full print:bg-white`}>
+              <div className="p-3.5 sm:p-5 border-b border-[var(--text-primary)]/10 flex items-center justify-between gap-3 bg-[var(--bg-surface)] print:border-b-2 print:border-neutral-900 print:bg-white print:pb-3 print:mb-4">
+                <div className="min-w-0 flex-1 pr-2">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 print:border-neutral-400 print:text-neutral-700">
                       {selectedPreview.id}
@@ -583,25 +583,25 @@ export default function LawyerArchivePage() {
                   <h2 className="text-base sm:text-lg font-serif font-bold text-[var(--text-primary)] truncate print:text-neutral-900">
                     {isBn ? selectedPreview.titleBn : selectedPreview.titleEn}
                   </h2>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 print:text-neutral-700">
+                  <p className="text-xs text-[var(--text-muted)] mt-0.5 print:text-neutral-700 truncate">
                     {isBn ? "ক্লায়েন্ট:" : "Client:"} {selectedPreview.clientName} · {isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn}
                   </p>
                 </div>
 
-                <div className="flex items-center gap-2 print:hidden">
+                <div className="flex items-center gap-1.5 sm:gap-2 print:hidden shrink-0">
                   <button
                     type="button"
                     onClick={() => window.print()}
-                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                    className="p-1.5 sm:p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
                     title={isBn ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
                   >
                     <Printer className="w-4 h-4 text-sky-500" />
-                    <span>{isBn ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
+                    <span className="hidden sm:inline">{isBn ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedPreview(null)}
-                    className="p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
+                    className="p-1.5 sm:p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
                   >
                     <X className="w-5 h-5" />
                   </button>

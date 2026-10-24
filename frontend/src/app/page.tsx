@@ -649,7 +649,7 @@ export default function LandingAndAuthPage() {
               </div>
 
               {/* ── Bottom-Right Floating Glassmorphic Card: "Case Closure Statistics" (+50% Width, +30% Height) ── */}
-              <div className="absolute -bottom-2 right-2 sm:right-4 z-30 p-5 sm:p-6 rounded-3xl bg-[var(--bg-card)]/95 backdrop-blur-xl border border-[var(--text-primary)]/15 shadow-2xl w-[360px] sm:w-[405px] transition-all hover:scale-[1.02]">
+              <div className="absolute -bottom-2 right-2 sm:right-4 z-30 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[var(--bg-card)]/95 backdrop-blur-xl border border-[var(--text-primary)]/15 shadow-2xl w-[calc(100%-1rem)] max-w-[360px] sm:w-[405px] sm:max-w-[405px] transition-all hover:scale-[1.02]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="text-xs sm:text-sm font-bold tracking-tight text-[var(--text-primary)]">
                     {isBn ? "কেস নিষ্পত্তি পরিসংখ্যান" : "Case Closure Statistics"}

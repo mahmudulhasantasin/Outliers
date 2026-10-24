@@ -312,7 +312,7 @@ export default function ContractMindPage() {
         <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg" className="hidden" onChange={handleFileUpload} />
 
         {!isLoaded ? (
-          <div className="max-w-3xl mx-auto pt-16 sm:pt-24 px-4 flex flex-col items-center text-center">
+          <div className="max-w-3xl mx-auto pt-4 sm:pt-20 px-4 flex flex-col items-center text-center">
             <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-(--text-primary)">
               {language === "bn" ? "কন্ট্রাক্টমাইন্ড" : "ContractMind"}
             </h1>
@@ -336,7 +336,7 @@ export default function ContractMindPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => !isAnalyzing && fileInputRef.current?.click()}
-              className={`w-full transition-all duration-200 rounded-3xl p-12 sm:p-16 flex flex-col items-center justify-center group shadow-sm mb-6 bg-(--bg-surface) ${isAnalyzing ? "cursor-wait opacity-80" : "cursor-pointer"}`}
+              className={`w-full transition-all duration-200 rounded-3xl p-6 sm:p-16 flex flex-col items-center justify-center group shadow-sm mb-6 bg-(--bg-surface) ${isAnalyzing ? "cursor-wait opacity-80" : "cursor-pointer"}`}
             >
               <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4 bg-(--bg-card) text-(--text-primary)">
                 <Upload className="w-6 h-6 stroke-2" />
@@ -408,7 +408,7 @@ export default function ContractMindPage() {
               <MarkdownViewer content={markdownAuditContent} />
             </div>
 
-            <div className="mt-8 p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-sm print:hidden">
+            <div className="mt-6 sm:mt-8 p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-sm print:hidden">
               {!dispatchedDecision ? (
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
                   <div className="space-y-1">
@@ -425,7 +425,7 @@ export default function ContractMindPage() {
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                  <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 flex-wrap w-full sm:w-auto">
                     <button onClick={handleDownloadReport} className="px-4 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer">
                       <Download className="w-4 h-4 text-(--text-muted)" />
                       <span>{language === "bn" ? "ডাউনলোড রিপোর্ট (PDF)" : "Download Report (PDF)"}</span>
@@ -471,7 +471,7 @@ export default function ContractMindPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2.5 shrink-0">
+                    <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
                       <button onClick={handleDownloadReport} className="px-3.5 py-2 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-1.5 transition-colors cursor-pointer">
                         <Download className="w-3.5 h-3.5 text-(--text-muted)" />
                         <span>{language === "bn" ? "ডাউনলোড" : "Download"}</span>

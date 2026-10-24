@@ -661,11 +661,11 @@ export default function LawyerPendingPage() {
 
         {/* FULL ADVOCATE STATUTORY VERIFICATION & MARKDOWN MODAL */}
         {selectedContract && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl overflow-hidden`}>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl overflow-hidden`}>
               
-              <div className="p-4 sm:p-5 border-b border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
-                <div className="min-w-0 pr-4">
+              <div className="p-3.5 sm:p-5 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-surface)">
+                <div className="min-w-0 flex-1 pr-2">
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-(--bg-card) text-(--text-muted) border border-(--text-primary)/10">
                       {selectedContract.id}
@@ -677,7 +677,7 @@ export default function LawyerPendingPage() {
                   <h2 className="text-base sm:text-lg font-serif font-bold text-(--text-primary) truncate">
                     {isBn ? selectedContract.titleBn : selectedContract.titleEn}
                   </h2>
-                  <p className="text-xs text-(--text-muted) mt-0.5">
+                  <p className="text-xs text-(--text-muted) mt-0.5 truncate">
                     {isBn ? "ক্লায়েন্ট:" : "Client:"} {selectedContract.clientName} ({selectedContract.clientPhone})
                   </p>
                 </div>
@@ -685,18 +685,18 @@ export default function LawyerPendingPage() {
                 <button
                   type="button"
                   onClick={() => setSelectedContract(null)}
-                  className="p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer shrink-0"
+                  className="p-1.5 sm:p-2 rounded-xl text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer shrink-0"
                 >
                   <X className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="px-5 py-2.5 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-card)">
-                <div className="flex items-center bg-(--bg-surface) p-1 rounded-xl border border-(--text-primary)/10 text-xs font-semibold overflow-x-auto">
+              <div className="px-3.5 sm:px-5 py-2 sm:py-2.5 border-b border-(--text-primary)/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 bg-(--bg-card)">
+                <div className="flex items-center bg-(--bg-surface) p-1 rounded-xl border border-(--text-primary)/10 text-xs font-semibold overflow-x-auto no-scrollbar w-full sm:w-auto">
                   <button
                     type="button"
                     onClick={() => setModalTab("markdown")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                       modalTab === "markdown"
                         ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
                         : "text-(--text-muted) hover:text-(--text-primary)"
@@ -709,7 +709,7 @@ export default function LawyerPendingPage() {
                   <button
                     type="button"
                     onClick={() => setModalTab("edit_clauses")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                       modalTab === "edit_clauses"
                         ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
                         : "text-(--text-muted) hover:text-(--text-primary)"
@@ -722,7 +722,7 @@ export default function LawyerPendingPage() {
                   <button
                     type="button"
                     onClick={() => setModalTab("signoff")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors cursor-pointer whitespace-nowrap shrink-0 ${
                       modalTab === "signoff"
                         ? "bg-(--accent-solid) text-(--accent-contrast) shadow-sm"
                         : "text-(--text-muted) hover:text-(--text-primary)"
