@@ -52,7 +52,7 @@ interface ArchivedRecord {
 export default function ArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user, refreshUser } = useAuth(); // ✅ FIX: refreshUser যোগ করা হলো
+  const { user, refreshUser } = useAuth(); 
 
   useEffect(() => {
     const userRole = String(user?.role).toUpperCase();
@@ -68,11 +68,9 @@ export default function ArchivePage() {
   const [printRecord, setPrintRecord] = useState<ArchivedRecord | null>(null);
   const [isLoadingApi, setIsLoadingApi] = useState(false);
   
-  // ✅ ডিলিট ও ভেরিফিকেশন লোডিং স্টেট
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isRequestingVerification, setIsRequestingVerification] = useState<string | null>(null);
 
-  // Map backend history item to full ArchivedRecord
   const mapItemToRecord = (item: any): ArchivedRecord => {
     const cid = String(item.contract_id || item.id);
     const status = item.hitl_status || item.status || "NOT_REQUESTED";
@@ -357,7 +355,6 @@ export default function ArchivePage() {
     router.push("/copilot");
   };
 
-  // ✅ নতুন: Lawyer Verification Request Logic
   const handleRequestLawyer = async (record: ArchivedRecord) => {
     if (!confirm(language === "bn" ? "আপনি কি নিশ্চিত এই চুক্তিটি লইয়ারের কাছে ভেরিফিকেশনের জন্য পাঠাতে চান? এটি ১৫০০ ক্রেডিট কাটবে।" : "Are you sure you want to request lawyer verification? This will deduct 1500 credits.")) return;
     
@@ -366,7 +363,7 @@ export default function ArchivePage() {
       await requestLawyerVerification(record.contractId);
       alert(language === "bn" ? "সফলভাবে লইয়ার ভেরিফিকেশনের জন্য পাঠানো হয়েছে!" : "Successfully dispatched to lawyer queue!");
       if (refreshUser) refreshUser().catch(() => {});
-      fetchHistory(); // আর্কাইভ রিফ্রেশ করে নতুন স্ট্যাটাস দেখানো
+      fetchHistory();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to request verification";
       alert(msg);
@@ -406,9 +403,7 @@ export default function ArchivePage() {
 
   return (
     <AppShell>
-      {/* ==================================================================== */}
-      {/* 1. DEDICATED PRINT / PDF EXPORT CONTAINER (ONLY VISIBLE ON PRINT)     */}
-      {/* ==================================================================== */}
+      {/* 1. DEDICATED PRINT / PDF EXPORT CONTAINER */}
       <div className="legal-print-only w-full bg-white text-black p-8 print-clean-paper">
         {printTargetRecord ? (
           <div className="space-y-6">
@@ -470,10 +465,8 @@ export default function ArchivePage() {
         )}
       </div>
 
-      {/* ==================================================================== */}
-      {/* 2. INTERACTIVE SCREEN UI (COMPLETELY HIDDEN DURING PRINT)            */}
-      {/* ==================================================================== */}
-      <div className="legal-screen-only max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans">
+      {/* 2. INTERACTIVE SCREEN UI */}
+      <div className="legal-screen-only w-full max-w-4xl mx-auto px-4 sm:px-6 pt-8 pb-32 font-sans overflow-hidden">
         
         {/* Page Header */}
         <div className="pb-8 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
@@ -504,7 +497,7 @@ export default function ArchivePage() {
           </p>
 
           {/* Quick Stats Strip */}
-          <div className="flex flex-wrap items-center gap-6 pt-6 mt-6 border-t text-xs" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
+          <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-6 mt-6 border-t text-xs" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
             <div>
               <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">{records.length}</span>
               <span>{language === "bn" ? "মোট অডিট" : "Total Audits"}</span>
@@ -531,9 +524,9 @@ export default function ArchivePage() {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        <div className="py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 border-b w-full" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           {/* Search Box */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1 max-w-md w-full sm:w-auto">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -565,7 +558,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Filter Pills with real counts */}
-          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0">
+          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 w-full max-w-full">
             {[
               { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
               { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
@@ -598,7 +591,7 @@ export default function ArchivePage() {
 
         {/* Active Search Results Indicator */}
         {searchQuery.trim().length > 0 && (
-          <div className="my-4 flex items-center justify-between px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+          <div className="my-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs w-full">
             <div className="flex items-center gap-2 text-neutral-800 dark:text-neutral-200">
               <Search className="w-3.5 h-3.5 text-amber-500 shrink-0" />
               <span>
@@ -610,7 +603,7 @@ export default function ArchivePage() {
             <button
               type="button"
               onClick={() => setSearchQuery("")}
-              className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer ml-3 shrink-0"
+              className="text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer shrink-0"
             >
               {language === "bn" ? "সার্চ মুছুন (Clear)" : "Clear search"}
             </button>
@@ -623,10 +616,10 @@ export default function ArchivePage() {
             filteredRecords.map((record) => (
               <div
                 key={record.id}
-                className="py-8 space-y-4 group transition-colors"
+                className="py-8 space-y-4 group transition-colors w-full"
               >
                 {/* Item Top Metadata */}
-                <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2 w-full">
                   <div className="flex items-center gap-2.5 flex-wrap">
                     <span className="text-xs font-semibold text-neutral-400">
                       {language === "bn" ? record.auditDateBn : record.auditDateEn}
@@ -669,11 +662,11 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Contract Title */}
-                <div>
-                  <h2 className="text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary)">
+                <div className="w-full">
+                  <h2 className="text-xl font-serif font-medium transition-colors leading-snug text-(--text-primary) wrap-break-word">
                     {language === "bn" ? record.titleBn : record.titleEn}
                   </h2>
-                  <p className="text-xs text-neutral-500 mt-1">
+                  <p className="text-xs text-neutral-500 mt-1 wrap-break-word">
                     {language === "bn"
                       ? `পক্ষসমূহ: ${record.firstPartyBn} ও ${record.secondPartyBn}`
                       : `Parties: ${record.firstPartyEn} & ${record.secondPartyEn}`}
@@ -681,13 +674,13 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Statutory Risk Takeaway */}
-                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl">
+                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl wrap-break-word">
                   {language === "bn" ? record.summaryBn : record.summaryEn}
                 </p>
 
                 {/* Breakdown & Action Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2">
-                  <div className="flex items-center gap-3 text-xs text-neutral-400">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 w-full">
+                  <div className="flex items-center gap-3 text-xs text-neutral-400 flex-wrap">
                     <span>
                       {record.highRiskCount} {language === "bn" ? "উচ্চ ঝুঁকি" : "High Risk"}
                     </span>
@@ -702,9 +695,8 @@ export default function ArchivePage() {
                   </div>
 
                   {/* Actions */}
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
                     
-                    {/* ✅ নতুন বাটন: Verify by Lawyer */}
                     {record.hitlStatus === "NOT_REQUESTED" && (
                       <button
                         onClick={() => handleRequestLawyer(record)}
@@ -766,12 +758,12 @@ export default function ArchivePage() {
               </div>
             ))
           ) : (
-            <div className="py-20 text-center space-y-3">
+            <div className="py-20 text-center space-y-3 w-full">
               <FileText className="w-8 h-8 text-neutral-300 mx-auto" />
               <p className="text-sm font-medium text-(--text-primary)">
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
-              <p className="text-xs text-neutral-400 max-w-sm mx-auto">
+              <p className="text-xs text-neutral-400 max-w-sm mx-auto wrap-break-word">
                 {searchQuery.trim().length > 0
                   ? language === "bn"
                     ? `"${searchQuery.trim()}" দিয়ে কোনো চুক্তি মেলেনি। বানান পরীক্ষা করুন অথবা সার্চ ক্লিয়ার করুন।`
@@ -795,13 +787,11 @@ export default function ArchivePage() {
         </div>
       </div>
 
-      {/* ==================================================================== */}
-      {/* 3. MARKDOWN AUDIT MODAL (LEGAL-SCREEN-ONLY TO PREVENT PRINT CLIPPING) */}
-      {/* ==================================================================== */}
+      {/* 3. MARKDOWN AUDIT MODAL */}
       {previewRecord && (
         <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="w-full max-w-4xl max-h-[90vh] flex flex-col rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-2xl overflow-hidden">
-            <div className="p-4 border-b border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
+            <div className="p-4 border-b border-(--text-primary)/10 flex flex-wrap items-center justify-between gap-2 bg-(--bg-surface) w-full">
               <div className="min-w-0 pr-4">
                 <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-(--bg-card) text-(--text-muted) border border-(--text-primary)/10">
                   {previewRecord.id}
@@ -818,7 +808,7 @@ export default function ArchivePage() {
                   title={language === "bn" ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
                 >
                   <Printer className="w-4 h-4 text-sky-500" />
-                  <span>{language === "bn" ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
+                  <span className="hidden sm:inline">{language === "bn" ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
                 </button>
                 <button
                   type="button"
@@ -829,7 +819,7 @@ export default function ArchivePage() {
                 </button>
               </div>
             </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 w-full">
               <MarkdownViewer
                 content={generateContractAuditMarkdown(
                   previewRecord.contractId,
