@@ -1147,38 +1147,38 @@ export default function LandingAndAuthPage() {
                   {/* Left Form */}
                   <div className="lg:col-span-7">
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
-                      {isBn ? "আইনি পরামর্শ ও প্রশ্নোত্তর" : "Legal Advice & Inquiry"}
+                      {isBn ? "আপনার পরামর্শ" : "Your Suggestions & Feedback"}
                     </span>
                     <h2 className="text-2xl sm:text-4xl font-serif font-medium tracking-tight mb-4 text-[var(--text-primary)]">
-                      {isBn ? "আপনার চুক্তি বা আইনি প্রশ্ন জিজ্ঞাসা করুন" : "Have a Contract or Legal Question? Ask Our Specialists"}
+                      {isBn ? "আমাদের পরামর্শ বা মতামত দিন" : "Share Your Suggestions or Feedback"}
                     </h2>
                     <p className="text-xs sm:text-sm text-[var(--text-muted)] mb-8 leading-relaxed">
                       {isBn
-                        ? "আপনার আইনি জিজ্ঞাসা বা অডিট করতে চাওয়া চুক্তির বিবরণ নিচে জমা দিন। আমাদের প্ল্যাটফর্ম ও সুপ্রিম কোর্ট আইনজীবী প্যানেল আপনাকে দ্রুত ও সঠিক সমাধান প্রদান করবে।"
-                        : "Submit your query or contract brief. Our legal intelligence pipeline and panel of enrolled advocates provide precise statutory guidance."}
+                        ? "আমাদের প্ল্যাটফর্ম আরও উন্নত করতে আপনার মূল্যবান মতামত বা পরামর্শ নিচে লিখে পাঠিয়ে দিন।"
+                        : "Help us improve our platform. Send us your valuable suggestions, feedback, or ideas below."}
                     </p>
 
                     <form onSubmit={(e) => { e.preventDefault(); openLoginModal(false); }} className="space-y-4">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                            {isBn ? "আপনার নাম" : "Your Name"}
+                            {isBn ? "নাম" : "Name"}
                           </label>
                           <input
                             type="text"
                             required
-                            placeholder={isBn ? "যেমন: তানভীর আহমেদ" : "e.g., Tanvir Ahmed"}
+                            placeholder={isBn ? "আপনার নাম লিখুন" : "Enter your name"}
                             className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                           />
                         </div>
                         <div>
                           <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                            {isBn ? "ইমেইল বা ফোন নম্বর" : "Email or Phone"}
+                            {isBn ? "ফোন / ইমেইল" : "Phone / Email"}
                           </label>
                           <input
                             type="text"
                             required
-                            placeholder={isBn ? "017XXXXXXXX বা email@domain.com" : "contact@domain.com"}
+                            placeholder={isBn ? "017XXXXXXXX বা email@domain.com" : "contact@domain.com or phone"}
                             className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                           />
                         </div>
@@ -1186,25 +1186,12 @@ export default function LandingAndAuthPage() {
 
                       <div>
                         <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                          {isBn ? "আইনি বিষয় বা সেবার ক্ষেত্র" : "Legal Matter Category"}
-                        </label>
-                        <select className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                          <option value="contract">{isBn ? "বাণিজ্যিক চুক্তি অডিট ও রিভিউ (Commercial Contract)" : "Commercial Contract Audit & Redline"}</option>
-                          <option value="labor">{isBn ? "চাকরি ও বাংলাদেশ শ্রম আইন ২০০৬ (Employment / Labour Law)" : "Employment & Labour Law 2006 Compliance"}</option>
-                          <option value="corporate">{isBn ? "কোম্পানি আইন ও পার্টনারশিপ বিরোধ (Corporate / Partnership)" : "Corporate Governance & Partnership Disputes"}</option>
-                          <option value="property">{isBn ? "ভূমি ও সম্পত্তি দলিল যাচাই (Property / Land Title)" : "Property & Land Title Vetting"}</option>
-                          <option value="general">{isBn ? "সাধারণ দেওয়ানি ও অন্যান্য আইনি পরামর্শ (General Legal Query)" : "General Legal Advice / Other Inquiries"}</option>
-                        </select>
-                      </div>
-
-                      <div>
-                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
-                          {isBn ? "আপনার প্রশ্ন বা চুক্তির সংক্ষিপ্ত বিবরণ" : "Describe Your Query or Contract Detail"}
+                          {isBn ? "পরামর্শ" : "Your Suggestion"}
                         </label>
                         <textarea
                           rows={4}
                           required
-                          placeholder={isBn ? "চুক্তির ধারা, বিরোধের বিবরণ বা আইনি প্রশ্নটি বিস্তারিত লিখুন..." : "Outline your specific clauses, concerns, or legal query..."}
+                          placeholder={isBn ? "আপনার মূল্যবান পরামর্শ বা মতামত লিখুন..." : "Write your suggestion or feedback here..."}
                           className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                         />
                       </div>
@@ -1214,7 +1201,7 @@ export default function LandingAndAuthPage() {
                           type="submit"
                           className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-md active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
                         >
-                          <span>{isBn ? "পরামর্শের জন্য অনুরোধ পাঠান" : "Submit Consultation Request"}</span>
+                          <span>{isBn ? "পরামর্শ পাঠান" : "Send Suggestion"}</span>
                           <ArrowUpRight className="w-4 h-4" />
                         </button>
                         <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
@@ -1428,73 +1415,54 @@ export default function LandingAndAuthPage() {
                   </ul>
                 </div>
 
-                {/* Col 4: Connect With Us & Circular Stamp Badge */}
+                {/* Col 4: Direct Support & Contact */}
                 <div>
                   <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
-                    {isBn ? "যোগাযোগ ও সোশ্যাল" : "Connect With Us"}
+                    {isBn ? "সাপোর্ট ও যোগাযোগ" : "Support & Contact"}
                   </div>
                   
-                  {/* Social Media Icons */}
-                  <div className="flex items-center gap-3 mb-5 text-[var(--text-muted)]">
-                    {/* Facebook */}
-                    <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" aria-label="Facebook" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
+                  <div className="space-y-2.5 text-xs text-[var(--text-muted)]">
+                    {/* WhatsApp */}
+                    <a
+                      href="https://wa.me/8801700000000"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 hover:text-emerald-500 transition-colors group"
+                    >
+                      <svg className="w-4 h-4 fill-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" viewBox="0 0 24 24">
+                        <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.007c.106.005.249-.04.39.299.144.347.491 1.2.534 1.288.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.861.174.086.275.072.376-.044.101-.116.433-.506.549-.68.116-.173.231-.144.39-.086s1.011.477 1.184.564.289.13.332.202c.043.073.043.419-.101.825z" />
                       </svg>
+                      <span>WhatsApp Support</span>
                     </a>
-                    {/* Instagram */}
-                    <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
-                      <svg className="w-4 h-4 fill-none stroke-current stroke-2 stroke-linecap-round stroke-linejoin-round" viewBox="0 0 24 24">
-                        <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
-                        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
-                        <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
-                      </svg>
+
+                    {/* Helpline / Phone */}
+                    <a
+                      href="tel:+8801700000000"
+                      className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors group"
+                    >
+                      <Phone className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 group-hover:scale-110 transition-transform" />
+                      <span>+880 1700-000000</span>
                     </a>
-                    {/* YouTube */}
-                    <a href="https://youtube.com" target="_blank" rel="noopener noreferrer" aria-label="YouTube" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z" />
-                        <polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02" fill="var(--bg-surface)" />
-                      </svg>
-                    </a>
-                    {/* X (Twitter) */}
-                    <a href="https://x.com" target="_blank" rel="noopener noreferrer" aria-label="X (Twitter)" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
-                      <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                      </svg>
-                    </a>
-                    {/* LinkedIn */}
-                    <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" aria-label="LinkedIn" className="hover:text-[var(--text-primary)] hover:scale-110 transition-all">
-                      <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                        <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-                      </svg>
+
+                    {/* Email */}
+                    <a
+                      href="mailto:support@advotech.ai"
+                      className="flex items-center gap-2 hover:text-[var(--text-primary)] transition-colors group"
+                    >
+                      <Mail className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 group-hover:scale-110 transition-transform" />
+                      <span>support@advotech.ai</span>
                     </a>
                   </div>
 
-                  {/* Circular Quality / Statutory Guarantee Seal Badge */}
-                  <div className="flex items-center gap-3 pt-1">
-                    <div className="relative w-13 h-13 rounded-full border border-[var(--text-primary)]/15 p-1 flex items-center justify-center bg-[var(--bg-card)] hover:border-amber-500/50 transition-all group shrink-0 shadow-xs">
-                      <svg className="w-full h-full animate-[spin_24s_linear_infinite]" viewBox="0 0 100 100">
-                        <path
-                          id="sealPath"
-                          d="M 50, 50 m -37, 0 a 37,37 0 1,1 74,0 a 37,37 0 1,1 -74,0"
-                          fill="none"
-                        />
-                        <text className="text-[9px] uppercase tracking-[0.24em] fill-[var(--text-muted)] font-medium">
-                          <textPath href="#sealPath" startOffset="0%">
-                            • STATUTORY GROUNDED • BDLAWS ACCREDITED
-                          </textPath>
-                        </text>
-                      </svg>
-                      <div className="absolute inset-0 flex flex-col items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                        <Scale className="w-3.5 h-3.5" />
-                        <span className="text-[6.5px] font-bold tracking-tighter uppercase text-[var(--text-primary)]">100%</span>
-                      </div>
-                    </div>
-                    <div className="text-[11px] text-[var(--text-muted)] leading-tight">
-                      <div className="font-semibold text-[var(--text-primary)]">Supreme Court</div>
-                      <div className="text-[10px]">Statutory Grounded AI</div>
-                    </div>
+                  {/* Active Response Pill Badge */}
+                  <div className="mt-4 pt-3 border-t border-[var(--text-primary)]/10 flex items-center gap-2">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-[10px] text-[var(--text-muted)] font-medium">
+                      {isBn ? "২৪/৭ অনলাইন এআই অ্যাসিস্ট্যান্স সক্রিয়" : "24/7 AI Assistance Active"}
+                    </span>
                   </div>
                 </div>
               </div>
@@ -1505,9 +1473,6 @@ export default function LandingAndAuthPage() {
             <div className="mt-12 pt-6 border-t border-[var(--text-primary)]/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--text-muted)]">
               <div>
                 © 2026, All Rights Reserved Advotech Copilot & ContractMind
-              </div>
-              <div className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
-                <span>Made with <span className="text-red-500">❤️</span> and ⚖️ in Dhaka, Bangladesh</span>
               </div>
             </div>
           </div>
