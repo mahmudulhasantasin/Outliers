@@ -169,13 +169,16 @@ export default function SettingsPage() {
     setIsRefreshingSettings(true);
     try {
       const [settingsData, payData] = await Promise.allSettled([getMySettings(), getPaymentSummary()]);
-      if (settingsData.status === "fulfilled" && settingsData.value?.lawyer_profile) {
-        const lp = settingsData.value.lawyer_profile;
-        if (typeof lp.max_active_reviews === "number") setMaxActiveReviews(lp.max_active_reviews);
+      
+      // ✅ FIX: Read from `.lawyer` and map updated backend keys
+      if (settingsData.status === "fulfilled" && settingsData.value?.lawyer) {
+        const lp = settingsData.value.lawyer;
+        if (typeof lp.max_concurrent_tasks === "number") setMaxActiveReviews(lp.max_concurrent_tasks);
         if (typeof lp.auto_accept_offers === "boolean") setAutoAcceptOffers(lp.auto_accept_offers);
-        if (typeof lp.is_available === "boolean") setIsLawyerAvailable(lp.is_available);
-        if (Array.isArray(lp.preferred_domains)) setPreferredDomains(lp.preferred_domains);
+        if (lp.availability) setIsLawyerAvailable(lp.availability === "AVAILABLE");
+        if (Array.isArray(lp.specializations)) setPreferredDomains(lp.specializations);
       }
+      
       if (payData.status === "fulfilled" && payData.value) setPaymentSummary(payData.value);
       if (refreshUser) await refreshUser();
     } catch (e) {
@@ -189,12 +192,14 @@ export default function SettingsPage() {
     e.preventDefault();
     setLawyerSettingsLoading(true);
     try {
+      // ✅ FIX: Send updated payload keys that match the backend
       await updateLawyerSettings({
-        max_active_reviews: maxActiveReviews,
+        max_concurrent_tasks: maxActiveReviews,
         auto_accept_offers: autoAcceptOffers,
-        is_available: isLawyerAvailable,
-        preferred_domains: preferredDomains,
+        availability: isLawyerAvailable ? "AVAILABLE" : "UNAVAILABLE",
+        specializations: preferredDomains,
       });
+      
       localStorage.setItem("contractmind_lawyer_prefs", JSON.stringify({
         max_active_reviews: maxActiveReviews,
         auto_accept_offers: autoAcceptOffers,
