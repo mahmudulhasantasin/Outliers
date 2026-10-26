@@ -299,6 +299,7 @@ export interface ChatMessage {
   content: string;
   citations?: CitedSection[] | null;
   cited_sections?: CitedSection[] | null;
+  cited_cases?: CitedCase[] | null; // ✅ NEW
   created_at?: string;
 }
 
@@ -306,6 +307,7 @@ export interface ChatHistoryMessage {
   role: "user" | "assistant";
   content: string;
   citations?: CitedSection[] | null;
+  cited_cases?: CitedCase[] | null; // ✅ NEW
   created_at?: string;
 }
 
@@ -329,9 +331,16 @@ export interface CitedSection {
   url?: string;
 }
 
+export interface CitedCase {
+  case_name: string;
+  ruling?: string;
+  relevance?: string;
+}
+
 export interface DetailedChatResponse {
   detailed_answer: string;
   cited_sections?: CitedSection[];
+  cited_cases?: CitedCase[]; // ✅ NEW
   suggested_next_steps?: string[];
 }
 
@@ -423,6 +432,7 @@ export async function getChatSessionHistory(
         role: m.role as "user" | "assistant",
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
+        cited_cases: m.cited_cases || null, // ✅ NEW
         created_at: m.created_at,
       })),
     };
@@ -437,6 +447,7 @@ export async function getChatSessionHistory(
         role: m.role as "user" | "assistant",
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
+        cited_cases: m.cited_cases || null, // ✅ NEW
         created_at: m.created_at,
       })),
     };
@@ -922,6 +933,8 @@ export interface LawyerSettings {
   rating?: number;
   monthly_free_chat_used?: number;
   monthly_free_chat_remaining?: number;
+  max_concurrent_tasks?: number;
+  auto_accept_offers?: boolean;
 }
 
 export interface UpdateProfileRequest {
@@ -939,11 +952,10 @@ export interface ChangePasswordRequest {
 
 export interface UpdateLawyerSettingsRequest {
   specializations?: string[];
-  availability?: string;
+  availability?: "AVAILABLE" | "UNAVAILABLE" | "ON_LEAVE";
   bio?: string;
-  max_active_reviews?: number;
+  max_concurrent_tasks?: number;
   auto_accept_offers?: boolean;
-  preferred_domains?: string[];
 }
 
 /** Get current user settings */

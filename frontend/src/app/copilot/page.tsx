@@ -15,10 +15,11 @@ import {
   closeChatSession,
   type ChatSession,
   type CitedSection,
+  type CitedCase, // ✅ NEW
 } from "@/lib/apiServices";
 import { useAuth } from "@/context/AuthContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
-import { maskPii } from "@/lib/piiMasker"; // ✅ NEW: Client-side PII Masking
+import { maskPii } from "@/lib/piiMasker"; // ✅ Client-side PII Masking
 import {
   Scale,
   ShieldCheck,
@@ -35,6 +36,7 @@ import {
   Copy,
   Check,
   Clock,
+  Gavel, // ✅ NEW
 } from "lucide-react";
 
 interface ChatMessage {
@@ -46,6 +48,7 @@ interface ChatMessage {
   attachments?: string[];
   citations?: string[];
   apiCitations?: CitedSection[];
+  apiCitedCases?: CitedCase[]; // ✅ NEW
   nextSteps?: string[];
   isThinking?: boolean;
   thoughtSeconds?: number;
@@ -60,6 +63,7 @@ function parseServerContent(content: unknown) {
       return {
         answerText: content as string,
         apiCitations: [] as CitedSection[],
+        apiCitedCases: [] as CitedCase[], // ✅ NEW
         nextSteps: [] as string[],
       };
     }
@@ -70,6 +74,7 @@ function parseServerContent(content: unknown) {
     return {
       answerText: (obj.detailed_answer as string) || (obj.response as string) || "",
       apiCitations: (obj.cited_sections as CitedSection[]) || [],
+      apiCitedCases: (obj.cited_cases as CitedCase[]) || [], // ✅ NEW
       nextSteps: (obj.suggested_next_steps as string[]) || [],
     };
   }
@@ -77,6 +82,7 @@ function parseServerContent(content: unknown) {
   return {
     answerText: String(content || ""),
     apiCitations: [] as CitedSection[],
+    apiCitedCases: [] as CitedCase[], // ✅ NEW
     nextSteps: [] as string[],
   };
 }
@@ -161,6 +167,7 @@ export default function CopilotPage() {
                   textEn: parsedData.answerText || m.content,
                   textBn: parsedData.answerText || m.content,
                   apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
+                  apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // ✅ NEW
                   nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
                   isThinking: false,
                 };
@@ -260,6 +267,7 @@ export default function CopilotPage() {
             textEn: parsedData.answerText || m.content,
             textBn: parsedData.answerText || m.content,
             apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
+            apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // ✅ NEW
             nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
             isThinking: false,
           };
@@ -379,6 +387,7 @@ export default function CopilotPage() {
 
       let answerText = "";
       let apiCitations: CitedSection[] = [];
+      let apiCitedCases: CitedCase[] = []; // ✅ NEW
       let nextSteps: string[] = [];
 
       let parsedPayload: unknown = result.response;
@@ -394,6 +403,7 @@ export default function CopilotPage() {
         const obj = parsedPayload as Record<string, unknown>;
         answerText = (obj.detailed_answer as string) || (obj.response as string) || "";
         apiCitations = (obj.cited_sections as CitedSection[]) || [];
+        apiCitedCases = (obj.cited_cases as CitedCase[]) || []; // ✅ NEW
         nextSteps = (obj.suggested_next_steps as string[]) || [];
       } else if (typeof parsedPayload === "string") {
         answerText = parsedPayload;
@@ -415,6 +425,7 @@ export default function CopilotPage() {
                 textBn: answerText || "বিশ্লেষণ সম্পন্ন হয়েছে।",
                 citations: [],
                 apiCitations,
+                apiCitedCases, // ✅ NEW
                 nextSteps,
                 isThinking: false,
                 thoughtSeconds: actualSeconds
@@ -712,6 +723,37 @@ export default function CopilotPage() {
                                 {(cite.provision_summary || cite.relevance || cite.relevance_summary) && (
                                   <p className="text-[11px] text-(--text-muted) leading-relaxed">
                                     {cite.provision_summary || cite.relevance || cite.relevance_summary}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {msg.apiCitedCases && msg.apiCitedCases.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-(--text-primary)/10 space-y-2">
+                          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+                            <Gavel className="w-3.5 h-3.5" />
+                            <span>{language === "bn" ? "সাম্প্রতিক রায় ও নজির (Live Case Law):" : "Live Case Law & Precedents:"}</span>
+                          </div>
+                          <div className="grid grid-cols-1 gap-2">
+                            {msg.apiCitedCases.map((cite, cIdx) => (
+                              <div
+                                key={cIdx}
+                                className="p-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20 text-xs space-y-1 shadow-sm"
+                              >
+                                <p className="font-bold text-amber-900 dark:text-amber-200">
+                                  {cite.case_name || "Case Precedent"}
+                                </p>
+                                {cite.ruling && (
+                                  <p className="text-[11px] text-(--text-muted) leading-relaxed">
+                                    {cite.ruling}
+                                  </p>
+                                )}
+                                {cite.relevance && (
+                                  <p className="text-[11px] text-amber-700 dark:text-amber-400 italic">
+                                    {cite.relevance}
                                   </p>
                                 )}
                               </div>
