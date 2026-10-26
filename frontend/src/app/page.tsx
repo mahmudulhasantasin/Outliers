@@ -1380,9 +1380,9 @@ export default function LandingAndAuthPage() {
             onClick={closeModal}
           />
 
-          {/* Modal */}
+          {/* Modal (Border removed completely) */}
           <div
-            className={`relative w-full max-w-[1020px] min-h-[580px] md:min-h-[640px] rounded-[32px] p-3 md:p-4 shadow-2xl border ${borderClass} flex flex-col md:flex-row transition-all z-10 animate-in zoom-in-95 duration-200 bg-[var(--bg-card)] text-[var(--text-primary)]`}
+            className="relative w-full max-w-[1020px] min-h-[580px] md:min-h-[640px] rounded-[32px] p-3 md:p-4 shadow-2xl flex flex-col md:flex-row transition-all z-10 animate-in zoom-in-95 duration-200 bg-[var(--bg-card)] text-[var(--text-primary)]"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close */}
@@ -1395,9 +1395,10 @@ export default function LandingAndAuthPage() {
               <X className="w-5 h-5" />
             </button>
 
-            {/* Left visual hero */}
-            <div className="relative w-full md:w-[46%] rounded-[24px] p-8 md:p-10 flex flex-col justify-between overflow-hidden shrink-0 min-h-[280px] md:min-h-auto bg-[var(--bg-surface)]">
-              <div className="absolute inset-0 pointer-events-auto z-0 overflow-hidden">
+            {/* Left visual hero: transparent/flat on mobile, styled on desktop */}
+            <div className="relative w-full md:w-[46%] rounded-[24px] p-3 md:p-10 flex flex-col justify-between overflow-hidden shrink-0 min-h-0 md:min-h-auto bg-transparent md:bg-[var(--bg-surface)]">
+              {/* Animated wave background: hidden on mobile, shown on desktop (md:) */}
+              <div className="hidden md:block absolute inset-0 pointer-events-auto z-0 overflow-hidden">
                 <GradientWaves
                   horizonColor={theme === "dark" ? "#1e1b4b" : "#5227FF"}
                   waveColor={theme === "dark" ? "#818cf8" : "#FF9FFC"}
@@ -1421,7 +1422,9 @@ export default function LandingAndAuthPage() {
                 </div>
                 <span className="font-semibold text-base tracking-tight text-[var(--text-primary)]">Advotech Copilot</span>
               </div>
-              <div className="relative z-10 pt-8 md:pt-0">
+
+              {/* Subtitle, Heading, Description & Feature Cards: Hidden on mobile, shown on desktop (md:) */}
+              <div className="hidden md:block relative z-10 pt-8 md:pt-0">
                 <span className="text-xs font-semibold uppercase tracking-wider block mb-2 text-[var(--text-muted)]">
                   {isBn ? "আইনি নিশ্চয়তা ও প্রফেশনাল বুদ্ধিমত্তা" : "Sovereign Contract Intelligence"}
                 </span>
@@ -1547,48 +1550,42 @@ export default function LandingAndAuthPage() {
                         <div className="flex flex-col gap-3">
                           {/* General */}
                           <button type="button" onClick={() => { setSelectedRole("general"); setRegStep("form"); }}
-                            className={`group w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${borderClass} hover:border-blue-400/70 hover:bg-blue-50/20 dark:hover:bg-blue-950/20`}>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/40 flex items-center justify-center shrink-0">
-                                <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                              </div>
+                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                            <div className="flex items-center gap-3.5">
+                              <User className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-sm text-[var(--text-primary)]">{isBn ? "সাধারণ ব্যবহারকারী" : "General User"}</div>
                                 <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "SME, ফ্রিল্যান্সার, HR — চুক্তি ও আইনি প্রশ্নের জন্য" : "SME, Freelancer, HR — contracts & legal queries"}</div>
                               </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-blue-500 shrink-0 transition-colors" />
+                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
                             </div>
                           </button>
                           {/* Lawyer */}
                           <button type="button" onClick={() => { setSelectedRole("lawyer"); setRegStep("form"); }}
-                            className={`group w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${borderClass} hover:border-amber-400/70 hover:bg-amber-50/20 dark:hover:bg-amber-950/20`}>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
-                                <Gavel className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                              </div>
+                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                            <div className="flex items-center gap-3.5">
+                              <Scale className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-sm text-[var(--text-primary)]">
                                   {isBn ? "আইনজীবী / অ্যাডভোকেট" : "Lawyer / Advocate"}
                                 </div>
                                 <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "বার কাউন্সিল ভেরিফিকেশনসহ পেশাদার ওয়ার্কস্পেস" : "Professional workspace with Bar Council verification"}</div>
                               </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-amber-500 shrink-0 transition-colors" />
+                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
                             </div>
                           </button>
                           {/* Enterprise */}
                           <button type="button" onClick={() => { setSelectedRole("enterprise"); setRegStep("form"); }}
-                            className={`group w-full p-4 rounded-2xl border-2 text-left transition-all cursor-pointer ${borderClass} hover:border-purple-400/70 hover:bg-purple-50/20 dark:hover:bg-purple-950/20`}>
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/40 flex items-center justify-center shrink-0">
-                                <Building2 className="w-5 h-5 text-purple-600 dark:text-purple-400" />
-                              </div>
+                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                            <div className="flex items-center gap-3.5">
+                              <Building2 className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-sm text-[var(--text-primary)]">
                                   {isBn ? "কোম্পানি / এন্টারপ্রাইজ" : "Company / Enterprise"}
                                 </div>
                                 <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "কর্পোরেট প্রতিষ্ঠান ও টিম রেফারাল ওয়ার্কস্পেস" : "Corporate entities & team referral workspace"}</div>
                               </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-purple-500 shrink-0 transition-colors" />
+                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
                             </div>
                           </button>
                         </div>
