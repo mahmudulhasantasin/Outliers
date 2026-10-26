@@ -4,8 +4,10 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, normalizeUserRole } from "@/context/AuthContext"; // ✅ ADDED normalizeUserRole
 import { useTheme } from "@/context/ThemeContext";
+import api from "@/lib/api"; // ✅ NEW
+import { saveTokenResponse } from "@/lib/auth"; // ✅ NEW
 import {
   Scale,
   ArrowUpRight,
@@ -49,6 +51,10 @@ export default function LandingAndAuthPage() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+  
+  // ✅ Moved isBn up to the top so all handlers can use it
+  const isBn = language === "bn";
+
   const {
     isAuthenticated,
     isLoading,
@@ -59,6 +65,7 @@ export default function LandingAndAuthPage() {
     onboardLawyer,
     onboardEnterprise,
     user,
+    refreshUser, // ✅ NEW - Needed for password reset
   } = useAuth();
 
   const [authError, setAuthError] = useState("");
@@ -71,6 +78,15 @@ export default function LandingAndAuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [slideDirection, setSlideDirection] = useState<"down" | "up">("down");
+
+  // ✅ NEW: Forgot Password Flow State
+  const [forgotStep, setForgotStep] = useState<"none" | "email" | "otp">("none");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotNewPw, setForgotNewPw] = useState("");
+  const [forgotConfirmPw, setForgotConfirmPw] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleTestimonialChange = (idx: number) => {
     if (idx === activeTestimonial) return;
@@ -145,6 +161,9 @@ export default function LandingAndAuthPage() {
     setPasswordError("");
     setOtpInput("");
     setOtpError("");
+    // ✅ Reset forgot flow
+    setForgotStep("none");
+    setForgotError("");
   };
 
   const openLoginModal = (signUp = false) => {
@@ -154,6 +173,8 @@ export default function LandingAndAuthPage() {
     setPasswordError("");
     setOtpInput("");
     setOtpError("");
+    setForgotStep("none");
+    setForgotError("");
     setShowAuthModal(true);
   };
 
@@ -174,9 +195,75 @@ export default function LandingAndAuthPage() {
       else router.push("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
+
+      // ✅ NEW: Route unverified users into the OTP flow
+      if (msg.toLowerCase().includes("not verified") || msg.toLowerCase().includes("verify")) {
+        setPendingOtpEmail(loginEmail);
+        setRegEmail(loginEmail);
+        setOtpInput("");
+        setOtpError("");
+        setIsSignUp(true);
+        setSelectedRole("general");
+        setRegStep("otp");
+        setAuthError("");
+        resendOtp(loginEmail).catch(() => {});
+        return;
+      }
+
       setAuthError(msg);
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  // ✅ NEW: Forgot Password Handlers
+  const handleForgotSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    setForgotLoading(true);
+    try {
+      await api.post("/api/auth/forgot-password", { email: forgotEmail.trim() });
+      setForgotStep("otp");
+      setForgotOtp("");
+      setForgotNewPw("");
+      setForgotConfirmPw("");
+    } catch (err: unknown) {
+      setForgotError(err instanceof Error ? err.message : "Could not send reset code.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+
+    if (forgotNewPw.length < 6) {
+      setForgotError(isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters.");
+      return;
+    }
+    if (forgotNewPw !== forgotConfirmPw) {
+      setForgotError(isBn ? "পাসওয়ার্ড দুটি মিলছে না।" : "Passwords do not match.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const data = await api.post<Record<string, unknown>>("/api/auth/reset-password", {
+        email: forgotEmail.trim(),
+        otp_code: forgotOtp.trim(),
+        new_password: forgotNewPw,
+      });
+
+      saveTokenResponse(data as any, normalizeUserRole(data.role as string));
+      await refreshUser();
+      closeModal();
+      setForgotStep("none");
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      setForgotError(err instanceof Error ? err.message : "Password reset failed.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -346,8 +433,6 @@ export default function LandingAndAuthPage() {
     }
   };
 
-  const isBn = language === "bn";
-
   const testimonials = [
     {
       name: isBn ? "ব্যারিস্টার তারিকুল ইসলাম" : "Barrister Tariqul Islam",
@@ -506,8 +591,6 @@ export default function LandingAndAuthPage() {
             {/* ── Left Column: Editorial Headline & Actions (lg:col-span-6) ── */}
             <div className="lg:col-span-6 flex flex-col justify-center text-left z-20">
               
-
-
               {/* Massive Bold Architectural Typography */}
               <h1 className="text-4xl sm:text-6xl lg:text-[72px] font-sans font-black tracking-tight leading-[1.04] uppercase text-[var(--text-primary)] mb-6">
                 {isBn ? (
@@ -550,16 +633,11 @@ export default function LandingAndAuthPage() {
                   <span>{isBn ? "বিস্তারিত জানুন" : "Learn More"}</span>
                 </a>
               </div>
-
-
-
             </div>
 
             {/* ── Right Column: Video & Floating Glass Cards (lg:col-span-6) ── */}
             <div className="lg:col-span-6 relative flex items-center justify-center min-h-[460px] sm:min-h-[560px] lg:min-h-[620px]">
               
-
-
               {/* ── Central Character Container: Firefly with Interactive DitherVeil Effect ── */}
               <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
                 
@@ -592,17 +670,9 @@ export default function LandingAndAuthPage() {
                   />
                 </div>
               </div>
-
-
-
             </div>
           </div>
-
-
-
         </section>
-
-
 
         {/* ── SECTION 2 & 3: CURTAIN SCROLL — Section 2 pinned, Section 3 rolls over (Only for Desktop) ── */}
         <div className="relative w-full" style={{ zIndex: 1 }}>
@@ -751,7 +821,7 @@ export default function LandingAndAuthPage() {
                 </h2>
                 <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-xl mx-auto leading-relaxed">
                   {isBn
-                    ? "সাধারণ নাগরিক, আইনজীবী এবং এন্টারপ্রাইজের আইনি সুরক্ষায়।"
+                    ? "সাধারণ নাগরিক, আইনজীবী এবং এন্টারপ্রাইজের আইনি সুরক্ষায়।"
                     : "Built for individuals, advocates, and growing enterprises."}
                 </p>
               </div>
@@ -1351,7 +1421,7 @@ export default function LandingAndAuthPage() {
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)] font-medium">
-                      {isBn ? "২৪/৭ অনলাইন এআই অ্যাসিস্ট্যান্স সক্রিয়" : "24/7 AI Assistance Active"}
+                      {isBn ? "২৪/৭ অনলাইন এআই অ্যাসিস্ট্যান্স সক্রিয়" : "24/7 AI Assistance Active"}
                     </span>
                   </div>
                 </div>
@@ -1476,505 +1546,642 @@ export default function LandingAndAuthPage() {
             <div className="flex-1 flex flex-col justify-start px-6 sm:px-8 md:px-10 py-8 overflow-y-auto max-h-[80vh] md:max-h-none">
               <div className="w-full max-w-[400px] mx-auto">
 
-                {/* ── Segmented Tab Switcher (Sign In vs Register) ── */}
-                <div className="flex rounded-xl bg-[var(--bg-surface)] p-1 mb-5 border border-[var(--text-primary)]/10">
-                  <button
-                    type="button"
-                    onClick={() => { setIsSignUp(false); setAuthError(""); }}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${!isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                  >
-                    {isBn ? "লগইন (Sign In)" : "Sign In"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setIsSignUp(true); setRegStep("role"); setAuthError(""); }}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                  >
-                    {isBn ? "নতুন নিবন্ধন (Sign Up)" : "Register (Sign Up)"}
-                  </button>
-                </div>
-
-                {/* ── SIGN IN ── */}
-                {!isSignUp && (
+                {/* ══════════════════════════════════════════════════════ */}
+                {/* ✅ FORGOT PASSWORD FLOW (overrides login/signup views) */}
+                {/* ══════════════════════════════════════════════════════ */}
+                {forgotStep !== "none" && (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => { setForgotStep("none"); setForgotError(""); }}
+                      className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      {isBn ? "লগইনে ফিরে যান" : "Back to sign in"}
+                    </button>
+
                     <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
-                      {isBn ? "স্বাগতম ফিরে আসার জন্য" : "Welcome back"}
+                      {forgotStep === "email"
+                        ? (isBn ? "পাসওয়ার্ড রিসেট করুন" : "Reset your password")
+                        : (isBn ? "নতুন পাসওয়ার্ড সেট করুন" : "Set a new password")}
                     </h2>
-                    <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
-                      {isBn ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট ও আইনি কনসাল্টেশনে প্রবেশ করুন।" : "Sign in to access your audit workspace, legal memos, and verified citations."}
+                    <p className="text-xs text-[var(--text-muted)] mb-5">
+                      {forgotStep === "email"
+                        ? (isBn ? "আপনার নিবন্ধিত ইমেইল দিন। আমরা একটি ৬-সংখ্যার কোড পাঠাবো।" : "Enter your registered email. We'll send you a 6-digit code.")
+                        : (isBn ? `কোডটি পাঠানো হয়েছে: ${forgotEmail}` : `Code sent to: ${forgotEmail}`)}
                     </p>
-                    <form onSubmit={handleLoginSubmit} className="space-y-3.5">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email address"}</label>
-                        <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder={isBn ? "আপনার ইমেইল" : "your@email.com"} className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`} />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"}</label>
-                        <div className="relative">
-                          <input type={showPassword ? "text" : "password"} required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••••••" className={`w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`} />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
+
+                    {forgotStep === "email" && (
+                      <form onSubmit={handleForgotSendOtp} className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "ইমেইল" : "Email"}
+                          </label>
+                          <input
+                            type="email"
+                            required
+                            value={forgotEmail}
+                            onChange={(e) => setForgotEmail(e.target.value)}
+                            placeholder="your@email.com"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`}
+                          />
                         </div>
-                      </div>
-                      {authError && !isSignUp && (
-                        <p className="text-xs text-red-500 mt-1 px-1">{authError}</p>
-                      )}
-                      <div className="pt-1">
-                        <button type="submit" disabled={authLoading} className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] disabled:opacity-60">
-                          {authLoading ? (isBn ? "অপেক্ষা করুন..." : "Signing in...") : (isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace")}
+                        {forgotError && <p className="text-xs text-rose-500">{forgotError}</p>}
+                        <button
+                          type="submit"
+                          disabled={forgotLoading}
+                          className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                        >
+                          {forgotLoading ? (isBn ? "পাঠানো হচ্ছে..." : "Sending...") : (isBn ? "কোড পাঠান" : "Send reset code")}
                         </button>
-                      </div>
-                    </form>
-                    <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
-                      <span>{isBn ? "অ্যাকাউন্ট নেই? " : "Don't have an account? "}</span>
-                      <button type="button" onClick={() => { setIsSignUp(true); setRegStep("role"); }} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
-                        {isBn ? "নিবন্ধন করুন" : "Register"}
-                      </button>
-                    </div>
+                      </form>
+                    )}
+
+                    {forgotStep === "otp" && (
+                      <form onSubmit={handleResetPassword} className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "৬-সংখ্যার কোড" : "6-digit code"}
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            required
+                            value={forgotOtp}
+                            onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ""))}
+                            placeholder="123456"
+                            className={`w-full text-center text-xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "নতুন পাসওয়ার্ড" : "New password"}
+                          </label>
+                          <input
+                            type="password"
+                            required
+                            value={forgotNewPw}
+                            onChange={(e) => setForgotNewPw(e.target.value)}
+                            placeholder="••••••••"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "পাসওয়ার্ড নিশ্চিত করুন" : "Confirm new password"}
+                          </label>
+                          <input
+                            type="password"
+                            required
+                            value={forgotConfirmPw}
+                            onChange={(e) => setForgotConfirmPw(e.target.value)}
+                            placeholder="••••••••"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`}
+                          />
+                        </div>
+                        {forgotError && <p className="text-xs text-rose-500">{forgotError}</p>}
+                        <button
+                          type="submit"
+                          disabled={forgotLoading || forgotOtp.length < 6}
+                          className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                        >
+                          {forgotLoading ? (isBn ? "রিসেট হচ্ছে..." : "Resetting...") : (isBn ? "পাসওয়ার্ড রিসেট করুন" : "Reset password")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setForgotError("");
+                            try { await api.post("/api/auth/forgot-password", { email: forgotEmail.trim() }); }
+                            catch { /* ignore */ }
+                          }}
+                          className="w-full text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors cursor-pointer"
+                        >
+                          {isBn ? "কোড পাননি? পুনরায় পাঠান" : "Didn't get the code? Resend"}
+                        </button>
+                      </form>
+                    )}
                   </>
                 )}
 
-                {/* ── SIGN UP ── */}
-                {isSignUp && (
+                {/* ══════════════════════════════════════════════════════ */}
+                {/* LOGIN / SIGNUP FLOW (hidden while in forgot flow)   */}
+                {/* ══════════════════════════════════════════════════════ */}
+                {forgotStep === "none" && (
                   <>
-                    {/* STEP 1: Role Selection */}
-                    {regStep === "role" && (
+                    {/* ── Segmented Tab Switcher (Sign In vs Register) ── */}
+                    <div className="flex rounded-xl bg-[var(--bg-surface)] p-1 mb-5 border border-[var(--text-primary)]/10">
+                      <button
+                        type="button"
+                        onClick={() => { setIsSignUp(false); setAuthError(""); }}
+                        className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${!isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                      >
+                        {isBn ? "লগইন (Sign In)" : "Sign In"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setIsSignUp(true); setRegStep("role"); setAuthError(""); }}
+                        className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                      >
+                        {isBn ? "নতুন নিবন্ধন (Sign Up)" : "Register (Sign Up)"}
+                      </button>
+                    </div>
+
+                    {/* ── SIGN IN ── */}
+                    {!isSignUp && (
                       <>
                         <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
-                          {isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create your account"}
+                          {isBn ? "স্বাগতম ফিরে আসার জন্য" : "Welcome back"}
                         </h2>
                         <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
-                          {isBn ? "আপনার ব্যবহারকারী ধরন বেছে নিন।" : "Choose your account type to get started."}
+                          {isBn ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট ও আইনি কনসাল্টেশনে প্রবেশ করুন।" : "Sign in to access your audit workspace, legal memos, and verified citations."}
                         </p>
-                        <div className="flex flex-col gap-3">
-                          {/* General */}
-                          <button type="button" onClick={() => { setSelectedRole("general"); setRegStep("form"); }}
-                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
-                            <div className="flex items-center gap-3.5">
-                              <User className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm text-[var(--text-primary)]">{isBn ? "সাধারণ ব্যবহারকারী" : "General User"}</div>
-                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "SME, ফ্রিল্যান্সার, HR — চুক্তি ও আইনি প্রশ্নের জন্য" : "SME, Freelancer, HR — contracts & legal queries"}</div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+                        <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                          <div>
+                            <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email address"}</label>
+                            <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder={isBn ? "আপনার ইমেইল" : "your@email.com"} className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`} />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"}</label>
+                            <div className="relative">
+                              <input type={showPassword ? "text" : "password"} required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••••••" className={`w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`} />
+                              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
                             </div>
-                          </button>
-                          {/* Lawyer */}
-                          <button type="button" onClick={() => { setSelectedRole("lawyer"); setRegStep("form"); }}
-                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
-                            <div className="flex items-center gap-3.5">
-                              <Scale className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm text-[var(--text-primary)]">
-                                  {isBn ? "আইনজীবী / অ্যাডভোকেট" : "Lawyer / Advocate"}
-                                </div>
-                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "বার কাউন্সিল ভেরিফিকেশনসহ পেশাদার ওয়ার্কস্পেস" : "Professional workspace with Bar Council verification"}</div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
-                            </div>
-                          </button>
-                          {/* Enterprise */}
-                          <button type="button" onClick={() => { setSelectedRole("enterprise"); setRegStep("form"); }}
-                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
-                            <div className="flex items-center gap-3.5">
-                              <Building2 className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm text-[var(--text-primary)]">
-                                  {isBn ? "কোম্পানি / এন্টারপ্রাইজ" : "Company / Enterprise"}
-                                </div>
-                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "কর্পোরেট প্রতিষ্ঠান ও টিম রেফারাল ওয়ার্কস্পেস" : "Corporate entities & team referral workspace"}</div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
-                            </div>
-                          </button>
-                        </div>
+                          </div>
+                          {authError && !isSignUp && (
+                            <p className="text-xs text-red-500 mt-1 px-1">{authError}</p>
+                          )}
+                          <div className="pt-1 space-y-2">
+                            <button type="submit" disabled={authLoading} className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] disabled:opacity-60">
+                              {authLoading ? (isBn ? "অপেক্ষা করুন..." : "Signing in...") : (isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace")}
+                            </button>
+                            
+                            {/* ✅ NEW: Forgot password link */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForgotStep("email");
+                                setForgotEmail(loginEmail);
+                                setForgotError("");
+                              }}
+                              className="w-full text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors cursor-pointer"
+                            >
+                              {isBn ? "পাসওয়ার্ড ভুলে গেছেন?" : "Forgot password?"}
+                            </button>
+                          </div>
+                        </form>
                         <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
-                          <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
-                          <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
-                            {isBn ? "লগইন করুন" : "Sign in"}
+                          <span>{isBn ? "অ্যাকাউন্ট নেই? " : "Don't have an account? "}</span>
+                          <button type="button" onClick={() => { setIsSignUp(true); setRegStep("role"); }} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                            {isBn ? "নিবন্ধন করুন" : "Register"}
                           </button>
                         </div>
                       </>
                     )}
 
-                    {/* STEP 2: Registration Form */}
-                    {regStep === "form" && selectedRole && (
+                    {/* ── SIGN UP ── */}
+                    {isSignUp && (
                       <>
-                        <button type="button" onClick={() => setRegStep("role")}
-                          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                          {isBn ? "ফিরে যান" : "Back to role selection"}
-                        </button>
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedRole === "general" ? "bg-blue-100 dark:bg-blue-900/40" : selectedRole === "lawyer" ? "bg-amber-100 dark:bg-amber-900/40" : "bg-purple-100 dark:bg-purple-900/40"}`}>
-                            {selectedRole === "general" ? <User className="w-4 h-4 text-blue-600 dark:text-blue-400" /> : selectedRole === "lawyer" ? <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" /> : <Building2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
-                          </div>
-                          <span className="text-sm font-semibold text-[var(--text-primary)]">
-                            {selectedRole === "general" ? (isBn ? "সাধারণ ব্যবহারকারী নিবন্ধন" : "General User Registration") : selectedRole === "lawyer" ? (isBn ? "আইনজীবী নিবন্ধন আবেদন" : "Lawyer Registration") : (isBn ? "কোম্পানি ও টিম নিবন্ধন" : "Enterprise Registration")}
-                          </span>
-                        </div>
-
-                        {authError && (
-                          <div className="p-3 mb-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                            {authError}
-                          </div>
+                        {/* STEP 1: Role Selection */}
+                        {regStep === "role" && (
+                          <>
+                            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
+                              {isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create your account"}
+                            </h2>
+                            <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
+                              {isBn ? "আপনার ব্যবহারকারী ধরন বেছে নিন।" : "Choose your account type to get started."}
+                            </p>
+                            <div className="flex flex-col gap-3">
+                              {/* General */}
+                              <button type="button" onClick={() => { setSelectedRole("general"); setRegStep("form"); }}
+                                className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                                <div className="flex items-center gap-3.5">
+                                  <User className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-[var(--text-primary)]">{isBn ? "সাধারণ ব্যবহারকারী" : "General User"}</div>
+                                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "SME, ফ্রিল্যান্সার, HR — চুক্তি ও আইনি প্রশ্নের জন্য" : "SME, Freelancer, HR — contracts & legal queries"}</div>
+                                  </div>
+                                  <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+                                </div>
+                              </button>
+                              {/* Lawyer */}
+                              <button type="button" onClick={() => { setSelectedRole("lawyer"); setRegStep("form"); }}
+                                className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                                <div className="flex items-center gap-3.5">
+                                  <Scale className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-[var(--text-primary)]">
+                                      {isBn ? "আইনজীবী / অ্যাডভোকেট" : "Lawyer / Advocate"}
+                                    </div>
+                                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "বার কাউন্সিল ভেরিফিকেশনসহ পেশাদার ওয়ার্কস্পেস" : "Professional workspace with Bar Council verification"}</div>
+                                  </div>
+                                  <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+                                </div>
+                              </button>
+                              {/* Enterprise */}
+                              <button type="button" onClick={() => { setSelectedRole("enterprise"); setRegStep("form"); }}
+                                className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                                <div className="flex items-center gap-3.5">
+                                  <Building2 className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-[var(--text-primary)]">
+                                      {isBn ? "কোম্পানি / এন্টারপ্রাইজ" : "Company / Enterprise"}
+                                    </div>
+                                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "কর্পোরেট প্রতিষ্ঠান ও টিম রেফারাল ওয়ার্কস্পেস" : "Corporate entities & team referral workspace"}</div>
+                                  </div>
+                                  <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+                                </div>
+                              </button>
+                            </div>
+                            <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
+                              <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
+                              <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                                {isBn ? "লগইন করুন" : "Sign in"}
+                              </button>
+                            </div>
+                          </>
                         )}
 
-                        {/* ── GENERAL FORM ── */}
-                        {selectedRole === "general" && (
-                          <form onSubmit={handleStartFormSubmit} className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Tariqul" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                        {/* STEP 2: Registration Form */}
+                        {regStep === "form" && selectedRole && (
+                          <>
+                            <button type="button" onClick={() => setRegStep("role")}
+                              className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              {isBn ? "ফিরে যান" : "Back to role selection"}
+                            </button>
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedRole === "general" ? "bg-blue-100 dark:bg-blue-900/40" : selectedRole === "lawyer" ? "bg-amber-100 dark:bg-amber-900/40" : "bg-purple-100 dark:bg-purple-900/40"}`}>
+                                {selectedRole === "general" ? <User className="w-4 h-4 text-blue-600 dark:text-blue-400" /> : selectedRole === "lawyer" ? <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" /> : <Building2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
                               </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Islam" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
-                                <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
-                                <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                  <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
-                                  <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
-                                  <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
-                              <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="your@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
-                            <div className="pt-1">
-                              <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                {isBn ? "সাইন আপ (ইমেইল ওটিপি যাচাই)" : "Sign up (Verify via Email OTP)"}
-                              </button>
-                            </div>
-                          </form>
-                        )}
-
-                        {/* ── LAWYER FORM ── */}
-                        {selectedRole === "lawyer" && (
-                          <form onSubmit={handleStartFormSubmit} className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Shireen" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Akhter" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
-                                <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
-                                <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                  <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
-                                  <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
-                                  <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
-                              <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="advocate@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 pt-1">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "বার কাউন্সিল নম্বর" : "Ber council num"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={barCouncilNo} onChange={(e) => setBarCouncilNo(e.target.value)} placeholder="BC-48291/2019" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "আইন শাখা" : "Field of law"} <span className="text-red-500">*</span></label>
-                                <select value={fieldOfLaw} onChange={(e) => setFieldOfLaw(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                  <option value="Corporate & Commercial Law">{isBn ? "কর্পোরেট ও বাণিজ্যিক" : "Corporate & Commercial"}</option>
-                                  <option value="Labour & Employment Law">{isBn ? "শ্রম ও চাকরি আইন" : "Labour & Employment"}</option>
-                                  <option value="Property & Land Law">{isBn ? "সম্পত্তি ও ভূমি আইন" : "Property & Land"}</option>
-                                  <option value="Civil & Contract Litigation">{isBn ? "দেওয়ানি ও চুক্তি" : "Civil & Contract"}</option>
-                                  <option value="ICT & FinTech Law">{isBn ? "আইসিটি ও ফিনটেক" : "ICT & FinTech"}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40">
-                              <span className="text-amber-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                                {isBn
-                                  ? "আবেদনের পর সিস্টেম অ্যাডমিন (System Admin) দ্বারা আপনার বার কাউন্সিল সনদ যাচাই করা হবে।"
-                                  : "Verification by System Admin — your credentials will be manually verified by System Admin."}
-                              </p>
-                            </div>
-                            {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
-                            <div className="pt-1">
-                              <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                {isBn ? "আইনজীবী হিসেবে আবেদন (Request as lawyer)" : "Request as lawyer (Verify via OTP)"}
-                              </button>
-                            </div>
-                          </form>
-                        )}
-
-                        {/* ── ENTERPRISE FORM ── */}
-                        {selectedRole === "enterprise" && (
-                          <div className="space-y-3">
-                            <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-surface)] mb-2">
-                              <button type="button" onClick={() => setEntTab("company")}
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "company" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
-                                {isBn ? "কোম্পানি রেজিস্ট্রেশন" : "Company / Enterprise"}
-                              </button>
-                              <button type="button" onClick={() => setEntTab("member")}
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "member" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
-                                {isBn ? "টিম মেম্বার জয়েন" : "Join as Member"}
-                              </button>
+                              <span className="text-sm font-semibold text-[var(--text-primary)]">
+                                {selectedRole === "general" ? (isBn ? "সাধারণ ব্যবহারকারী নিবন্ধন" : "General User Registration") : selectedRole === "lawyer" ? (isBn ? "আইনজীবী নিবন্ধন আবেদন" : "Lawyer Registration") : (isBn ? "কোম্পানি ও টিম নিবন্ধন" : "Enterprise Registration")}
+                              </span>
                             </div>
 
-                            {entTab === "company" ? (
-                              <form onSubmit={handleStartFormSubmit} className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির ধরন" : "Company type"} <span className="text-red-500">*</span></label>
-                                    <select value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                      <option value="Private Limited">{isBn ? "প্রাইভেট লিমিটেড" : "Private Limited"}</option>
-                                      <option value="Public Limited">{isBn ? "পাবলিক লিমিটেড" : "Public Limited"}</option>
-                                      <option value="Partnership">{isBn ? "অংশীদারি কারবার" : "Partnership"}</option>
-                                      <option value="Proprietorship">{isBn ? "একমালিকানা" : "Proprietorship"}</option>
-                                    </select>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "রেজিস্ট্রেশন নং" : "Registrasion no."} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} placeholder="C-148920/2021" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "TIN নম্বর" : "Tin no."} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={tinNo} onChange={(e) => setTinNo(e.target.value)} placeholder="582910482912" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিনের নাম" : "Name of Admin"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Rahim Chowdhury" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিম মেম্বার সংখ্যা" : "Member count"} <span className="text-red-500">*</span></label>
-                                    <input type="number" min={1} required value={memberCount} onChange={(e) => setMemberCount(Number(e.target.value))} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিন ইমেইল" : "Admin Email"} <span className="text-red-500">*</span></label>
-                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="admin@apexholdings.bd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                </div>
-                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
-                                  <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
-                                    {isBn
-                                      ? "সিস্টেম অ্যাডমিন অনুমোদনের পর মেম্বার অ্যাপ্রুভালের জন্য রেফারেল কোড পাবেন। অ্যাডমিন যেকোনো মেম্বার রিমুভ করতে পারবেন।"
-                                      : "Verification by System Admin — after verified, a refer num will be issued for member approvals."}
-                                  </p>
-                                </div>
-                                {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
-                                <div className="pt-1">
-                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন (Request for registration)" : "Request for registration (Verify OTP)"}
-                                  </button>
-                                </div>
-                              </form>
-                            ) : (
+                            {authError && (
+                              <div className="p-3 mb-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                                {authError}
+                              </div>
+                            )}
+
+                            {/* ── GENERAL FORM ── */}
+                            {selectedRole === "general" && (
                               <form onSubmit={handleStartFormSubmit} className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Member" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Tariqul" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Name" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Islam" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
-                                    <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
-                                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
                                       <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
                                       <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
                                       <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
                                     </select>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানি রেফার কোড" : "Company Refer code"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={companyReferCode} onChange={(e) => setCompanyReferCode(e.target.value)} placeholder="APX-8821" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                </div>
                                 <div>
-                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "মেম্বার ইমেইল" : "Email"} <span className="text-red-500">*</span></label>
-                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="member@company.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
+                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="your@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                 </div>
-                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
-                                  <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                                {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                <div className="pt-1">
+                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                                    {isBn ? "সাইন আপ (ইমেইল ওটিপি যাচাই)" : "Sign up (Verify via Email OTP)"}
+                                  </button>
+                                </div>
+                              </form>
+                            )}
+
+                            {/* ── LAWYER FORM ── */}
+                            {selectedRole === "lawyer" && (
+                              <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Shireen" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Akhter" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
+                                    <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
+                                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                      <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
+                                      <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
+                                      <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
+                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="advocate@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 pt-1">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "বার কাউন্সিল নম্বর" : "Ber council num"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={barCouncilNo} onChange={(e) => setBarCouncilNo(e.target.value)} placeholder="BC-48291/2019" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "আইন শাখা" : "Field of law"} <span className="text-red-500">*</span></label>
+                                    <select value={fieldOfLaw} onChange={(e) => setFieldOfLaw(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                      <option value="Corporate & Commercial Law">{isBn ? "কর্পোরেট ও বাণিজ্যিক" : "Corporate & Commercial"}</option>
+                                      <option value="Labour & Employment Law">{isBn ? "শ্রম ও চাকরি আইন" : "Labour & Employment"}</option>
+                                      <option value="Property & Land Law">{isBn ? "সম্পত্তি ও ভূমি আইন" : "Property & Land"}</option>
+                                      <option value="Civil & Contract Litigation">{isBn ? "দেওয়ানি ও চুক্তি" : "Civil & Contract"}</option>
+                                      <option value="ICT & FinTech Law">{isBn ? "আইসিটি ও ফিনটেক" : "ICT & FinTech"}</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40">
+                                  <span className="text-amber-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
+                                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
                                     {isBn
-                                      ? "কোম্পানি অ্যাডমিন (Company Admin) আপনার মেম্বারশিপ আবেদন যাচাই ও অনুমোদন করবেন।"
-                                      : "Verification by Company Admin — company admin will review and approve your membership."}
+                                      ? "আবেদনের পর সিস্টেম অ্যাডমিন (System Admin) দ্বারা আপনার বার কাউন্সিল সনদ যাচাই করা হবে।"
+                                      : "Verification by System Admin — your credentials will be manually verified by System Admin."}
                                   </p>
                                 </div>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                 <div className="pt-1">
                                   <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "কোম্পানিতে যুক্ত হতে আবেদন (Request for to add company)" : "Request to add company (Verify OTP)"}
+                                    {isBn ? "আইনজীবী হিসেবে আবেদন (Request as lawyer)" : "Request as lawyer (Verify via OTP)"}
                                   </button>
                                 </div>
                               </form>
                             )}
-                          </div>
-                        )}
 
-                        <div className="mt-4 text-center text-xs text-[var(--text-muted)]">
-                          <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
-                          <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
-                            {isBn ? "লগইন করুন" : "Sign in"}
-                          </button>
-                        </div>
-                      </>
-                    )}
+                            {/* ── ENTERPRISE FORM ── */}
+                            {selectedRole === "enterprise" && (
+                              <div className="space-y-3">
+                                <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-surface)] mb-2">
+                                  <button type="button" onClick={() => setEntTab("company")}
+                                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "company" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
+                                    {isBn ? "কোম্পানি রেজিস্ট্রেশন" : "Company / Enterprise"}
+                                  </button>
+                                  <button type="button" onClick={() => setEntTab("member")}
+                                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "member" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
+                                    {isBn ? "টিম মেম্বার জয়েন" : "Join as Member"}
+                                  </button>
+                                </div>
 
-                    {/* STEP 3: OTP on Mail */}
-                    {regStep === "otp" && (
-                      <div className="py-2">
-                        <button type="button" onClick={() => setRegStep("form")}
-                          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                          {isBn ? "ফর্মে ফিরে যান" : "Back to form"}
-                        </button>
-                        <div className="text-center mb-6">
-                          <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-3 shadow-inner">
-                            <Mail className="w-6 h-6 animate-pulse" />
-                          </div>
-                          <h3 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-1">
-                            {isBn ? "ইমেইল ওটিপি যাচাই (OTP on Mail)" : "Verify Email (OTP on Mail)"}
-                          </h3>
-                          <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto mb-3">
-                            {isBn ? (
-                              <>আমরা <b>{regEmail || "আপনার ইমেইলে"}</b> একটি ৬-সংখ্যার ওটিপি কোড পাঠিয়েছি।</>
-                            ) : (
-                              <>We sent a 6-digit verification OTP code to <b>{regEmail || "your email"}</b>.</>
+                                {entTab === "company" ? (
+                                  <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির ধরন" : "Company type"} <span className="text-red-500">*</span></label>
+                                        <select value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                          <option value="Private Limited">{isBn ? "প্রাইভেট লিমিটেড" : "Private Limited"}</option>
+                                          <option value="Public Limited">{isBn ? "পাবলিক লিমিটেড" : "Public Limited"}</option>
+                                          <option value="Partnership">{isBn ? "অংশীদারি কারবার" : "Partnership"}</option>
+                                          <option value="Proprietorship">{isBn ? "একমালিকানা" : "Proprietorship"}</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "রেজিস্ট্রেশন নং" : "Registrasion no."} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} placeholder="C-148920/2021" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "TIN নম্বর" : "Tin no."} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={tinNo} onChange={(e) => setTinNo(e.target.value)} placeholder="582910482912" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিনের নাম" : "Name of Admin"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Rahim Chowdhury" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিম মেম্বার সংখ্যা" : "Member count"} <span className="text-red-500">*</span></label>
+                                        <input type="number" min={1} required value={memberCount} onChange={(e) => setMemberCount(Number(e.target.value))} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিন ইমেইল" : "Admin Email"} <span className="text-red-500">*</span></label>
+                                      <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="admin@apexholdings.bd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                    </div>
+                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
+                                      <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
+                                      <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                                        {isBn
+                                          ? "সিস্টেম অ্যাডমিন অনুমোদনের পর মেম্বার অ্যাপ্রুভালের জন্য রেফারেল কোড পাবেন। অ্যাডমিন যেকোনো মেম্বার রিমুভ করতে পারবেন।"
+                                          : "Verification by System Admin — after verified, a refer num will be issued for member approvals."}
+                                      </p>
+                                    </div>
+                                    {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                    <div className="pt-1">
+                                      <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                                        {isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন (Request for registration)" : "Request for registration (Verify OTP)"}
+                                      </button>
+                                    </div>
+                                  </form>
+                                ) : (
+                                  <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Member" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Name" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
+                                        <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
+                                        <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                          <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
+                                          <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
+                                          <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানি রেফার কোড" : "Company Refer code"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={companyReferCode} onChange={(e) => setCompanyReferCode(e.target.value)} placeholder="APX-8821" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "মেম্বার ইমেইল" : "Email"} <span className="text-red-500">*</span></label>
+                                      <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="member@company.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                    </div>
+                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
+                                      <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
+                                      <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                                        {isBn
+                                          ? "কোম্পানি অ্যাডমিন (Company Admin) আপনার মেম্বারশিপ আবেদন যাচাই ও অনুমোদন করবেন।"
+                                          : "Verification by Company Admin — company admin will review and approve your membership."}
+                                      </p>
+                                    </div>
+                                    {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                    <div className="pt-1">
+                                      <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
+                                        {isBn ? "কোম্পানিতে যুক্ত হতে আবেদন (Request for to add company)" : "Request to add company (Verify OTP)"}
+                                      </button>
+                                    </div>
+                                  </form>
+                                )}
+                              </div>
                             )}
-                          </p>
-                          <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto">
-                            {isBn
-                              ? "💡 লাইভ সার্ভারের ইমেইল ডেলিভারি যদি বিলম্বিত হয়, আপনি সরাসরি টেস্ট কোড (123456) বা ইনস্ট্যান্ট পাস দিয়ে এক ক্লিকে প্রবেশ করতে পারেন।"
-                              : "💡 If email delivery is delayed from the live server, you can use Test Code (123456) or Instant Pass for immediate access."}
-                          </div>
-                        </div>
 
-                        <div className="space-y-4 max-w-xs mx-auto">
-                          <div>
-                            <label className="block text-xs font-semibold mb-1 text-center text-[var(--text-primary)]">
-                              {isBn ? "৬-সংখ্যার ওটিপি কোড লিখুন" : "Enter 6-digit OTP Code"}
-                            </label>
-                            <input
-                              type="text"
-                              maxLength={6}
-                              value={otpInput}
-                              onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
-                              placeholder="123456"
-                              className={`w-full text-center text-2xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none transition-colors ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
-                            />
-                            {otpError && (
-                              <p className="text-[11px] text-rose-500 text-center mt-1.5">{otpError}</p>
-                            )}
-                          </div>
-
-                          <button
-                            type="button"
-                            onClick={handleVerifyOtpAndComplete}
-                            className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2"
-                          >
-                            {isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓"}
-                          </button>
-
-                          <div className="text-center text-xs text-[var(--text-muted)] pt-1 space-y-1">
-                            <div>
-                              <span>{isBn ? "কোড পাননি? " : "Didn't receive code? "}</span>
-                              <button
-                                type="button"
-                                onClick={handleResendOtp}
-                                className="font-semibold text-[var(--text-primary)] hover:underline ml-1 cursor-pointer"
-                              >
-                                {isBn ? "পুনরায় কোড পাঠান" : "Resend OTP"}
+                            <div className="mt-4 text-center text-xs text-[var(--text-muted)]">
+                              <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
+                              <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                                {isBn ? "লগইন করুন" : "Sign in"}
                               </button>
                             </div>
-                            {resendStatus && (
-                              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{resendStatus}</p>
-                            )}
+                          </>
+                        )}
+
+                        {/* STEP 3: OTP on Mail */}
+                        {regStep === "otp" && (
+                          <div className="py-2">
+                            <button type="button" onClick={() => setRegStep("form")}
+                              className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              {isBn ? "ফর্মে ফিরে যান" : "Back to form"}
+                            </button>
+                            <div className="text-center mb-6">
+                              <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-3 shadow-inner">
+                                <Mail className="w-6 h-6 animate-pulse" />
+                              </div>
+                              <h3 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-1">
+                                {isBn ? "ইমেইল ওটিপি যাচাই (OTP on Mail)" : "Verify Email (OTP on Mail)"}
+                              </h3>
+                              <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto mb-3">
+                                {isBn ? (
+                                  <>আমরা <b>{regEmail || "আপনার ইমেইলে"}</b> একটি ৬-সংখ্যার ওটিপি কোড পাঠিয়েছি।</>
+                                ) : (
+                                  <>We sent a 6-digit verification OTP code to <b>{regEmail || "your email"}</b>.</>
+                                )}
+                              </p>
+                              <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto">
+                                {isBn
+                                  ? "💡 লাইভ সার্ভারের ইমেইল ডেলিভারি যদি বিলম্বিত হয়, আপনি সরাসরি টেস্ট কোড (123456) বা ইনস্ট্যান্ট পাস দিয়ে এক ক্লিকে প্রবেশ করতে পারেন।"
+                                  : "💡 If email delivery is delayed from the live server, you can use Test Code (123456) or Instant Pass for immediate access."}
+                              </div>
+                            </div>
+
+                            <div className="space-y-4 max-w-xs mx-auto">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-center text-[var(--text-primary)]">
+                                  {isBn ? "৬-সংখ্যার ওটিপি কোড লিখুন" : "Enter 6-digit OTP Code"}
+                                </label>
+                                <input
+                                  type="text"
+                                  maxLength={6}
+                                  value={otpInput}
+                                  onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
+                                  placeholder="123456"
+                                  className={`w-full text-center text-2xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none transition-colors ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
+                                />
+                                {otpError && (
+                                  <p className="text-[11px] text-rose-500 text-center mt-1.5">{otpError}</p>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={handleVerifyOtpAndComplete}
+                                className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2"
+                              >
+                                {isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓"}
+                              </button>
+
+                              <div className="text-center text-xs text-[var(--text-muted)] pt-1 space-y-1">
+                                <div>
+                                  <span>{isBn ? "কোড পাননি? " : "Didn't receive code? "}</span>
+                                  <button
+                                    type="button"
+                                    onClick={handleResendOtp}
+                                    className="font-semibold text-[var(--text-primary)] hover:underline ml-1 cursor-pointer"
+                                  >
+                                    {isBn ? "পুনরায় কোড পাঠান" : "Resend OTP"}
+                                  </button>
+                                </div>
+                                {resendStatus && (
+                                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{resendStatus}</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}

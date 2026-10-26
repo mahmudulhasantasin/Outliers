@@ -6,6 +6,25 @@
 import { SAMPLE_CONTRACTS, SampleContract } from "@/data/sampleContracts";
 import { CONTRACT_AUDITS, ContractAudit } from "@/data/contractAudits";
 
+/**
+ * Normalizes risk labels from any source (backend canonical "HIGH"/"MODERATE"/"LOW",
+ * legacy cached title-case "High Risk"/"Review Needed"/"Compliant", or demo data)
+ * into a single canonical enum.
+ *
+ * ✅ FIX #1 — backend now sends "HIGH"/"MODERATE"/"LOW". Old cache & demo data
+ *    still use title-case, so this guards against silent "COMPLIANT" fallbacks.
+ */
+function normalizeRiskLevel(raw: unknown): "HIGH" | "MEDIUM" | "LOW" {
+  const s = String(raw || "").toUpperCase().replace(/\s+/g, "_");
+  if (["HIGH", "HIGH_RISK", "CRITICAL", "VOID", "NON_COMPLIANT"].includes(s)) {
+    return "HIGH";
+  }
+  if (["MEDIUM", "MODERATE", "REVIEW_NEEDED", "AMBIGUOUS"].includes(s)) {
+    return "MEDIUM";
+  }
+  return "LOW";
+}
+
 export function generateContractAuditMarkdown(
   contractId: string,
   language: "en" | "bn" = "en",
@@ -174,10 +193,11 @@ export function generateContractAuditMarkdown(
     const citation = isBn
       ? cl.statuteCitationBn || "শ্রম ও চুক্তি আইন"
       : cl.statuteCitationEn || "Statutory Law of Bangladesh";
+    const normalizedRisk = normalizeRiskLevel(cl.riskLevel);
     const statusLabel =
-      cl.riskLevel === "HIGH"
+      normalizedRisk === "HIGH"
         ? "🔴 **VOID / UNLAWFUL**"
-        : cl.riskLevel === "MEDIUM"
+        : normalizedRisk === "MEDIUM"
         ? "🟡 **AMBIGUOUS**"
         : "🟢 **COMPLIANT**";
 
@@ -199,12 +219,13 @@ export function generateContractAuditMarkdown(
 
     md += `### §${cl.clauseNumber}. ${clTitle}\n\n`;
 
-    if (cl.riskLevel === "HIGH") {
+    const normalizedRisk = normalizeRiskLevel(cl.riskLevel);
+    if (normalizedRisk === "HIGH") {
       md += `> [!WARNING]\n`;
       md += `> **Statutory Violation:** ${issue}\n`;
       if (citation) md += `> **Statute:** ${citation}\n`;
       md += `\n`;
-    } else if (cl.riskLevel === "MEDIUM") {
+    } else if (normalizedRisk === "MEDIUM") {
       md += `> [!NOTE]\n`;
       md += `> **Review Recommendation:** ${issue}\n`;
       if (citation) md += `> **Statute:** ${citation}\n`;
@@ -302,11 +323,12 @@ export function generateRealContractAuditMarkdown(
       ? "চুক্তিপত্রের ধারাগুলো বাংলাদেশ আইনের অধীনে পরীক্ষা করা হয়েছে।"
       : "Clauses evaluated under codified statutes of Bangladesh.");
   const clauses = result.clauses || [];
+
+  // ✅ FIX — normalize against both canonical and legacy labels + read nested counts
   const highRiskCount =
     result.high_risk_count ??
-    clauses.filter(
-      (c: any) => c.risk_level === "CRITICAL" || c.risk_level === "HIGH"
-    ).length;
+    result.counts?.high_risk ??
+    clauses.filter((c: any) => normalizeRiskLevel(c.risk_level) === "HIGH").length;
 
   let md = `# ${title}\n\n`;
   md += `> **SOVEREIGN STATUTORY AUDIT REPORT · BANGLADESH LAW JURISDICTION**\n`;
@@ -342,10 +364,13 @@ export function generateRealContractAuditMarkdown(
       cl.statute_citation ||
       cl.statute_reference ||
       (isBn ? "বাংলাদেশ সংবিধিবদ্ধ আইন" : "Statutes of Bangladesh");
+
+    // ✅ FIX — normalize before comparing
+    const normalizedRisk = normalizeRiskLevel(cl.risk_level);
     const statusLabel =
-      cl.risk_level === "CRITICAL" || cl.risk_level === "HIGH"
+      normalizedRisk === "HIGH"
         ? "🔴 **VOID / UNLAWFUL**"
-        : cl.risk_level === "MEDIUM" || cl.risk_level === "MODERATE"
+        : normalizedRisk === "MEDIUM"
         ? "🟡 **AMBIGUOUS**"
         : "🟢 **COMPLIANT**";
 
@@ -366,12 +391,14 @@ export function generateRealContractAuditMarkdown(
 
     md += `### §${cl.clause_number}. ${clTitle}\n\n`;
 
-    if (cl.risk_level === "CRITICAL" || cl.risk_level === "HIGH") {
+    // ✅ FIX — normalize before comparing
+    const normalizedRisk = normalizeRiskLevel(cl.risk_level);
+    if (normalizedRisk === "HIGH") {
       md += `> [!WARNING]\n`;
       md += `> **Statutory Violation:** ${issue}\n`;
       if (citation) md += `> **Statute:** ${citation}\n`;
       md += `\n`;
-    } else if (cl.risk_level === "MEDIUM" || cl.risk_level === "MODERATE") {
+    } else if (normalizedRisk === "MEDIUM") {
       md += `> [!NOTE]\n`;
       md += `> **Review Recommendation:** ${issue}\n`;
       if (citation) md += `> **Statute:** ${citation}\n`;
