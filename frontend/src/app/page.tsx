@@ -469,7 +469,7 @@ export default function LandingAndAuthPage() {
                       : "/dashboard"
                   );
                 }}
-                className="px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                className="whitespace-nowrap shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "ওয়ার্কস্পেস" : "Workspace"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -478,7 +478,7 @@ export default function LandingAndAuthPage() {
               <button
                 type="button"
                 onClick={() => openLoginModal(false)}
-                className="px-4 sm:px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                className="whitespace-nowrap shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "লগইন" : "Sign In"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -506,13 +506,7 @@ export default function LandingAndAuthPage() {
             {/* ── Left Column: Editorial Headline & Actions (lg:col-span-6) ── */}
             <div className="lg:col-span-6 flex flex-col justify-center text-left z-20">
               
-              {/* Category Pill */}
-              <div className="inline-flex items-center gap-2 mb-4">
-                <span className="w-2 h-2 rounded-full bg-amber-500"></span>
-                <span className="text-[11px] sm:text-xs font-semibold tracking-[0.25em] uppercase text-[var(--text-muted)]">
-                  {isBn ? "বাংলাদেশের সংবিধিবদ্ধ লিগ্যাল প্ল্যাটফর্ম" : "Sovereign Legal Intelligence"}
-                </span>
-              </div>
+
 
               {/* Massive Bold Architectural Typography */}
               <h1 className="text-4xl sm:text-6xl lg:text-[72px] font-sans font-black tracking-tight leading-[1.04] uppercase text-[var(--text-primary)] mb-6">
@@ -557,63 +551,14 @@ export default function LandingAndAuthPage() {
                 </a>
               </div>
 
-              {/* Floating Mini Feature: "PROTECTING EVERY DEAL YOU MAKE" */}
-              <div className="inline-flex items-center gap-3.5 p-2.5 pr-5 rounded-2xl bg-[var(--bg-card)]/90 backdrop-blur-md border border-[var(--text-primary)]/10 shadow-lg max-w-xs transition-all hover:scale-[1.02]">
-                <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 relative border border-[var(--text-primary)]/10">
-                  <Image
-                    src="/avatar_2.jpg"
-                    alt="Verified Lawyer"
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute top-1 right-1 w-3.5 h-3.5 rounded-full bg-black/60 backdrop-blur-xs flex items-center justify-center text-white">
-                    <ArrowUpRight className="w-2.5 h-2.5" />
-                  </div>
-                </div>
-                <div>
-                  <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-primary)] leading-tight">
-                    {isBn ? "প্রতিটি চুক্তির সুরক্ষা" : "PROTECTING EVERY DEAL YOU MAKE"}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(false)}
-                    className="text-[10px] uppercase font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] underline underline-offset-2 transition-colors cursor-pointer mt-0.5"
-                  >
-                    {isBn ? "শুরু করুন" : "GET STARTED"}
-                  </button>
-                </div>
-              </div>
+
 
             </div>
 
             {/* ── Right Column: Video & Floating Glass Cards (lg:col-span-6) ── */}
             <div className="lg:col-span-6 relative flex items-center justify-center min-h-[460px] sm:min-h-[560px] lg:min-h-[620px]">
               
-              {/* Top-Right Badge: "28K" + Avatars */}
-              <div className="absolute top-2 right-2 sm:right-6 z-30 flex flex-col items-end text-right">
-                <div className="text-3xl sm:text-4xl font-black font-sans tracking-tight text-[var(--text-primary)] tabular-nums">
-                  <CountUp to={28} suffix="K+" duration={1.0} />
-                </div>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <div className="flex -space-x-2">
-                    <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-card)] overflow-hidden relative">
-                      <Image src="/avatar_1.jpg" alt="user" fill className="object-cover" />
-                    </div>
-                    <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-card)] overflow-hidden relative">
-                      <Image src="/avatar_2.jpg" alt="user" fill className="object-cover" />
-                    </div>
-                    <div className="w-6 h-6 rounded-full border-2 border-[var(--bg-card)] overflow-hidden relative">
-                      <Image src="/avatar_3.jpg" alt="user" fill className="object-cover" />
-                    </div>
-                  </div>
-                  <div className="w-5 h-5 rounded-full bg-[var(--text-primary)] text-[var(--bg-card)] flex items-center justify-center">
-                    <ArrowUpRight className="w-2.5 h-2.5" />
-                  </div>
-                </div>
-                <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-[130px] leading-tight text-right">
-                  {isBn ? "বিশ্বস্ত পার্টনার হিসেবে সুরক্ষিত" : "Partner with us as we protect your rights"}
-                </p>
-              </div>
+
 
               {/* ── Central Character Container: Firefly with Interactive DitherVeil Effect ── */}
               <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
@@ -648,82 +593,22 @@ export default function LandingAndAuthPage() {
                 </div>
               </div>
 
-              {/* ── Bottom-Right Floating Glassmorphic Card: "Case Closure Statistics" (+50% Width, +30% Height) ── */}
-              <div className="absolute -bottom-2 right-2 sm:right-4 z-30 p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-[var(--bg-card)]/95 backdrop-blur-xl border border-[var(--text-primary)]/15 shadow-2xl w-[calc(100%-1rem)] max-w-[360px] sm:w-[405px] sm:max-w-[405px] transition-all hover:scale-[1.02]">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="text-xs sm:text-sm font-bold tracking-tight text-[var(--text-primary)]">
-                    {isBn ? "কেস নিষ্পত্তি পরিসংখ্যান" : "Case Closure Statistics"}
-                  </div>
-                  <span className="px-2.5 py-1 rounded-md text-[10px] font-semibold bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 cursor-pointer">
-                    Yearly ▾
-                  </span>
-                </div>
 
-                {/* Bar Chart Visualization (+30% taller: h-26) */}
-                <div className="flex items-end justify-between gap-2.5 sm:gap-3 h-26 sm:h-28 pt-2 px-1">
-                  {[
-                    { m: "Jan", h: "45%" },
-                    { m: "Feb", h: "60%" },
-                    { m: "Mar", h: "85%" },
-                    { m: "Apr", h: "70%" },
-                    { m: "May", h: "92%" },
-                    { m: "Jun", h: "78%" },
-                    { m: "Jul", h: "88%" },
-                  ].map((bar, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                      <div
-                        className="w-full rounded-t-sm transition-all duration-500 hover:opacity-80"
-                        style={{
-                          height: bar.h,
-                          backgroundColor: idx === 4 ? "#f2591f" : "var(--text-primary)",
-                          opacity: idx === 4 ? 1 : 0.25 + idx * 0.1,
-                        }}
-                      />
-                      <span className="text-[9px] sm:text-[10px] font-mono text-[var(--text-muted)] font-medium">{bar.m}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
             </div>
           </div>
 
-          {/* ── Bottom Strip: Minimal Social Icons & Scroll cue ── */}
-          <div className="w-full pt-8 flex items-center justify-between text-xs text-[var(--text-muted)] z-20 border-t border-[var(--text-primary)]/5 mt-4">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer">
-                📷
-              </span>
-              <span className="w-7 h-7 rounded-lg bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer font-bold">
-                f
-              </span>
-              <span className="w-7 h-7 rounded-lg bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer font-bold">
-                𝕏
-              </span>
-            </div>
 
-            <div className="text-[11px] font-mono tracking-wider text-[var(--text-muted)] uppercase hidden sm:block">
-              Dhaka, Bangladesh • Codified Statutory AI
-            </div>
-
-            <a
-              href="#features"
-              className="inline-flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-            >
-              <span>{isBn ? "নিচে স্ক্রোল করুন" : "Scroll to explore"}</span>
-              <ChevronDown className="w-3.5 h-3.5 animate-bounce" />
-            </a>
-          </div>
 
         </section>
 
 
 
-        {/* ── SECTION 2 & 3: CURTAIN SCROLL — Section 2 pinned, Section 3 rolls over ── */}
+        {/* ── SECTION 2 & 3: CURTAIN SCROLL — Section 2 pinned, Section 3 rolls over (Only for Desktop) ── */}
         <div className="relative w-full" style={{ zIndex: 1 }}>
-          {/* Section 2: STICKY — pinned at viewport top while parent wrapper is in view */}
+          {/* Section 2: STICKY on desktop (lg:) only; natural flow on mobile */}
           <div
-            className="sticky top-0 w-full h-screen overflow-hidden flex items-center justify-center bg-[var(--bg-primary)]"
+            className="w-full relative lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden flex items-center justify-center bg-[var(--bg-primary)] py-12 lg:py-0"
             style={{ zIndex: 10 }}
           >
             <section id="features" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
@@ -849,25 +734,25 @@ export default function LandingAndAuthPage() {
         </section>
           </div>
 
-          {/* Section 3: CURTAIN — scrolls up naturally over the pinned Section 2 */}
+          {/* Section 3: CURTAIN on desktop (lg:), natural seamless flow on mobile */}
           <section
             id="for-whom"
-            className="relative py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t border-[var(--text-primary)]/15"
+            className="relative py-16 lg:py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15"
             style={{ zIndex: 20 }}
           >
           <div className="max-w-6xl mx-auto">
             <FadeContent effect="mist" duration={1.2} threshold={0.15}>
               <div className="text-center max-w-3xl mx-auto mb-16">
                 <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
-                  {isBn ? "কার জন্য এবং কেন ব্যবহার করবেন?" : "Tailored For Every Role"}
+                  {isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}
                 </span>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-serif font-medium tracking-tight mb-4">
-                  {isBn ? "আপনার প্রয়োজনের সাথে শতভাগ সামঞ্জস্যপূর্ণ" : "Designed for Individuals, Advocates, & Enterprises"}
+                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight mb-3">
+                  {isBn ? "সবার জন্য উপযুক্ত সমাধান" : "Tailored For Every Need"}
                 </h2>
-                <p className="text-xs sm:text-sm md:text-base text-[var(--text-muted)] leading-relaxed">
+                <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-xl mx-auto leading-relaxed">
                   {isBn
-                    ? "সাধারণ নাগরিকের আইনি অধিকার সুরক্ষা থেকে শুরু করে সিনিয়র অ্যাডভোকেটের ড্রাফট ভেরিফিকেশন এবং এন্টারপ্রাইজ টিমের কমপ্লায়েন্স ম্যানেজমেন্ট।"
-                    : "From everyday citizens safeguarding agreements to seasoned advocates accelerating research and enterprises securing high-value transactions."}
+                    ? "সাধারণ নাগরিক, আইনজীবী এবং এন্টারপ্রাইজের আইনি সুরক্ষায়।"
+                    : "Built for individuals, advocates, and growing enterprises."}
                 </p>
               </div>
             </FadeContent>
@@ -1029,11 +914,11 @@ export default function LandingAndAuthPage() {
           </FadeContent>
         </section>
 
-        {/* ── SECTION 5 & 6: CURTAIN SCROLL — Section 5 pinned, Section 6 rolls over ── */}
+        {/* ── SECTION 5 & 6: CURTAIN SCROLL — Section 5 pinned, Section 6 rolls over (Only for Desktop) ── */}
         <div className="relative w-full" style={{ zIndex: 2 }}>
-          {/* Section 5: STICKY — pinned at viewport top while parent wrapper is in view */}
+          {/* Section 5: STICKY on desktop (lg:) only; natural flow on mobile */}
           <div
-            className="sticky top-0 w-full h-screen overflow-hidden flex items-center justify-center bg-[var(--bg-primary)]"
+            className="w-full relative lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden flex items-center justify-center bg-[var(--bg-primary)] py-12 lg:py-0"
             style={{ zIndex: 10 }}
           >
             <section id="reviews" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
@@ -1047,44 +932,49 @@ export default function LandingAndAuthPage() {
                       {isBn ? "বিশ্বস্ততা যা বাস্তবে প্রমাণিত" : "Proven in Bangladesh's Legal & Corporate Ecosystem"}
                     </h2>
                   </div>
-                  <div className="flex items-center gap-1.5 text-xs text-[var(--text-muted)]">
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span className="font-bold text-[var(--text-primary)]">4.9 / 5.0</span>
-                    <span>• 450+ verified feedback</span>
-                  </div>
                 </div>
               </FadeContent>
 
               <FadeContent effect="focus" duration={1} threshold={0.15}>
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                  {/* Left selectors */}
-                  <div className="lg:col-span-5 flex lg:flex-col gap-3.5 justify-between sm:justify-start overflow-visible p-2 -m-2">
+                  {/* Left selectors: 3-col tabs on mobile so all 3 people fit, full cards on desktop */}
+                  <div className="lg:col-span-5 grid grid-cols-3 lg:flex lg:flex-col gap-2 sm:gap-3 lg:gap-3.5 p-1">
                     {testimonials.map((t, idx) => (
                       <button
                         key={idx}
                         type="button"
                         onClick={() => handleTestimonialChange(idx)}
-                        onMouseEnter={() => handleTestimonialChange(idx)}
-                        className={`group flex items-center gap-4 p-4 sm:p-4.5 rounded-2xl transition-all duration-300 text-left cursor-pointer border relative ${
+                        className={`group flex flex-col lg:flex-row items-center lg:items-center text-center lg:text-left gap-2 lg:gap-4 p-2.5 sm:p-3 lg:p-4.5 rounded-2xl transition-all duration-300 cursor-pointer border border-transparent relative ${
                           activeTestimonial === idx
-                            ? "border-[var(--text-primary)]/40 bg-[var(--bg-card)] shadow-lg shadow-black/5 translate-x-1 sm:translate-x-2.5"
-                            : "border-transparent hover:bg-[var(--bg-card)]/50 opacity-60 hover:opacity-100 hover:translate-x-1"
+                            ? "bg-[var(--bg-card)] shadow-md shadow-black/5 lg:translate-x-2"
+                            : "bg-[var(--bg-card)]/40 hover:bg-[var(--bg-card)] opacity-60 hover:opacity-100"
                         }`}
                       >
-                        {/* Active accent pill indicator */}
+                        {/* Active indicator: bottom bar on mobile, left bar on desktop */}
                         {activeTestimonial === idx && (
-                          <div className="absolute left-0 top-3 bottom-3 w-1 bg-amber-500 rounded-r-full" />
+                          <>
+                            <div className="hidden lg:block absolute left-0 top-3 bottom-3 w-1 bg-amber-500 rounded-r-full" />
+                            <div className="lg:hidden absolute bottom-0 left-3 right-3 h-1 bg-amber-500 rounded-t-full" />
+                          </>
                         )}
 
-                        <div className={`w-13 h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${activeTestimonial === idx ? "scale-105 shadow-md ring-2 ring-amber-500/20" : "grayscale-[40%] group-hover:grayscale-0"}`}>
+                        {/* Avatar */}
+                        <div className={`w-11 h-11 sm:w-12 sm:h-12 lg:w-13 lg:h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${
+                          activeTestimonial === idx
+                            ? "scale-105 shadow-sm ring-2 ring-amber-500/30"
+                            : "grayscale-[30%] group-hover:grayscale-0"
+                        }`}>
                           <Image src={t.avatar} alt={t.name} fill className="object-cover" />
                         </div>
                         
-                        <div className="flex-1 min-w-0 pr-2">
-                          <div className="font-semibold text-sm text-[var(--text-primary)] truncate">
+                        {/* Name & Role */}
+                        <div className="w-full min-w-0">
+                          <div className={`font-semibold text-[11px] sm:text-xs lg:text-sm truncate transition-colors ${
+                            activeTestimonial === idx ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
+                          }`}>
                             {t.name}
                           </div>
-                          <div className="text-xs text-[var(--text-muted)] line-clamp-1 mt-0.5">
+                          <div className="text-[9px] sm:text-[10px] lg:text-xs text-[var(--text-muted)] truncate mt-0.5">
                             {t.role}
                           </div>
                         </div>
@@ -1135,10 +1025,10 @@ export default function LandingAndAuthPage() {
             </section>
           </div>
 
-          {/* Section 6: CURTAIN — scrolls up naturally over the pinned Section 5 */}
+          {/* Section 6: CURTAIN on desktop (lg:), natural seamless flow on mobile */}
           <section
             id="consultation"
-            className="relative py-20 sm:py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-[40px] sm:rounded-t-[48px] shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t border-[var(--text-primary)]/15"
+            className="relative pt-16 lg:pt-20 pb-20 lg:pb-36 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15"
             style={{ zIndex: 20 }}
           >
             <div className="max-w-6xl mx-auto">
@@ -1265,7 +1155,7 @@ export default function LandingAndAuthPage() {
         </div>
 
         {/* ── SECTION 7: EDITORIAL TABBED HANGING-CARD FOOTER (Our Native Theme Palette) ── */}
-        <footer className="relative bg-[var(--bg-surface)] text-[var(--text-primary)] overflow-visible">
+        <footer className="relative bg-[var(--bg-surface)] text-[var(--text-primary)] overflow-visible pt-16 sm:pt-24">
           {/* Main Container */}
           <div className="max-w-7xl mx-auto px-6 lg:px-10">
             {/* Desktop 3-part layout / Mobile stacked layout */}
@@ -1469,8 +1359,8 @@ export default function LandingAndAuthPage() {
 
             </div>
 
-            {/* Footer Bottom Bar */}
-            <div className="mt-12 pt-6 border-t border-[var(--text-primary)]/10 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--text-muted)]">
+            {/* Footer Bottom Bar (Border removed & text centered) */}
+            <div className="mt-12 pt-6 pb-8 flex items-center justify-center text-xs text-[var(--text-muted)] text-center">
               <div>
                 © 2026, All Rights Reserved Advotech Copilot & ContractMind
               </div>
