@@ -9,9 +9,9 @@ import { useLanguage } from "@/context/LanguageContext";
 import {
   getAdminDashboardStats,
   getAdminPendingLawyers,
-  approveLawyer,
   getAdminPendingWithdrawals,
   markAdminWithdrawalPaid,
+  approveAdminWithdrawal, // ✅ Added for 2-step withdrawal flow
   getAdminPendingPayments,
   approveAdminPayment,
   getAdminUsers,
@@ -342,9 +342,9 @@ export default function AdminPage() {
 
   const handleApproveLawyer = async (lawyer: AdminPendingLawyer) => {
     try {
-      await approveLawyerByAdmin(lawyer.id);
-      await approveLawyer(lawyer.id).catch(() => {});
-      setLawyersList((prev) => prev.filter((l) => l.id !== lawyer.id));
+      // ✅ Only call the Context API once, using the correct lawyer_id
+      await approveLawyerByAdmin(lawyer.lawyer_id);
+      setLawyersList((prev) => prev.filter((l) => l.lawyer_id !== lawyer.lawyer_id));
       showMessage(`✓ Advocate ${lawyer.full_name} approved successfully!`);
       loadData(true);
     } catch { showMessage("Approval failed. Please try again.", "error"); }
@@ -357,6 +357,19 @@ export default function AdminPage() {
       showMessage(isBn ? "পেমেন্ট অনুমোদিত হয়েছে এবং ক্রেডিট যুক্ত হয়েছে।" : "Payment approved & credits added.");
       loadData(true);
     } catch { showMessage("Failed to approve payment.", "error"); }
+  };
+
+  // ✅ NEW: Fix withdrawal flow (2-step process)
+  const handleMarkWithdrawalPaid = async (id: string | number, trxId: string) => {
+    try {
+      await approveAdminWithdrawal(id);
+      await markAdminWithdrawalPaid(id, trxId);
+      setWithdrawalsList((prev) => prev.map(w => w.id === id ? { ...w, status: "PAID" } : w));
+      showMessage(isBn ? "উইথড্রয়াল সফলভাবে পরিশোধিত হয়েছে।" : "Withdrawal approved and marked as paid.");
+      loadData(true);
+    } catch {
+      showMessage(isBn ? "উইথড্রয়াল প্রসেস করতে ব্যর্থ হয়েছে।" : "Failed to process withdrawal payout.", "error");
+    }
   };
 
   const handleApproveEnterprise = async (id: number) => {
@@ -652,7 +665,7 @@ export default function AdminPage() {
             <SectionHeader icon={Gavel} title={isBn ? "বার কাউন্সিল যাচাই কিউ" : "Bar Council Verification Queue"} sub={isBn ? "আইনজীবী প্রোফাইল পর্যালোচনা করুন" : "Review pending lawyer profiles"} count={lawyersList.length} />
             <div className="space-y-3">
               {lawyersList.map((lawyer) => (
-                <Card key={lawyer.id} className="p-5">
+                <Card key={lawyer.lawyer_id} className="p-5">
                   <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
@@ -671,7 +684,7 @@ export default function AdminPage() {
                       <ActionBtn onClick={() => handleApproveLawyer(lawyer)} variant="success">
                         <UserCheck className="w-3.5 h-3.5" /> Approve
                       </ActionBtn>
-                      <ActionBtn onClick={() => { setRejectingLawyerId(lawyer.id); setRejectReason(""); }} variant="danger">
+                      <ActionBtn onClick={() => { setRejectingLawyerId(lawyer.lawyer_id); setRejectReason(""); }} variant="danger">
                         <XCircle className="w-3.5 h-3.5" /> Reject
                       </ActionBtn>
                     </div>
@@ -951,7 +964,7 @@ export default function AdminPage() {
                 variant="danger"
                 onClick={async () => {
                   await rejectLawyerByAdmin(rejectingLawyerId, rejectReason);
-                  setLawyersList(prev => prev.filter(l => l.id !== rejectingLawyerId));
+                  setLawyersList(prev => prev.filter(l => l.lawyer_id !== rejectingLawyerId));
                   setRejectingLawyerId(null);
                   showMessage("Lawyer application rejected.");
                 }}
@@ -993,10 +1006,8 @@ export default function AdminPage() {
                 variant="success"
                 disabled={!payoutTrxId}
                 onClick={async () => {
-                  await markAdminWithdrawalPaid(payingWithdrawalId, payoutTrxId);
-                  setWithdrawalsList(prev => prev.map(w => w.id === payingWithdrawalId ? { ...w, status: "PAID" } : w));
+                  await handleMarkWithdrawalPaid(payingWithdrawalId, payoutTrxId);
                   setPayingWithdrawalId(null);
-                  showMessage("Withdrawal marked as paid successfully.");
                 }}
               >
                 <CheckCheck className="w-3.5 h-3.5" /> Confirm Payment

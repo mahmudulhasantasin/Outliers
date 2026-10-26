@@ -838,17 +838,38 @@ export async function adjustMemberQuota(
   await api.post(`/api/company/members/${userId}/quota`, { delta, reason });
 }
 
+export interface UploadPlaybookResponse {
+  status: string;
+  playbook_id: string;
+  title: string;
+  rules_extracted_count: number;
+  rules: any[];
+}
+
 /** Upload a company playbook (JSON or PDF) */
-export async function uploadPlaybook(file: File, title?: string): Promise<Playbook> {
+export async function uploadPlaybook(file: File, title?: string): Promise<UploadPlaybookResponse> {
   const formData = new FormData();
   formData.append("title", title || file.name.replace(/\.[^/.]+$/, "") || "Corporate Playbook");
   formData.append("file", file);
-  return api.upload<Playbook>("/api/company/playbook/upload", formData);
+  return api.upload<UploadPlaybookResponse>("/api/company/playbook/upload", formData);
 }
 
 /** List company playbooks */
 export async function listPlaybooks(): Promise<Playbook[]> {
-  return api.get<Playbook[]>("/api/company/playbooks");
+  try {
+    const res = await api.get<any[]>("/api/company/playbooks");
+    if (!Array.isArray(res)) return [];
+    return res.map((item) => ({
+      id: item.id,
+      title: item.title,
+      version: item.version ?? "1.0",
+      is_active: item.is_active,
+      rule_count: item.rules_count ?? item.rule_count ?? 0, // ✅ Map backend `rules_count` to frontend `rule_count`
+      created_at: item.created_at,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /** Delete a playbook */
@@ -888,19 +909,19 @@ export interface UserSettings {
   credit_balance: number;
   is_verified: boolean;
   is_phone_verified: boolean;
-  lawyer_profile?: LawyerSettings;
+  lawyer?: LawyerSettings; // ✅ backend sends `lawyer` not `lawyer_profile`
+  enterprise?: any; // ✅ backend sends `enterprise`
 }
 
 export interface LawyerSettings {
-  bar_council_no?: string;
-  field_of_law?: string;
-  bar_association?: string;
-  chamber_name?: string;
-  verification_status?: string;
-  max_active_reviews?: number;
-  auto_accept_offers?: boolean;
-  is_available?: boolean;
-  preferred_domains?: string[];
+  bar_council_id?: string;
+  specializations?: string[];
+  availability?: string;
+  wallet_balance_bdt?: number;
+  completed_reviews?: number;
+  rating?: number;
+  monthly_free_chat_used?: number;
+  monthly_free_chat_remaining?: number;
 }
 
 export interface UpdateProfileRequest {
@@ -917,12 +938,11 @@ export interface ChangePasswordRequest {
 }
 
 export interface UpdateLawyerSettingsRequest {
-  bar_association?: string;
-  chamber_name?: string;
-  field_of_law?: string;
+  specializations?: string[];
+  availability?: string;
+  bio?: string;
   max_active_reviews?: number;
   auto_accept_offers?: boolean;
-  is_available?: boolean;
   preferred_domains?: string[];
 }
 
@@ -1231,7 +1251,7 @@ export async function getPaymentSummary(): Promise<PaymentSummary> {
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface AdminPendingLawyer {
-  id: string | number;
+  lawyer_id: string | number; // ✅ Map from backend's lawyer_id
   user_id?: string | number;
   full_name: string;
   email: string;
@@ -1270,9 +1290,14 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 /** Get pending lawyer verification queue (GET /api/admin/lawyers/pending) */
 export async function getAdminPendingLawyers(): Promise<AdminPendingLawyer[]> {
   try {
-    const res = await api.get<AdminPendingLawyer[]>("/api/admin/lawyers/pending");
-    if (Array.isArray(res)) return res;
-    return [];
+    const res = await api.get<any[]>("/api/admin/lawyers/pending");
+    if (!Array.isArray(res)) return [];
+    // ✅ Map backend field names to frontend types
+    return res.map((item) => ({
+      ...item,
+      lawyer_id: item.lawyer_id ?? item.id,
+      created_at: item.applied_at ?? item.created_at,
+    }));
   } catch {
     return [];
   }
@@ -1308,9 +1333,13 @@ export async function suspendLawyer(
 /** Get pending withdrawals queue (GET /api/admin/withdrawals/pending) */
 export async function getAdminPendingWithdrawals(): Promise<WithdrawalRequest[]> {
   try {
-    const res = await api.get<WithdrawalRequest[]>("/api/admin/withdrawals/pending");
-    if (Array.isArray(res)) return res;
-    return [];
+    const res = await api.get<any[]>("/api/admin/withdrawals/pending");
+    if (!Array.isArray(res)) return [];
+    // ✅ Map backend withdrawal_id to frontend id
+    return res.map((item) => ({
+      ...item,
+      id: item.withdrawal_id ?? item.id,
+    }));
   } catch {
     return [];
   }
@@ -1501,8 +1530,3 @@ export async function getSharedContracts(): Promise<SharedContractItem[]> {
     return [];
   }
 }
-
-/** Get specific contract details by ID (GET /api/contracts/{id}) 
-export async function getContractDetail(contractId: string | number): Promise<ContractAuditResult> {
-  return api.get<ContractAuditResult>(`/api/contracts/${contractId}`);
-}*/

@@ -51,7 +51,12 @@ async function request<T>(
   }
 
   const fullUrl = `${BASE_URL}${path}`;
-  console.log(`[API Call] ${method} ${fullUrl}`, body);
+  
+  // ✅ SECURITY: Never log the request body (contains passwords, PII, and contract text)
+  // Only log the URL in development mode.
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[API Call] ${method} ${fullUrl}`);
+  }
 
   let res: Response;
   const controller = new AbortController();
@@ -118,12 +123,19 @@ async function request<T>(
 
   // 204 No Content
   if (res.status === 204) {
-    console.log(`[API Success] 204 No Content ${fullUrl}`);
+    if (process.env.NODE_ENV === "development") {
+      console.log(`[API Success] 204 No Content ${fullUrl}`);
+    }
     return undefined as T;
   }
 
   const data = await res.json();
-  console.log(`[API Success] ${res.status} ${fullUrl}`, data);
+  
+  // ✅ SECURITY: Never log response data in production (contains PII & legal text)
+  if (process.env.NODE_ENV === "development") {
+    console.log(`[API Success] ${res.status} ${fullUrl}`);
+  }
+  
   return data as T;
 }
 
