@@ -14,6 +14,7 @@ import {
   getActiveTasks,
   submitReview,
   startContractReviewChat,
+  uploadLawyerProof, // ✅ NEW
 } from "@/lib/apiServices";
 import {
   Inbox,
@@ -34,6 +35,8 @@ import {
   Ban,
   XCircle,
   Edit3,
+  UploadCloud, // ✅ NEW
+  FileCheck,   // ✅ NEW
 } from "lucide-react";
 
 // ✅ FIX: Defined strict interface for clauses instead of 'any'
@@ -143,6 +146,12 @@ export default function LawyerPendingPage() {
   const [isSealing, setIsSealing] = useState(false);
   const [sealedSuccess, setSealedSuccess] = useState(false);
 
+  // ✅ NEW: File upload states for Fix D
+  const [signaturePath, setSignaturePath] = useState("");
+  const [signedPdfPath, setSignedPdfPath] = useState("");
+  const [isUploadingSign, setIsUploadingSign] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -249,6 +258,9 @@ export default function LawyerPendingPage() {
     setEditableClauses(contract.clauses ? JSON.parse(JSON.stringify(contract.clauses)) : []);
     setModalTab("markdown");
     setSealedSuccess(false);
+    // ✅ NEW: Reset file paths
+    setSignaturePath("");
+    setSignedPdfPath("");
   };
 
   const handleAccept = async (id: string) => {
@@ -298,8 +310,44 @@ export default function LawyerPendingPage() {
     }
   };
 
+  // ✅ NEW: Upload handlers
+  const handleUploadSignature = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingSign(true);
+    try {
+      const res = await uploadLawyerProof(file);
+      setSignaturePath(res.file_path);
+    } catch {
+      alert(isBn ? "স্বাক্ষর আপলোড ব্যর্থ হয়েছে" : "Failed to upload signature");
+    } finally {
+      setIsUploadingSign(false);
+    }
+  };
+
+  const handleUploadPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingPdf(true);
+    try {
+      const res = await uploadLawyerProof(file);
+      setSignedPdfPath(res.file_path);
+    } catch {
+      alert(isBn ? "সাইনকৃত পিডিএফ আপলোড ব্যর্থ হয়েছে" : "Failed to upload signed PDF");
+    } finally {
+      setIsUploadingPdf(false);
+    }
+  };
+
   const handleApproveAndSeal = async () => {
     if (!selectedContract) return;
+    
+    // ✅ NEW: Validate that files are uploaded
+    if (!signaturePath || !signedPdfPath) {
+      alert(isBn ? "অনুগ্রহ করে সিলমোহর দেওয়ার আগে আপনার স্বাক্ষর এবং সাইনকৃত পিডিএফ আপলোড করুন।" : "Please upload your signature and signed PDF before applying the seal.");
+      return;
+    }
+    
     setIsSealing(true);
 
     try {
@@ -308,8 +356,8 @@ export default function LawyerPendingPage() {
         lawyer_notes: advocateNotes,
         verified: true,
         updated_clauses: editableClauses,
-        signature_url: `signatures/lawyer_${user?.id || "42"}.png`,
-        signed_pdf_url: `signed_contracts/memo_${selectedContract.id}_final.pdf`,
+        signature_url: signaturePath, // ✅ Real path
+        signed_pdf_url: signedPdfPath, // ✅ Real path
       });
     } catch (err: unknown) {
       console.warn("Submit review note:", err);
@@ -818,6 +866,45 @@ export default function LawyerPendingPage() {
                       </p>
                     </div>
 
+                    {/* ✅ NEW: File Uploads Section */}
+                    <div className="space-y-4">
+                      <label className="text-xs font-semibold text-(--text-primary) block">
+                        {isBn ? "প্রমাণপত্র আপলোড (আবশ্যক):" : "Required Uploads:"}
+                      </label>
+
+                      <div className="p-3 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center shrink-0">
+                            <FileCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-(--text-primary)">{isBn ? "আইনজীবীর স্বাক্ষর (ছবি)" : "Advocate Signature (Image)"}</p>
+                            <p className="text-[10px] text-(--text-muted)">{signaturePath ? "✓ Uploaded successfully" : "PNG or JPG format"}</p>
+                          </div>
+                        </div>
+                        <label className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${signaturePath ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-(--bg-card) text-(--text-primary) border-(--text-primary)/20 hover:bg-(--text-primary)/5"}`}>
+                          {isUploadingSign ? "Uploading..." : signaturePath ? "Change" : "Upload"}
+                          <input type="file" accept="image/png, image/jpeg" className="hidden" onChange={handleUploadSignature} disabled={isUploadingSign} />
+                        </label>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-(--text-primary)">{isBn ? "সাইনকৃত চুক্তিপত্র (PDF)" : "Signed Contract (PDF)"}</p>
+                            <p className="text-[10px] text-(--text-muted)">{signedPdfPath ? "✓ Uploaded successfully" : "PDF format only"}</p>
+                          </div>
+                        </div>
+                        <label className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${signedPdfPath ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-(--bg-card) text-(--text-primary) border-(--text-primary)/20 hover:bg-(--text-primary)/5"}`}>
+                          {isUploadingPdf ? "Uploading..." : signedPdfPath ? "Change" : "Upload"}
+                          <input type="file" accept=".pdf" className="hidden" onChange={handleUploadPdf} disabled={isUploadingPdf} />
+                        </label>
+                      </div>
+                    </div>
+
                     <div className="space-y-3">
                       <label className="text-xs font-semibold text-(--text-primary) block">
                         {isBn ? "সংবিধিবদ্ধ আইনি যাচাইকরণ চেকলিস্ট:" : "Statutory Verification Checkpoints:"}
@@ -895,7 +982,7 @@ export default function LawyerPendingPage() {
                     <button
                       type="button"
                       onClick={handleApproveAndSeal}
-                      disabled={isSealing || sealedSuccess}
+                      disabled={isSealing || sealedSuccess || isUploadingSign || isUploadingPdf}
                       className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
                     >
                       {isSealing ? (

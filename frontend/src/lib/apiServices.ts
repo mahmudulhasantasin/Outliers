@@ -299,7 +299,7 @@ export interface ChatMessage {
   content: string;
   citations?: CitedSection[] | null;
   cited_sections?: CitedSection[] | null;
-  cited_cases?: CitedCase[] | null; // ✅ NEW
+  cited_cases?: CitedCase[] | null;
   created_at?: string;
 }
 
@@ -307,7 +307,7 @@ export interface ChatHistoryMessage {
   role: "user" | "assistant";
   content: string;
   citations?: CitedSection[] | null;
-  cited_cases?: CitedCase[] | null; // ✅ NEW
+  cited_cases?: CitedCase[] | null;
   created_at?: string;
 }
 
@@ -340,7 +340,7 @@ export interface CitedCase {
 export interface DetailedChatResponse {
   detailed_answer: string;
   cited_sections?: CitedSection[];
-  cited_cases?: CitedCase[]; // ✅ NEW
+  cited_cases?: CitedCase[];
   suggested_next_steps?: string[];
 }
 
@@ -432,7 +432,7 @@ export async function getChatSessionHistory(
         role: m.role as "user" | "assistant",
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
-        cited_cases: m.cited_cases || null, // ✅ NEW
+        cited_cases: m.cited_cases || null,
         created_at: m.created_at,
       })),
     };
@@ -447,7 +447,7 @@ export async function getChatSessionHistory(
         role: m.role as "user" | "assistant",
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
-        cited_cases: m.cited_cases || null, // ✅ NEW
+        cited_cases: m.cited_cases || null,
         created_at: m.created_at,
       })),
     };
@@ -650,6 +650,13 @@ export async function getActiveTasks(): Promise<ActiveTask[]> {
   }
 }
 
+// ✅ NEW: Upload signature or signed PDF
+export async function uploadLawyerProof(file: File): Promise<{ file_path: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.upload<{ file_path: string }>("/api/lawyer/upload-proof", formData);
+}
+
 /** Submit a review for a contract (POST /api/lawyer/active/{memo_id}/submit) */
 export async function submitReview(
   memoId: string | number,
@@ -661,8 +668,9 @@ export async function submitReview(
     risk_override: req.risk_override ?? null,
     verified: req.verified ?? true,
     updated_clauses: req.updated_clauses || [],
-    signature_url: req.signature_url || `signatures/lawyer_${memoId}.png`,
-    signed_pdf_url: req.signed_pdf_url || `signed_contracts/memo_${memoId}_final.pdf`,
+    // ✅ Removed fake hardcoded fallbacks
+    signature_url: req.signature_url || "",
+    signed_pdf_url: req.signed_pdf_url || "",
   };
   return api.post<SubmitReviewResponse>(`/api/lawyer/active/${memoId}/submit`, payload);
 }
@@ -875,7 +883,7 @@ export async function listPlaybooks(): Promise<Playbook[]> {
       title: item.title,
       version: item.version ?? "1.0",
       is_active: item.is_active,
-      rule_count: item.rules_count ?? item.rule_count ?? 0, // ✅ Map backend `rules_count` to frontend `rule_count`
+      rule_count: item.rules_count ?? item.rule_count ?? 0,
       created_at: item.created_at,
     }));
   } catch {
@@ -920,8 +928,8 @@ export interface UserSettings {
   credit_balance: number;
   is_verified: boolean;
   is_phone_verified: boolean;
-  lawyer?: LawyerSettings; // ✅ backend sends `lawyer` not `lawyer_profile`
-  enterprise?: any; // ✅ backend sends `enterprise`
+  lawyer?: LawyerSettings;
+  enterprise?: any;
 }
 
 export interface LawyerSettings {
@@ -1263,7 +1271,7 @@ export async function getPaymentSummary(): Promise<PaymentSummary> {
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface AdminPendingLawyer {
-  lawyer_id: string | number; // ✅ Map from backend's lawyer_id
+  lawyer_id: string | number;
   user_id?: string | number;
   full_name: string;
   email: string;
@@ -1304,7 +1312,6 @@ export async function getAdminPendingLawyers(): Promise<AdminPendingLawyer[]> {
   try {
     const res = await api.get<any[]>("/api/admin/lawyers/pending");
     if (!Array.isArray(res)) return [];
-    // ✅ Map backend field names to frontend types
     return res.map((item) => ({
       ...item,
       lawyer_id: item.lawyer_id ?? item.id,
@@ -1347,7 +1354,6 @@ export async function getAdminPendingWithdrawals(): Promise<WithdrawalRequest[]>
   try {
     const res = await api.get<any[]>("/api/admin/withdrawals/pending");
     if (!Array.isArray(res)) return [];
-    // ✅ Map backend withdrawal_id to frontend id
     return res.map((item) => ({
       ...item,
       id: item.withdrawal_id ?? item.id,
