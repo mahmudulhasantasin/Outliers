@@ -18,6 +18,7 @@ import {
 } from "@/lib/apiServices";
 import { useAuth } from "@/context/AuthContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
+import { maskPii } from "@/lib/piiMasker"; // ✅ NEW: Client-side PII Masking
 import {
   Scale,
   ShieldCheck,
@@ -357,9 +358,16 @@ export default function CopilotPage() {
         setActiveSessionId(sessionId);
       }
 
+      // ✅ SECURITY: Mask PII (emails, phones, NIDs) before sending to the backend AI
+      const { redactedText, stats } = maskPii(promptText, true);
+      
+      if (stats.totalRedactions > 0) {
+        console.log(`[PII Shield] Masked ${stats.totalRedactions} PII items from user prompt.`);
+      }
+
       const queryWithContext = rawAttachments.length > 0
-        ? `[Attached: ${rawAttachments.join(", ")}]\n${promptText}`
-        : promptText;
+        ? `[Attached: ${rawAttachments.join(", ")}]\n${redactedText}`
+        : redactedText;
 
       const result = await sendChatQuery({
         session_id: sessionId,
