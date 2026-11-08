@@ -1567,3 +1567,40 @@ export async function getSharedContracts(): Promise<SharedContractItem[]> {
     return [];
   }
 }
+
+// ──────────────────────────────────────────────────────────
+// INQUIRIES & NEWSLETTER
+// ──────────────────────────────────────────────────────────
+
+export interface FeedbackPayload {
+  name: string;
+  contact: string;
+  suggestion: string;
+  [key: string]: unknown;
+}
+
+export interface FeedbackResponse {
+  status: string;
+  message: string;
+  feedback_id?: number;
+}
+
+export interface NewsletterResponse {
+  status: string;
+  message: string;
+  is_subscribed?: boolean;
+}
+
+/** Submit user feedback or suggestion (POST /api/inquiries/feedback) */
+export async function submitFeedback(data: FeedbackPayload): Promise<FeedbackResponse> {
+  return api.post<FeedbackResponse>("/api/inquiries/feedback", {
+    name: data.name,
+    contact: data.contact,
+    suggestion: data.suggestion,
+  });
+}
+
+/** Subscribe to statutory insights newsletter (POST /api/inquiries/newsletter) */
+export async function subscribeNewsletter(email: string): Promise<NewsletterResponse> {
+  return api.post<NewsletterResponse>("/api/inquiries/newsletter", { email });
+}

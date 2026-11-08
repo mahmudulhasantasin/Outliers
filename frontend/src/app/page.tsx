@@ -22,6 +22,7 @@ import { useAuth, normalizeUserRole } from "@/context/AuthContext"; // ✅ ADDED
 import { useTheme } from "@/context/ThemeContext";
 import api from "@/lib/api"; // ✅ NEW
 import { saveTokenResponse } from "@/lib/auth"; // ✅ NEW
+import { submitFeedback, subscribeNewsletter } from "@/lib/apiServices";
 import {
   Scale,
   ArrowUpRight,
@@ -50,6 +51,7 @@ import {
   Check,
   Shield,
   Lock,
+  Loader2,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
 import DitherVeil from "@/components/effects/DitherVeil";
@@ -152,6 +154,65 @@ export default function LandingAndAuthPage() {
   // ── Footer Newsletter State ──
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const [isSubscribingNewsletter, setIsSubscribingNewsletter] = useState(false);
+  const [newsletterErrorMsg, setNewsletterErrorMsg] = useState<string | null>(null);
+
+  // Feedback Form State
+  const [feedbackName, setFeedbackName] = useState("");
+  const [feedbackContact, setFeedbackContact] = useState("");
+  const [feedbackSuggestion, setFeedbackSuggestion] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSuccessMsg, setFeedbackSuccessMsg] = useState<string | null>(null);
+  const [feedbackErrorMsg, setFeedbackErrorMsg] = useState<string | null>(null);
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feedbackName.trim() || !feedbackContact.trim() || !feedbackSuggestion.trim()) return;
+
+    setIsSubmittingFeedback(true);
+    setFeedbackErrorMsg(null);
+    setFeedbackSuccessMsg(null);
+
+    try {
+      await submitFeedback({
+        name: feedbackName.trim(),
+        contact: feedbackContact.trim(),
+        suggestion: feedbackSuggestion.trim(),
+      });
+      setFeedbackSuccessMsg(
+        isBn
+          ? "ধন্যবাদ! আপনার মূল্যবান পরামর্শ বা মতামত আমরা পেয়েছি।"
+          : "Thank you! Your suggestion or feedback has been received."
+      );
+      setFeedbackName("");
+      setFeedbackContact("");
+      setFeedbackSuggestion("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit feedback";
+      setFeedbackErrorMsg(msg);
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+
+    setIsSubscribingNewsletter(true);
+    setNewsletterErrorMsg(null);
+
+    try {
+      await subscribeNewsletter(newsletterEmail.trim());
+      setNewsletterSubscribed(true);
+      setNewsletterEmail("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Subscription failed";
+      setNewsletterErrorMsg(msg);
+    } finally {
+      setIsSubscribingNewsletter(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -1244,7 +1305,20 @@ const handleGoogleResponse = useCallback(
                         : "Help us improve our platform. Send us your valuable suggestions, feedback, or ideas below."}
                     </p>
 
-                    <form onSubmit={(e) => { e.preventDefault(); openLoginModal(false); }} className="space-y-4">
+                    <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                      {feedbackSuccessMsg && (
+                        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-2 animate-fadeIn">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <span>{feedbackSuccessMsg}</span>
+                        </div>
+                      )}
+                      {feedbackErrorMsg && (
+                        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center gap-2 animate-fadeIn">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <span>{feedbackErrorMsg}</span>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
@@ -1253,6 +1327,9 @@ const handleGoogleResponse = useCallback(
                           <input
                             type="text"
                             required
+                            value={feedbackName}
+                            onChange={(e) => setFeedbackName(e.target.value)}
+                            disabled={isSubmittingFeedback}
                             placeholder={isBn ? "আপনার নাম লিখুন" : "Enter your name"}
                             className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                           />
@@ -1264,6 +1341,9 @@ const handleGoogleResponse = useCallback(
                           <input
                             type="text"
                             required
+                            value={feedbackContact}
+                            onChange={(e) => setFeedbackContact(e.target.value)}
+                            disabled={isSubmittingFeedback}
                             placeholder={isBn ? "017XXXXXXXX বা email@domain.com" : "contact@domain.com or phone"}
                             className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                           />
@@ -1277,6 +1357,9 @@ const handleGoogleResponse = useCallback(
                         <textarea
                           rows={4}
                           required
+                          value={feedbackSuggestion}
+                          onChange={(e) => setFeedbackSuggestion(e.target.value)}
+                          disabled={isSubmittingFeedback}
                           placeholder={isBn ? "আপনার মূল্যবান পরামর্শ বা মতামত লিখুন..." : "Write your suggestion or feedback here..."}
                           className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                         />
@@ -1285,10 +1368,20 @@ const handleGoogleResponse = useCallback(
                       <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <button
                           type="submit"
-                          className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-md active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                          disabled={isSubmittingFeedback}
+                          className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-md active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] disabled:opacity-60"
                         >
-                          <span>{isBn ? "পরামর্শ পাঠান" : "Send Suggestion"}</span>
-                          <ArrowUpRight className="w-4 h-4" />
+                          {isSubmittingFeedback ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>{isBn ? "পাঠানো হচ্ছে..." : "Sending..."}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{isBn ? "পরামর্শ পাঠান" : "Send Suggestion"}</span>
+                              <ArrowUpRight className="w-4 h-4" />
+                            </>
+                          )}
                         </button>
                         <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
                           <Shield className="w-3.5 h-3.5 text-emerald-500" />
@@ -1437,12 +1530,7 @@ const handleGoogleResponse = useCallback(
 
                   {/* Clean Newsletter Input Group */}
                   <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (newsletterEmail.trim()) {
-                        setNewsletterSubscribed(true);
-                      }
-                    }}
+                    onSubmit={handleNewsletterSubmit}
                     className="w-full max-w-xs mx-auto"
                   >
                     <div className="flex flex-col sm:flex-row items-stretch rounded-xl sm:rounded-2xl overflow-hidden shadow-xs border border-[var(--text-primary)]/15 bg-[var(--bg-surface)]">
@@ -1451,21 +1539,35 @@ const handleGoogleResponse = useCallback(
                         required
                         value={newsletterEmail}
                         onChange={(e) => setNewsletterEmail(e.target.value)}
-                        placeholder={isBn ? "আপনার ইমেইল বা ফোন" : "Email Address"}
+                        disabled={isSubscribingNewsletter}
+                        placeholder={isBn ? "আপনার ইমেইল ঠিকানা" : "Email Address"}
                         className="w-full px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-transparent outline-none font-medium"
                       />
                       <button
                         type="submit"
-                        className="px-5 py-2.5 bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 active:scale-95 text-xs font-semibold tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
+                        disabled={isSubscribingNewsletter}
+                        className="px-5 py-2.5 bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 active:scale-95 text-xs font-semibold tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-60"
                       >
-                        <span>
-                          {newsletterSubscribed
-                            ? (isBn ? "যুক্ত হয়েছেন" : "Subscribed")
-                            : (isBn ? "সাবস্ক্রাইব" : "Subscribe")}
-                        </span>
-                        {newsletterSubscribed && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                        {isSubscribingNewsletter ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <span>
+                              {newsletterSubscribed
+                                ? (isBn ? "যুক্ত হয়েছেন" : "Subscribed")
+                                : (isBn ? "সাবস্ক্রাইব" : "Subscribe")}
+                            </span>
+                            {newsletterSubscribed && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                          </>
+                        )}
                       </button>
                     </div>
+
+                    {newsletterErrorMsg && (
+                      <p className="mt-2 text-[11px] text-rose-500 font-medium text-center">
+                        {newsletterErrorMsg}
+                      </p>
+                    )}
 
                     {newsletterSubscribed && (
                       <div className="mt-2.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5 animate-fadeIn">
