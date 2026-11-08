@@ -804,7 +804,7 @@ export default function ArchivePage() {
               {records.length === 0 ? (
                 <button
                   type="button"
-                  onClick={() => router.push("/copilot")}
+                  onClick={() => router.push("/contractmind")}
                   className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
                 >
                   <ArrowUpRight className="w-3.5 h-3.5" />
