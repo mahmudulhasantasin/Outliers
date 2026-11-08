@@ -12,6 +12,7 @@ import {
   Moon,
   Sun,
   Shield,
+  ShieldCheck,
   Key,
   Coins,
   ArrowUpRight,
@@ -143,7 +144,6 @@ export default function SettingsPage() {
 
   const [paymentSummary, setPaymentSummary] = useState<PaymentSummary | null>(null);
   const [isRefreshingSettings, setIsRefreshingSettings] = useState(false);
-  const [isPiiMaskingEnabled, setIsPiiMaskingEnabled] = useState(true);
 
   const [maxActiveReviews, setMaxActiveReviews] = useState(3);
   const [autoAcceptOffers, setAutoAcceptOffers] = useState(false);
@@ -154,8 +154,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     try {
-      const savedPii = localStorage.getItem("contractmind_pii_masking");
-      if (savedPii !== null) setIsPiiMaskingEnabled(savedPii === "true");
       const savedLawyerPrefs = localStorage.getItem("contractmind_lawyer_prefs");
       if (savedLawyerPrefs) {
         const parsed = JSON.parse(savedLawyerPrefs);
@@ -221,14 +219,6 @@ export default function SettingsPage() {
     loadLiveSettings();
   }, [loadLiveSettings]);
 
-  const togglePiiMasking = () => {
-    setIsPiiMaskingEnabled((prev) => {
-      const updated = !prev;
-      localStorage.setItem("contractmind_pii_masking", String(updated));
-      return updated;
-    });
-  };
-
   const handleDeleteAccount = async () => {
     if (deleteConfirmText !== "DELETE") {
       setDeleteError(isBn ? 'অনুগ্রহ করে "DELETE" লিখুন' : 'Please type "DELETE" to confirm.');
@@ -268,18 +258,6 @@ export default function SettingsPage() {
         {badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-(--text-primary)/5 text-(--text-muted)">{badge}</span>}
       </div>
       {children}
-    </div>
-  );
-
-  const Toggle = ({ label, desc, checked, onChange }: { label: string; desc?: string; checked: boolean; onChange: () => void }) => (
-    <div className="flex items-center justify-between gap-4 py-3">
-      <div className="min-w-0 pr-4">
-        <p className="text-sm font-semibold text-(--text-primary)">{label}</p>
-        {desc && <p className="text-xs text-(--text-muted) mt-0.5 leading-relaxed">{desc}</p>}
-      </div>
-      <button type="button" onClick={onChange} className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${checked ? "bg-(--accent-solid)" : "bg-neutral-300 dark:bg-neutral-700"}`}>
-        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-(--bg-primary) shadow-sm transition-transform ${checked ? "translate-x-4.5" : "translate-x-0.5"}`} />
-      </button>
     </div>
   );
 
@@ -509,7 +487,22 @@ export default function SettingsPage() {
 
         <Section title={isBn ? "গোপনীয়তা ও ডেটা সুরক্ষা (PII Protection)" : "Privacy & Data Protection"}>
           <div className="space-y-3">
-            <Toggle label={isBn ? "ক্লায়েন্ট-সাইড PII মাস্কিং সক্রিয়" : "Client-side PII Masking"} desc={isBn ? "এনআইডি, মোবাইল নম্বর ও পক্ষসমূহের তথ্য ব্রাউজারে মাস্ক করে এআই প্রসেস করা হয়" : "Bangladeshi NID, phone numbers & corporate identities are redacted client-side before sending"} checked={isPiiMaskingEnabled} onChange={togglePiiMasking} />
+            <div className="flex items-center justify-between gap-4 py-2">
+              <div className="min-w-0 pr-4">
+                <p className="text-sm font-semibold text-(--text-primary)">
+                  {isBn ? "ক্লায়েন্ট-সাইড PII মাস্কিং" : "Client-side PII Masking"}
+                </p>
+                <p className="text-xs text-(--text-muted) mt-0.5 leading-relaxed">
+                  {isBn
+                    ? "এনআইডি, মোবাইল নম্বর ও ব্যক্তিগত তথ্য ব্রাউজারে স্বয়ংক্রিয়ভাবে মাস্ক করে এআই প্রসেস করা হয়"
+                    : "Bangladeshi NID, phone numbers & corporate identities are redacted client-side before sending"}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 whitespace-nowrap shrink-0">
+                <ShieldCheck className="w-4 h-4" />
+                <span>{isBn ? "সর্বদা সক্রিয়" : "Always Active"}</span>
+              </span>
+            </div>
             <div className="p-3.5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/5 flex items-start gap-3">
               <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
               <p className="text-xs text-(--text-muted) leading-relaxed">{isBn ? "তথ্য ও যোগাযোগ প্রযুক্তি আইন ২০০৬ এবং সাইবার নিরাপত্তা বিধিমালার অধীনে আপনার কোনো সংবেদনশীল চুক্তিপত্র পাবলিক মডেলে প্রশিক্ষণ (train) করা হয় না।" : "Under the Information and Communication Technology Act 2006, all legal audits are strictly confidential and never used to train public models."}</p>

@@ -308,6 +308,23 @@ export default function PricingPage() {
     return !isEnterprisePack; // Normal/Lawyer ra Enterprise pack dekhabe na
   });
 
+  const getPackageCta = (pkgName: string) => {
+    const lower = (pkgName || "").toLowerCase();
+    if (isBn) {
+      if (lower.includes("starter")) return "স্টার্টার প্যাক নিন";
+      if (lower.includes("standard")) return "স্ট্যান্ডার্ড প্যাক নিন";
+      if (lower.includes("pro")) return "প্রো প্যাক নিন";
+      if (lower.includes("enterprise")) return "এন্টারপ্রাইজ প্যাক নিন";
+      return `${pkgName} নিন`;
+    }
+    if (lower.includes("starter")) return "Get Starter Pack";
+    if (lower.includes("standard")) return "Get Standard Pack";
+    if (lower.includes("pro")) return "Get Pro";
+    if (lower.includes("enterprise")) return "Get Enterprise";
+    return `Get ${pkgName}`;
+  };
+
+
   const approvedPayments = payments.filter((p) => (p.status || "").toUpperCase() === "APPROVED");
   const awaitingPayments = payments.filter((p) => {
     const s = (p.status || "").toUpperCase();
@@ -512,28 +529,34 @@ export default function PricingPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={initiatingPkgId !== null}
-                    onClick={() => handleInitiate(pkg)}
-                    className={`w-full py-3 rounded-xl sm:rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 ${
-                      pkg.is_popular
-                        ? "bg-[#E2136E] text-white hover:opacity-90 shadow-md shadow-pink-500/20"
-                        : "bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90"
-                    }`}
-                  >
-                    {initiatingPkgId === pkg.id ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span>{isBn ? "বিকাশ সংযোগ হচ্ছে..." : "Connecting bKash..."}</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>{isBn ? "বিকাশ দিয়ে কিনুন" : "Buy with bKash"}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
+                  <div className="mt-2">
+                    <button
+                      type="button"
+                      disabled={initiatingPkgId !== null}
+                      onClick={() => handleInitiate(pkg)}
+                      className={`w-full py-3 rounded-xl sm:rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 ${
+                        pkg.is_popular
+                          ? "bg-[#E2136E] text-white hover:opacity-90 shadow-md shadow-pink-500/20"
+                          : "bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90"
+                      }`}
+                    >
+                      {initiatingPkgId === pkg.id ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>{isBn ? "বিকাশ সংযোগ হচ্ছে..." : "Connecting bKash..."}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>{getPackageCta(pkg.name)}</span>
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                    <div className="mt-2.5 flex items-center justify-center gap-1.5 text-[11px] text-(--text-muted)">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span>{isBn ? "বিকাশে তাৎক্ষণিক অ্যাক্টিভেশন" : "Instant bKash Checkout"}</span>
+                    </div>
+                  </div>
                 </div>
               );
             })}
