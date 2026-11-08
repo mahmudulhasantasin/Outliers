@@ -1,6 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (config: any) => void;
+          renderButton: (parent: HTMLElement, options: any) => void;
+          prompt: (notification?: any) => void;
+        };
+      };
+    };
+  }
+}
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
@@ -66,6 +80,7 @@ export default function LandingAndAuthPage() {
     onboardEnterprise,
     user,
     refreshUser, // ✅ NEW - Needed for password reset
+    loginWithGoogle,
   } = useAuth();
 
   const [authError, setAuthError] = useState("");
@@ -74,6 +89,10 @@ export default function LandingAndAuthPage() {
 
   const [mounted, setMounted] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleSignInBtnRef = useRef<HTMLDivElement>(null);
+  const googleSignUpBtnRef = useRef<HTMLDivElement>(null);
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
@@ -165,6 +184,80 @@ export default function LandingAndAuthPage() {
     setForgotStep("none");
     setForgotError("");
   };
+
+const handleGoogleResponse = useCallback(
+    async (response: { credential?: string }) => {
+      if (!response?.credential) {
+        setAuthError(isBn ? "গুগল সাইন-ইন ব্যর্থ হয়েছে।" : "Google sign in failed.");
+        return;
+      }
+      setAuthLoading(true);
+      setGoogleLoading(true);
+      setAuthError("");
+      try {
+        const loggedInUser = await loginWithGoogle(response.credential);
+        closeModal();
+        const role = String(loggedInUser?.role).toUpperCase();
+        if (role === "ADMIN") router.push("/admin");
+        else if (role === "LAWYER") router.push("/lawyer/pending");
+        else if (role === "ENTERPRISE_ADMIN" || role === "ENTERPRISE") router.push("/enterprise/admin");
+        else if (role === "ENTERPRISE_MEMBER") router.push("/enterprise/member");
+        else router.push("/dashboard");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Google authentication failed";
+        setAuthError(msg);
+      } finally {
+        setAuthLoading(false);
+        setGoogleLoading(false);
+      }
+    },
+    [isBn, loginWithGoogle, router]
+  );
+
+  useEffect(() => {
+    if (!showAuthModal || forgotStep !== "none") return;
+
+    const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+    if (!clientId) return;
+
+    const renderBtn = () => {
+      if (typeof window === "undefined" || !window.google?.accounts?.id) return false;
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        const targetRef = isSignUp ? googleSignUpBtnRef.current : googleSignInBtnRef.current;
+        if (targetRef) {
+          targetRef.innerHTML = "";
+          window.google.accounts.id.renderButton(targetRef, {
+            type: "standard",
+            theme: theme === "dark" ? "filled_black" : "outline",
+            size: "large",
+            text: "continue_with",
+            shape: "rectangular",
+            logo_alignment: "left",
+            width: 320,
+          });
+        }
+        return true;
+      } catch (e) {
+        console.error("Failed to render Google button:", e);
+        return false;
+      }
+    };
+
+    if (!renderBtn()) {
+      const timer = setInterval(() => {
+        if (renderBtn()) clearInterval(timer);
+      }, 200);
+      return () => clearInterval(timer);
+    }
+  }, [showAuthModal, isSignUp, regStep, forgotStep, theme, handleGoogleResponse]);
 
   const openLoginModal = (signUp = false) => {
     setIsSignUp(signUp);
@@ -1692,9 +1785,23 @@ export default function LandingAndAuthPage() {
                         <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
                           {isBn ? "স্বাগতম ফিরে আসার জন্য" : "Welcome back"}
                         </h2>
-                        <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
+                        <p className="text-xs sm:text-[13px] leading-relaxed mb-4 text-[var(--text-muted)]">
                           {isBn ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট ও আইনি কনসাল্টেশনে প্রবেশ করুন।" : "Sign in to access your audit workspace, legal memos, and verified citations."}
                         </p>
+
+                        {/* Google One-Click Continue */}
+                        <div className="w-full flex flex-col items-center justify-center mb-3">
+                          <div ref={googleSignInBtnRef} className="w-full flex justify-center min-h-[44px]" />
+                        </div>
+
+                        <div className="relative flex items-center mb-4">
+                          <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
+                          <span className="flex-shrink mx-3 text-xs text-[var(--text-muted)] font-medium">
+                            {isBn ? "অথবা ইমেইল দিয়ে লগইন করুন" : "or continue with email"}
+                          </span>
+                          <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
+                        </div>
+
                         <form onSubmit={handleLoginSubmit} className="space-y-3.5">
                           <div>
                             <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email address"}</label>
@@ -1749,9 +1856,30 @@ export default function LandingAndAuthPage() {
                             <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
                               {isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create your account"}
                             </h2>
-                            <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
+                            <p className="text-xs sm:text-[13px] leading-relaxed mb-4 text-[var(--text-muted)]">
                               {isBn ? "আপনার ব্যবহারকারী ধরন বেছে নিন।" : "Choose your account type to get started."}
                             </p>
+
+                            {/* Google One-Click Register */}
+                            <div className="w-full flex flex-col items-center justify-center mb-3">
+                              <div ref={googleSignUpBtnRef} className="w-full flex justify-center min-h-[44px]" />
+                              <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center">
+                                {isBn ? "⚡ ১ ক্লিকে সাধারণ ব্যবহারকারী অ্যাকাউন্ট ও ১০০ ফ্রি ক্রেডিট" : "⚡ 1-click general account with 100 free credits"}
+                              </p>
+                            </div>
+
+                            {authError && isSignUp && regStep === "role" && (
+                              <p className="text-xs text-red-500 mb-2 px-1 text-center">{authError}</p>
+                            )}
+
+                            <div className="relative flex items-center mb-4">
+                              <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
+                              <span className="flex-shrink mx-3 text-xs text-[var(--text-muted)] font-medium">
+                                {isBn ? "অথবা নির্দিষ্ট রোলে যোগ দিন" : "or choose specialized role"}
+                              </span>
+                              <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
+                            </div>
+
                             <div className="flex flex-col gap-3">
                               {/* General */}
                               <button type="button" onClick={() => { setSelectedRole("general"); setRegStep("form"); }}
