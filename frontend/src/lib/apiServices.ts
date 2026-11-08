@@ -125,6 +125,12 @@ export interface ContractHistoryItem {
   overall_risk?: string;
   risk_grade?: string;
   risk_score: number | null;
+  high_risk_count?: number;
+  moderate_risk_count?: number;
+  medium_risk_count?: number;
+  compliant_count?: number;
+  summary?: string;
+  executive_summary?: string;
   created_at: string;
   updated_at?: string;
   download_url?: string;
@@ -235,6 +241,12 @@ export async function getContractHistory(
       overall_risk: risk,
       risk_grade: risk,
       risk_score: typeof item.risk_score === "number" ? item.risk_score : null,
+      high_risk_count: typeof item.high_risk_count === "number" ? item.high_risk_count : undefined,
+      moderate_risk_count: typeof item.moderate_risk_count === "number" ? item.moderate_risk_count : undefined,
+      medium_risk_count: typeof item.medium_risk_count === "number" ? item.medium_risk_count : undefined,
+      compliant_count: typeof item.compliant_count === "number" ? item.compliant_count : undefined,
+      summary: item.summary ?? item.executive_summary,
+      executive_summary: item.executive_summary ?? item.summary,
       created_at: item.created_at || new Date().toISOString(),
       updated_at: item.updated_at || item.created_at,
       download_url: item.download_url,

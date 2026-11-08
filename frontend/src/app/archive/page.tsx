@@ -547,9 +547,9 @@ export default function ArchivePage() {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="py-5 sm:py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-b w-full min-w-0" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        <div className="py-4 sm:py-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 border-b w-full" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           {/* Search Box */}
-          <div className="relative flex-1 max-w-full sm:max-w-md w-full min-w-0">
+          <div className="relative w-full md:w-80 lg:w-96 shrink-0">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -563,8 +563,8 @@ export default function ArchivePage() {
               }}
               placeholder={
                 language === "bn"
-                  ? "চুক্তির নাম, স্কোর, পক্ষ বা আইন অনুযায়ী অনুসন্ধান..."
-                  : "Search by title, score, party, or statute..."
+                  ? "চুক্তির নাম, স্কোর বা আইন অনুযায়ী খুঁজুন..."
+                  : "Search by title, score, or statute..."
               }
               className="w-full pl-10 pr-9 py-2 rounded-full text-xs outline-none transition-all border border-(--text-primary)/10 focus:border-(--text-primary)/30 focus:ring-1 focus:ring-(--text-primary)/20 bg-(--bg-surface) text-(--text-primary)"
             />
@@ -581,7 +581,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Filter Pills with real counts */}
-          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 pr-2 sm:pr-0 w-full max-w-full no-scrollbar min-w-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto shrink-0 no-scrollbar">
             {[
               { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
               { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
@@ -783,13 +783,17 @@ export default function ArchivePage() {
               </div>
             ))
           ) : (
-            <div className="py-20 text-center space-y-3 w-full">
-              <FileText className="w-8 h-8 text-neutral-300 mx-auto" />
-              <p className="text-sm font-medium text-(--text-primary)">
+            <div className="py-16 sm:py-20 text-center space-y-3 w-full">
+              <FileText className="w-8 h-8 text-neutral-300 dark:text-neutral-700 mx-auto" />
+              <p className="text-sm font-semibold text-(--text-primary)">
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
               <p className="text-xs text-neutral-400 max-w-sm mx-auto wrap-break-word">
-                {searchQuery.trim().length > 0
+                {records.length === 0
+                  ? language === "bn"
+                    ? "আপনার অ্যাকাউন্টে এখনও কোনো চুক্তি অডিট করা হয়নি। নতুন চুক্তি অডিট করতে নিচের বাটনে ক্লিক করুন।"
+                    : "You have not audited any contracts yet. Upload a contract in the workspace to get started."
+                  : searchQuery.trim().length > 0
                   ? language === "bn"
                     ? `"${searchQuery.trim()}" দিয়ে কোনো চুক্তি মেলেনি। বানান পরীক্ষা করুন অথবা সার্চ ক্লিয়ার করুন।`
                     : `No contracts matched your search for "${searchQuery.trim()}". Try different keywords or clear search.`
@@ -797,7 +801,16 @@ export default function ArchivePage() {
                   ? "আপনার নির্বাচনের সাথে মিলে এমন কোনো চুক্তিপত্র পাওয়া যায়নি। অন্য কিওয়ার্ড বা ফিল্টার দিয়ে চেষ্টা করুন।"
                   : "No contracts matched your filter criteria. Try selecting another tab or clearing search."}
               </p>
-              {searchQuery.trim().length > 0 && (
+              {records.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => router.push("/copilot")}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>{language === "bn" ? "চুক্তি অডিট শুরু করুন" : "Start Contract Audit"}</span>
+                </button>
+              ) : searchQuery.trim().length > 0 ? (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
@@ -806,7 +819,7 @@ export default function ArchivePage() {
                   <X className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "সার্চ ক্লিয়ার করুন" : "Clear search"}</span>
                 </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>

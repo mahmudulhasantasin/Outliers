@@ -439,20 +439,72 @@ export default function PricingPage() {
                         <>
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                            <span>{totalCredits} AI Contract Audits</span>
+                            <span className="font-semibold text-(--text-primary)">
+                              {isBn
+                                ? `সর্বোচ্চ ${Math.floor(totalCredits / 25)}টি চুক্তি অডিট`
+                                : `Up to ${Math.floor(totalCredits / 25)} Contract Audits`}
+                              {totalCredits === 950 && (
+                                <span className="ml-1 text-[10px] text-[#E2136E] font-bold">
+                                  {isBn ? "(+৪টি বোনাস)" : "(+4 Bonus)"}
+                                </span>
+                              )}
+                              {totalCredits === 2600 && (
+                                <span className="ml-1 text-[10px] text-[#E2136E] font-bold">
+                                  {isBn ? "(+২০টি বোনাস)" : "(+20 Bonus)"}
+                                </span>
+                              )}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                            <span>Statutory Redline Suggestions</span>
+                            <span>
+                              {isBn
+                                ? `অথবা ${totalCredits}টি আইনি চ্যাট প্রশ্ন`
+                                : `Or ${totalCredits} AI Legal Chat Queries`}
+                            </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                            <span>Bangladesh Laws Citations</span>
+                            <span>
+                              {isBn
+                                ? "সংবিধিবদ্ধ রেডলাইন সংশোধন প্রস্তাবনা"
+                                : "Statutory Redline Suggestions"}
+                            </span>
                           </div>
-                          {totalCredits >= 500 && (
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>
+                              {isBn
+                                ? "বাংলাদেশ আইনের ধারা রেফারেন্স"
+                                : "Bangladesh Laws Citations"}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span>
+                              {isBn
+                                ? "ফরম্যাটেড PDF মেমো ডাউনলোড"
+                                : "Formatted PDF Memo Downloads"}
+                            </span>
+                          </div>
+                          {totalCredits >= 800 && (
+                            <div className="flex items-center gap-2 text-(--text-primary)">
+                              <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                              <span className="font-medium">
+                                {isBn
+                                  ? "হাই-স্পিড প্রায়োরিটি AI কিউ"
+                                  : "Priority AI Processing Queue"}
+                              </span>
+                            </div>
+                          )}
+                          {totalCredits >= 2000 && (
                             <div className="flex items-center gap-2 text-(--text-primary) font-medium">
                               <Sparkles className="w-4 h-4 text-[#E2136E] shrink-0" />
-                              <span>Lawyer HITL Verification Capable</span>
+                              <span>
+                                {isBn
+                                  ? "আইনজীবী ভেরিফিকেশন সুবিধা (Lawyer HITL)"
+                                  : "Lawyer HITL Verification Capable"}
+                              </span>
                             </div>
                           )}
                         </>
