@@ -214,33 +214,24 @@ const handleGoogleResponse = useCallback(
     [isBn, loginWithGoogle, router]
   );
 
-  const renderedGoogleTabRef = useRef<string | null>(null);
+  const googleRenderedTabsRef = useRef<{ signin: boolean; signup: boolean }>({
+    signin: false,
+    signup: false,
+  });
   const handleGoogleResponseRef = useRef(handleGoogleResponse);
 
   useEffect(() => {
     handleGoogleResponseRef.current = handleGoogleResponse;
   });
 
-  // Reset rendered state when modal closes
   useEffect(() => {
-    if (!showAuthModal) {
-      renderedGoogleTabRef.current = null;
-    }
-  }, [showAuthModal]);
-
-  // Reset when theme changes so button adapts to dark/light
-  useEffect(() => {
-    renderedGoogleTabRef.current = null;
-  }, [theme]);
-
-  useEffect(() => {
-    if (!showAuthModal || forgotStep !== "none") return;
+    if (!mounted || !showAuthModal || forgotStep !== "none") return;
 
     const currentTab = isSignUp ? "signup" : "signin";
     const targetRef = isSignUp ? googleSignUpBtnRef.current : googleSignInBtnRef.current;
 
-    // If already rendered on this tab, do NOT touch it (prevents flickering)
-    if (renderedGoogleTabRef.current === currentTab && targetRef && targetRef.children.length > 0) {
+    // If already rendered on this tab, never touch it again
+    if (googleRenderedTabsRef.current[currentTab] && targetRef && targetRef.children.length > 0) {
       return;
     }
 
@@ -258,8 +249,9 @@ const handleGoogleResponse = useCallback(
         return false;
       }
 
-      // Check again to avoid duplicate renders
-      if (renderedGoogleTabRef.current === currentTab && el.children.length > 0) {
+      // If already has Google button iframe, do NOT touch or re-create
+      if (el.children.length > 0) {
+        googleRenderedTabsRef.current[currentTab] = true;
         return true;
       }
 
@@ -271,7 +263,6 @@ const handleGoogleResponse = useCallback(
           cancel_on_tap_outside: true,
         });
 
-        el.innerHTML = "";
         window.google.accounts.id.renderButton(el, {
           type: "standard",
           theme: theme === "dark" ? "filled_black" : "outline",
@@ -281,7 +272,7 @@ const handleGoogleResponse = useCallback(
           logo_alignment: "left",
           width: 340,
         });
-        renderedGoogleTabRef.current = currentTab;
+        googleRenderedTabsRef.current[currentTab] = true;
         return true;
       } catch (e) {
         console.error("Failed to render Google button:", e);
@@ -289,32 +280,17 @@ const handleGoogleResponse = useCallback(
       }
     };
 
-    // Dynamically inject script if not yet available
-    if (typeof window !== "undefined" && !window.google?.accounts?.id) {
-      if (!document.getElementById("google-gsi-client")) {
-        const script = document.createElement("script");
-        script.id = "google-gsi-client";
-        script.src = "https://accounts.google.com/gsi/client";
-        script.async = true;
-        script.defer = true;
-        script.onload = () => {
-          renderBtn();
-        };
-        document.head.appendChild(script);
-      }
-    }
-
     if (!renderBtn()) {
       const timer = setInterval(() => {
         if (renderBtn()) clearInterval(timer);
-      }, 150);
-      const timeout = setTimeout(() => clearInterval(timer), 5000);
+      }, 100);
+      const timeout = setTimeout(() => clearInterval(timer), 4000);
       return () => {
         clearInterval(timer);
         clearTimeout(timeout);
       };
     }
-  }, [showAuthModal, isSignUp, regStep, forgotStep, theme]);
+  }, [mounted, showAuthModal, isSignUp, forgotStep]);
 
   const openLoginModal = (signUp = false) => {
     setIsSignUp(signUp);
@@ -1848,7 +1824,7 @@ const handleGoogleResponse = useCallback(
 
                         {/* Google One-Click Continue */}
                         <div className="w-full flex flex-col items-center justify-center mb-3">
-                          <div ref={googleSignInBtnRef} className="w-full flex justify-center min-h-[44px]" />
+                          <div ref={googleSignInBtnRef} className="w-full flex justify-center items-center min-h-[44px] overflow-hidden" />
                         </div>
 
                         <div className="relative flex items-center mb-4">
@@ -1919,7 +1895,7 @@ const handleGoogleResponse = useCallback(
 
                             {/* Google One-Click Register */}
                             <div className="w-full flex flex-col items-center justify-center mb-3">
-                              <div ref={googleSignUpBtnRef} className="w-full flex justify-center min-h-[44px]" />
+                              <div ref={googleSignUpBtnRef} className="w-full flex justify-center items-center min-h-[44px] overflow-hidden" />
                               <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center">
                                 {isBn ? "⚡ ১ ক্লিকে সাধারণ ব্যবহারকারী অ্যাকাউন্ট ও ১০০ ফ্রি ক্রেডিট" : "⚡ 1-click general account with 100 free credits"}
                               </p>
