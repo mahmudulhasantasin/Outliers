@@ -90,6 +90,7 @@ export default function LandingAndAuthPage() {
   const [mounted, setMounted] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleBtnReady, setGoogleBtnReady] = useState(false);
   const googleSignInBtnRef = useRef<HTMLDivElement>(null);
   const googleSignUpBtnRef = useRef<HTMLDivElement>(null);
 
@@ -175,6 +176,7 @@ export default function LandingAndAuthPage() {
 
   const closeModal = () => {
     setShowAuthModal(false);
+    setGoogleBtnReady(false);
     setRegStep("role");
     setSelectedRole(null);
     setPasswordError("");
@@ -252,6 +254,7 @@ const handleGoogleResponse = useCallback(
       // If already has Google button iframe, do NOT touch or re-create
       if (el.children.length > 0) {
         googleRenderedTabsRef.current[currentTab] = true;
+        setGoogleBtnReady(true);
         return true;
       }
 
@@ -273,6 +276,10 @@ const handleGoogleResponse = useCallback(
           width: 340,
         });
         googleRenderedTabsRef.current[currentTab] = true;
+        // Fade in once Google finishes its internal placeholder-to-iframe swap
+        setTimeout(() => {
+          setGoogleBtnReady(true);
+        }, 180);
         return true;
       } catch (e) {
         console.error("Failed to render Google button:", e);
@@ -1824,7 +1831,12 @@ const handleGoogleResponse = useCallback(
 
                         {/* Google One-Click Continue */}
                         <div className="w-full flex flex-col items-center justify-center mb-3">
-                          <div ref={googleSignInBtnRef} className="w-full flex justify-center items-center min-h-[44px] overflow-hidden" />
+                          <div
+                            className="w-full flex justify-center items-center h-[44px] transition-opacity duration-300 ease-out"
+                            style={{ opacity: googleBtnReady ? 1 : 0 }}
+                          >
+                            <div ref={googleSignInBtnRef} className="flex justify-center items-center" />
+                          </div>
                         </div>
 
                         <div className="relative flex items-center mb-4">
@@ -1895,7 +1907,12 @@ const handleGoogleResponse = useCallback(
 
                             {/* Google One-Click Register */}
                             <div className="w-full flex flex-col items-center justify-center mb-3">
-                              <div ref={googleSignUpBtnRef} className="w-full flex justify-center items-center min-h-[44px] overflow-hidden" />
+                              <div
+                                className="w-full flex justify-center items-center h-[44px] transition-opacity duration-300 ease-out"
+                                style={{ opacity: googleBtnReady ? 1 : 0 }}
+                              >
+                                <div ref={googleSignUpBtnRef} className="flex justify-center items-center" />
+                              </div>
                               <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center">
                                 {isBn ? "⚡ ১ ক্লিকে সাধারণ ব্যবহারকারী অ্যাকাউন্ট ও ১০০ ফ্রি ক্রেডিট" : "⚡ 1-click general account with 100 free credits"}
                               </p>
