@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import {
   changePassword,
+  setPassword,
   uploadProfilePhoto,
   getMySettings,
   getPaymentSummary,
@@ -38,6 +39,7 @@ import {
 export default function SettingsPage() {
   const router = useRouter();
   const { user, logout, refreshUser, updateUser } = useAuth();
+  const isGoogleNoPw = user?.has_usable_password === false;
   const { language, setLanguage } = useLanguage();
   const { theme, setTheme } = useTheme();
   const isBn = language === "bn";
@@ -384,12 +386,35 @@ export default function SettingsPage() {
         <Section title={isBn ? "পাসওয়ার্ড পরিবর্তন ও অ্যাকাউন্ট সুরক্ষা" : "Account Password & Security"}>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-2">
             <div>
-              <p className="text-sm font-semibold text-(--text-primary)">{isBn ? "অ্যাকাউন্ট পাসওয়ার্ড" : "Account Password"}</p>
-              <p className="text-xs text-(--text-muted) mt-0.5 leading-relaxed">{isBn ? "আপনার অ্যাকাউন্টের নিরাপত্তা নিশ্চিত করতে নিয়মিত শক্তিশালী পাসওয়ার্ড ব্যবহার করুন।" : "Ensure your account is protected with a strong, confidential password."}</p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-semibold text-(--text-primary)">
+                  {isGoogleNoPw
+                    ? (isBn ? "ইমেইল লগইনের জন্য পাসওয়ার্ড সেট করুন" : "Set Password for Email Login")
+                    : (isBn ? "অ্যাকাউন্ট পাসওয়ার্ড" : "Account Password")}
+                </p>
+                {isGoogleNoPw && (
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    {isBn ? "Google একাউন্ট" : "Google Account"}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-(--text-muted) mt-0.5 leading-relaxed">
+                {isGoogleNoPw
+                  ? (isBn ? "আপনি বর্তমানে Google দিয়ে লগইন করছেন। ইমেইল ও পাসওয়ার্ড দিয়েও সরাসরি লগইন চালু করতে একটি পাসওয়ার্ড সেট করুন।" : "You currently sign in using Google. Set a password to also enable direct email & password login alongside Google.")
+                  : (isBn ? "আপনার অ্যাকাউন্টের নিরাপত্তা নিশ্চিত করতে নিয়মিত শক্তিশালী পাসওয়ার্ড ব্যবহার করুন।" : "Ensure your account is protected with a strong, confidential password.")}
+              </p>
             </div>
-            <button type="button" onClick={() => { setPwError(""); setPwSuccess(false); setCurrentPw(""); setNewPw(""); setConfirmPw(""); setIsPasswordModalOpen(true); }} className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer shrink-0 shadow-xs flex items-center justify-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => { setPwError(""); setPwSuccess(false); setCurrentPw(""); setNewPw(""); setConfirmPw(""); setIsPasswordModalOpen(true); }}
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer shrink-0 shadow-xs flex items-center justify-center gap-1.5"
+            >
               <Key className="w-3.5 h-3.5" />
-              <span>{isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password"}</span>
+              <span>
+                {isGoogleNoPw
+                  ? (isBn ? "পাসওয়ার্ড সেট করুন" : "Set Password")
+                  : (isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password")}
+              </span>
             </button>
           </div>
         </Section>
@@ -508,30 +533,49 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
               <div className="flex items-center gap-2">
                 <div className="p-2 rounded-xl bg-(--accent-solid)/10 text-(--accent-solid)"><Key className="w-4 h-4" /></div>
-                <h3 className="text-base font-bold text-(--text-primary)">{isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password"}</h3>
+                <h3 className="text-base font-bold text-(--text-primary)">
+                  {isGoogleNoPw
+                    ? (isBn ? "নতুন পাসওয়ার্ড সেট করুন" : "Set Account Password")
+                    : (isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password")}
+                </h3>
               </div>
               <button type="button" onClick={() => setIsPasswordModalOpen(false)} className="p-1 text-(--text-muted) hover:text-(--text-primary) rounded-lg hover:bg-(--text-primary)/5 transition-colors cursor-pointer"><X className="w-4 h-4" /></button>
             </div>
+            {isGoogleNoPw && (
+              <p className="text-xs text-(--text-muted) leading-relaxed">
+                {isBn 
+                  ? "আপনার পছন্দের একটি পাসওয়ার্ড লিখুন। এটি সেট করার পর আপনি Google অথবা ইমেইল+পাসওয়ার্ড উভয়ভাবেই লগইন করতে পারবেন।" 
+                  : "Enter a password for your account. Once set, you can log in using either Google or your email & password."}
+              </p>
+            )}
             <form onSubmit={async (e) => {
               e.preventDefault();
               if (newPw.length < 6) { setPwError(isBn ? "নতুন পাসওয়ার্ড ন্যূনতম ৬ অক্ষরের হতে হবে" : "Password must be at least 6 characters"); return; }
               if (newPw !== confirmPw) { setPwError(isBn ? "নতুন পাসওয়ার্ডের দুটি ঘর মিলছে না" : "Passwords do not match"); return; }
               setPwLoading(true); setPwError(""); setPwSuccess(false);
               try {
-                await changePassword({ current_password: currentPw, new_password: newPw, confirm_new_password: confirmPw });
+                if (isGoogleNoPw) {
+                  await setPassword(newPw);
+                  if (user) user.has_usable_password = true;
+                  await refreshUser();
+                } else {
+                  await changePassword({ current_password: currentPw, new_password: newPw, confirm_new_password: confirmPw });
+                }
                 setPwSuccess(true); setCurrentPw(""); setNewPw(""); setConfirmPw("");
                 setTimeout(() => { setIsPasswordModalOpen(false); setPwSuccess(false); }, 2000);
               } catch (err: unknown) {
-                setPwError(err instanceof Error ? err.message : "Failed to change password. Please verify current password.");
+                setPwError(err instanceof Error ? err.message : "Failed to update password.");
               } finally { setPwLoading(false); }
             }} className="space-y-4">
-              <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1">{isBn ? "বর্তমান পাসওয়ার্ড" : "Current Password"}</label>
-                <div className="relative">
-                  <input type={showCurrentPw ? "text" : "password"} required value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="••••••••" className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-(--text-primary)/15 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-(--text-primary)/40 pr-10 font-mono" />
-                  <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer">{showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+              {!isGoogleNoPw && (
+                <div>
+                  <label className="block text-xs font-semibold text-(--text-muted) mb-1">{isBn ? "বর্তমান পাসওয়ার্ড" : "Current Password"}</label>
+                  <div className="relative">
+                    <input type={showCurrentPw ? "text" : "password"} required value={currentPw} onChange={(e) => setCurrentPw(e.target.value)} placeholder="••••••••" className="w-full px-3.5 py-2.5 rounded-xl text-sm border border-(--text-primary)/15 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-(--text-primary)/40 pr-10 font-mono" />
+                    <button type="button" onClick={() => setShowCurrentPw(!showCurrentPw)} className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600 cursor-pointer">{showCurrentPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}</button>
+                  </div>
                 </div>
-              </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-(--text-muted) mb-1">{isBn ? "নতুন পাসওয়ার্ড" : "New Password"}</label>
                 <div className="relative">
@@ -559,7 +603,7 @@ export default function SettingsPage() {
               {pwSuccess && <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2"><CheckCircle2 className="w-4 h-4 shrink-0" /><span>{isBn ? "পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।" : "Password changed successfully."}</span></div>}
               <div className="flex items-center justify-end gap-3 pt-2">
                 <button type="button" onClick={() => setIsPasswordModalOpen(false)} className="px-4 py-2.5 rounded-xl text-xs font-semibold text-(--text-muted) hover:text-(--text-primary) cursor-pointer">{isBn ? "বাতিল" : "Cancel"}</button>
-                <button type="submit" disabled={pwLoading} className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 disabled:opacity-50 cursor-pointer shadow-xs">{pwLoading ? isBn ? "আপডেট হচ্ছে..." : "Updating..." : isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password"}</button>
+                <button type="submit" disabled={pwLoading} className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 disabled:opacity-50 cursor-pointer shadow-xs">{pwLoading ? (isBn ? "আপডেট হচ্ছে..." : "Updating...") : (isGoogleNoPw ? (isBn ? "পাসওয়ার্ড সেট করুন" : "Set Password") : (isBn ? "পাসওয়ার্ড পরিবর্তন করুন" : "Change Password"))}</button>
               </div>
             </form>
           </div>

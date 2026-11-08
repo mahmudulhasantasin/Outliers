@@ -268,7 +268,7 @@ const handleGoogleResponse = useCallback(
           theme: theme === "dark" ? "filled_black" : "outline",
           size: "large",
           text: "continue_with",
-          shape: "rectangular",
+          shape: "pill",
           logo_alignment: "left",
           width: 340,
         });
@@ -1824,9 +1824,9 @@ const handleGoogleResponse = useCallback(
 
                         {/* Google One-Click Continue */}
                         <div className="w-full flex flex-col items-center justify-center mb-3">
-                          <div className="relative w-full max-w-[340px] h-[44px] select-none">
+                          <div className="relative w-full max-w-[340px] h-[44px] rounded-full select-none">
                             {/* Layer 1: Native Pixel-Perfect Visual Button (100% stable, zero flicker) */}
-                            <div className="w-full h-[44px] flex items-center justify-center gap-3 px-4 rounded-xl border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/[0.05] active:scale-[0.99] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-sm bg-[var(--bg-card)] pointer-events-none">
+                            <div className="w-full h-[44px] flex items-center justify-center gap-3 px-5 rounded-full border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/[0.05] active:scale-[0.99] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-sm bg-[var(--bg-card)] pointer-events-none">
                               <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24">
                                 <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                                 <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -1839,7 +1839,7 @@ const handleGoogleResponse = useCallback(
                             {/* Layer 2: Google Official GSI Button (Transparent on top, receives native clicks) */}
                             <div
                               ref={googleSignInBtnRef}
-                              className="absolute inset-0 w-full h-full z-10 opacity-[0.001] cursor-pointer flex items-center justify-center overflow-hidden [&>div]:!w-full [&>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full"
+                              className="absolute inset-0 w-full h-full z-10 opacity-[0.001] cursor-pointer rounded-full flex items-center justify-center overflow-hidden [&>div]:!w-full [&>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full"
                             />
                           </div>
                         </div>
@@ -1912,9 +1912,9 @@ const handleGoogleResponse = useCallback(
 
                             {/* Google One-Click Register */}
                             <div className="w-full flex flex-col items-center justify-center mb-3">
-                              <div className="relative w-full max-w-[340px] h-[44px] select-none">
+                              <div className="relative w-full max-w-[340px] h-[44px] rounded-full select-none">
                                 {/* Layer 1: Native Pixel-Perfect Visual Button (100% stable, zero flicker) */}
-                                <div className="w-full h-[44px] flex items-center justify-center gap-3 px-4 rounded-xl border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/[0.05] active:scale-[0.99] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-sm bg-[var(--bg-card)] pointer-events-none">
+                                <div className="w-full h-[44px] flex items-center justify-center gap-3 px-5 rounded-full border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/[0.05] active:scale-[0.99] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-sm bg-[var(--bg-card)] pointer-events-none">
                                   <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24">
                                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
                                     <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
@@ -1927,7 +1927,7 @@ const handleGoogleResponse = useCallback(
                                 {/* Layer 2: Google Official GSI Button (Transparent on top, receives native clicks) */}
                                 <div
                                   ref={googleSignUpBtnRef}
-                                  className="absolute inset-0 w-full h-full z-10 opacity-[0.001] cursor-pointer flex items-center justify-center overflow-hidden [&>div]:!w-full [&>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full"
+                                  className="absolute inset-0 w-full h-full z-10 opacity-[0.001] cursor-pointer rounded-full flex items-center justify-center overflow-hidden [&>div]:!w-full [&>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full"
                                 />
                               </div>
                               <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center">

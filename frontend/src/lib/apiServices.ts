@@ -987,6 +987,13 @@ export async function changePassword(req: ChangePasswordRequest): Promise<{ mess
   });
 }
 
+/** Set password directly for OAuth users without an existing password */
+export async function setPassword(new_password: string): Promise<{ message: string }> {
+  return api.post<{ message: string }>("/api/settings/set-password", {
+    new_password,
+  });
+}
+
 /** Upload profile photo (POST /api/settings/upload-photo) */
 export async function uploadProfilePhoto(
   file: File
