@@ -29,12 +29,26 @@ export default function PricingPage() {
   const { language } = useLanguage();
   const isBn = language === "bn";
 
+  const userRole = String(user?.role || "").toUpperCase();
+  const isPendingEnterpriseAdmin =
+    user?.enterpriseProfile?.verificationStatus === "pending" && !user?.enterpriseProfile?.isTeamMember;
+  const isPendingLawyer =
+    user?.lawyerProfile?.verificationStatus === "pending" || userRole === "LAWYER";
+  const isPendingMember =
+    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
+    ((user as any)?.member_approval_status === "PENDING" ||
+      user?.enterpriseProfile?.memberApprovalStatus === "PENDING");
+
   useEffect(() => {
-    const userRole = String(user?.role).toUpperCase();
-    if (userRole === "LAWYER") {
+    if (!user) return;
+    if (isPendingEnterpriseAdmin) {
+      router.replace("/enterprise/pending");
+    } else if (isPendingLawyer) {
       router.replace("/lawyer/pending");
+    } else if (isPendingMember) {
+      router.replace("/enterprise/member");
     }
-  }, [user, router]);
+  }, [user, isPendingEnterpriseAdmin, isPendingLawyer, isPendingMember, router]);
 
   const [packages, setPackages] = useState<CreditPackage[]>([]);
   const [isLoadingPackages, setIsLoadingPackages] = useState(true);
@@ -337,6 +351,14 @@ export default function PricingPage() {
   const displayTotalTopup = summary?.total_topup_bdt ?? summary?.total_spent_bdt ?? totalTopupFromPayments;
 
   if (String(user?.role).toUpperCase() === "LAWYER") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isPendingEnterpriseAdmin || isPendingLawyer || isPendingMember) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />

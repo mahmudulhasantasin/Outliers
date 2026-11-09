@@ -14,16 +14,29 @@ export default function DashboardPage() {
       return;
     }
     const userRole = String(user.role).toUpperCase();
-    if (userRole === "LAWYER") {
+    const isPendingEnterprise =
+      user.enterpriseProfile?.verificationStatus === "pending" && !user.enterpriseProfile?.isTeamMember;
+    const isPendingMember =
+      (userRole === "ENTERPRISE_MEMBER" || user.enterpriseProfile?.isTeamMember) &&
+      ((user as any).member_approval_status === "PENDING" ||
+        user.enterpriseProfile?.memberApprovalStatus === "PENDING");
+    const isPendingLawyer = user.lawyerProfile?.verificationStatus === "pending";
+
+    if (isPendingEnterprise) {
+      router.replace("/enterprise/pending");
+    } else if (isPendingLawyer || userRole === "LAWYER") {
       router.replace("/lawyer/pending");
+    } else if (isPendingMember) {
+      router.replace("/enterprise/member");
     } else if (userRole === "ADMIN") {
       router.replace("/admin");
-    } else if (userRole === "ENTERPRISE_ADMIN" || (userRole.includes("ENTERPRISE") && user.enterpriseProfile?.verificationStatus === "verified")) {
+    } else if (
+      userRole === "ENTERPRISE_ADMIN" ||
+      (userRole.includes("ENTERPRISE") && user.enterpriseProfile?.verificationStatus === "verified")
+    ) {
       router.replace("/enterprise/admin");
-    } else if (user.enterpriseProfile?.verificationStatus === "pending") {
-      router.replace("/enterprise/pending");
-    } else if (user.lawyerProfile?.verificationStatus === "pending") {
-      router.replace("/lawyer/pending");
+    } else if (userRole === "ENTERPRISE_MEMBER") {
+      router.replace("/enterprise/member");
     } else {
       router.replace("/copilot");
     }

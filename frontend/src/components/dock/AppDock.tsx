@@ -207,22 +207,105 @@ export default function AppDock() {
     },
   ];
 
+  // ── Pending Enterprise Admin Dock ──
+  const pendingEnterpriseAdminItems: VerticalDockItemData[] = [
+    {
+      icon: <Building2 className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "এন্টারপ্রাইজ ভেরিফিকেশন স্ট্যাটাস" : "Enterprise Verification",
+      isActive: pathname.startsWith("/enterprise/pending"),
+      onClick: () => router.push("/enterprise/pending"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও প্রতিষ্ঠান" : "Profile & Organization",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
+  // ── Pending Lawyer Dock ──
+  const pendingLawyerItems: VerticalDockItemData[] = [
+    {
+      icon: <Inbox className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "আইনজীবী ভেরিফিকেশন স্ট্যাটাস" : "Lawyer Verification",
+      isActive: pathname.startsWith("/lawyer/pending"),
+      onClick: () => router.push("/lawyer/pending"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও সনদ" : "Profile & Credentials",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
+  // ── Pending Enterprise Member Dock ──
+  const pendingMemberItems: VerticalDockItemData[] = [
+    {
+      icon: <Building2 className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "কোম্পানি অনুমোদন স্ট্যাটাস" : "Company Approval Status",
+      isActive: pathname.startsWith("/enterprise/member"),
+      onClick: () => router.push("/enterprise/member"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও কোটা" : "Profile & Quota",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
   const userRole = String(user?.role || role).toUpperCase();
-  const isLawyer = userRole === "LAWYER";
+  const isPendingEnterpriseAdmin =
+    user?.enterpriseProfile?.verificationStatus === "pending" && !user?.enterpriseProfile?.isTeamMember;
+  const isPendingLawyer =
+    user?.lawyerProfile?.verificationStatus === "pending" ||
+    (userRole === "LAWYER" && user?.lawyerProfile?.verificationStatus !== "verified");
+  const isPendingMember =
+    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
+    ((user as any)?.member_approval_status === "PENDING" ||
+      user?.enterpriseProfile?.memberApprovalStatus === "PENDING");
+
+  const isVerifiedLawyer = userRole === "LAWYER" && user?.lawyerProfile?.verificationStatus === "verified";
+  const isVerifiedEnterpriseAdmin =
+    (userRole === "ENTERPRISE_ADMIN" || (userRole === "ENTERPRISE" && !user?.enterpriseProfile?.isTeamMember)) &&
+    user?.enterpriseProfile?.verificationStatus === "verified";
+  const isVerifiedEnterpriseMember =
+    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) && !isPendingMember;
 
   const items =
     userRole === "ADMIN"
       ? adminItems
-      : isLawyer
+      : isPendingEnterpriseAdmin
+      ? pendingEnterpriseAdminItems
+      : isPendingLawyer
+      ? pendingLawyerItems
+      : isPendingMember
+      ? pendingMemberItems
+      : isVerifiedLawyer
       ? lawyerItems
-      : userRole === "ENTERPRISE_ADMIN"
+      : isVerifiedEnterpriseAdmin
       ? enterpriseAdminItems
-      : userRole === "ENTERPRISE_MEMBER"
+      : isVerifiedEnterpriseMember
       ? enterpriseMemberItems
-      : userRole === "ENTERPRISE" && user?.enterpriseProfile?.isTeamMember
-      ? enterpriseMemberItems
-      : userRole === "ENTERPRISE"
-      ? enterpriseAdminItems
       : generalItems;
 
   return (
