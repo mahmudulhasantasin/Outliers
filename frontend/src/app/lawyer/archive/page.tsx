@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 import {
@@ -55,6 +56,7 @@ export default function LawyerArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
   const { user } = useAuth();
+  const { toast } = useNotification();
   const isBn = language === "bn";
 
   useEffect(() => {
@@ -187,7 +189,7 @@ export default function LawyerArchivePage() {
       fetchEarningsData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit withdrawal request.";
-      alert(msg);
+      toast.error(msg);
     } finally {
       setIsSubmittingWithdrawal(false);
     }

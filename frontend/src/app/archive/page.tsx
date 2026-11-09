@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { getContractHistory, deleteContract, HITL_STATUS_CONFIG, requestLawyerVerification } from "@/lib/apiServices";
 import {
   FolderClock,
@@ -52,7 +53,8 @@ interface ArchivedRecord {
 export default function ArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user, refreshUser } = useAuth(); 
+  const { user, refreshUser } = useAuth();
+  const { toast, confirm } = useNotification(); 
 
   const userRole = String(user?.role || "").toUpperCase();
   const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
@@ -397,36 +399,46 @@ export default function ArchivePage() {
   };
 
   const handleRequestLawyer = async (record: ArchivedRecord) => {
-    if (!confirm(language === "bn" ? "আপনি কি নিশ্চিত এই চুক্তিটি লইয়ারের কাছে ভেরিফিকেশনের জন্য পাঠাতে চান? এটি ১৫০০ ক্রেডিট কাটবে।" : "Are you sure you want to request lawyer verification? This will deduct 1500 credits.")) return;
+    const ok = await confirm({
+      title: language === "bn" ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট" : "Request Lawyer Verification",
+      message: language === "bn" ? "আপনি কি নিশ্চিত এই চুক্তিটি লইয়ারের কাছে ভেরিফিকেশনের জন্য পাঠাতে চান? এটি ১৫০০ ক্রেডিট কাটবে।" : "Are you sure you want to request lawyer verification? This will deduct 1500 credits.",
+      confirmText: language === "bn" ? "ভেরিফিকেশন পাঠান" : "Dispatch Verification",
+      variant: "primary",
+    });
+    if (!ok) return;
     
     setIsRequestingVerification(record.id);
     try {
       await requestLawyerVerification(record.contractId);
-      alert(language === "bn" ? "সফলভাবে লইয়ার ভেরিফিকেশনের জন্য পাঠানো হয়েছে!" : "Successfully dispatched to lawyer queue!");
+      toast.success(language === "bn" ? "সফলভাবে লইয়ার ভেরিফিকেশনের জন্য পাঠানো হয়েছে!" : "Successfully dispatched to lawyer queue!");
       if (refreshUser) refreshUser().catch(() => {});
       fetchHistory();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to request verification";
-      alert(msg);
+      toast.error(msg);
     } finally {
       setIsRequestingVerification(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    const confirmDelete = window.confirm(
-      language === "bn"
+    const ok = await confirm({
+      title: language === "bn" ? "অডিট মেমো মুছে ফেলবেন?" : "Delete Contract Audit?",
+      message: language === "bn"
         ? "আপনি কি নিশ্চিত এই অডিটটি মুছে ফেলতে চান? এটি আর ফিরে পাবেন না।"
-        : "Are you sure you want to delete this audit? This action cannot be undone."
-    );
-    if (!confirmDelete) return;
+        : "Are you sure you want to delete this audit? This action cannot be undone.",
+      confirmText: language === "bn" ? "মুছে ফেলুন" : "Delete Audit",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setDeletingId(id);
     try {
       await deleteContract(id);
+      toast.success(language === "bn" ? "অডিট সফলভাবে মুছে ফেলা হয়েছে।" : "Audit memo deleted successfully.");
       setRecords((prev) => prev.filter((r) => r.id !== id));
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to delete contract. Please try again.");
+      toast.error(err instanceof Error ? err.message : "Failed to delete contract. Please try again.");
     } finally {
       setDeletingId(null);
     }

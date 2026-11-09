@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 import {
@@ -105,6 +106,7 @@ export default function LawyerPendingPage() {
   const router = useRouter();
   const { language } = useLanguage();
   const { user, refreshUser } = useAuth();
+  const { toast, prompt } = useNotification();
   const [isRefreshingVerification, setIsRefreshingVerification] = useState(false);
   const isBn = language === "bn";
 
@@ -268,7 +270,7 @@ export default function LawyerPendingPage() {
   const handleAccept = async (id: string) => {
     try {
       await acceptOffer(id);
-      alert(isBn ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে! (সময়সীমা: ৩ ঘণ্টা)।" : "Contract offer accepted! (3-hour SLA window).");
+      toast.success(isBn ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে! (সময়সীমা: ৩ ঘণ্টা)।" : "Contract offer accepted! (3-hour SLA window).");
       
       const acceptedItem = pendingList.find((p) => p.id === id);
       if (acceptedItem) {
@@ -278,16 +280,23 @@ export default function LawyerPendingPage() {
         setActiveSubTab("active");
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : (isBn ? "চুক্তি গ্রহণ ব্যর্থ হয়েছে।" : "Failed to accept offer"));
+      toast.error(err instanceof Error ? err.message : (isBn ? "চুক্তি গ্রহণ ব্যর্থ হয়েছে।" : "Failed to accept offer"));
     }
   };
 
   const handleDecline = async (id: string) => {
-    const reason = prompt(isBn ? "বাতিলের কারণ লিখুন:" : "Enter reason for declining:") || "Outside my specialization area.";
+    const reason = await prompt({
+      title: isBn ? "অফার প্রত্যাখ্যান" : "Decline Contract Offer",
+      message: isBn ? "বাতিলের কারণ লিখুন:" : "Enter reason for declining:",
+      placeholder: isBn ? "কারণ উল্লেখ করুন..." : "Specify reason...",
+      defaultValue: "Outside my specialization area.",
+      confirmText: isBn ? "প্রত্যাখ্যান করুন" : "Decline",
+    });
+    if (!reason) return;
     try {
       await declineOffer(id, reason);
       setPendingList((prev) => prev.filter((p) => p.id !== id));
-      alert(isBn ? "অফার প্রত্যাখ্যান করা হয়েছে।" : "Offer declined and re-queued.");
+      toast.info(isBn ? "অফার প্রত্যাখ্যান করা হয়েছে।" : "Offer declined and re-queued.");
     } catch {
       setPendingList((prev) => prev.filter((p) => p.id !== id));
     }
@@ -308,7 +317,7 @@ export default function LawyerPendingPage() {
       sessionStorage.setItem("active_audit_contract", JSON.stringify(contextPayload));
       router.push("/copilot");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to start AI chat session");
+      toast.error(err instanceof Error ? err.message : "Failed to start AI chat session");
     }
   };
 
@@ -321,7 +330,7 @@ export default function LawyerPendingPage() {
       const res = await uploadLawyerProof(file);
       setSignaturePath(res.file_path);
     } catch {
-      alert(isBn ? "স্বাক্ষর আপলোড ব্যর্থ হয়েছে" : "Failed to upload signature");
+      toast.error(isBn ? "স্বাক্ষর আপলোড ব্যর্থ হয়েছে" : "Failed to upload signature");
     } finally {
       setIsUploadingSign(false);
     }
@@ -335,7 +344,7 @@ export default function LawyerPendingPage() {
       const res = await uploadLawyerProof(file);
       setSignedPdfPath(res.file_path);
     } catch {
-      alert(isBn ? "সাইনকৃত পিডিএফ আপলোড ব্যর্থ হয়েছে" : "Failed to upload signed PDF");
+      toast.error(isBn ? "সাইনকৃত পিডিএফ আপলোড ব্যর্থ হয়েছে" : "Failed to upload signed PDF");
     } finally {
       setIsUploadingPdf(false);
     }
@@ -346,7 +355,7 @@ export default function LawyerPendingPage() {
     
     // ✅ NEW: Validate that files are uploaded
     if (!signaturePath || !signedPdfPath) {
-      alert(isBn ? "অনুগ্রহ করে সিলমোহর দেওয়ার আগে আপনার স্বাক্ষর এবং সাইনকৃত পিডিএফ আপলোড করুন।" : "Please upload your signature and signed PDF before applying the seal.");
+      toast.warning(isBn ? "অনুগ্রহ করে সিলমোহর দেওয়ার আগে আপনার স্বাক্ষর এবং সাইনকৃত পিডিএফ আপলোড করুন।" : "Please upload your signature and signed PDF before applying the seal.");
       return;
     }
     

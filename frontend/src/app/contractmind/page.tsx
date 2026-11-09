@@ -19,6 +19,7 @@ import {
   ContractAuditResult,
 } from "@/lib/apiServices";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import {
   Upload, ArrowLeft, Bot, Printer, CheckCircle2, Shield,
   Download, ArrowRight, ShieldCheck, AlertTriangle,
@@ -64,6 +65,7 @@ export default function ContractMindPage() {
   const router = useRouter();
   const { language } = useLanguage();
   const { user, updateUser, refreshUser } = useAuth();
+  const { toast } = useNotification();
   const isBn = language === "bn";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -217,7 +219,7 @@ export default function ContractMindPage() {
         }
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : "Failed to request lawyer verification";
-        alert(errorMessage || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
+        toast.error(errorMessage || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
         setIsDispatching(false);
         return;
       }

@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   getCompanyDashboard,
@@ -300,25 +301,31 @@ export default function EnterpriseAdminPage() {
     const member = members.find((m) => m.id === memberId);
     if (!member) return;
     if (member.role === "admin") {
-      alert(isBn ? "অ্যাডমিন স্ট্যাটাস পরিবর্তন করা যাবে না।" : "Admin status cannot be modified.");
+      toast.warning(isBn ? "অ্যাডমিন স্ট্যাটাস পরিবর্তন করা যাবে না।" : "Admin status cannot be modified.");
       return;
     }
 
     try {
       if (member.status === "active") {
-        const reason = prompt(
-          isBn ? "সাময়িক স্থগিত করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর):" : "Enter reason for suspension (min 3 characters):"
-        );
-        if (!reason || reason.trim().length < 3) return;
-        await suspendMember(memberId, reason.trim());
+        const reason = await prompt({
+          title: isBn ? "সদস্য সাময়িক স্থগিতকরণ" : "Suspend Team Member",
+          message: isBn ? "সাময়িক স্থগিত করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর):" : "Enter reason for suspension (min 3 characters):",
+          placeholder: isBn ? "স্থগিতের কারণ..." : "Reason for suspension...",
+          confirmText: isBn ? "স্থগিত করুন" : "Suspend",
+          minLength: 3,
+        });
+        if (!reason) return;
+        await suspendMember(memberId, reason);
+        toast.success(isBn ? "সদস্য সাময়িক স্থগিত করা হয়েছে।" : "Member suspended successfully.");
       } else if (member.status === "suspended") {
         await reactivateMember(memberId);
+        toast.success(isBn ? "সদস্য পুনরায় সক্রিয় করা হয়েছে।" : "Member reactivated successfully.");
       } else {
         return;
       }
       await refetchAll();
     } catch (e: any) {
-      alert(e?.message || (isBn ? "স্ট্যাটাস পরিবর্তন ব্যর্থ।" : "Failed to update status."));
+      toast.error(e?.message || (isBn ? "স্ট্যাটাস পরিবর্তন ব্যর্থ।" : "Failed to update status."));
     }
   };
 
@@ -334,7 +341,7 @@ export default function EnterpriseAdminPage() {
       await refetchAll();
       setEditingCreditMemberId(null);
     } catch (e: any) {
-      alert(e?.message || (isBn ? "কোটা পরিবর্তন ব্যর্থ।" : "Failed to adjust quota."));
+      toast.error(e?.message || (isBn ? "কোটা পরিবর্তন ব্যর্থ।" : "Failed to adjust quota."));
     }
   };
 
@@ -351,9 +358,10 @@ export default function EnterpriseAdminPage() {
       setApproveRole("MEMBER");
       setApproveDept("");
       setApproveQuota(200);
+      toast.success(isBn ? "সদস্য সফলভাবে অনুমোদিত হয়েছে!" : "Member approved successfully!");
       await refetchAll();
     } catch (e: any) {
-      alert(e?.message || (isBn ? "অনুমোদন ব্যর্থ।" : "Failed to approve."));
+      toast.error(e?.message || (isBn ? "অনুমোদন ব্যর্থ।" : "Failed to approve."));
     }
   };
 
@@ -364,9 +372,10 @@ export default function EnterpriseAdminPage() {
       await rejectMember(String(rejectTarget.user_id), rejectReason.trim());
       setRejectTarget(null);
       setRejectReason("");
+      toast.success(isBn ? "সদস্যের রিকোয়েস্ট প্রত্যাখ্যাত হয়েছে।" : "Membership request rejected.");
       await refetchAll();
     } catch (e: any) {
-      alert(e?.message || (isBn ? "প্রত্যাখ্যান ব্যর্থ।" : "Failed to reject."));
+      toast.error(e?.message || (isBn ? "প্রত্যাখ্যান ব্যর্থ।" : "Failed to reject."));
     }
   };
 
@@ -380,13 +389,13 @@ export default function EnterpriseAdminPage() {
       if (Array.isArray(extracted) && extracted.length > 0) {
         setPlaybookRules(extracted.map(mapBackendRuleToFrontend));
       }
-      alert(
+      toast.success(
         isBn
           ? `প্লেবুক সফলভাবে আপলোড হয়েছে! ${extracted?.length ?? 0} টি রুল পাওয়া গেছে।`
           : `Playbook uploaded! ${extracted?.length ?? 0} rules extracted.`
       );
     } catch (err: any) {
-      alert(err?.message || "Failed to upload playbook");
+      toast.error(err?.message || "Failed to upload playbook");
     } finally {
       setIsUploadingPlaybook(false);
       e.target.value = "";
