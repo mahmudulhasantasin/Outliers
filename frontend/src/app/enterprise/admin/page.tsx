@@ -141,6 +141,7 @@ export default function EnterpriseAdminPage() {
   const { user } = useAuth();
   const { language } = useLanguage();
   const isBn = language === "bn";
+  const { toast, prompt: showPrompt } = useNotification();
 
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
@@ -172,6 +173,18 @@ export default function EnterpriseAdminPage() {
   const [approveQuota, setApproveQuota] = useState(200);
   const [rejectTarget, setRejectTarget] = useState<PendingMember | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  const openApproveModal = (pm: PendingMember) => {
+    setApproveTarget(pm);
+    setApproveRole("MEMBER");
+    setApproveDept("");
+    setApproveQuota(Math.min(200, organization?.creditPoolRemaining ?? 0));
+  };
+
+  const openRejectModal = (pm: PendingMember) => {
+    setRejectTarget(pm);
+    setRejectReason("");
+  };
 
   const borderClass = "border-[var(--text-primary)]/10";
   const roleUpper = user ? String(user.role).toUpperCase() : "";
@@ -307,7 +320,7 @@ export default function EnterpriseAdminPage() {
 
     try {
       if (member.status === "active") {
-        const reason = await prompt({
+        const reason = await showPrompt({
           title: isBn ? "সদস্য সাময়িক স্থগিতকরণ" : "Suspend Team Member",
           message: isBn ? "সাময়িক স্থগিত করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর):" : "Enter reason for suspension (min 3 characters):",
           placeholder: isBn ? "স্থগিতের কারণ..." : "Reason for suspension...",
@@ -732,13 +745,13 @@ export default function EnterpriseAdminPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setApproveTarget(pm)}
+                          onClick={() => openApproveModal(pm)}
                           className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer"
                         >
                           {isBn ? "অনুমোদন" : "Approve"}
                         </button>
                         <button
-                          onClick={() => setRejectTarget(pm)}
+                          onClick={() => openRejectModal(pm)}
                           className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer"
                         >
                           {isBn ? "প্রত্যাখ্যান" : "Reject"}
@@ -829,7 +842,11 @@ export default function EnterpriseAdminPage() {
                           )}
                         </td>
                         <td className="p-4">
-                          {editingCreditMemberId === mem.id ? (
+                          {mem.status === "pending" ? (
+                            <span className="text-[11px] text-[var(--text-muted)] italic">
+                              {isBn ? "অনুমোদনে ধার্য" : "Set on approval"}
+                            </span>
+                          ) : editingCreditMemberId === mem.id ? (
                             <div className="flex items-center gap-1.5">
                               <input
                                 type="number"
@@ -855,7 +872,7 @@ export default function EnterpriseAdminPage() {
                               <span className="font-mono font-semibold text-[var(--text-primary)]">
                                 {mem.role === "admin" ? (isBn ? "পুল কন্ট্রোলার" : "Pool Admin") : mem.monthlyCreditCap}
                               </span>
-                              {mem.role !== "admin" && (
+                              {mem.role !== "admin" && mem.status === "active" && (
                                 <button
                                   onClick={() => {
                                     setEditingCreditMemberId(mem.id);
@@ -873,19 +890,54 @@ export default function EnterpriseAdminPage() {
                           {mem.creditsUsedThisMonth} / {mem.monthlyCreditCap}
                         </td>
                         <td className="p-4 text-right">
-                          {mem.role !== "admin" && (mem.status === "active" || mem.status === "suspended") && (
-                            <button
-                              onClick={() => handleToggleMemberStatus(mem.id)}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
-                                mem.status === "active"
-                                  ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
-                                  : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-                              }`}
-                            >
-                              {mem.status === "active"
-                                ? isBn ? "স্থগিত" : "Suspend"
-                                : isBn ? "পুনরায় চালু" : "Activate"}
-                            </button>
+                          {mem.status === "pending" ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openApproveModal({
+                                  user_id: mem.id,
+                                  full_name: mem.name,
+                                  email: mem.email,
+                                  requested_at: mem.joinedAt,
+                                  is_verified: true,
+                                })}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer flex items-center gap-1 shadow-xs transition-colors"
+                                title={isBn ? "অনুমোদন করুন" : "Approve Member"}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>{isBn ? "অনুমোদন" : "Approve"}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openRejectModal({
+                                  user_id: mem.id,
+                                  full_name: mem.name,
+                                  email: mem.email,
+                                  requested_at: mem.joinedAt,
+                                  is_verified: true,
+                                })}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer flex items-center gap-1 shadow-xs transition-colors"
+                                title={isBn ? "প্রত্যাখ্যান করুন" : "Reject Member"}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>{isBn ? "প্রত্যাখ্যান" : "Reject"}</span>
+                              </button>
+                            </div>
+                          ) : (
+                            mem.role !== "admin" && (mem.status === "active" || mem.status === "suspended") && (
+                              <button
+                                onClick={() => handleToggleMemberStatus(mem.id)}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                                  mem.status === "active"
+                                    ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+                                    : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                }`}
+                              >
+                                {mem.status === "active"
+                                  ? isBn ? "স্থগিত" : "Suspend"
+                                  : isBn ? "পুনরায় চালু" : "Activate"}
+                              </button>
+                            )
                           )}
                         </td>
                       </tr>
@@ -1180,13 +1232,25 @@ export default function EnterpriseAdminPage() {
                   <div>
                     <label className="block font-semibold mb-1 text-[var(--text-primary)]">
                       {isBn ? "প্রাথমিক কোটা" : "Initial Quota"}
+                      <span className="ml-1 text-[10px] text-[var(--text-muted)] font-normal">
+                        ({isBn ? "সর্বোচ্চ পুল ক্রেডিট: " : "Pool balance: "}{organization?.creditPoolRemaining ?? 0})
+                      </span>
                     </label>
                     <input
                       type="number"
+                      min={0}
+                      max={organization?.creditPoolRemaining ?? 0}
                       value={approveQuota}
-                      onChange={(e) => setApproveQuota(Number(e.target.value))}
+                      onChange={(e) => setApproveQuota(Math.max(0, Math.min(Number(e.target.value), organization?.creditPoolRemaining ?? 0)))}
                       className="w-full px-3 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] font-mono"
                     />
+                    {(organization?.creditPoolRemaining ?? 0) === 0 && (
+                      <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                        {isBn
+                          ? "কোম্পানি পুলে ক্রেডিট শূন্য। সদস্যকে ০ কোটায় অনুমোদন দিয়ে পরবর্তীতে টপ-আপ করে ক্রেডিট বরাদ্দ দিতে পারবেন।"
+                          : "Company pool has 0 credits. You can approve with 0 quota and allocate credits later after top-up."}
+                      </p>
+                    )}
                   </div>
                 </div>
 
