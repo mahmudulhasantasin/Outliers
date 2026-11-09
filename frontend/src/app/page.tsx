@@ -149,6 +149,47 @@ export default function LandingAndAuthPage() {
   const [otpInput, setOtpInput] = useState("");
   const [otpError, setOtpError] = useState("");
 
+  // ── Form Validation States for Registration (enables button only when valid) ──
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim());
+  const isPasswordValid = regPassword.length >= 6 && regPassword === regConfirmPassword;
+
+  const isGeneralFormValid = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    dob &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
+  const isLawyerFormValid = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    dob &&
+    barCouncilNo.trim() &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
+  const isCompanyFormValid = Boolean(
+    companyName.trim() &&
+    registrationNo.trim() &&
+    tinNo.trim() &&
+    adminName.trim() &&
+    memberCount > 0 &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
+  const isMemberFormValid = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    dob &&
+    companyName.trim() &&
+    companyReferCode.trim() &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
   // ── Login fields ──
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -2191,9 +2232,23 @@ const handleGoogleResponse = useCallback(
                                   </p>
                                 </div>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                {regPassword && regPassword.length < 6 && (
+                                  <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                )}
+                                {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                  <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                )}
                                 <div className="pt-1">
-                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "নিবন্ধন সম্পন্ন করুন (ওটিপি যাচাই)" : "Sign Up (Verify OTP)"}
+                                  <button
+                                    type="submit"
+                                    disabled={!isGeneralFormValid || authLoading}
+                                    className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                  >
+                                    {authLoading ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      isBn ? "নিবন্ধন সম্পন্ন করুন" : "Create Account"
+                                    )}
                                   </button>
                                 </div>
                               </form>
@@ -2265,9 +2320,23 @@ const handleGoogleResponse = useCallback(
                                   </p>
                                 </div>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                {regPassword && regPassword.length < 6 && (
+                                  <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                )}
+                                {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                  <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                )}
                                 <div className="pt-1">
-                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "আইনজীবী হিসেবে আবেদন (ওটিপি যাচাই)" : "Apply as Lawyer (Verify OTP)"}
+                                  <button
+                                    type="submit"
+                                    disabled={!isLawyerFormValid || authLoading}
+                                    className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                  >
+                                    {authLoading ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      isBn ? "আইনজীবী আবেদন জমা দিন" : "Submit Lawyer Application"
+                                    )}
                                   </button>
                                 </div>
                               </form>
@@ -2346,10 +2415,24 @@ const handleGoogleResponse = useCallback(
                                           : "Verification by System Admin — after approval, your corporate workspace will unlock and a company referral code will be issued for member onboarding."}
                                       </p>
                                     </div>
+                                    {regPassword && regPassword.length < 6 && (
+                                      <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                    )}
+                                    {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                      <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                    )}
                                     {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                     <div className="pt-1">
-                                      <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                        {isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন (ওটিপি যাচাই)" : "Request for Registration (Verify OTP)"}
+                                      <button
+                                        type="submit"
+                                        disabled={!isCompanyFormValid || authLoading}
+                                        className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                      >
+                                        {authLoading ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন" : "Register Enterprise"
+                                        )}
                                       </button>
                                     </div>
                                   </form>
@@ -2411,10 +2494,24 @@ const handleGoogleResponse = useCallback(
                                           : "Verification by Company Admin — after email OTP verification, your company admin will review and approve your membership."}
                                       </p>
                                     </div>
+                                    {regPassword && regPassword.length < 6 && (
+                                      <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                    )}
+                                    {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                      <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                    )}
                                     {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                     <div className="pt-1">
-                                      <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                        {isBn ? "টিমে যুক্ত হতে আবেদন (ওটিপি যাচাই)" : "Join Company Team (Verify OTP)"}
+                                      <button
+                                        type="submit"
+                                        disabled={!isMemberFormValid || authLoading}
+                                        className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                      >
+                                        {authLoading ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          isBn ? "কোম্পানি টিমে যুক্ত হন" : "Join Company Team"
+                                        )}
                                       </button>
                                     </div>
                                   </form>
@@ -2502,16 +2599,21 @@ const handleGoogleResponse = useCallback(
 
                               <button
                                 type="button"
+                                disabled={authLoading || otpInput.trim().length !== 6}
                                 onClick={handleVerifyOtpAndComplete}
-                                className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2"
+                                className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2 flex items-center justify-center gap-2"
                               >
-                                {selectedRole === "lawyer"
-                                  ? (isBn ? "যাচাই করুন ও আইনজীবী আবেদন জমা দিন ✓" : "Verify & Submit Lawyer Application ✓")
-                                  : selectedRole === "enterprise" && entTab === "company"
-                                  ? (isBn ? "যাচাই করুন ও কোম্পানি আবেদন জমা দিন ✓" : "Verify & Submit Enterprise Application ✓")
-                                  : selectedRole === "enterprise" && entTab === "member"
-                                  ? (isBn ? "যাচাই করুন ও মেম্বারশিপ আবেদন জমা দিন ✓" : "Verify & Submit Membership Request ✓")
-                                  : (isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Enter Workspace ✓")}
+                                {authLoading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : selectedRole === "lawyer" ? (
+                                  (isBn ? "যাচাই সম্পন্ন ও আবেদন জমা দিন ✓" : "Verify & Submit Lawyer Application ✓")
+                                ) : selectedRole === "enterprise" && entTab === "company" ? (
+                                  (isBn ? "যাচাই সম্পন্ন ও কোম্পানি নিবন্ধন সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓")
+                                ) : selectedRole === "enterprise" && entTab === "member" ? (
+                                  (isBn ? "যাচাই সম্পন্ন ও মেম্বারশিপ আবেদন জমা দিন ✓" : "Verify & Submit Membership Request ✓")
+                                ) : (
+                                  (isBn ? "যাচাই সম্পন্ন ও প্রবেশ করুন ✓" : "Verify & Complete Registration ✓")
+                                )}
                               </button>
 
                               <div className="text-center text-xs text-[var(--text-muted)] pt-1 space-y-1">
