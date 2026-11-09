@@ -200,8 +200,8 @@ export default function PricingPage() {
       credits: creds,
       expires_at: p.expires_at || "",
       bkash: {
-        bkash_number: "01711000000",
-        bkash_type: "Merchant",
+        bkash_number: "01823456787",
+        bkash_type: "Personal",
         instructions_en: "Send Money to the bKash number below with your Reference code, then submit TrxID.",
         instructions_bn: "নিচের বিকাশ নম্বরে রেফারেন্স কোড সহ টাকা পাঠান এবং TrxID সাবমিট করুন।"
       },
