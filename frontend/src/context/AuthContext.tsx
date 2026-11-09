@@ -115,8 +115,8 @@ export interface EnterpriseProfile {
   referCode?: string;
 
   verificationStatus: EnterpriseVerificationStatus;
-
   isTeamMember?: boolean;
+  memberApprovalStatus?: string | null;
 
 }
 
@@ -169,7 +169,7 @@ export interface UserProfile {
   lawyerProfile?: LawyerProfile;
 
   enterpriseProfile?: EnterpriseProfile;
-
+  member_approval_status?: string | null;
 }
 
 
@@ -609,12 +609,11 @@ function meResponseToProfile(data: any): UserProfile {
           referCode: data.enterprise_profile.refer_code,
 
           verificationStatus: data.enterprise_profile.verification_status,
-
           isTeamMember: data.enterprise_profile.is_team_member,
-
+          memberApprovalStatus: data.enterprise_profile.member_approval_status || (data as any).member_approval_status || null,
         }
-
       : undefined,
+    member_approval_status: (data as any).member_approval_status || data.enterprise_profile?.member_approval_status || null,
 
   };
 

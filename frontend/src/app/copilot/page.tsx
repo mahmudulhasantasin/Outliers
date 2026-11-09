@@ -123,10 +123,15 @@ export default function CopilotPage() {
 
   useEffect(() => {
     if (!user) return;
+    const roleUpper = String(user.role || "").toUpperCase();
+    const isPendingMember = roleUpper === "ENTERPRISE_MEMBER" && ((user as any).member_approval_status === "PENDING" || user.enterpriseProfile?.memberApprovalStatus === "PENDING");
+
     if (user.enterpriseProfile?.verificationStatus === "pending") {
       router.replace("/enterprise/pending");
-    } else if (user.lawyerProfile?.verificationStatus === "pending") {
+    } else if (user.lawyerProfile?.verificationStatus === "pending" || roleUpper === "LAWYER") {
       router.replace("/lawyer/pending");
+    } else if (isPendingMember) {
+      router.replace("/enterprise/member");
     }
   }, [user, router]);
 

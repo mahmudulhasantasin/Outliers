@@ -80,6 +80,7 @@ export default function LandingAndAuthPage() {
     resendOtp,
     onboardLawyer,
     onboardEnterprise,
+    registerEnterpriseMember,
     user,
     refreshUser, // ✅ NEW - Needed for password reset
     loginWithGoogle,
@@ -478,12 +479,18 @@ const handleGoogleResponse = useCallback(
     setAuthLoading(true);
     try {
       if (selectedRole === "enterprise" && entTab === "member") {
-        // Enterprise member registration
-        const res = await registerEmail({
+        if (!companyReferCode.trim()) {
+          setAuthError(language === "bn" ? "কোম্পানি রেফার কোড প্রদান করুন।" : "Company referral code is required.");
+          setAuthLoading(false);
+          return;
+        }
+        // Enterprise member registration with company referral code
+        const res = await registerEnterpriseMember({
           email: regEmail,
           password: regPassword,
           confirm_password: regConfirmPassword,
           full_name: `${firstName} ${lastName}`.trim() || "Member",
+          referral_code: companyReferCode.trim(),
           phone: undefined,
           date_of_birth: dob || undefined,
           gender,

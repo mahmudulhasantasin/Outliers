@@ -14,7 +14,7 @@ import {
 } from "@/lib/apiServices";
 import {
   Building2, FileText, Bot, Coins, ShieldCheck, 
-  ArrowUpRight, BookOpen, Plus, Loader2, RefreshCw
+  ArrowUpRight, BookOpen, Plus, Loader2, RefreshCw, Clock
 } from "lucide-react";
 
 export default function EnterpriseMemberPage() {
@@ -80,6 +80,8 @@ export default function EnterpriseMemberPage() {
   const monthlyCap = (user as any)?.member_credit_quota ?? 0;
   const creditsUsed = (user as any)?.member_credit_used ?? 0;
   const creditsRemaining = Math.max(0, monthlyCap - creditsUsed);
+  const approvalStatus = (user as any)?.member_approval_status || user?.enterpriseProfile?.memberApprovalStatus || "APPROVED";
+  const isPendingApproval = String(approvalStatus).toUpperCase() === "PENDING";
 
   if (isLoading) {
     return (
@@ -95,6 +97,37 @@ export default function EnterpriseMemberPage() {
   return (
     <AppShell>
       <div className="max-w-5xl mx-auto py-8 px-4 space-y-8">
+
+        {/* Pending Approval Notice Banner */}
+        {isPendingApproval && (
+          <div className="p-6 rounded-3xl border border-amber-300/40 dark:border-amber-700/50 bg-amber-500/5 text-center shadow-sm space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 mx-auto flex items-center justify-center">
+              <Clock className="w-6 h-6 animate-pulse" />
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-300 border border-amber-300/40">
+              <Clock className="w-3.5 h-3.5" />
+              {isBn ? "কোম্পানি অ্যাডমিন অনুমোদন অপেক্ষমাণ" : "Pending Company Admin Approval"}
+            </div>
+            <h2 className="text-base sm:text-lg font-serif font-bold text-[var(--text-primary)]">
+              {isBn ? "আপনার মেম্বারশিপ আবেদন প্রক্রিয়াধীন রয়েছে" : "Your Membership is Pending Admin Approval"}
+            </h2>
+            <p className="text-xs text-[var(--text-muted)] max-w-lg mx-auto leading-relaxed">
+              {isBn
+                ? `আপনি সফলভাবে ${companyName} এ যোগদানের আবেদন করেছেন। আপনার কোম্পানি অ্যাডমিন এটি অনুমোদন করে ক্রেডিট বরাদ্দ দিলে আপনি চুক্তি অডিট ও টিম ওয়ার্কস্পেস ব্যবহার করতে পারবেন।`
+                : `You have submitted a request to join ${companyName}. Once your Company Administrator approves your account and assigns a credit quota, all enterprise features will be unlocked.`}
+            </p>
+            <div className="pt-1 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={loadData}
+                className="px-4 py-2 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--bg-surface)] text-[var(--text-primary)] transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                <span>{isBn ? "স্ট্যাটাস রিফ্রেশ করুন" : "Refresh Status"}</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* ── Enterprise Member Header ── */}
         <div className={`p-6 sm:p-8 rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-sm space-y-6`}>
