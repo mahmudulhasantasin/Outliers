@@ -583,7 +583,7 @@ const handleGoogleResponse = useCallback(
           console.error("Enterprise onboard failed:", onboardErr);
         }
         closeModal();
-        router.push("/enterprise/admin");
+        router.push("/enterprise/pending");
         return;
       } else if (selectedRole === "enterprise" && entTab === "member") {
         closeModal();

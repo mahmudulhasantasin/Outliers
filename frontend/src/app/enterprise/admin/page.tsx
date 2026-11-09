@@ -187,6 +187,10 @@ export default function EnterpriseAdminPage() {
       router.replace("/lawyer/pending");
       return;
     }
+    if (user?.enterpriseProfile?.verificationStatus === "pending") {
+      router.replace("/enterprise/pending");
+      return;
+    }
     if (!isAllowed) {
       router.replace("/dashboard");
     }

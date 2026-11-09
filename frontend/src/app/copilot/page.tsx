@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
 import ThoughtLine from "@/components/effects/ThoughtLine";
@@ -114,10 +115,20 @@ function groupSessions(sessions: ChatSession[]) {
 }
 
 export default function CopilotPage() {
+  const router = useRouter();
   const { language } = useLanguage();
   const { theme } = useTheme();
   const { user, updateUser } = useAuth();
   const isLawyer = String(user?.role).toUpperCase() === "LAWYER";
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.enterpriseProfile?.verificationStatus === "pending") {
+      router.replace("/enterprise/pending");
+    } else if (user.lawyerProfile?.verificationStatus === "pending") {
+      router.replace("/lawyer/pending");
+    }
+  }, [user, router]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);

@@ -18,8 +18,12 @@ export default function DashboardPage() {
       router.replace("/lawyer/pending");
     } else if (userRole === "ADMIN") {
       router.replace("/admin");
-    } else if (userRole.includes("ENTERPRISE")) {
+    } else if (userRole === "ENTERPRISE_ADMIN" || (userRole.includes("ENTERPRISE") && user.enterpriseProfile?.verificationStatus === "verified")) {
       router.replace("/enterprise/admin");
+    } else if (user.enterpriseProfile?.verificationStatus === "pending") {
+      router.replace("/enterprise/pending");
+    } else if (user.lawyerProfile?.verificationStatus === "pending") {
+      router.replace("/lawyer/pending");
     } else {
       router.replace("/copilot");
     }

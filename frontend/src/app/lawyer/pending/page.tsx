@@ -120,7 +120,7 @@ export default function LawyerPendingPage() {
       return;
     }
     const userRole = String(user.role).toUpperCase();
-    if (userRole !== "LAWYER" && userRole !== "ADMIN") {
+    if (userRole !== "LAWYER" && userRole !== "ADMIN" && !user?.lawyerProfile) {
       router.replace("/dashboard");
     }
   }, [user, router]);
