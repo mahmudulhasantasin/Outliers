@@ -359,7 +359,7 @@ export default function SettingsPage() {
               <div className="flex gap-2">
                 {(["bn", "en"] as const).map((lang) => (
                   <button key={lang} type="button" onClick={() => setLanguage(lang)} className={`flex-1 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer ${language === lang ? "bg-(--accent-solid) text-(--accent-contrast) shadow-xs" : "border border-(--text-primary)/15 text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5"}`}>
-                    {lang === "bn" ? "বাংলা (Bengali)" : "English (Codified BD Law)"}
+                    {lang === "bn" ? "বাংলা (Bengali)" : "English"}
                   </button>
                 ))}
               </div>
