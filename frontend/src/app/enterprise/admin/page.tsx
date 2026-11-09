@@ -236,19 +236,32 @@ export default function EnterpriseAdminPage() {
 
       // 2. Members
       if (memsRes.status === "fulfilled" && Array.isArray(memsRes.value)) {
-        setMembers((memsRes.value as any[]).map(mapBackendMember));
+        setMembers((memsRes.value as any[]).map((m) => {
+          const isCurrentUserAdmin = m.email === user?.email || String(m.user_id || m.id) === String(user?.id);
+          const base = mapBackendMember(m);
+          if (isCurrentUserAdmin || String(m.company_role || "").toUpperCase() === "ADMIN") {
+            base.role = "admin";
+            base.status = "active";
+            if (!base.department || base.department === "—") {
+              base.department = isBn ? "এক্সিকিউটিভ অ্যাডমিন" : "Executive / Admin";
+            }
+          }
+          return base;
+        }));
       }
 
-      // 3. Pending Members
+      // 3. Pending Members (Excludes Enterprise Admin)
       if (pendingRes.status === "fulfilled" && Array.isArray(pendingRes.value)) {
-        const mappedPending = (pendingRes.value as any[]).map((m) => ({
-          user_id: m.user_id || m.id,
-          email: m.email,
-          full_name: m.full_name,
-          phone: m.phone,
-          requested_at: m.requested_at || m.joined_at || new Date().toISOString(),
-          is_verified: m.is_verified ?? false,
-        }));
+        const mappedPending = (pendingRes.value as any[])
+          .filter((m) => m.email !== user?.email && String(m.user_id || m.id) !== String(user?.id) && String(m.company_role || "").toUpperCase() !== "ADMIN")
+          .map((m) => ({
+            user_id: m.user_id || m.id,
+            email: m.email,
+            full_name: m.full_name,
+            phone: m.phone,
+            requested_at: m.requested_at || m.joined_at || new Date().toISOString(),
+            is_verified: m.is_verified ?? false,
+          }));
         setPendingMembers(mappedPending);
       }
 
@@ -831,7 +844,7 @@ export default function EnterpriseAdminPage() {
                           ) : (
                             <div className="flex items-center gap-1.5">
                               <span className="font-mono font-semibold text-[var(--text-primary)]">
-                                {mem.monthlyCreditCap}
+                                {mem.role === "admin" ? (isBn ? "পুল কন্ট্রোলার" : "Pool Admin") : mem.monthlyCreditCap}
                               </span>
                               {mem.role !== "admin" && (
                                 <button
