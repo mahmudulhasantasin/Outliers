@@ -325,15 +325,43 @@ export default function PricingPage() {
     return !isEnterprisePack; // Normal/Lawyer ra Enterprise pack dekhabe na
   });
 
+  const getEnterpriseFeatures = (pkg: CreditPackage, isBnLang: boolean) => {
+    const isScale = (pkg.name || "").toLowerCase().includes("scale") || Number(pkg.price_bdt) >= 10000;
+    if (isScale) {
+      return [
+        isBnLang ? "৫+ সর্বোচ্চ ১০ জন টিম মেম্বার" : "5+ Up to 10 Team Members",
+        isBnLang ? "১১,৫০০ সেন্ট্রাল পুল ক্রেডিট (+৩,৫০০ বোনাস)" : "11,500 Central Pool Credits (+3,500 Bonus)",
+        isBnLang ? "কর্পোরেট প্লেবুক ইন্টিগ্রেশন ও রুলস সেটআপ" : "Corporate Playbook & Policy Rules Setup",
+        isBnLang ? "আইনজীবী ভেরিফিকেশন সুবিধা (Lawyer HITL - প্রায়োরিটি)" : "Supreme Court Lawyer HITL Verification (Priority)",
+        isBnLang ? "হাই-স্পিড প্রায়োরিটি AI কিউ ও ডেডিকেটেড SLA" : "Priority AI Processing Queue & Fast SLA",
+        isBnLang ? "ফরম্যাটেড PDF মেমো ও বাংলাদেশ আইন রেফারেন্স" : "Formatted PDF Memo Downloads & BD Law Citations",
+        isBnLang ? "টিম কোটা গভর্ন্যান্স ও এন্টারপ্রাইজ অডিট ট্রেইল" : "Team Quota Governance & Enterprise Audit Logs",
+      ];
+    }
+    return [
+      isBnLang ? "সর্বোচ্চ ৫ জন টিম মেম্বার (গ্রোথ টিম)" : "Up to 5 Team Members (Growth Teams)",
+      isBnLang ? "৫,৫০০ সেন্ট্রাল পুল ক্রেডিট (+৫০০ বোনাস)" : "5,500 Central Pool Credits (+500 Bonus)",
+      isBnLang ? "কর্পোরেট প্লেবুক ইন্টিগ্রেশন ও রুলস সেটআপ" : "Corporate Playbook & Policy Rules Setup",
+      isBnLang ? "আইনজীবী ভেরিফিকেশন সুবিধা (Lawyer HITL - ক্রেডিট ব্যালেন্স থেকে)" : "Supreme Court Lawyer HITL Capable (Up to credits)",
+      isBnLang ? "সংবিধিবদ্ধ রেডলাইন সংশোধন ও ধারা রেফারেন্স" : "Statutory Redline Suggestions & BD Law Citations",
+      isBnLang ? "ফরম্যাটেড PDF মেমো ডাউনলোড" : "Formatted PDF Memo Downloads",
+      isBnLang ? "সদস্য কোটা ম্যানেজমেন্ট ও রিয়েলটাইম ট্র্যাকিং" : "Member Quota Allocation & Real-time Tracking",
+    ];
+  };
+
   const getPackageCta = (pkgName: string) => {
     const lower = (pkgName || "").toLowerCase();
     if (isBn) {
+      if (lower.includes("growth")) return "গ্রোথ প্যাক নিন";
+      if (lower.includes("scale")) return "স্কেল প্যাক নিন";
       if (lower.includes("starter")) return "স্টার্টার প্যাক নিন";
       if (lower.includes("standard")) return "স্ট্যান্ডার্ড প্যাক নিন";
       if (lower.includes("pro")) return "প্রো প্যাক নিন";
       if (lower.includes("enterprise")) return "এন্টারপ্রাইজ প্যাক নিন";
       return `${pkgName} নিন`;
     }
+    if (lower.includes("growth")) return "Get Growth Pack";
+    if (lower.includes("scale")) return "Get Scale Pack";
     if (lower.includes("starter")) return "Get Starter Pack";
     if (lower.includes("standard")) return "Get Standard Pack";
     if (lower.includes("pro")) return "Get Pro";
@@ -432,16 +460,24 @@ export default function PricingPage() {
              <Loader2 className="w-8 h-8 animate-spin text-indigo-500" />
            </div>
         ) : (
-          <div className={`grid grid-cols-1 gap-6 ${displayPackages.length === 1 ? "md:grid-cols-1 max-w-md mx-auto" : "md:grid-cols-3"}`}>
+          <div className={`grid grid-cols-1 gap-6 ${
+            displayPackages.length === 1
+              ? "md:grid-cols-1 max-w-md mx-auto"
+              : displayPackages.length === 2
+              ? "md:grid-cols-2 max-w-4xl mx-auto"
+              : "md:grid-cols-3"
+          }`}>
             {displayPackages.map((pkg) => {
-              const badge = pkg.badge_text || (pkg.is_popular ? (isBn ? "সর্বাধিক জনপ্রিয়" : "Most Popular") : null);
+              const isScale = (pkg.name || "").toLowerCase().includes("scale") || Number(pkg.price_bdt) >= 10000;
+              const isPopularOrScale = pkg.is_popular || isScale;
+              const badge = pkg.badge_text || (isPopularOrScale ? (isBn ? "সর্বাধিক জনপ্রিয়" : "Most Popular") : null);
               const totalCredits = pkg.total_credits || pkg.credits;
 
               return (
                 <div
                   key={pkg.id}
                   className={`p-5 sm:p-7 rounded-2xl sm:rounded-3xl border flex flex-col justify-between transition-all relative ${
-                    pkg.is_popular
+                    isPopularOrScale
                       ? "border-[#E2136E] bg-(--bg-card) shadow-lg shadow-pink-500/5 ring-1 ring-[#E2136E]/30"
                       : `${borderClass} bg-(--bg-card)`
                   }`}
@@ -470,7 +506,14 @@ export default function PricingPage() {
                     </div>
 
                     <div className="space-y-2.5 text-xs text-(--text-muted) mb-6">
-                      {pkg.features && pkg.features.length > 0 ? (
+                      {isEnterprise ? (
+                        getEnterpriseFeatures(pkg, isBn).map((feat, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                            <span className={idx < 2 ? "font-semibold text-(--text-primary)" : ""}>{feat}</span>
+                          </div>
+                        ))
+                      ) : pkg.features && pkg.features.length > 0 ? (
                         pkg.features.map((feat, idx) => (
                           <div key={idx} className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
@@ -560,7 +603,7 @@ export default function PricingPage() {
                       disabled={initiatingPkgId !== null}
                       onClick={() => handleInitiate(pkg)}
                       className={`w-full py-3 rounded-xl sm:rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-75 ${
-                        pkg.is_popular
+                        isPopularOrScale
                           ? "bg-[#E2136E] text-white hover:opacity-90 shadow-md shadow-pink-500/20"
                           : "bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90"
                       }`}
