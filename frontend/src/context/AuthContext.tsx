@@ -453,49 +453,41 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // ─── Helper: map backend StoredUser → UserProfile ────────────────────────
 
 function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserProfile {
-
   const normRole = normalizeUserRole(u.role);
 
-
+  let savedEnterpriseProfile: EnterpriseProfile | undefined;
+  let savedLawyerProfile: LawyerProfile | undefined;
+  if (typeof window !== "undefined") {
+    try {
+      const ep = localStorage.getItem("cm_enterprise_profile");
+      if (ep) savedEnterpriseProfile = JSON.parse(ep);
+      const lp = localStorage.getItem("cm_lawyer_profile");
+      if (lp) savedLawyerProfile = JSON.parse(lp);
+    } catch {
+      // ignore
+    }
+  }
 
   return {
-
     id: u.id,
-
     name: u.full_name,
-
     email: u.email,
-
     role: normRole,
-
     isEmailVerified: u.is_verified,
     has_usable_password: (u as any).has_usable_password ?? true,
-
-
     isPhoneVerified: u.is_phone_verified,
-
     creditBalance: u.credit_balance,
-
-    enterprise_credit_balance: null, // Will be fetched from /me
-
-    member_credit_quota: null,       // ✅ NEW
-
-    member_credit_used: null,        // ✅ NEW
-
-    lawyerProfile: normRole === "lawyer" ? {
-
+    enterprise_credit_balance: null,
+    member_credit_quota: null,
+    member_credit_used: null,
+    lawyerProfile: savedLawyerProfile || (normRole === "lawyer" ? {
       barCouncilNo: "",
-
       fieldOfLaw: "",
-
       verificationStatus: "pending",
-
-    } : undefined,
-
+    } : undefined),
+    enterpriseProfile: savedEnterpriseProfile,
     ...extra,
-
   };
-
 }
 
 
@@ -514,7 +506,7 @@ function meResponseToProfile(data: any): UserProfile {
 
   const lawyerData = data.lawyer_profile || data.lawyer;
 
-  const lawyerProfile: LawyerProfile | undefined = normRole === "lawyer" ? {
+  const lawyerProfile: LawyerProfile | undefined = lawyerData ? {
 
     barCouncilNo:
 
@@ -544,8 +536,36 @@ function meResponseToProfile(data: any): UserProfile {
 
 
 
-  return {
+  if (typeof window !== "undefined") {
+    if (data.enterprise_profile) {
+      try {
+        localStorage.setItem("cm_enterprise_profile", JSON.stringify({
+          companyName: data.enterprise_profile.company_name,
+          companyType: data.enterprise_profile.company_type,
+          registrationNo: data.enterprise_profile.registration_no,
+          tinNo: data.enterprise_profile.tin_no,
+          adminName: data.enterprise_profile.admin_name,
+          memberCount: data.enterprise_profile.member_count ?? 0,
+          referCode: data.enterprise_profile.refer_code,
+          verificationStatus: data.enterprise_profile.verification_status,
+          isTeamMember: data.enterprise_profile.is_team_member,
+          memberApprovalStatus: data.enterprise_profile.member_approval_status || data.member_approval_status || null,
+        }));
+      } catch { /* noop */ }
+    } else {
+      localStorage.removeItem("cm_enterprise_profile");
+    }
 
+    if (lawyerProfile) {
+      try {
+        localStorage.setItem("cm_lawyer_profile", JSON.stringify(lawyerProfile));
+      } catch { /* noop */ }
+    } else {
+      localStorage.removeItem("cm_lawyer_profile");
+    }
+  }
+
+  return {
     id: String(data.id ?? data.user_id ?? ""),
 
     name: data.full_name ?? data.name ?? "",
@@ -1057,21 +1077,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
 
-    api.get<Record<string, unknown>>("/api/auth/me").then((me) => {
-
+    try {
+      const me = await api.get<Record<string, unknown>>("/api/auth/me");
       const full = meResponseToProfile(me);
-
       if (typeof window !== "undefined") {
-
         localStorage.setItem("cm_role", String(full.role).toUpperCase());
-
       }
-
       setUser(full);
-
-    }).catch(() => {/* noop */});
-
-    return profile;
+      return full;
+    } catch {
+      return profile;
+    }
 
   };
 
@@ -1129,21 +1145,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
 
-    api.get<Record<string, unknown>>("/api/auth/me").then((me) => {
-
+    try {
+      const me = await api.get<Record<string, unknown>>("/api/auth/me");
       const full = meResponseToProfile(me);
-
       if (typeof window !== "undefined") {
-
         localStorage.setItem("cm_role", String(full.role).toUpperCase());
-
       }
-
       setUser(full);
-
-    }).catch(() => {/* noop */});
-
-    return profile;
+      return full;
+    } catch {
+      return profile;
+    }
 
   };
 
@@ -1247,34 +1259,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
 
-    await refreshUser();
+    const pendingLawyerProfile: LawyerProfile = {
+      barCouncilNo: barId,
+      fieldOfLaw: spec.join(", "),
+      verificationStatus: "pending",
+    };
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cm_role", "LAWYER");
+      localStorage.setItem("cm_lawyer_profile", JSON.stringify(pendingLawyerProfile));
+    }
+    setUser((prev) => (prev ? { ...prev, lawyerProfile: pendingLawyerProfile } : null));
 
+    await refreshUser();
   };
 
-
-
   const onboardEnterprise = async (req: OnboardEnterpriseRequest): Promise<void> => {
-
-    await api.post("/api/auth/onboard/enterprise", {
-
+    const res = await api.post<{ status: string; message: string; referral_code?: string; enterprise_id?: number }>("/api/auth/onboard/enterprise", {
       company_name: req.company_name,
-
       company_type: req.company_type || "Private Limited",
-
       registration_no: req.registration_no || "C-148920/2021",
-
       tin_no: req.tin_no || "582910482912",
-
       member_limit: req.member_limit || 10,
-
       billing_email: req.billing_email || req.email,
-
       billing_phone: req.billing_phone || req.phone,
-
     });
 
-    await refreshUser();
+    const pendingProfile: EnterpriseProfile = {
+      companyName: req.company_name,
+      companyType: req.company_type || "Private Limited",
+      registrationNo: req.registration_no || "C-148920/2021",
+      tinNo: req.tin_no || "582910482912",
+      adminName: req.admin_name || user?.name || "Admin",
+      memberCount: req.member_limit || 10,
+      referCode: res.referral_code || "PENDING",
+      verificationStatus: "pending",
+      isTeamMember: false,
+    };
 
+    if (typeof window !== "undefined") {
+      localStorage.setItem("cm_role", "ENTERPRISE_ADMIN");
+      localStorage.setItem("cm_enterprise_profile", JSON.stringify(pendingProfile));
+    }
+
+    setUser((prev) => (prev ? { ...prev, enterpriseProfile: pendingProfile } : null));
+    await refreshUser();
   };
 
 

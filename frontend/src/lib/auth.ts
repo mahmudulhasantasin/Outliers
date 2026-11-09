@@ -3,6 +3,8 @@ const TOKEN_KEY = "contractmind_token";
 const USER_KEY = "contractmind_user";
 const DEMO_KEY = "app_auth_v2";       // set by AuthContext.persistDemo()
 const ROLE_HINT_KEY = "cm_role";      // set by AuthContext.login() for quick routing
+const ENTERPRISE_PROFILE_KEY = "cm_enterprise_profile";
+const LAWYER_PROFILE_KEY = "cm_lawyer_profile";
 
 export interface StoredUser {
   id: string;
@@ -91,6 +93,8 @@ export function clearAuth(): void {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(DEMO_KEY);
   localStorage.removeItem(ROLE_HINT_KEY);
+  localStorage.removeItem(ENTERPRISE_PROFILE_KEY);
+  localStorage.removeItem(LAWYER_PROFILE_KEY);
 }
 
 export function isAuthenticated(): boolean {

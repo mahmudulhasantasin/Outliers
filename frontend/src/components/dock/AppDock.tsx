@@ -274,20 +274,29 @@ export default function AppDock() {
   ];
 
   const userRole = String(user?.role || role).toUpperCase();
+  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
   const isPendingEnterpriseAdmin =
-    user?.enterpriseProfile?.verificationStatus === "pending" && !user?.enterpriseProfile?.isTeamMember;
+    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
+    entStatus === "pending" ||
+    entStatus === "pending_approval";
+
+  const lawyerStatus = String(user?.lawyerProfile?.verificationStatus || "").toLowerCase();
   const isPendingLawyer =
-    user?.lawyerProfile?.verificationStatus === "pending" ||
-    (userRole === "LAWYER" && user?.lawyerProfile?.verificationStatus !== "verified");
+    Boolean(user?.lawyerProfile && lawyerStatus !== "verified") ||
+    (userRole === "LAWYER" && lawyerStatus !== "verified") ||
+    lawyerStatus === "pending";
+
+  const memberStatus = String(
+    user?.enterpriseProfile?.memberApprovalStatus || (user as any)?.member_approval_status || ""
+  ).toUpperCase();
   const isPendingMember =
     (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
-    ((user as any)?.member_approval_status === "PENDING" ||
-      user?.enterpriseProfile?.memberApprovalStatus === "PENDING");
+    (memberStatus === "PENDING" || (memberStatus !== "APPROVED" && memberStatus !== ""));
 
-  const isVerifiedLawyer = userRole === "LAWYER" && user?.lawyerProfile?.verificationStatus === "verified";
+  const isVerifiedLawyer = userRole === "LAWYER" && lawyerStatus === "verified";
   const isVerifiedEnterpriseAdmin =
     (userRole === "ENTERPRISE_ADMIN" || (userRole === "ENTERPRISE" && !user?.enterpriseProfile?.isTeamMember)) &&
-    user?.enterpriseProfile?.verificationStatus === "verified";
+    entStatus === "verified";
   const isVerifiedEnterpriseMember =
     (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) && !isPendingMember;
 

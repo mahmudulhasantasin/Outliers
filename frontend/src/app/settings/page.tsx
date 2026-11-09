@@ -82,9 +82,17 @@ export default function SettingsPage() {
     : "U";
 
   // ✅ FIX: Separate Admin and Member logic
-  const isEnterpriseAdmin = String(user?.role).toLowerCase() === "enterprise_admin";
-  const isEnterpriseMember = String(user?.role).toLowerCase() === "enterprise_member";
+  const isEnterpriseAdmin =
+    String(user?.role).toLowerCase() === "enterprise_admin" ||
+    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember);
+  const isEnterpriseMember =
+    String(user?.role).toLowerCase() === "enterprise_member" ||
+    Boolean(user?.enterpriseProfile?.isTeamMember);
   const isEnterprise = isEnterpriseAdmin || isEnterpriseMember;
+  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
+  const isPendingEnterpriseAdmin = isEnterpriseAdmin && entStatus !== "verified";
+  const lawyerStatus = String(user?.lawyerProfile?.verificationStatus || "").toLowerCase();
+  const isPendingLawyer = Boolean(user?.lawyerProfile && lawyerStatus !== "verified");
 
   // ✅ FIX: Dynamic Balance Logic
   let displayBalance = user?.creditBalance ?? 0;
@@ -93,8 +101,12 @@ export default function SettingsPage() {
 
   if (isEnterpriseAdmin) {
     displayBalance = user?.enterprise_credit_balance ?? 0;
-    balanceLabel = isBn ? "কোম্পানি পুল ক্রেডিট ব্যালেন্স:" : "Company Pool Credit Balance:";
-    balanceDesc = isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ক্রেডিট কাটা হবে" : "Deducted from company shared credit pool";
+    balanceLabel = isPendingEnterpriseAdmin
+      ? (isBn ? "কোম্পানি পুল ক্রেডিট (অনুমোদন অপেক্ষমাণ):" : "Company Pool (Pending Approval):")
+      : (isBn ? "কোম্পানি পুল ক্রেডিট ব্যালেন্স:" : "Company Pool Credit Balance:");
+    balanceDesc = isPendingEnterpriseAdmin
+      ? (isBn ? "সিস্টেম অ্যাডমিন কর্তৃক অনুমোদন সম্পন্ন হওয়ার পর কোম্পানি পুল কার্যকর হবে।" : "Shared credit pool activates once approved by system admin.")
+      : (isBn ? "কোম্পানির শেয়ার্ড পুল থেকে ক্রেডিট কাটা হবে" : "Deducted from company shared credit pool");
   } else if (isEnterpriseMember) {
     const quota = user?.member_credit_quota ?? 0;
     const used = user?.member_credit_used ?? 0;
@@ -682,8 +694,8 @@ export default function SettingsPage() {
                 <p className="text-[11px] text-(--text-muted) mt-1">{balanceDesc}</p>
               </div>
               
-              {/* ✅ MEMBER er jonno Buy button hide koro */}
-              {!isEnterpriseMember && (
+              {/* ✅ MEMBER or PENDING roles jonno Buy button hide koro */}
+              {!isEnterpriseMember && !isPendingEnterpriseAdmin && !isPendingLawyer && (
                 <button type="button" onClick={() => router.push("/pricing")} className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto shrink-0 shadow-xs">
                   <Coins className="w-4 h-4 text-amber-400" />
                   <span>{isEnterpriseAdmin ? (isBn ? "পুল রিচার্জ করুন" : "Top up Pool") : (isBn ? "প্যাকেজ কিনুন" : "Buy Packages")}</span>

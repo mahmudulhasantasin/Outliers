@@ -122,8 +122,11 @@ export default function CopilotPage() {
   const isLawyer = String(user?.role).toUpperCase() === "LAWYER";
 
   const userRole = String(user?.role || "").toUpperCase();
+  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
   const isPendingEnterpriseAdmin =
-    user?.enterpriseProfile?.verificationStatus === "pending" && !user?.enterpriseProfile?.isTeamMember;
+    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
+    entStatus === "pending" ||
+    entStatus === "pending_approval";
   const isPendingLawyer =
     user?.lawyerProfile?.verificationStatus === "pending" || userRole === "LAWYER";
   const isPendingMember =

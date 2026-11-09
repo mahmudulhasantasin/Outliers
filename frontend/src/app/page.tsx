@@ -579,19 +579,23 @@ const handleGoogleResponse = useCallback(
       } else if (selectedRole === "enterprise" && entTab === "company") {
         try {
           await onboardEnterprise({
-            company_name: companyName,
+            company_name: companyName.trim(),
             company_type: companyType,
-            registration_no: registrationNo,
-            tin_no: tinNo,
+            registration_no: registrationNo.trim(),
+            tin_no: tinNo.trim(),
             member_limit: memberCount,
-            billing_email: regEmail,
+            billing_email: regEmail.trim(),
           });
+          closeModal();
+          router.push("/enterprise/pending");
+          return;
         } catch (onboardErr) {
           console.error("Enterprise onboard failed:", onboardErr);
+          const errText = onboardErr instanceof Error ? onboardErr.message : "Enterprise registration failed.";
+          setOtpError(errText);
+          setAuthLoading(false);
+          return;
         }
-        closeModal();
-        router.push("/enterprise/pending");
-        return;
       } else if (selectedRole === "enterprise" && entTab === "member") {
         closeModal();
         router.push("/enterprise/member");

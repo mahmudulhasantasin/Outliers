@@ -45,7 +45,11 @@ export default function EnterprisePendingPage() {
       router.replace("/admin");
       return;
     }
-  }, [user, userRole, status, router]);
+    if (!entProfile && (userRole === "GENERAL" || !userRole)) {
+      router.replace("/dashboard");
+      return;
+    }
+  }, [user, userRole, status, entProfile, router]);
 
   const handleCheckStatus = async () => {
     setIsRefreshing(true);

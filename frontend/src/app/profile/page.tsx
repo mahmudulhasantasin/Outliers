@@ -145,8 +145,14 @@ export default function ProfilePage() {
   };
   
   // ✅ FIX: Separate Admin and Member logic
-  const isEnterpriseAdmin = String(user.role).toLowerCase() === "enterprise_admin";
-  const isEnterpriseMember = String(user.role).toLowerCase() === "enterprise_member";
+  const isEnterpriseAdmin =
+    String(user.role).toLowerCase() === "enterprise_admin" ||
+    Boolean(user.enterpriseProfile && !user.enterpriseProfile.isTeamMember);
+  const isEnterpriseMember =
+    String(user.role).toLowerCase() === "enterprise_member" ||
+    Boolean(user.enterpriseProfile?.isTeamMember);
+  const entStatus = String(user.enterpriseProfile?.verificationStatus || "").toLowerCase();
+  const isPendingEnterpriseAdmin = isEnterpriseAdmin && entStatus !== "verified";
 
   // ✅ FIX: Dynamic Balance Logic
   let displayBalance = user?.creditBalance ?? 0;
@@ -425,12 +431,12 @@ export default function ProfilePage() {
                 {isLawyer ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
                     <Gavel className="w-3 h-3" />
-                    <span>{isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer"}</span>
+                    <span>{isBn ? (verificationStatus === "verified" ? "নিবন্ধিত আইনজীবী" : "আইনজীবী (ভেরিফিকেশন পেন্ডিং)") : (verificationStatus === "verified" ? "Lawyer" : "Lawyer (Pending Verification)")}</span>
                   </span>
                 ) : isEnterpriseAdmin ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
-                    <span>{isBn ? "এন্টারপ্রাইজ অ্যাডমিন" : "Enterprise Admin"}</span>
+                    <span>{isBn ? (isPendingEnterpriseAdmin ? "এন্টারপ্রাইজ অ্যাডমিন (অনুমোদন অপেক্ষমাণ)" : "এন্টারপ্রাইজ অ্যাডমিন") : (isPendingEnterpriseAdmin ? "Enterprise Admin (Pending Review)" : "Enterprise Admin")}</span>
                   </span>
                 ) : isEnterpriseMember ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
@@ -500,10 +506,18 @@ export default function ProfilePage() {
             </div>
             <button
               type="button"
-              onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/pricing")}
+              onClick={() => {
+                if (isPendingEnterpriseAdmin) {
+                  router.push("/enterprise/pending");
+                } else if (isLawyer) {
+                  router.push(verificationStatus === "verified" ? "/lawyer/archive" : "/lawyer/pending");
+                } else {
+                  router.push("/pricing");
+                }
+              }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-(--accent-solid) hover:underline cursor-pointer pt-1"
             >
-              <span>{isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : topUpLabel}</span>
+              <span>{isPendingEnterpriseAdmin ? (isBn ? "ভেরিফিকেশন স্ট্যাটাস" : "View Status") : isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : topUpLabel}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -512,7 +526,9 @@ export default function ProfilePage() {
           <div className="p-5 rounded-2xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "এন্টারপ্রাইজ চুক্তি" : "Enterprise Contracts"
+                  : isLawyer
                   ? isBn ? "সিলমোহরকৃত চুক্তি" : "Sealed Contracts"
                   : isBn ? "সংরক্ষিত চুক্তি অডিট" : "Archived Audits"}
               </span>
@@ -520,20 +536,30 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-(--text-primary)">
-                {auditCount !== null ? auditCount : "0"}
+                {isPendingEnterpriseAdmin ? "0" : (auditCount !== null ? auditCount : "0")}
               </p>
               <p className="text-[11px] text-(--text-muted) mt-0.5">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "অনুমোদনের পর টিম অডিট দৃশ্যমান হবে" : "Team audits visible once approved"
+                  : isLawyer
                   ? isBn ? "আইনগতভাবে অনুমোদিত চুক্তিপত্র" : "Statutorily sealed memos"
                   : isBn ? "যাচাইকৃত ও সংরক্ষিত চুক্তিপত্র" : "Analyzed contract memos"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/archive")}
+              onClick={() => {
+                if (isPendingEnterpriseAdmin) {
+                  router.push("/enterprise/pending");
+                } else if (isLawyer) {
+                  router.push(verificationStatus === "verified" ? "/lawyer/archive" : "/lawyer/pending");
+                } else {
+                  router.push("/archive");
+                }
+              }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-(--text-primary) hover:underline cursor-pointer pt-1"
             >
-              <span>{isBn ? "আর্কাইভ দেখুন" : "View archive"}</span>
+              <span>{isPendingEnterpriseAdmin ? (isBn ? "স্ট্যাটাস দেখুন" : "View Status") : (isBn ? "আর্কাইভ দেখুন" : "View archive")}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -542,32 +568,46 @@ export default function ProfilePage() {
           <div className="p-5 rounded-2xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "এন্টারপ্রাইজ ওয়ার্কস্পেস" : "Enterprise Workspace"
+                  : isLawyer
                   ? isBn ? "রিভিউ কিউ ও কাজ" : "Review Station"
                   : isBn ? "কপাইলট সেশন" : "Legal Sessions"}
               </span>
               {isLawyer ? (
                 <Inbox className="w-4 h-4 text-purple-500" />
+              ) : isPendingEnterpriseAdmin ? (
+                <Building2 className="w-4 h-4 text-purple-500" />
               ) : (
                 <MessageSquare className="w-4 h-4 text-emerald-500" />
               )}
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-(--text-primary)">
-                {isLawyer ? (isBn ? "পেন্ডিং তালিকা" : "Review Queue") : (chatCount !== null ? chatCount : "—")}
+                {isPendingEnterpriseAdmin ? "—" : isLawyer ? (isBn ? "পেন্ডিং তালিকা" : "Review Queue") : (chatCount !== null ? chatCount : "—")}
               </p>
               <p className="text-[11px] text-(--text-muted) mt-0.5">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "অ্যাডমিন অনুমোদন সম্পন্ন হলে আনলক হবে" : "Unlocks once approved by admin"
+                  : isLawyer
                   ? isBn ? "নতুন ক্লায়েন্ট চুক্তি পর্যালোচনা" : "Pending client contracts"
                   : isBn ? "বাংলাদেশ আইনের প্রশ্নোত্তর" : "BD statute consultations"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push(isLawyer ? "/lawyer/pending" : "/copilot")}
+              onClick={() => {
+                if (isPendingEnterpriseAdmin) {
+                  router.push("/enterprise/pending");
+                } else if (isLawyer) {
+                  router.push("/lawyer/pending");
+                } else {
+                  router.push("/copilot");
+                }
+              }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-(--text-primary) hover:underline cursor-pointer pt-1"
             >
-              <span>{isLawyer ? (isBn ? "রিভিউ স্টেশন খুলুন" : "Open Review Station") : (isBn ? "চ্যাট শুরু করুন" : "Open copilot")}</span>
+              <span>{isPendingEnterpriseAdmin ? (isBn ? "অনুমোদন স্ট্যাটাস দেখুন" : "View Approval Status") : isLawyer ? (isBn ? "রিভিউ স্টেশন খুলুন" : "Open Review Station") : (isBn ? "চ্যাট শুরু করুন" : "Open copilot")}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>

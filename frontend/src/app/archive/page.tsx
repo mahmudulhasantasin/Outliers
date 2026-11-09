@@ -55,8 +55,11 @@ export default function ArchivePage() {
   const { user, refreshUser } = useAuth(); 
 
   const userRole = String(user?.role || "").toUpperCase();
+  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
   const isPendingEnterpriseAdmin =
-    user?.enterpriseProfile?.verificationStatus === "pending" && !user?.enterpriseProfile?.isTeamMember;
+    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
+    entStatus === "pending" ||
+    entStatus === "pending_approval";
   const isPendingLawyer = user?.lawyerProfile?.verificationStatus === "pending";
   const isPendingMember =
     (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
