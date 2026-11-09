@@ -20,7 +20,7 @@ import {
 } from "@/lib/apiServices";
 import {
   Coins, Check, Sparkles, ArrowRight, Clock, CheckCircle2,
-  X, Copy, Loader2, Ban, Phone, Hash,
+  X, Copy, Loader2, Ban, Phone, Hash, AlertTriangle,
 } from "lucide-react";
 
 export default function PricingPage() {
@@ -68,6 +68,8 @@ export default function PricingPage() {
   const [trxSuccessMessage, setTrxSuccessMessage] = useState<string | null>(null);
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedRef, setCopiedRef] = useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [actionErrorMessage, setActionErrorMessage] = useState<string | null>(null);
 
   // Close modal on Escape key
   useEffect(() => {
@@ -174,6 +176,7 @@ export default function PricingPage() {
 
   const handleInitiate = async (pkg: CreditPackage) => {
     try {
+      setActionErrorMessage(null);
       setInitiatingPkgId(pkg.id);
       const res = await initiatePayment(pkg.id, pkg);
       setActiveInitiate(res);
@@ -181,7 +184,7 @@ export default function PricingPage() {
       setSenderNumber(user?.mobile || "");
       setTrxSuccessMessage(null);
     } catch (err: any) {
-      alert(err?.message || "Failed to initiate payment.");
+      setActionErrorMessage(err?.message || (isBn ? "পেমেন্ট শুরু করতে ব্যর্থ হয়েছে।" : "Failed to initiate payment."));
     } finally {
       setInitiatingPkgId(null);
     }
@@ -238,18 +241,19 @@ export default function PricingPage() {
       refreshData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit transaction ID";
-      alert(msg);
+      setActionErrorMessage(msg);
     } finally {
       setIsSubmittingTrx(false);
     }
   };
 
-  const handleCancelPayment = async () => {
+  const handleCancelPayment = () => {
     if (!activeInitiate) return;
-    const confirmCancel = window.confirm(
-      isBn ? "আপনি কি নিশ্চিতভাবে এই পেমেন্ট বাতিল করতে চান?" : "Are you sure you want to cancel this pending payment?"
-    );
-    if (!confirmCancel) return;
+    setShowCancelConfirm(true);
+  };
+
+  const confirmAndExecuteCancel = async () => {
+    if (!activeInitiate) return;
     try {
       setIsCancelling(true);
       await cancelPayment(activeInitiate.payment_id);
@@ -259,10 +263,12 @@ export default function PricingPage() {
         )
       );
       setActiveInitiate(null);
+      setShowCancelConfirm(false);
       refreshData();
     } catch (err: unknown) {
       console.warn("Cancel payment error:", err);
       setActiveInitiate(null);
+      setShowCancelConfirm(false);
     } finally {
       setIsCancelling(false);
     }
@@ -399,6 +405,24 @@ export default function PricingPage() {
 
   return (
     <AppShell>
+      {/* Top Alert Toast (when outside modal) */}
+      {actionErrorMessage && !activeInitiate && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-4 animate-in fade-in slide-in-from-top-4 duration-200">
+          <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 backdrop-blur-md shadow-xl text-rose-600 dark:text-rose-400 text-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+              <span className="font-medium leading-relaxed">{actionErrorMessage}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActionErrorMessage(null)}
+              className="p-1 hover:bg-rose-500/20 rounded-lg cursor-pointer transition-colors shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
       <div className="w-full max-w-5xl mx-auto px-4 py-6 sm:py-8 md:py-12 space-y-8 sm:space-y-10 min-w-0">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto space-y-3">
@@ -744,6 +768,21 @@ export default function PricingPage() {
 
               {/* Modal Body */}
               <div className="p-4 sm:p-6 space-y-4">
+                {actionErrorMessage && (
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs flex items-center justify-between gap-2.5 animate-in fade-in duration-150">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-500" />
+                      <span className="leading-snug">{actionErrorMessage}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActionErrorMessage(null)}
+                      className="p-1 hover:bg-rose-500/20 rounded-md cursor-pointer transition-colors shrink-0"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 {trxSuccessMessage ? (
                   <div className="text-center py-6 space-y-3">
                     <CheckCircle2 className="w-12 h-12 text-emerald-500 mx-auto" />
@@ -916,6 +955,49 @@ export default function PricingPage() {
                     </form>
                   </>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Cancellation Confirmation Modal */}
+        {showCancelConfirm && (
+          <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
+            <div className="relative w-full max-w-sm rounded-2xl sm:rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) p-6 shadow-2xl space-y-4">
+              <div className="w-12 h-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mx-auto text-rose-500">
+                <Ban className="w-6 h-6" />
+              </div>
+              <div className="text-center space-y-1.5">
+                <h4 className="text-base font-serif font-bold text-(--text-primary)">
+                  {isBn ? "পেমেন্ট অর্ডারটি বাতিল করবেন?" : "Cancel Pending Payment?"}
+                </h4>
+                <p className="text-xs text-(--text-muted) leading-relaxed">
+                  {isBn
+                    ? "আপনি কি নিশ্চিতভাবে এই বিকাশ অর্ডারটি বাতিল করতে চান? বাতিল করলে বরাদ্দকৃত রেফারেন্স কোডটি নিষ্ক্রিয় হয়ে যাবে।"
+                    : "Are you sure you want to cancel this pending payment order? The generated reference code will be invalidated."}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCancelConfirm(false)}
+                  disabled={isCancelling}
+                  className="py-2.5 px-3 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer"
+                >
+                  {isBn ? "না, চালিয়ে যান" : "Keep Payment"}
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmAndExecuteCancel}
+                  disabled={isCancelling}
+                  className="py-2.5 px-3 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-sm disabled:opacity-50"
+                >
+                  {isCancelling ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Ban className="w-3.5 h-3.5" />
+                  )}
+                  <span>{isBn ? "হ্যাঁ, বাতিল করুন" : "Yes, Cancel"}</span>
+                </button>
               </div>
             </div>
           </div>
