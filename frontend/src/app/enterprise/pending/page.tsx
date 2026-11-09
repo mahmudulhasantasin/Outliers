@@ -12,6 +12,11 @@ import {
   RefreshCw,
   LogOut,
   Mail,
+  Check,
+  CheckCircle2,
+  FileCheck2,
+  KeyRound,
+  Sparkles,
 } from "lucide-react";
 
 export default function EnterprisePendingPage() {
@@ -81,7 +86,7 @@ export default function EnterprisePendingPage() {
                     {entProfile?.companyName || (isBn ? "আপনার প্রতিষ্ঠান" : "Your Organization")}
                   </h1>
                   <span className="text-xs px-2.5 py-0.5 rounded-full font-medium border bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/20 inline-flex items-center gap-1.5">
-                    <Clock className="w-3 h-3 animate-pulse text-amber-500" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                     {isBn ? "অনুমোদন অপেক্ষমাণ" : "Pending Admin Review"}
                   </span>
                 </div>
@@ -143,44 +148,123 @@ export default function EnterprisePendingPage() {
           </div>
         </div>
 
-        {/* Next Steps Card */}
-        <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-sm space-y-4`}>
-          <h2 className="text-sm font-bold text-[var(--text-primary)]">
-            {isBn ? "পরবর্তী কী হবে? (What happens next?)" : "What happens next?"}
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3 text-xs text-[var(--text-muted)]">
-              <div className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 font-bold text-[11px] mt-0.5">
-                ✓
+        {/* Modern Enterprise Verification Timeline */}
+        <div className={`p-6 sm:p-8 rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-sm space-y-6`}>
+          <div className="flex items-center justify-between border-b border-[var(--text-primary)]/10 pb-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-purple-500" />
+                <h2 className="text-base font-bold text-[var(--text-primary)]">
+                  {isBn ? "অনবোর্ডিং ও ভেরিফিকেশন টাইমলাইন" : "Verification & Activation Timeline"}
+                </h2>
               </div>
-              <p className="leading-relaxed">
-                <strong className="text-[var(--text-primary)]">{isBn ? "ইমেইল ওটিপি নিশ্চিত:" : "Email Verified:"}</strong>{" "}
+              <p className="text-xs text-[var(--text-muted)]">
                 {isBn
-                  ? "আপনার ইমেইল অ্যাড্রেস সফলভাবে ওটিপি দিয়ে যাচাই করা হয়েছে।"
-                  : "Your email address has been successfully verified via OTP."}
+                  ? "আপনার প্রতিষ্ঠানের যাচাইকরণ প্রক্রিয়ার বর্তমান অবস্থা ও পরবর্তী ধাপসমূহ"
+                  : "Track the real-time review progress of your corporate enterprise application"}
               </p>
             </div>
-            <div className="flex items-start gap-3 text-xs text-[var(--text-muted)]">
-              <div className="w-6 h-6 rounded-full bg-purple-500/15 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 font-bold text-[11px] mt-0.5 animate-pulse">
-                2
+            <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20">
+              <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+              {isBn ? "ধাপ ২ চলমান (৩টির মধ্যে)" : "Step 2 of 3 in Progress"}
+            </span>
+          </div>
+
+          <div className="relative pl-1 sm:pl-2 space-y-8">
+            {/* Step 1: Email OTP Verified */}
+            <div className="relative flex items-start gap-4">
+              {/* Vertical connector line */}
+              <div className="absolute left-4 top-8 -bottom-8 w-0.5 bg-gradient-to-b from-emerald-500 to-amber-500" />
+              
+              {/* Icon Marker */}
+              <div className="relative z-10 w-8 h-8 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-emerald-500/20 ring-4 ring-emerald-500/10">
+                <Check className="w-4 h-4 stroke-[3]" />
               </div>
-              <p className="leading-relaxed">
-                <strong className="text-[var(--text-primary)]">{isBn ? "অ্যাডমিন পর্যালোচনা (বর্তমান ধাপ):" : "Admin Review (Current):"}</strong>{" "}
-                {isBn
-                  ? "সিস্টেম অ্যাডমিন আপনার প্রতিষ্ঠানের আইনি ও বাণিজ্যিক তথ্য পরীক্ষা করছেন (সাধারণত ২-৪ কার্যঘণ্টা)।"
-                  : "System Admin is reviewing your enterprise documentation (usually within 2-4 business hours)."}
-              </p>
+
+              {/* Step Content */}
+              <div className="flex-1 min-w-0 pt-0.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                    {isBn ? "১. ইমেইল ওটিপি নিশ্চিতকরণ" : "1. Email OTP Verification"}
+                  </h3>
+                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20 flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    {isBn ? "যাচাই সম্পন্ন" : "Completed"}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                  {isBn
+                    ? "আপনার অ্যাডমিন ইমেইল সফলভাবে ওটিপি দ্বারা যাচাই করা হয়েছে এবং কর্পোরেট অ্যাকাউন্টের সাথে সুরক্ষিতভাবে যুক্ত হয়েছে।"
+                    : "Your enterprise administrator email was authenticated via one-time passcode and linked to your corporate account."}
+                </p>
+              </div>
             </div>
-            <div className="flex items-start gap-3 text-xs text-[var(--text-muted)]">
-              <div className="w-6 h-6 rounded-full bg-[var(--bg-surface)] text-[var(--text-muted)] flex items-center justify-center shrink-0 font-bold text-[11px] mt-0.5">
-                3
+
+            {/* Step 2: System Admin Review (Current Step - Clean, Modern, No Jittering) */}
+            <div className="relative flex items-start gap-4">
+              {/* Vertical connector line to Step 3 */}
+              <div className="absolute left-4 top-8 -bottom-8 w-0.5 border-l-2 border-dashed border-[var(--text-primary)]/15" />
+
+              {/* Icon Marker - Stable, elegant amber with soft accent ring */}
+              <div className="relative z-10 w-8 h-8 rounded-full bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md shadow-amber-500/25 ring-4 ring-amber-500/20">
+                <Clock className="w-4 h-4 stroke-[2.5]" />
               </div>
-              <p className="leading-relaxed">
-                <strong className="text-[var(--text-primary)]">{isBn ? "রেফারেল কোড ও ড্যাশবোর্ড সক্রিয়:" : "Referral Code & Workspace Access:"}</strong>{" "}
-                {isBn
-                  ? "অনুমোদনের পর আপনাকে ইমেইলে রেফারেল কোড পাঠানো হবে এবং সম্পূর্ণ এন্টারপ্রাইজ ড্যাশবোর্ড আনলক হবে।"
-                  : "Upon approval, your referral code will be emailed and the full Enterprise Admin workspace will unlock."}
-              </p>
+
+              {/* Step Content */}
+              <div className="flex-1 min-w-0 pt-0.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                  <h3 className="text-sm font-semibold text-[var(--text-primary)]">
+                    {isBn ? "২. সিস্টেম অ্যাডমিন পর্যালোচনা" : "2. System Admin Verification"}
+                  </h3>
+                  <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/25 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    {isBn ? "বর্তমানে পর্যালোচনায় (২-৪ ঘণ্টা)" : "Under Review (2-4 hrs SLA)"}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-3">
+                  {isBn
+                    ? "আমাদের কমপ্লায়েন্স টিম আপনার কোম্পানির ট্রেড লাইসেন্স, রেজিস্ট্রেশন ও TIN সংক্রান্ত তথ্যাদি ম্যানুয়ালি নিরীক্ষা করছেন।"
+                    : "Compliance officers are verifying your trade registration, TIN records, and enterprise authorization credentials."}
+                </p>
+                <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/15 flex items-center justify-between gap-3 text-[11px] text-amber-800 dark:text-amber-300">
+                  <div className="flex items-center gap-2">
+                    <FileCheck2 className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>
+                      {isBn
+                        ? "আপনার দিক থেকে কোনো অতিরিক্ত ডকুমেন্টের প্রয়োজন নেই।"
+                        : "No further action is required from you at this time."}
+                    </span>
+                  </div>
+                  <span className="text-[10px] uppercase font-mono tracking-wider font-semibold opacity-75 shrink-0">
+                    SLA: 2-4 Hours
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Step 3: Referral Code & Workspace Access */}
+            <div className="relative flex items-start gap-4">
+              {/* Icon Marker */}
+              <div className="relative z-10 w-8 h-8 rounded-full bg-[var(--bg-surface)] border-2 border-[var(--text-primary)]/20 text-[var(--text-muted)] flex items-center justify-center shrink-0">
+                <KeyRound className="w-4 h-4" />
+              </div>
+
+              {/* Step Content */}
+              <div className="flex-1 min-w-0 pt-0.5">
+                <div className="flex items-center justify-between gap-2 flex-wrap mb-1">
+                  <h3 className="text-sm font-semibold text-[var(--text-muted)]">
+                    {isBn ? "৩. রেফারেল কোড ও ড্যাশবোর্ড সক্রিয়করণ" : "3. Referral Code & Full Workspace Access"}
+                  </h3>
+                  <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                    {isBn ? "আসন্ন ধাপ" : "Upcoming"}
+                  </span>
+                </div>
+                <p className="text-xs text-[var(--text-muted)]/80 leading-relaxed">
+                  {isBn
+                    ? "অনুমোদন সম্পন্ন হলে আপনার ইমেইলে রেফারেল কোড পাঠানো হবে এবং সম্পূর্ণ এন্টারপ্রাইজ ড্যাশবোর্ড, মেম্বার ইনভাইট ও ক্রেডিট কোটা সুবিধা আনলক হবে।"
+                    : "Upon admin sign-off, an official company referral code will be dispatched to your inbox, unlocking member management, playbooks, and contract review desks."}
+                </p>
+              </div>
             </div>
           </div>
         </div>
