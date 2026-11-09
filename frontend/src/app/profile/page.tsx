@@ -40,6 +40,7 @@ import {
   AlertCircle,
   RefreshCw,
   Inbox,
+  Lock,
 } from "lucide-react";
 
 export default function ProfilePage() {
@@ -127,7 +128,21 @@ export default function ProfilePage() {
     );
   }
 
-  const isLawyer = String(user.role).toUpperCase() === "LAWYER";
+  const isLawyer = String(user.role).toUpperCase() === "LAWYER" || !!user.lawyerProfile;
+  const [isCheckingLawyerStatus, setIsCheckingLawyerStatus] = useState(false);
+
+  const handleRefreshLawyerStatus = async () => {
+    setIsCheckingLawyerStatus(true);
+    try {
+      if (refreshUser) {
+        await refreshUser();
+      }
+    } catch (err) {
+      console.warn("Could not refresh status:", err);
+    } finally {
+      setTimeout(() => setIsCheckingLawyerStatus(false), 500);
+    }
+  };
   
   // ✅ FIX: Separate Admin and Member logic
   const isEnterpriseAdmin = String(user.role).toLowerCase() === "enterprise_admin";
@@ -712,25 +727,85 @@ export default function ProfilePage() {
                 {lawyerProfile.barAssociation || "Supreme Court Bar Association"}
               </div>
 
-              <div className="sm:col-span-3 pt-2 flex items-center gap-4 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => router.push("/lawyer/pending")}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                >
-                  <span>{isBn ? "আইনজীবী পোর্টালে যান →" : "Go to Lawyer Portal →"}</span>
-                </button>
-
-                {verificationStatus !== "verified" && (
+              {verificationStatus === "verified" ? (
+                <div className="sm:col-span-3 pt-3 flex items-center gap-3 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => router.push("/admin")}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    onClick={() => router.push("/lawyer/pending")}
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
                   >
-                    <span>{isBn ? "অ্যাডমিন প্যানেলে অনুমোদন দেখুন →" : "Open Admin Approval Panel →"}</span>
+                    <Gavel className="w-3.5 h-3.5" />
+                    <span>{isBn ? "আইনজীবী ওয়ার্কস্পেসে প্রবেশ করুন →" : "Open Advocate Workspace →"}</span>
                   </button>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/lawyer/archive")}
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer"
+                  >
+                    <span>{isBn ? "সম্পন্ন অডিট হিস্টোরি" : "Verified Review Archive"}</span>
+                  </button>
+                </div>
+              ) : verificationStatus === "rejected" ? (
+                <div className="sm:col-span-3 pt-3 space-y-2">
+                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{isBn ? "আইনজীবী আবেদন বাতিল করা হয়েছে" : "Advocate Application Rejected"}</span>
+                    </p>
+                    <p className="text-[11px] text-rose-700/80 dark:text-rose-300/80 leading-relaxed">
+                      {isBn
+                        ? "দুঃখিত, আপনার বার কাউন্সিল সনদটি যাচাই করা সম্ভব হয়নি।"
+                        : "We could not verify your credentials with the Bangladesh Bar Council registry."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="sm:col-span-3 pt-3 space-y-3">
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-bold">
+                        <Clock className="w-4 h-4 animate-pulse shrink-0" />
+                        <span>{isBn ? "সিস্টেম অ্যাডমিন ভেরিফিকেশন প্রক্রিয়াধীন" : "System Admin Verification Pending"}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRefreshLawyerStatus}
+                        disabled={isCheckingLawyerStatus}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isCheckingLawyerStatus ? "animate-spin" : ""}`} />
+                        <span>{isCheckingLawyerStatus ? (isBn ? "চেক হচ্ছে..." : "Checking...") : (isBn ? "স্ট্যাটাস রিফ্রেশ করুন" : "Refresh Status")}</span>
+                      </button>
+                    </div>
+                    <p className="text-amber-800/80 dark:text-amber-200/80 text-[11px] leading-relaxed">
+                      {isBn
+                        ? "আপনার বার কাউন্সিল সনদটি বর্তমানে সিস্টেম অ্যাডমিনের পর্যালোচনায় রয়েছে। অ্যাডমিন অনুমোদন প্রদান করার সাথে সাথে ওয়ার্কস্পেস আনলক হবে এবং ক্লায়েন্টদের চুক্তি আপনার কিউতে আসবে।"
+                        : "Your Bar Council credentials are currently awaiting system admin verification. Once approved, the lawyer review workspace and contract dispatch queue will be activated automatically."}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 flex-wrap pt-1">
+                    <button
+                      type="button"
+                      onClick={() => router.push("/lawyer/pending")}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{isBn ? "ওয়ার্কস্পেস প্রিভিউ ও স্ট্যাটাস দেখুন (লকড) →" : "View Workspace Queue Status (Locked) →"}</span>
+                    </button>
+
+                    {String(user?.role).toUpperCase() === "ADMIN" && (
+                      <button
+                        type="button"
+                        onClick={() => router.push("/admin")}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                      >
+                        <span>{isBn ? "অ্যাডমিন প্যানেলে অনুমোদন করুন →" : "Open Admin Approval Panel →"}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

@@ -23,6 +23,7 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
+  RefreshCw,
   ShieldAlert,
   ArrowUpRight,
   Search,
@@ -103,7 +104,8 @@ const LiveTimer = ({ deadline }: { deadline?: string }) => {
 export default function LawyerPendingPage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const [isRefreshingVerification, setIsRefreshingVerification] = useState(false);
   const isBn = language === "bn";
 
   const verificationStatus = user?.lawyerProfile?.verificationStatus || "pending";
@@ -490,7 +492,29 @@ export default function LawyerPendingPage() {
                     : "Your Bar Council certificate is currently awaiting administrative approval. Access remains locked until your advocate status is verified."}
                 </p>
                 <div className="flex items-center justify-center gap-3 flex-wrap">
-                  <button onClick={() => router.push("/profile")} className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--bg-surface) text-(--text-primary) transition-colors cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (refreshUser) {
+                        setIsRefreshingVerification(true);
+                        await refreshUser();
+                        setTimeout(() => setIsRefreshingVerification(false), 500);
+                      }
+                    }}
+                    disabled={isRefreshingVerification}
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingVerification ? "animate-spin" : ""}`} />
+                    <span>
+                      {isRefreshingVerification
+                        ? (isBn ? "চেক করা হচ্ছে..." : "Checking...")
+                        : (isBn ? "ভেরিফিকেশন স্ট্যাটাস রিফ্রেশ করুন" : "Refresh Verification Status")}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => router.push("/profile")}
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--bg-surface) text-(--text-primary) transition-colors cursor-pointer"
+                  >
                     {isBn ? "প্রোফাইল দেখুন" : "View Profile"}
                   </button>
                 </div>
