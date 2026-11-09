@@ -44,10 +44,18 @@ interface UserDetailData {
   phone: string | null;
   role: string;
   credit_balance: number;
+  member_credit_quota?: number;
+  member_credit_used?: number;
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
   enterprise_id: number | null;
+  enterprise_details?: {
+    id: number;
+    name: string;
+    pool_balance: number;
+    member_limit: number;
+  } | null;
   profile_photo_url?: string | null;
   lawyer_profile: {
     bar_council_id: string;
@@ -791,8 +799,17 @@ export default function AdminPage() {
                         </td>
                         <td className="px-5 py-4"><RoleBadge role={u.role} /></td>
                         <td className="px-5 py-4">
-                          <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{u.credit_balance}</span>
-                          <span className="text-[10px] text-(--text-muted) ml-1">cr</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{u.credit_balance}</span>
+                              <span className="text-[10px] text-(--text-muted)">cr</span>
+                            </div>
+                            {u.enterprise_id && (
+                              <span className="text-[9px] text-(--text-muted) italic">
+                                {isBn ? "ব্যক্তিগত ওয়ালেট" : "Personal Wallet"}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold
@@ -918,13 +935,28 @@ export default function AdminPage() {
 
                   {/* Enterprise Info */}
                   {userDetail.enterprise_id && (
-                    <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/60">
-                      <h5 className="text-[11px] font-bold text-purple-800 dark:text-purple-300 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+                    <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/60 space-y-2">
+                      <h5 className="text-[11px] font-bold text-purple-800 dark:text-purple-300 flex items-center gap-1.5 uppercase tracking-wide">
                         <Building2 className="w-3.5 h-3.5" /> Enterprise Association
                       </h5>
-                      <p className="text-xs text-(--text-muted)">
-                        Enterprise ID: <span className="font-mono font-bold text-(--text-primary)">#{userDetail.enterprise_id}</span>
-                      </p>
+                      <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+                        <span className="text-(--text-muted)">Organization</span>
+                        <span className="font-bold text-(--text-primary)">
+                          {userDetail.enterprise_details?.name || `Enterprise #${userDetail.enterprise_id}`}
+                        </span>
+                        <span className="text-(--text-muted)">Company Pool Balance</span>
+                        <span className="font-mono font-bold text-emerald-600">
+                          {userDetail.enterprise_details?.pool_balance ?? "—"} credits
+                        </span>
+                        <span className="text-(--text-muted)">Assigned Quota</span>
+                        <span className="font-mono font-semibold text-(--text-primary)">
+                          {userDetail.member_credit_quota ?? 0} credits (Used: {userDetail.member_credit_used ?? 0})
+                        </span>
+                        <span className="text-(--text-muted)">Personal Wallet</span>
+                        <span className="font-mono text-amber-600 dark:text-amber-400">
+                          {userDetail.credit_balance} cr (Signup Bonus)
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
