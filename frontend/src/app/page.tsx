@@ -557,8 +557,8 @@ const handleGoogleResponse = useCallback(
     if (!otpInput.trim() || otpInput.trim().length < 4) {
       setOtpError(
         language === "bn"
-          ? "সঠিক ওটিপি কোডটি লিখুন (যেমন: 123456)।"
-          : "Enter a valid OTP code (e.g., 123456)."
+          ? "সঠিক ৬-সংখ্যার ওটিপি কোডটি লিখুন।"
+          : "Enter a valid 6-digit OTP code."
       );
       return;
     }
@@ -632,11 +632,9 @@ const handleGoogleResponse = useCallback(
   const handleResendOtp = async () => {
     try {
       await resendOtp(pendingOtpEmail || regEmail);
-      setResendStatus(language === "bn" ? "নতুন ওটিপি কোড পাঠানো হয়েছে।" : "New OTP code requested.");
-      setOtpInput("123456");
+      setResendStatus(language === "bn" ? "নতুন ওটিপি কোড সফলভাবে পাঠানো হয়েছে।" : "New OTP code sent successfully.");
     } catch {
-      setResendStatus(language === "bn" ? "টেস্ট কোড 123456 ব্যবহার করুন।" : "Use test code 123456.");
-      setOtpInput("123456");
+      setResendStatus(language === "bn" ? "ওটিপি পুনরায় পাঠানো সম্ভব হয়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।" : "Failed to resend OTP. Please try again shortly.");
     }
   };
 
@@ -1857,7 +1855,7 @@ const handleGoogleResponse = useCallback(
                             required
                             value={forgotOtp}
                             onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ""))}
-                            placeholder="123456"
+                            placeholder="••••••"
                             className={`w-full text-center text-xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
                           />
                         </div>
@@ -2455,34 +2453,30 @@ const handleGoogleResponse = useCallback(
                                   <>We sent a 6-digit verification OTP code to <b>{regEmail || "your email"}</b>.</>
                                 )}
                               </p>
-                              <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto text-left">
+                              <div className="p-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto text-center">
                                 {selectedRole === "lawyer" ? (
                                   <p>
                                     {isBn
-                                      ? "আইনজীবী আবেদন — ওটিপি যাচাইয়ের পর সনদপত্রটি সিস্টেম অ্যাডমিন পর্যালোচনায় যাবে। দ্রুত টেস্টের জন্য ক্লিক করুন: "
-                                      : "Lawyer Application — verifying OTP submits credentials for System Admin review. For quick testing: "}
-                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার পর আপনার সনদপত্রটি সিস্টেম অ্যাডমিন পর্যালোচনায় জমা হবে।"
+                                      : "Verifying your email OTP will submit your credentials for System Admin review."}
                                   </p>
                                 ) : selectedRole === "enterprise" && entTab === "company" ? (
                                   <p>
                                     {isBn
-                                      ? "কোম্পানি আবেদন — ওটিপি যাচাইয়ের পর এন্টারপ্রাইজটি সিস্টেম অ্যাডমিন পর্যালোচনায় যাবে। দ্রুত টেস্টের জন্য ক্লিক করুন: "
-                                      : "Enterprise Application — verifying OTP registers your company awaiting System Admin review. For quick testing: "}
-                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার পর আপনার কোম্পানিটি সিস্টেম অ্যাডমিন পর্যালোচনায় জমা হবে।"
+                                      : "Verifying your email OTP will register your enterprise awaiting System Admin review."}
                                   </p>
                                 ) : selectedRole === "enterprise" && entTab === "member" ? (
                                   <p>
                                     {isBn
-                                      ? "টিম মেম্বারশিপ — ওটিপি যাচাইয়ের পর আবেদনটি কোম্পানি অ্যাডমিনের সম্মতির অপেক্ষায় থাকবে। দ্রুত টেস্টের জন্য ক্লিক করুন: "
-                                      : "Team Membership — verifying OTP submits request to Company Admin for quota approval. For quick testing: "}
-                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার পর আবেদনটি কোম্পানি অ্যাডমিনের কোটা অনুমোদনের অপেক্ষায় থাকবে।"
+                                      : "Verifying your email OTP will submit your request to your Company Admin for quota approval."}
                                   </p>
                                 ) : (
                                   <p>
                                     {isBn
-                                      ? "সাধারণ অ্যাকাউন্ট — ওটিপি যাচাই সম্পন্ন হলে সাথে সাথে ১০০ ফ্রি ক্রেডিট পাবেন। দ্রুত টেস্টের জন্য ক্লিক করুন: "
-                                      : "Instant Activation — verify OTP to instantly activate 100 free credits and AI copilot. For quick testing: "}
-                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার সাথে সাথে ১০০ ফ্রি ক্রেডিট নিয়ে সরাসরি ওয়ার্কস্পেসে প্রবেশ করতে পারবেন।"
+                                      : "Verifying your email OTP will instantly activate your account with 100 free credits."}
                                   </p>
                                 )}
                               </div>
@@ -2498,7 +2492,7 @@ const handleGoogleResponse = useCallback(
                                   maxLength={6}
                                   value={otpInput}
                                   onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
-                                  placeholder="123456"
+                                  placeholder="••••••"
                                   className={`w-full text-center text-2xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none transition-colors ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
                                 />
                                 {otpError && (
