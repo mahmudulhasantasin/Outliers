@@ -25,6 +25,14 @@ import {
   Camera,
   X,
   AlertTriangle,
+  Check,
+  Zap,
+  Layers,
+  Sparkles,
+  Minus,
+  Plus,
+  Clock,
+  Radio,
 } from "lucide-react";
 import {
   changePassword,
@@ -398,49 +406,264 @@ export default function SettingsPage() {
         </Section>
 
         {String(user?.role).toUpperCase() === "LAWYER" && (
-          <Section title={isBn ? "আইনজীবী কর্মদক্ষতা ও অগ্রাধিকার সেটিংস" : "Advocate Preferences & Workload"} badge={lawyerSettingsToast ? (isBn ? "সংরক্ষিত ✓" : "Saved ✓") : undefined}>
+          <Section
+            title={isBn ? "আইনজীবী কর্মদক্ষতা ও অগ্রাধিকার সেটিংস" : "Advocate Preferences & Workload"}
+            badge={lawyerSettingsToast ? (isBn ? "সংরক্ষিত ✓" : "Saved ✓") : undefined}
+          >
             <form onSubmit={handleSaveLawyerSettings} className="space-y-4">
-              <div className="flex items-center justify-between p-3.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10">
-                <div>
-                  <p className="text-xs font-semibold text-(--text-primary)">{isBn ? "নতুন পর্যালোচনার জন্য প্রস্তুত (Availability)" : "Accepting New Review Offers"}</p>
-                  <p className="text-[11px] text-(--text-muted) mt-0.5">{isBn ? "চালু থাকলে নতুন ক্লায়েন্ট চুক্তির নোটিফিকেশন ও অফার কিউতে পাঠানো হবে" : "When active, eligible client contracts will be dispatched to your offer queue"}</p>
-                </div>
-                <button type="button" onClick={() => setIsLawyerAvailable(!isLawyerAvailable)} className={`relative w-10 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${isLawyerAvailable ? "bg-(--accent-solid)" : "bg-neutral-300 dark:bg-neutral-700"}`}>
-                  <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-(--bg-primary) shadow-sm transition-transform ${isLawyerAvailable ? "translate-x-4.5" : "translate-x-0.5"}`} />
-                </button>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div>
-                  <label className="block text-xs font-semibold text-(--text-muted) mb-1">{isBn ? "সর্বোচ্চ সক্রিয় চুক্তি রিভিউ সীমা" : "Max Active Reviews Limit"}</label>
-                  <input type="number" min={1} max={10} value={maxActiveReviews} onChange={(e) => setMaxActiveReviews(parseInt(e.target.value, 10) || 1)} className="w-full px-3.5 py-2 rounded-xl text-sm border border-(--text-primary)/15 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-(--text-primary)/40 font-mono" />
-                  <span className="text-[10px] text-(--text-muted) mt-1 block">{isBn ? "একসাথে সর্বোচ্চ কয়টি চুক্তি হাতে রাখবেন (SLA: ৩ ঘণ্টা)" : "Max contracts at one time (3h submit SLA)"}</span>
-                </div>
-                <div className="flex flex-col justify-between p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10">
-                  <div>
-                    <span className="text-xs font-semibold text-(--text-primary) block">{isBn ? "স্বয়ংক্রিয় অফার গ্রহণ (Auto Accept)" : "Auto Accept Offers"}</span>
-                    <span className="text-[10px] text-(--text-muted)">{isBn ? "কিউতে আসা অফার সরাসরি একসেপ্ট হবে" : "Automatically accept matching high-priority contracts"}</span>
+              {/* Availability Hero Switch */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-xs transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      className={`p-2.5 rounded-xl shrink-0 transition-colors ${
+                        isLawyerAvailable
+                          ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                          : "bg-neutral-500/10 text-neutral-400 dark:text-neutral-500"
+                      }`}
+                    >
+                      <Radio className={`w-5 h-5 ${isLawyerAvailable ? "animate-pulse" : ""}`} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <p className="text-sm font-semibold text-(--text-primary)">
+                          {isBn ? "নতুন পর্যালোচনার জন্য প্রস্তুত (Availability)" : "Accepting New Review Offers"}
+                        </p>
+                        {isLawyerAvailable ? (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            {isBn ? "সক্রিয় ও প্রস্তুত" : "Live & Accepting"}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-neutral-400/15 text-neutral-600 dark:text-neutral-400 border border-neutral-400/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-neutral-400" />
+                            {isBn ? "বিরতিতে আছেন" : "Queue Paused"}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-(--text-muted) mt-1 leading-relaxed">
+                        {isBn
+                          ? "চালু থাকলে নতুন ক্লায়েন্ট চুক্তির নোটিফিকেশন ও অফার সরাসরি আপনার রিভিউ কিউতে পাঠানো হবে।"
+                          : "When active, incoming eligible client contracts will be dispatched to your review queue."}
+                      </p>
+                    </div>
                   </div>
-                  <button type="button" onClick={() => setAutoAcceptOffers(!autoAcceptOffers)} className={`self-start mt-2 relative w-10 h-6 rounded-full transition-colors cursor-pointer shrink-0 ${autoAcceptOffers ? "bg-(--accent-solid)" : "bg-neutral-300 dark:bg-neutral-700"}`}>
-                    <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-(--bg-primary) shadow-sm transition-transform ${autoAcceptOffers ? "translate-x-4.5" : "translate-x-0.5"}`} />
-                  </button>
+
+                  {/* Standard bounded toggle switch */}
+                  <div className="flex items-center self-end sm:self-center shrink-0">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isLawyerAvailable}
+                      onClick={() => setIsLawyerAvailable(!isLawyerAvailable)}
+                      className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-(--text-primary)/20 ${
+                        isLawyerAvailable ? "bg-emerald-600 dark:bg-emerald-500" : "bg-neutral-300 dark:bg-neutral-700"
+                      }`}
+                    >
+                      <span className="sr-only">Toggle availability</span>
+                      <span
+                        className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                          isLawyerAvailable ? "translate-x-5" : "translate-x-0"
+                        }`}
+                      />
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-(--text-muted) mb-1.5">{isBn ? "পছন্দের আইনি ক্ষেত্রসমূহ (Preferred Legal Domains)" : "Preferred Legal Specializations"}</label>
-                <div className="flex flex-wrap gap-2">
-                  {["Contract Law", "Employment Law", "Corporate Law", "Real Estate", "Banking & IP", "Commercial Arbitration"].map((dom) => {
+
+              {/* Symmetrical 2-Column Workload & Auto-Accept Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                {/* Left Card: Review Limit with Stepper */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-xs flex flex-col justify-between gap-3.5">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="p-1.5 rounded-lg bg-(--text-primary)/5 text-(--text-primary)">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                      <label className="text-xs font-semibold uppercase tracking-wider text-(--text-primary)">
+                        {isBn ? "সর্বোচ্চ সক্রিয় রিভিউ সীমা" : "Max Active Reviews Limit"}
+                      </label>
+                    </div>
+                    <p className="text-xs text-(--text-muted) leading-relaxed">
+                      {isBn
+                        ? "একসাথে সর্বোচ্চ কয়টি চুক্তি হাতে রাখবেন (SLA রক্ষা করতে)"
+                        : "Maximum concurrent active contracts in review desk"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2 rounded-xl bg-(--bg-card) border border-(--text-primary)/10">
+                      <button
+                        type="button"
+                        onClick={() => setMaxActiveReviews(Math.max(1, maxActiveReviews - 1))}
+                        disabled={maxActiveReviews <= 1}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-(--text-primary) hover:bg-(--text-primary)/10 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                        title={isBn ? "কমান" : "Decrease"}
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+
+                      <div className="flex items-baseline gap-1.5">
+                        <span className="text-xl font-bold font-mono text-(--text-primary)">
+                          {maxActiveReviews}
+                        </span>
+                        <span className="text-xs font-medium text-(--text-muted)">
+                          {isBn ? "টি চুক্তি" : "contracts"}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setMaxActiveReviews(Math.min(10, maxActiveReviews + 1))}
+                        disabled={maxActiveReviews >= 10}
+                        className="w-8 h-8 rounded-lg flex items-center justify-center text-(--text-primary) hover:bg-(--text-primary)/10 active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                        title={isBn ? "বাড়ান" : "Increase"}
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-(--text-muted) px-1">
+                      <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>{isBn ? "৩ ঘণ্টার টার্নঅ্যারাউন্ড SLA প্রযোজ্য" : "Max contracts at one time (3h submit SLA)"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Card: Auto Accept Offers */}
+                <div className="p-4 sm:p-5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-xs flex flex-col justify-between gap-3.5">
+                  <div>
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <span className="text-xs font-semibold uppercase tracking-wider text-(--text-primary)">
+                        {isBn ? "স্বয়ংক্রিয় অফার গ্রহণ" : "Auto Accept Offers"}
+                      </span>
+                    </div>
+                    <p className="text-xs text-(--text-muted) leading-relaxed">
+                      {isBn
+                        ? "উচ্চ-অগ্রাধিকার চুক্তিগুলো কিউ থেকে সরাসরি গ্রহণ হবে"
+                        : "Automatically accept matching high-priority contracts"}
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between p-2.5 rounded-xl bg-(--bg-card) border border-(--text-primary)/10">
+                      <span className="text-xs font-medium text-(--text-primary)">
+                        {autoAcceptOffers
+                          ? (isBn ? "স্বয়ংক্রিয় গ্রহণ চালু" : "Auto-Accept Active")
+                          : (isBn ? "ম্যানুয়াল অনুমোদন" : "Manual Preview Only")}
+                      </span>
+
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={autoAcceptOffers}
+                        onClick={() => setAutoAcceptOffers(!autoAcceptOffers)}
+                        className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full p-0.5 transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-(--text-primary)/20 ${
+                          autoAcceptOffers ? "bg-(--accent-solid)" : "bg-neutral-300 dark:bg-neutral-700"
+                        }`}
+                      >
+                        <span className="sr-only">Toggle auto accept</span>
+                        <span
+                          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                            autoAcceptOffers ? "translate-x-5" : "translate-x-0"
+                          }`}
+                        />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-(--text-muted) px-1">
+                      <Zap className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                      <span>
+                        {autoAcceptOffers
+                          ? (isBn ? "উপযুক্ত কাজ সরাসরি ডেস্ক এ যুক্ত হবে" : "Dispatched directly into active queue")
+                          : (isBn ? "ম্যানুয়ালি অফার রিভিউ করে একসেপ্ট করুন" : "Review contract details before taking")}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Specializations Domain Badges */}
+              <div className="p-4 sm:p-5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <label className="block text-xs font-semibold text-(--text-primary)">
+                      {isBn ? "পছন্দের আইনি ক্ষেত্রসমূহ (Preferred Legal Domains)" : "Preferred Legal Specializations"}
+                    </label>
+                    <p className="text-[11px] text-(--text-muted) mt-0.5">
+                      {isBn ? "আপনার দক্ষতার ক্ষেত্রসমূহ চিহ্নিত করুন" : "Select domains matching your legal expertise"}
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-semibold px-2.5 py-0.5 rounded-full bg-(--text-primary)/10 text-(--text-primary)">
+                    {preferredDomains.length} {isBn ? "টি নির্বাচিত" : "Selected"}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {[
+                    "Contract Law",
+                    "Employment Law",
+                    "Corporate Law",
+                    "Real Estate",
+                    "Banking & IP",
+                    "Commercial Arbitration",
+                  ].map((dom) => {
                     const isSelected = preferredDomains.includes(dom);
                     return (
-                      <button key={dom} type="button" onClick={() => { setPreferredDomains((prev) => isSelected ? prev.filter((d) => d !== dom) : [...prev, dom]); }} className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors cursor-pointer ${isSelected ? "bg-(--accent-solid) text-(--accent-contrast) border-(--accent-solid)" : "border-(--text-primary)/15 text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5"}`}>
-                        {dom}
+                      <button
+                        key={dom}
+                        type="button"
+                        onClick={() => {
+                          setPreferredDomains((prev) =>
+                            isSelected ? prev.filter((d) => d !== dom) : [...prev, dom]
+                          );
+                        }}
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-medium transition-all duration-150 cursor-pointer ${
+                          isSelected
+                            ? "bg-(--accent-solid) text-(--accent-contrast) shadow-xs ring-1 ring-(--accent-solid)"
+                            : "bg-(--bg-card) border border-(--text-primary)/15 text-(--text-muted) hover:text-(--text-primary) hover:border-(--text-primary)/35 hover:bg-(--text-primary)/5"
+                        }`}
+                      >
+                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[2.5] shrink-0" />}
+                        <span>{dom}</span>
                       </button>
                     );
                   })}
                 </div>
               </div>
-              <button type="submit" disabled={lawyerSettingsLoading} className="w-full py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer shadow-xs flex items-center justify-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5" />
-                {lawyerSettingsLoading ? (isBn ? "সংরক্ষণ করা হচ্ছে..." : "Saving Preferences...") : (isBn ? "আইনজীবী পছন্দসমূহ সংরক্ষণ করুন (Save)" : "Save Advocate Preferences")}
+
+              {/* Toast confirmation if recently saved */}
+              {lawyerSettingsToast && (
+                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-600 dark:text-emerald-400 flex items-center gap-2 animate-in fade-in duration-200">
+                  <CheckCircle2 className="w-4 h-4 shrink-0" />
+                  <span>
+                    {isBn
+                      ? "আইনজীবী পছন্দসমূহ সফলভাবে সংরক্ষিত হয়েছে!"
+                      : "Advocate preferences saved successfully!"}
+                  </span>
+                </div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={lawyerSettingsLoading}
+                className="w-full py-3 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 active:scale-[0.99] transition-all disabled:opacity-50 cursor-pointer shadow-sm flex items-center justify-center gap-2"
+              >
+                {lawyerSettingsLoading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>{isBn ? "সংরক্ষণ করা হচ্ছে..." : "Saving Preferences..."}</span>
+                  </>
+                ) : (
+                  <>
+                    <Briefcase className="w-4 h-4" />
+                    <span>{isBn ? "আইনজীবী পছন্দসমূহ সংরক্ষণ করুন (Save)" : "Save Advocate Preferences"}</span>
+                  </>
+                )}
               </button>
             </form>
           </Section>
