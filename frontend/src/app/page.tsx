@@ -52,6 +52,7 @@ import {
   Shield,
   Lock,
   Loader2,
+  Clock,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
 import DitherVeil from "@/components/effects/DitherVeil";
@@ -497,11 +498,16 @@ const handleGoogleResponse = useCallback(
         });
         setPendingOtpEmail(res.email);
       } else {
+        const resolvedFullName =
+          selectedRole === "enterprise" && entTab === "company"
+            ? adminName.trim() || "Enterprise Admin"
+            : `${firstName} ${lastName}`.trim() || "User";
+
         const res = await registerEmail({
           email: regEmail,
           password: regPassword,
           confirm_password: regConfirmPassword,
-          full_name: `${firstName} ${lastName}`.trim() || "User",
+          full_name: resolvedFullName,
           phone: undefined,
           date_of_birth: dob || undefined,
           gender,
@@ -569,13 +575,16 @@ const handleGoogleResponse = useCallback(
             field_of_law: fieldOfLaw.trim(),
             specializations: [fieldOfLaw.trim()],
           });
+          closeModal();
+          router.push("/lawyer/pending");
+          return;
         } catch (onboardErr) {
           console.error("Lawyer onboard failed:", onboardErr);
+          const errText = onboardErr instanceof Error ? onboardErr.message : "Lawyer onboarding failed.";
+          setOtpError(errText);
+          setAuthLoading(false);
+          return;
         }
-        closeModal();
-        // LAWYERS GO TO LAWYER PORTAL (NOT COPILOT!)
-        router.push("/lawyer/pending");
-        return;
       } else if (selectedRole === "enterprise" && entTab === "company") {
         try {
           await onboardEnterprise({
@@ -2175,10 +2184,18 @@ const handleGoogleResponse = useCallback(
                                     <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                 </div>
+                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40">
+                                  <Sparkles className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
+                                  <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
+                                    {isBn
+                                      ? "তাৎক্ষণিক অ্যাক্সেস — ওটিপি যাচাই সম্পন্ন হলেই পাবেন ১০০ ফ্রি ক্রেডিট এবং সম্পূর্ণ এআই কোপাইলট।"
+                                      : "Instant Access — verify via email OTP to instantly activate your account with 100 bonus credits."}
+                                  </p>
+                                </div>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                 <div className="pt-1">
                                   <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "সাইন আপ (ইমেইল ওটিপি যাচাই)" : "Sign up (Verify via Email OTP)"}
+                                    {isBn ? "নিবন্ধন সম্পন্ন করুন (ওটিপি যাচাই)" : "Sign Up (Verify OTP)"}
                                   </button>
                                 </div>
                               </form>
@@ -2227,7 +2244,7 @@ const handleGoogleResponse = useCallback(
                                 </div>
                                 <div className="grid grid-cols-2 gap-3 pt-1">
                                   <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "বার কাউন্সিল নম্বর" : "Ber council num"} <span className="text-red-500">*</span></label>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "বার কাউন্সিল সনদ নম্বর" : "Bar Council Enrollment No."} <span className="text-red-500">*</span></label>
                                     <input type="text" required value={barCouncilNo} onChange={(e) => setBarCouncilNo(e.target.value)} placeholder="BC-48291/2019" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
                                   </div>
                                   <div>
@@ -2241,18 +2258,18 @@ const handleGoogleResponse = useCallback(
                                     </select>
                                   </div>
                                 </div>
-                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40">
-                                  <span className="text-amber-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                                  <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
+                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40">
+                                  <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
+                                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
                                     {isBn
-                                      ? "আবেদনের পর সিস্টেম অ্যাডমিন (System Admin) দ্বারা আপনার বার কাউন্সিল সনদ যাচাই করা হবে।"
-                                      : "Verification by System Admin — your credentials will be manually verified by System Admin."}
+                                      ? "সিস্টেম অ্যাডমিন যাচাইকরণ — ওটিপি যাচাইয়ের পর আপনার বার কাউন্সিল সনদটি সিস্টেম অ্যাডমিন দ্বারা যাচাই ও অনুমোদিত হবে।"
+                                      : "Verification by System Admin — after email OTP verification, your credentials will be manually verified by System Admin."}
                                   </p>
                                 </div>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                 <div className="pt-1">
                                   <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "আইনজীবী হিসেবে আবেদন (Request as lawyer)" : "Request as lawyer (Verify via OTP)"}
+                                    {isBn ? "আইনজীবী হিসেবে আবেদন (ওটিপি যাচাই)" : "Apply as Lawyer (Verify OTP)"}
                                   </button>
                                 </div>
                               </form>
@@ -2291,11 +2308,11 @@ const handleGoogleResponse = useCallback(
                                     </div>
                                     <div className="grid grid-cols-2 gap-3">
                                       <div>
-                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "রেজিস্ট্রেশন নং" : "Registrasion no."} <span className="text-red-500">*</span></label>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration No."} <span className="text-red-500">*</span></label>
                                         <input type="text" required value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} placeholder="C-148920/2021" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "TIN নম্বর" : "Tin no."} <span className="text-red-500">*</span></label>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিআইএন (TIN) নম্বর" : "TIN No."} <span className="text-red-500">*</span></label>
                                         <input type="text" required value={tinNo} onChange={(e) => setTinNo(e.target.value)} placeholder="582910482912" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
                                       </div>
                                     </div>
@@ -2305,7 +2322,7 @@ const handleGoogleResponse = useCallback(
                                         <input type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Rahim Chowdhury" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিম মেম্বার সংখ্যা" : "Member count"} <span className="text-red-500">*</span></label>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিম মেম্বার সংখ্যা" : "Team Members Limit"} <span className="text-red-500">*</span></label>
                                         <input type="number" min={1} required value={memberCount} onChange={(e) => setMemberCount(Number(e.target.value))} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
                                       </div>
                                     </div>
@@ -2323,18 +2340,18 @@ const handleGoogleResponse = useCallback(
                                         <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
                                       </div>
                                     </div>
-                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
-                                      <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                                      <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/40">
+                                      <Clock className="w-4 h-4 text-purple-500 shrink-0 mt-0.5 animate-pulse" />
+                                      <p className="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed">
                                         {isBn
-                                          ? "সিস্টেম অ্যাডমিন অনুমোদনের পর মেম্বার অ্যাপ্রুভালের জন্য রেফারেল কোড পাবেন। অ্যাডমিন যেকোনো মেম্বার রিমুভ করতে পারবেন।"
-                                          : "Verification by System Admin — after verified, a refer num will be issued for member approvals."}
+                                          ? "সিস্টেম অ্যাডমিন যাচাইকরণ — অ্যাডমিন অনুমোদনের পর কোম্পানি ওয়ার্কস্পেস সক্রিয় হবে এবং মেম্বার যুক্ত করার রেফারেল কোড পাবেন।"
+                                          : "Verification by System Admin — after approval, your corporate workspace will unlock and a company referral code will be issued for member onboarding."}
                                       </p>
                                     </div>
                                     {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                     <div className="pt-1">
                                       <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                        {isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন (Request for registration)" : "Request for registration (Verify OTP)"}
+                                        {isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন (ওটিপি যাচাই)" : "Request for Registration (Verify OTP)"}
                                       </button>
                                     </div>
                                   </form>
@@ -2370,7 +2387,7 @@ const handleGoogleResponse = useCallback(
                                         <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
                                       </div>
                                       <div>
-                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানি রেফার কোড" : "Company Refer code"} <span className="text-red-500">*</span></label>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানি রেফারেল কোড" : "Company Referral Code"} <span className="text-red-500">*</span></label>
                                         <input type="text" required value={companyReferCode} onChange={(e) => setCompanyReferCode(e.target.value)} placeholder="APX-8821" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
                                       </div>
                                     </div>
@@ -2388,18 +2405,18 @@ const handleGoogleResponse = useCallback(
                                         <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
                                       </div>
                                     </div>
-                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
-                                      <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                                      <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
+                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/40">
+                                      <Clock className="w-4 h-4 text-purple-500 shrink-0 mt-0.5 animate-pulse" />
+                                      <p className="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed">
                                         {isBn
-                                          ? "কোম্পানি অ্যাডমিন (Company Admin) আপনার মেম্বারশিপ আবেদন যাচাই ও অনুমোদন করবেন।"
-                                          : "Verification by Company Admin — company admin will review and approve your membership."}
+                                          ? "কোম্পানি অ্যাডমিন অনুমোদন — ওটিপি যাচাইয়ের পর আপনার কোম্পানি অ্যাডমিন আপনার মেম্বারশিপ ও ক্রেডিট কোটা অনুমোদন করবেন।"
+                                          : "Verification by Company Admin — after email OTP verification, your company admin will review and approve your membership."}
                                       </p>
                                     </div>
                                     {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                     <div className="pt-1">
                                       <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                        {isBn ? "কোম্পানিতে যুক্ত হতে আবেদন (Request for to add company)" : "Request to add company (Verify OTP)"}
+                                        {isBn ? "টিমে যুক্ত হতে আবেদন (ওটিপি যাচাই)" : "Join Company Team (Verify OTP)"}
                                       </button>
                                     </div>
                                   </form>
@@ -2429,7 +2446,7 @@ const handleGoogleResponse = useCallback(
                                 <Mail className="w-6 h-6 animate-pulse" />
                               </div>
                               <h3 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-1">
-                                {isBn ? "ইমেইল ওটিপি যাচাই (OTP on Mail)" : "Verify Email (OTP on Mail)"}
+                                {isBn ? "ইমেইল ওটিপি যাচাই করুন" : "Verify Email OTP"}
                               </h3>
                               <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto mb-3">
                                 {isBn ? (
@@ -2438,10 +2455,36 @@ const handleGoogleResponse = useCallback(
                                   <>We sent a 6-digit verification OTP code to <b>{regEmail || "your email"}</b>.</>
                                 )}
                               </p>
-                              <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto">
-                                {isBn
-                                  ? "💡 লাইভ সার্ভারের ইমেইল ডেলিভারি যদি বিলম্বিত হয়, আপনি সরাসরি টেস্ট কোড (123456) বা ইনস্ট্যান্ট পাস দিয়ে এক ক্লিকে প্রবেশ করতে পারেন।"
-                                  : "💡 If email delivery is delayed from the live server, you can use Test Code (123456) or Instant Pass for immediate access."}
+                              <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto text-left">
+                                {selectedRole === "lawyer" ? (
+                                  <p>
+                                    {isBn
+                                      ? "আইনজীবী আবেদন — ওটিপি যাচাইয়ের পর সনদপত্রটি সিস্টেম অ্যাডমিন পর্যালোচনায় যাবে। দ্রুত টেস্টের জন্য ক্লিক করুন: "
+                                      : "Lawyer Application — verifying OTP submits credentials for System Admin review. For quick testing: "}
+                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                  </p>
+                                ) : selectedRole === "enterprise" && entTab === "company" ? (
+                                  <p>
+                                    {isBn
+                                      ? "কোম্পানি আবেদন — ওটিপি যাচাইয়ের পর এন্টারপ্রাইজটি সিস্টেম অ্যাডমিন পর্যালোচনায় যাবে। দ্রুত টেস্টের জন্য ক্লিক করুন: "
+                                      : "Enterprise Application — verifying OTP registers your company awaiting System Admin review. For quick testing: "}
+                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                  </p>
+                                ) : selectedRole === "enterprise" && entTab === "member" ? (
+                                  <p>
+                                    {isBn
+                                      ? "টিম মেম্বারশিপ — ওটিপি যাচাইয়ের পর আবেদনটি কোম্পানি অ্যাডমিনের সম্মতির অপেক্ষায় থাকবে। দ্রুত টেস্টের জন্য ক্লিক করুন: "
+                                      : "Team Membership — verifying OTP submits request to Company Admin for quota approval. For quick testing: "}
+                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                  </p>
+                                ) : (
+                                  <p>
+                                    {isBn
+                                      ? "সাধারণ অ্যাকাউন্ট — ওটিপি যাচাই সম্পন্ন হলে সাথে সাথে ১০০ ফ্রি ক্রেডিট পাবেন। দ্রুত টেস্টের জন্য ক্লিক করুন: "
+                                      : "Instant Activation — verify OTP to instantly activate 100 free credits and AI copilot. For quick testing: "}
+                                    <button type="button" onClick={() => { setOtpInput("123456"); setOtpError(""); }} className="underline font-bold cursor-pointer hover:opacity-80">123456</button>
+                                  </p>
+                                )}
                               </div>
                             </div>
 
@@ -2468,7 +2511,13 @@ const handleGoogleResponse = useCallback(
                                 onClick={handleVerifyOtpAndComplete}
                                 className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2"
                               >
-                                {isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓"}
+                                {selectedRole === "lawyer"
+                                  ? (isBn ? "যাচাই করুন ও আইনজীবী আবেদন জমা দিন ✓" : "Verify & Submit Lawyer Application ✓")
+                                  : selectedRole === "enterprise" && entTab === "company"
+                                  ? (isBn ? "যাচাই করুন ও কোম্পানি আবেদন জমা দিন ✓" : "Verify & Submit Enterprise Application ✓")
+                                  : selectedRole === "enterprise" && entTab === "member"
+                                  ? (isBn ? "যাচাই করুন ও মেম্বারশিপ আবেদন জমা দিন ✓" : "Verify & Submit Membership Request ✓")
+                                  : (isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Enter Workspace ✓")}
                               </button>
 
                               <div className="text-center text-xs text-[var(--text-muted)] pt-1 space-y-1">
