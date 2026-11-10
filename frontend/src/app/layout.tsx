@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Script from "next/script";
-import { Inter } from "next/font/google";
-import localFont from "next/font/local";
+import { Inter, Tiro_Bangla } from "next/font/google";
+
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { PersonaProvider } from "@/context/PersonaContext";
@@ -15,19 +15,10 @@ const inter = Inter({
   display: "swap",
 });
 
-const tiroBangla = localFont({
-  src: [
-    {
-      path: "../../public/fonts/TiroBangla-Regular.ttf",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../../public/fonts/TiroBangla-Italic.ttf",
-      weight: "400",
-      style: "italic",
-    },
-  ],
+const tiroBangla = Tiro_Bangla({
+  subsets: ["bengali", "latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
   variable: "--font-bangla",
   display: "swap",
 });
