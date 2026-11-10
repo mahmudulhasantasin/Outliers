@@ -161,6 +161,15 @@ export interface ContractAuditResult {
     LOW?: number;
   };
   clauses: ContractClause[];
+  missing_provisions?: Array<{
+    provision_id: string;
+    title: string;
+    statutory_reference: string;
+    risk_explanation: string;
+    severity: string;
+  }>;
+  audited_for?: string;
+  stamp_duty_advisory?: string;
   hitl_status?: HITLStatus | string;
   lawyer_name?: string | null;
   lawyer_notes?: string | null;
@@ -183,6 +192,11 @@ export interface ContractClause {
   proposed_safe_redline?: string | null;
   statute_reference?: string;
   statute_citation?: string;
+  statutory_status?: string;
+  is_statute_verified?: boolean;
+  statute_verified_label?: string;
+  commercial_risk?: string;
+  negotiation_guidance?: string;
   is_compliant?: boolean;
   key_obligations?: string[];
 }
@@ -207,12 +221,14 @@ export interface VerificationRequestResponse {
 /** Upload a contract file for AI audit (POST /api/contracts/upload) */
 export async function uploadContract(
   file: File,
-  title?: string
+  title?: string,
+  auditedFor: string = "CLIENT"
 ): Promise<ContractAuditResult> {
   const formData = new FormData();
   const fileTitle = title || file.name.replace(/\.[^/.]+$/, "") || "Contract Document";
   formData.append("title", fileTitle);
   formData.append("file", file);
+  formData.append("audited_for", auditedFor);
   return api.upload<ContractAuditResult>("/api/contracts/upload", formData);
 }
 

@@ -307,15 +307,19 @@ export function generateRealContractAuditMarkdown(
     result.file_name ||
     (isBn ? "চুক্তিপত্র অডিট" : "Contract Audit");
   const riskScore = result.risk_score ?? 50;
-  const riskGrade =
-    result.risk_grade ||
-    (riskScore > 70
-      ? isBn
-        ? "উচ্চ ঝুঁকি"
-        : "High Risk"
-      : isBn
-      ? "মাঝারি ঝুঁকি"
-      : "Moderate Risk");
+
+  // Read backend risk_grade or overall_risk directly, fallback to bounded score
+  const rawGrade = String(result.risk_grade || result.overall_risk || "").toUpperCase();
+  const riskGrade = rawGrade === "HIGH"
+    ? (isBn ? "উচ্চ ঝুঁকি (High Risk)" : "High Risk")
+    : rawGrade === "LOW"
+    ? (isBn ? "নিম্ন ঝুঁকি (Low Risk)" : "Low Risk")
+    : rawGrade === "MODERATE" || rawGrade === "MEDIUM"
+    ? (isBn ? "মাঝারি ঝুঁকি (Moderate Risk)" : "Moderate Risk")
+    : (riskScore >= 60 ? (isBn ? "উচ্চ ঝুঁকি (High Risk)" : "High Risk")
+       : riskScore >= 35 ? (isBn ? "মাঝারি ঝুঁকি (Moderate Risk)" : "Moderate Risk")
+       : (isBn ? "নিম্ন ঝুঁকি (Low Risk)" : "Low Risk"));
+
   const summary =
     result.summary ||
     result.executive_summary ||
@@ -323,8 +327,15 @@ export function generateRealContractAuditMarkdown(
       ? "চুক্তিপত্রের ধারাগুলো বাংলাদেশ আইনের অধীনে পরীক্ষা করা হয়েছে।"
       : "Clauses evaluated under codified statutes of Bangladesh.");
   const clauses = result.clauses || [];
+  const missingProvisions = result.missing_provisions || [];
+  const stampAdvisory = result.stamp_duty_advisory;
+  const auditedFor = String(result.audited_for || "CLIENT").toUpperCase();
+  const auditedForLabel = auditedFor === "VENDOR"
+    ? (isBn ? "💼 সেবা প্রদানকারী / ভেন্ডর" : "💼 Protected Party: Service Provider / Vendor")
+    : auditedFor === "NEUTRAL"
+    ? (isBn ? "⚖️ নিরপেক্ষ ও সমতাভিত্তিক" : "⚖️ Perspective: Neutral & Balanced")
+    : (isBn ? "🛡️ ক্লায়েন্ট / ক্রেতা" : "🛡️ Protected Party: Client / Buyer");
 
-  // ✅ FIX — normalize against both canonical and legacy labels + read nested counts
   const highRiskCount =
     result.high_risk_count ??
     result.counts?.high_risk ??
@@ -334,7 +345,7 @@ export function generateRealContractAuditMarkdown(
   md += `> **SOVEREIGN STATUTORY AUDIT REPORT · BANGLADESH LAW JURISDICTION**\n`;
   md += `> **Contract ID:** \`${
     result.contract_id || result.id || "LIVE"
-  }\` | **Jurisdiction:** Laws of Bangladesh\n\n`;
+  }\` | **Audit Perspective:** **${auditedForLabel}** | **Jurisdiction:** Laws of Bangladesh\n\n`;
 
   md += `| Statutory Risk Grade | Risk Score | High Risk Violations | Review Status |\n`;
   md += `| :--- | :---: | :---: | :--- |\n`;
@@ -345,9 +356,9 @@ export function generateRealContractAuditMarkdown(
   } |\n\n`;
 
   md += `## 1. Executive Statutory Risk Summary\n\n`;
-  if (riskScore >= 60) {
+  if (riskScore >= 60 || highRiskCount > 0) {
     md += `> [!CAUTION]\n`;
-    md += `> **HIGH STATUTORY RISK DETECTED**\n`;
+    md += `> **HIGH STATUTORY / COMMERCIAL RISK DETECTED**\n`;
     md += `> ${summary}\n\n`;
   } else {
     md += `> [!NOTE]\n`;
@@ -359,49 +370,67 @@ export function generateRealContractAuditMarkdown(
   md += `| Clause # | Provision Title | Risk Level | Statutory Citation (Bangladesh) | Legal Enforceability |\n`;
   md += `| :---: | :--- | :---: | :--- | :--- |\n`;
   for (const cl of clauses) {
-    const clTitle = cl.title || cl.clause_title || `Clause ${cl.clause_number}`;
-    const citation =
+    const rawNumber = String(cl.clause_number || "").replace(/^§+\s*/, "");
+    const clTitle = cl.title || cl.clause_title || `Clause ${rawNumber}`;
+    let citation =
       cl.statute_citation ||
       cl.statute_reference ||
       (isBn ? "বাংলাদেশ সংবিধিবদ্ধ আইন" : "Statutes of Bangladesh");
 
-    // ✅ FIX — normalize before comparing
-    const normalizedRisk = normalizeRiskLevel(cl.risk_level);
-    const statusLabel =
-      normalizedRisk === "HIGH"
-        ? "🔴 **VOID / UNLAWFUL**"
-        : normalizedRisk === "MEDIUM"
-        ? "🟡 **AMBIGUOUS**"
-        : "🟢 **COMPLIANT**";
+    if (cl.is_statute_verified) {
+      citation = `✅ ${citation} *(bdlaws verified)*`;
+    }
 
-    md += `| §${cl.clause_number} | ${clTitle} | \`${cl.risk_level}\` | ${citation} | ${statusLabel} |\n`;
+    const normalizedRisk = normalizeRiskLevel(cl.risk_level);
+    const statutoryStatus = String(cl.statutory_status || "").toUpperCase();
+
+    let statusLabel = "🟢 **COMPLIANT**";
+    if (statutoryStatus === "VOID_AB_INITIO") {
+      statusLabel = "🔴 **VOID AB INITIO**";
+    } else if (statutoryStatus === "STATUTORILY_RESTRICTED") {
+      statusLabel = "🟠 **RESTRICTED / SCALED-DOWN**";
+    } else if (statutoryStatus === "REGULATORY_NON_COMPLIANT") {
+      statusLabel = "🔴 **REGULATORY BREACH**";
+    } else if (statutoryStatus === "COMMERCIAL_ISSUE") {
+      statusLabel = normalizedRisk === "HIGH" ? "🔴 **HIGH COMMERCIAL RISK**" : "🟡 **REVIEW RECOMMENDED**";
+    } else if (normalizedRisk === "HIGH") {
+      statusLabel = citation.includes("74") ? "🟠 **RESTRICTED PENALTY**" : "🔴 **HIGH RISK**";
+    } else if (normalizedRisk === "MEDIUM") {
+      statusLabel = "🟡 **REVIEW RECOMMENDED**";
+    }
+
+    md += `| ${rawNumber} | ${clTitle} | \`${cl.risk_level}\` | ${citation} | ${statusLabel} |\n`;
   }
   md += `\n`;
 
   md += `## 3. Clause-by-Clause Statutory Audit & Redlines\n\n`;
   for (const cl of clauses) {
-    const clTitle = cl.title || cl.clause_title || `Clause ${cl.clause_number}`;
+    const rawNumber = String(cl.clause_number || "").replace(/^§+\s*/, "");
+    const clTitle = cl.title || cl.clause_title || `Clause ${rawNumber}`;
     const issue =
       cl.issue_summary ||
       cl.legal_explanation ||
       (isBn ? "ধারাটি পর্যবেক্ষণ প্রয়োজন" : "Review required");
     const analysis = cl.detailed_analysis || cl.legal_explanation || "";
-    const citation = cl.statute_citation || cl.statute_reference;
+    let citation = cl.statute_citation || cl.statute_reference;
+    if (cl.is_statute_verified && citation) {
+      citation = `${citation} *(Verified against bdlaws - Government of Bangladesh)*`;
+    }
     const redline = cl.proposed_safe_redline || cl.redline_suggestion;
+    const talkingPoints = cl.negotiation_guidance;
 
-    md += `### §${cl.clause_number}. ${clTitle}\n\n`;
+    md += `### ${rawNumber}. ${clTitle}\n\n`;
 
-    // ✅ FIX — normalize before comparing
     const normalizedRisk = normalizeRiskLevel(cl.risk_level);
     if (normalizedRisk === "HIGH") {
       md += `> [!WARNING]\n`;
-      md += `> **Statutory Violation:** ${issue}\n`;
-      if (citation) md += `> **Statute:** ${citation}\n`;
+      md += `> **Statutory / Commercial Risk:** ${issue}\n`;
+      if (citation) md += `> **Statute / Legal Ground:** ${citation}\n`;
       md += `\n`;
     } else if (normalizedRisk === "MEDIUM") {
       md += `> [!NOTE]\n`;
       md += `> **Review Recommendation:** ${issue}\n`;
-      if (citation) md += `> **Statute:** ${citation}\n`;
+      if (citation) md += `> **Statute / Standard:** ${citation}\n`;
       md += `\n`;
     }
 
@@ -411,16 +440,21 @@ export function generateRealContractAuditMarkdown(
     }
 
     if (analysis) {
-      md += `**Statutory Legal Analysis:**\n`;
+      md += `**Statutory & Commercial Legal Analysis:**\n`;
       md += `${analysis}\n\n`;
+    }
+
+    if (talkingPoints) {
+      md += `**🗣️ Tactical Negotiation Talking Points (What to propose to counterparty):**\n`;
+      md += `> ${talkingPoints}\n\n`;
     }
 
     if (redline) {
       md += `**Recommended Sovereign Redline (Compliant under Bangladesh Law):**\n\n`;
       md += `\`\`\`diff\n`;
       if (cl.original_text) {
-        md += `- [ORIGINAL CLAUSE]\n`;
-        md += `- ${cl.original_text.slice(0, 140)}...\n`;
+        md += `- [ORIGINAL UNFAVORABLE CLAUSE]\n`;
+        md += `- ${cl.original_text.slice(0, 160)}...\n`;
       }
       md += `+ [STATUTORY COMPLIANT DRAFT]\n`;
       md += `+ ${redline}\n`;
@@ -430,7 +464,30 @@ export function generateRealContractAuditMarkdown(
     md += `---\n\n`;
   }
 
-  md += `## 4. Advocate Statutory Verification & Digital Seal\n\n`;
+  // 4. Missing Mandatory Protective Provisions
+  if (missingProvisions && missingProvisions.length > 0) {
+    md += `## 4. 🚨 Missing Essential Protective Provisions (Gap Analysis)\n\n`;
+    md += `> [!CAUTION]\n`;
+    md += `> **SILENCE / OMISSION EXPOSURE:** Under Bangladesh jurisprudence, rights not articulated in writing cannot be enforced later. The following essential protections are missing from this draft:\n\n`;
+    md += `| Missing Provision | Governing Statute / Standard | Severity | Risk Explanation |\n`;
+    md += `| :--- | :--- | :---: | :--- |\n`;
+    for (const m of missingProvisions) {
+      md += `| **${m.title}** | ${m.statutory_reference} | \`${m.severity}\` | ${m.risk_explanation} |\n`;
+    }
+    md += `\n---\n\n`;
+  }
+
+  // 5. Bangladesh Stamp Duty Advisory
+  if (stampAdvisory) {
+    md += `## 5. 📑 Bangladesh Stamp Duty & Legal Formalities Advisory\n\n`;
+    md += `> [!NOTE]\n`;
+    md += `> **MANDATORY EXECUTION COMPLIANCE:**  \n`;
+    md += `> ${stampAdvisory}\n\n`;
+    md += `---\n\n`;
+  }
+
+  // 6. Advocate Statutory Verification & Digital Seal
+  md += `## 6. Advocate Statutory Verification & Digital Seal\n\n`;
   if (advocateVerification?.sealApplied) {
     md += `> [!TIP]\n`;
     md += `> **STATUTORY ADVOCATE SIGN-OFF COMPLETED**\n`;
@@ -447,5 +504,6 @@ export function generateRealContractAuditMarkdown(
 
   md += `\n---\n`;
   md += `*Generated automatically by Advotech Copilot Sovereign Contract Intelligence Engine.*  \n`;
+  md += `*Statutes referenced: Laws of Bangladesh (Legislative and Parliamentary Affairs Division, bdlaws.minlaw.gov.bd).*  \n`;
   return md;
 }

@@ -79,6 +79,7 @@ export default function ContractMindPage() {
   const [apiContractId, setApiContractId] = useState<string | null>(null);
   const [apiAuditResult, setApiAuditResult] = useState<ContractAuditResult | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [auditedFor, setAuditedFor] = useState<"CLIENT" | "VENDOR" | "NEUTRAL">("CLIENT");
 
   const userRole = String(user?.role || "").toUpperCase();
   const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
@@ -167,7 +168,7 @@ export default function ContractMindPage() {
 
     setIsAnalyzing(true);
     try {
-      const result = await uploadContract(file);
+      const result = await uploadContract(file, undefined, auditedFor);
       setApiContractId(String(result.contract_id));
       setApiAuditResult(result);
       
@@ -358,6 +359,49 @@ export default function ContractMindPage() {
                 </div>
               </div>
             )}
+
+            {/* Party Perspective Selector */}
+            <div className="w-full max-w-xl mb-4 p-2.5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <span className="text-xs font-semibold text-(--text-primary) px-1 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                <span>{isBn ? "কার স্বার্থে অডিট হবে:" : "Audit Perspective:"}</span>
+              </span>
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setAuditedFor("CLIENT")}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                    auditedFor === "CLIENT"
+                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
+                      : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
+                  }`}
+                >
+                  🛡️ {isBn ? "ক্লায়েন্ট / ক্রেতা" : "Protect Client"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditedFor("VENDOR")}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                    auditedFor === "VENDOR"
+                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
+                      : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
+                  }`}
+                >
+                  💼 {isBn ? "সার্ভিস প্রোভাইডার" : "Protect Vendor"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditedFor("NEUTRAL")}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                    auditedFor === "NEUTRAL"
+                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
+                      : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
+                  }`}
+                >
+                  ⚖️ {isBn ? "নিরপেক্ষ" : "Neutral"}
+                </button>
+              </div>
+            </div>
 
             <div
               onDragOver={(e) => e.preventDefault()}
