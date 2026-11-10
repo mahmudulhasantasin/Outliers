@@ -10,12 +10,89 @@ import {
   Sparkles,
   Copy,
   ExternalLink,
+  Shield,
+  ShieldCheck,
+  Scale,
+  CheckCircle2,
+  BadgeCheck,
+  Clock,
+  FileText,
+  ScrollText,
+  Briefcase,
+  MessageSquare,
 } from "lucide-react";
 
 interface MarkdownViewerProps {
   content: string;
   className?: string;
   variant?: "document" | "chat";
+}
+
+function LegalBadge({
+  type,
+  label,
+}: {
+  type: "VOID" | "RESTRICTED" | "COMMERCIAL" | "REVIEW" | "COMPLIANT" | "VERIFIED" | "SEALED" | "PENDING";
+  label: string;
+}) {
+  switch (type) {
+    case "VOID":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold tracking-wide uppercase bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-rose-800 shadow-2xs whitespace-nowrap align-middle print:bg-rose-50 print:text-rose-950 print:border-rose-400">
+          <ShieldAlert className="w-2.5 h-2.5 text-rose-600 dark:text-rose-400 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+    case "RESTRICTED":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold tracking-wide uppercase bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs whitespace-nowrap align-middle print:bg-amber-50 print:text-amber-950 print:border-amber-400">
+          <Scale className="w-2.5 h-2.5 text-amber-600 dark:text-amber-400 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+    case "COMMERCIAL":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold tracking-wide uppercase bg-orange-50 dark:bg-orange-950/60 text-orange-800 dark:text-orange-300 border border-orange-200 dark:border-orange-800 shadow-2xs whitespace-nowrap align-middle print:bg-orange-50 print:text-orange-950 print:border-orange-400">
+          <AlertTriangle className="w-2.5 h-2.5 text-orange-600 dark:text-orange-400 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+    case "REVIEW":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold tracking-wide uppercase bg-amber-50/70 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800 shadow-2xs whitespace-nowrap align-middle print:bg-neutral-50 print:text-neutral-900 print:border-neutral-300">
+          <AlertCircle className="w-2.5 h-2.5 text-amber-500 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+    case "COMPLIANT":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-bold tracking-wide uppercase bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 shadow-2xs whitespace-nowrap align-middle print:bg-emerald-50 print:text-emerald-950 print:border-emerald-400">
+          <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+    case "VERIFIED":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-medium bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 shadow-2xs whitespace-nowrap align-middle print:bg-sky-50 print:text-sky-900 print:border-sky-300">
+          <BadgeCheck className="w-2.5 h-2.5 text-sky-600 dark:text-sky-400 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+    case "SEALED":
+      return (
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md font-mono text-[10px] font-bold tracking-wide bg-emerald-50 dark:bg-emerald-950/70 text-emerald-800 dark:text-emerald-200 border border-emerald-300 dark:border-emerald-700 shadow-2xs whitespace-nowrap align-middle print:bg-emerald-50 print:text-emerald-950 print:border-emerald-500">
+          <ShieldCheck className="w-3 h-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+    case "PENDING":
+      return (
+        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md font-mono text-[10px] font-medium bg-neutral-100 dark:bg-neutral-800/80 text-neutral-700 dark:text-neutral-300 border border-neutral-300 dark:border-neutral-700 shadow-2xs whitespace-nowrap align-middle print:bg-neutral-100 print:text-neutral-800 print:border-neutral-300">
+          <Clock className="w-2.5 h-2.5 text-neutral-500 dark:text-neutral-400 shrink-0" />
+          <span>{label}</span>
+        </span>
+      );
+  }
 }
 
 function DiffRedlineBlock({
@@ -169,14 +246,83 @@ export default function MarkdownViewer({
 
   const isChat = variant === "chat";
 
-  // Helper for inline markdown: **bold**, `code`, *italic*, [link](url)
+  // Helper for inline markdown: status badges, **bold**, `code`, *italic*, [link](url)
   const formatInlineText = (text: string): React.ReactNode[] => {
-    // Regex for [text](url), `code`, **bold**, *italic*
-    const regex = /(\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/g;
+    // Regex for [STATUS:type:label], legacy emoji status badges, bdlaws verification tags, [text](url), `code`, **bold**, *italic*
+    const regex = /(\[STATUS:[A-Z_]+:[^\]]+\]|[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}]\s*\*\*[^*]+\*\*|(?:\u2705\s*)?(?:\*\(bdlaws verified\)\*|\(bdlaws verified\))|\[[^\]]+\]\([^)]+\)|`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*)/gu;
     const parts = text.split(regex);
 
     return parts.map((part, idx) => {
       if (!part) return null;
+
+      // Status Badge: [STATUS:TYPE:LABEL]
+      if (part.startsWith("[STATUS:") && part.endsWith("]")) {
+        const match = part.match(/^\[STATUS:([A-Z_]+):([^\]]+)\]$/);
+        if (match) {
+          const bType = match[1].toUpperCase();
+          const bLabel = match[2].trim();
+          let cat: "VOID" | "RESTRICTED" | "COMMERCIAL" | "REVIEW" | "COMPLIANT" | "VERIFIED" | "SEALED" | "PENDING" = "REVIEW";
+          if (["VOID", "BREACH", "HIGH", "UNLAWFUL", "NON_COMPLIANT"].includes(bType)) {
+            cat = "VOID";
+          } else if (["RESTRICTED", "SCALED_DOWN", "PENALTY"].includes(bType)) {
+            cat = "RESTRICTED";
+          } else if (["COMMERCIAL", "COMMERCIAL_RISK"].includes(bType)) {
+            cat = "COMMERCIAL";
+          } else if (["COMPLIANT", "SUCCESS", "VALID"].includes(bType)) {
+            cat = "COMPLIANT";
+          } else if (["VERIFIED", "BDLAWS"].includes(bType)) {
+            cat = "VERIFIED";
+          } else if (["SEALED", "ADVOCATE_SEAL"].includes(bType)) {
+            cat = "SEALED";
+          } else if (["PENDING", "AWAITING_SEAL"].includes(bType)) {
+            cat = "PENDING";
+          }
+          return <LegalBadge key={idx} type={cat} label={bLabel} />;
+        }
+      }
+
+      // Legacy Emoji Status Fallback (handles cached audit reports gracefully)
+      if (
+        part.includes("VOID") ||
+        part.includes("RESTRICTED") ||
+        part.includes("COMMERCIAL") ||
+        part.includes("COMPLIANT") ||
+        part.includes("AMBIGUOUS") ||
+        part.includes("Advocate Verified") ||
+        part.includes("AI Audit Completed") ||
+        part.includes("bdlaws verified")
+      ) {
+        const cleanLabel = part
+          .replace(/^[\u{1F300}-\u{1F9FF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\s*]+/u, "")
+          .replace(/\*\*/g, "")
+          .replace(/^\*?\((.*?)\)\*?$/, "$1")
+          .trim();
+        const upper = cleanLabel.toUpperCase();
+        if (upper.includes("VOID") || upper.includes("UNLAWFUL") || upper.includes("REGULATORY BREACH") || upper === "HIGH RISK") {
+          return <LegalBadge key={idx} type="VOID" label={cleanLabel} />;
+        }
+        if (upper.includes("RESTRICTED") || upper.includes("SCALED-DOWN") || upper.includes("PENALTY")) {
+          return <LegalBadge key={idx} type="RESTRICTED" label={cleanLabel} />;
+        }
+        if (upper.includes("COMMERCIAL")) {
+          return <LegalBadge key={idx} type="COMMERCIAL" label={cleanLabel} />;
+        }
+        if (upper.includes("REVIEW") || upper.includes("AMBIGUOUS")) {
+          return <LegalBadge key={idx} type="REVIEW" label={cleanLabel} />;
+        }
+        if (upper.includes("COMPLIANT")) {
+          return <LegalBadge key={idx} type="COMPLIANT" label={cleanLabel} />;
+        }
+        if (upper.includes("ADVOCATE VERIFIED") || upper.includes("SEALED")) {
+          return <LegalBadge key={idx} type="SEALED" label={cleanLabel} />;
+        }
+        if (upper.includes("AWAITING") || upper.includes("AI AUDIT COMPLETED")) {
+          return <LegalBadge key={idx} type="PENDING" label={cleanLabel} />;
+        }
+        if (upper.includes("BDLAWS VERIFIED")) {
+          return <LegalBadge key={idx} type="VERIFIED" label="bdlaws verified" />;
+        }
+      }
 
       // Link: [text](url)
       if (part.startsWith("[") && part.includes("](") && part.endsWith(")")) {
@@ -253,23 +399,23 @@ export default function MarkdownViewer({
         elements.push(
           <div
             key={`table-${key}`}
-            className="my-3 overflow-x-auto rounded-xl border border-(--text-primary)/10"
+            className="my-3 overflow-x-auto rounded-xl border border-(--text-primary)/10 print:border print:border-neutral-300 print:rounded-lg print:break-inside-avoid"
           >
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-(--text-primary)/15 bg-(--bg-surface)">
+                <tr className="border-b border-(--text-primary)/15 bg-(--bg-surface) print:bg-neutral-100 print:border-b-2 print:border-neutral-300">
                   {headerRow.map((cell, idx) => (
-                    <th key={idx} className="p-2.5 font-semibold text-(--text-primary)">
+                    <th key={idx} className="p-2.5 font-semibold text-(--text-primary) print:text-neutral-900 print:py-2">
                       {formatInlineText(cell.trim())}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-(--text-primary)/8">
+              <tbody className="divide-y divide-(--text-primary)/8 print:divide-neutral-200">
                 {bodyRows.map((row, rIdx) => (
-                  <tr key={rIdx} className="hover:bg-(--text-primary)/2 transition-colors">
+                  <tr key={rIdx} className="hover:bg-(--text-primary)/2 transition-colors print:hover:bg-transparent">
                     {row.map((cell, cIdx) => (
-                      <td key={cIdx} className="p-2.5 text-(--text-primary)/85 align-top">
+                      <td key={cIdx} className="p-2.5 text-(--text-primary)/85 align-middle print:text-neutral-900 print:py-2">
                         {formatInlineText(cell.trim())}
                       </td>
                     ))}
@@ -421,9 +567,45 @@ export default function MarkdownViewer({
         continue;
       }
 
-      // Standard Blockquote: > text
+      // Blockquote or Negotiation Strategy: > text
       if (line.trim().startsWith(">")) {
         const bqText = line.trim().replace(/^>\s?/, "");
+
+        // Check for Tactical Negotiation / Counter-Proposal guidance
+        if (
+          bqText.startsWith("**Tactical Negotiation") ||
+          bqText.startsWith("**Tactical Counter-Proposal") ||
+          bqText.includes("Tactical Negotiation")
+        ) {
+          const negoLines: string[] = [bqText];
+          let j = i + 1;
+          while (j < lines.length && lines[j].trim().startsWith(">") && !lines[j].trim().startsWith("> [!")) {
+            negoLines.push(lines[j].trim().replace(/^>\s?/, ""));
+            j++;
+          }
+          i = j - 1;
+
+          elements.push(
+            <div
+              key={`nego-${i}`}
+              className="my-3 p-3.5 rounded-2xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/40 dark:bg-indigo-950/20 text-indigo-950 dark:text-indigo-100 flex flex-col gap-1.5 print:bg-neutral-50 print:border print:border-neutral-300 print:text-neutral-900 print:rounded-lg print:break-inside-avoid"
+            >
+              <div className="flex items-center gap-2 font-semibold text-xs uppercase tracking-wider text-indigo-700 dark:text-indigo-300 print:text-neutral-900">
+                <MessageSquare className="w-3.5 h-3.5 shrink-0 text-indigo-600 dark:text-indigo-400 print:text-neutral-700" />
+                <span>Tactical Negotiation Guidance & Counter-Proposal</span>
+              </div>
+              <div className="text-xs leading-relaxed opacity-95 pl-5.5 font-normal">
+                {negoLines.map((nl, nIdx) => (
+                  <p key={nIdx} className={nIdx > 0 ? "mt-1.5" : ""}>
+                    {formatInlineText(nl.replace(/^\*\*.*?\*\*:?\s*/, ""))}
+                  </p>
+                ))}
+              </div>
+            </div>
+          );
+          continue;
+        }
+
         elements.push(
           <blockquote
             key={`bq-${i}`}
@@ -450,14 +632,33 @@ export default function MarkdownViewer({
         continue;
       }
       if (line.startsWith("## ")) {
+        const rawH2 = line.slice(3).trim();
+        let h2Icon = null;
+        if (/summary/i.test(rawH2)) {
+          h2Icon = <Shield className="w-4.5 h-4.5 text-indigo-500 shrink-0 inline mr-2 print:text-neutral-800" />;
+        } else if (/matrix|compliance/i.test(rawH2)) {
+          h2Icon = <Scale className="w-4.5 h-4.5 text-indigo-500 shrink-0 inline mr-2 print:text-neutral-800" />;
+        } else if (/redline|audit|clause/i.test(rawH2)) {
+          h2Icon = <FileText className="w-4.5 h-4.5 text-indigo-500 shrink-0 inline mr-2 print:text-neutral-800" />;
+        } else if (/missing|protective|gap/i.test(rawH2)) {
+          h2Icon = <ShieldAlert className="w-4.5 h-4.5 text-rose-500 shrink-0 inline mr-2 print:text-neutral-800" />;
+        } else if (/stamp|formalit/i.test(rawH2)) {
+          h2Icon = <ScrollText className="w-4.5 h-4.5 text-amber-500 shrink-0 inline mr-2 print:text-neutral-800" />;
+        } else if (/advocate|verification|seal/i.test(rawH2)) {
+          h2Icon = <ShieldCheck className="w-4.5 h-4.5 text-emerald-500 shrink-0 inline mr-2 print:text-neutral-800" />;
+        } else if (/parties|overview/i.test(rawH2)) {
+          h2Icon = <Briefcase className="w-4.5 h-4.5 text-neutral-500 shrink-0 inline mr-2 print:text-neutral-800" />;
+        }
+
         elements.push(
           <h2
             key={`h2-${i}`}
             className={`${
-              isChat ? "text-sm sm:text-base mt-2.5 mb-1" : "text-lg mt-6 mb-2"
-            } font-serif font-semibold text-(--text-primary) pb-1 border-b border-(--text-primary)/10`}
+              isChat ? "text-sm sm:text-base mt-2.5 mb-1" : "text-lg mt-7 mb-2.5"
+            } font-serif font-bold text-(--text-primary) pb-1 border-b border-(--text-primary)/10 flex items-center`}
           >
-            {formatInlineText(line.slice(3))}
+            {h2Icon}
+            <span>{formatInlineText(rawH2)}</span>
           </h2>
         );
         continue;

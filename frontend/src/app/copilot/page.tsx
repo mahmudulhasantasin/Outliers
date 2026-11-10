@@ -38,6 +38,7 @@ import {
   Check,
   Clock,
   Gavel, // ✅ NEW
+  Sparkles,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -226,9 +227,9 @@ export default function CopilotPage() {
               const summaryText = language === "bn" ? (parsed.summaryBn || parsed.summaryEn) : (parsed.summaryEn || parsed.summaryBn);
               const riskText = parsed.riskScore != null ? `${parsed.riskScore}/100` : null;
 
-              const introEn = `📋 **Contract Context Attached: ${parsed.titleEn || title}**\n\n${partiesText ? `- **Parties:** ${partiesText}\n` : ""}${riskText ? `- **Assessed Risk:** ${parsed.riskGradeEn || "Audited"} (${riskText})\n` : ""}${summaryText ? `- **Audit Summary:** ${summaryText}\n` : ""}\nI have loaded this agreement and its statutory audit records into our new consultation session. You can ask me to redline any clause under Bangladesh statutes (Labour Act 2006, Contract Act 1872), explain non-compliance liabilities, or draft protective terms. How can I help you?`;
+              const introEn = `**Contract Context Attached: ${parsed.titleEn || title}**\n\n${partiesText ? `- **Parties:** ${partiesText}\n` : ""}${riskText ? `- **Assessed Risk:** ${parsed.riskGradeEn || "Audited"} (${riskText})\n` : ""}${summaryText ? `- **Audit Summary:** ${summaryText}\n` : ""}\nI have loaded this agreement and its statutory audit records into our new consultation session. You can ask me to redline any clause under Bangladesh statutes (Labour Act 2006, Contract Act 1872), explain non-compliance liabilities, or draft protective terms. How can I help you?`;
 
-              const introBn = `📋 **চুক্তিপত্রের কনটেক্সট সংযুক্ত হয়েছে: ${parsed.titleBn || title}**\n\n${partiesText ? `- **পক্ষসমূহ:** ${partiesText}\n` : ""}${riskText ? `- **আইনি ঝুঁকি:** ${parsed.riskGradeBn || "অডিট সম্পন্ন"} (${riskText})\n` : ""}${summaryText ? `- **অডিট সারাংশ:** ${summaryText}\n` : ""}\nএই চুক্তিপত্র এবং এর অডিট রেকর্ড নতুন চ্যাট সেশনে লোড করা হয়েছে। আপনি বাংলাদেশ আইন (শ্রম আইন ২০০৬, চুক্তি আইন ১৮৭২) অনুযায়ী ধারা সংশোধন, লিগ্যাল ঝুঁকি এবং ড্রাফটিং নিয়ে প্রশ্ন করতে পারেন। আমি কীভাবে সাহায্য করতে পারি?`;
+              const introBn = `**চুক্তিপত্রের প্রেক্ষাপট সংযুক্ত করা হয়েছে: ${parsed.titleBn || title}**\n\n${partiesText ? `- **পক্ষসমূহ:** ${partiesText}\n` : ""}${riskText ? `- **আইনি ঝুঁকি:** ${parsed.riskGradeBn || "অডিট সম্পন্ন"} (${riskText})\n` : ""}${summaryText ? `- **অডিট সারাংশ:** ${summaryText}\n` : ""}\nএই চুক্তিপত্র এবং এর অডিট রেকর্ড নতুন চ্যাট সেশনে লোড করা হয়েছে। আপনি বাংলাদেশ আইন (শ্রম আইন ২০০৬, চুক্তি আইন ১৮৭২) অনুযায়ী ধারা সংশোধন, লিগ্যাল ঝুঁকি এবং ড্রাফটিং নিয়ে প্রশ্ন করতে পারেন। আমি কীভাবে সাহায্য করতে পারি?`;
 
               setMessages([
                 {
@@ -806,9 +807,10 @@ export default function CopilotPage() {
                               key={sIdx}
                               type="button"
                               onClick={() => handleSendPrompt(step)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-(--text-primary)/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left"
+                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-(--text-primary)/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left inline-flex items-center gap-1.5"
                             >
-                              💡 {step}
+                              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                              <span>{step}</span>
                             </button>
                           ))}
                         </div>

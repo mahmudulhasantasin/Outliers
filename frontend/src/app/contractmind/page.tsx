@@ -22,7 +22,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import {
   Upload, ArrowLeft, Bot, Printer, CheckCircle2, Shield,
-  Download, ArrowRight, ShieldCheck, AlertTriangle,
+  Download, ArrowRight, ShieldCheck, AlertTriangle, Briefcase, Scale,
 } from "lucide-react";
 
 /**
@@ -370,35 +370,38 @@ export default function ContractMindPage() {
                 <button
                   type="button"
                   onClick={() => setAuditedFor("CLIENT")}
-                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     auditedFor === "CLIENT"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
-                  🛡️ {isBn ? "ক্লায়েন্ট / ক্রেতা" : "Protect Client"}
+                  <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{isBn ? "ক্লায়েন্ট / ক্রেতা" : "Protect Client"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuditedFor("VENDOR")}
-                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     auditedFor === "VENDOR"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
-                  💼 {isBn ? "সার্ভিস প্রোভাইডার" : "Protect Vendor"}
+                  <Briefcase className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{isBn ? "সার্ভিস প্রোভাইডার" : "Protect Vendor"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuditedFor("NEUTRAL")}
-                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer ${
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
                     auditedFor === "NEUTRAL"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
-                  ⚖️ {isBn ? "নিরপেক্ষ" : "Neutral"}
+                  <Scale className="w-3.5 h-3.5 text-sky-500" />
+                  <span>{isBn ? "নিরপেক্ষ" : "Neutral"}</span>
                 </button>
               </div>
             </div>
