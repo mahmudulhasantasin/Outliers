@@ -44,7 +44,7 @@ import {
 } from "lucide-react";
 
 export default function ProfilePage() {
-  const { user, updateUser, refreshUser, logout } = useAuth();
+  const { user, updateUser, refreshUser, logout, isLoading } = useAuth();
   const { language } = useLanguage();
   const router = useRouter();
   const isBn = language === "bn";
@@ -77,6 +77,7 @@ export default function ProfilePage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCheckingLawyerStatus, setIsCheckingLawyerStatus] = useState(false);
 
   // Sync draft states when user loads
   useEffect(() => {
@@ -109,11 +110,16 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    loadActivityStats();
-    if (refreshUser) {
-      refreshUser().catch(() => {});
+    if (user) {
+      loadActivityStats();
     }
-  }, [loadActivityStats, refreshUser]);
+  }, [user, loadActivityStats]);
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [isLoading, user, router]);
 
   if (!user) {
     return (
@@ -129,7 +135,6 @@ export default function ProfilePage() {
   }
 
   const isLawyer = String(user.role).toUpperCase() === "LAWYER" || !!user.lawyerProfile;
-  const [isCheckingLawyerStatus, setIsCheckingLawyerStatus] = useState(false);
 
   const handleRefreshLawyerStatus = async () => {
     setIsCheckingLawyerStatus(true);
