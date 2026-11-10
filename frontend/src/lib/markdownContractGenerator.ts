@@ -25,6 +25,25 @@ function normalizeRiskLevel(raw: unknown): "HIGH" | "MEDIUM" | "LOW" {
   return "LOW";
 }
 
+function cleanExecutiveSummary(raw: unknown, defaultFallback: string): string {
+  if (!raw) return defaultFallback;
+  let text = String(raw).trim();
+
+  // If raw object is dumped as stringified Python list of dicts: [{'type': 'text', 'text': ...}]
+  if (text.startsWith("[") && (text.includes("'type': 'text'") || text.includes('"type": "text"'))) {
+    try {
+      const matches = Array.from(text.matchAll(/['"]text['"]\s*:\s*(['"])((?:(?!\1)[^\\]|\\.)*)\1/g));
+      if (matches.length > 0) {
+        text = matches
+          .map((m) => m[2].replace(/\\n/g, "\n").replace(/\\'/g, "'").replace(/\\"/g, '"'))
+          .join("");
+      }
+    } catch {}
+  }
+
+  return text.trim() || defaultFallback;
+}
+
 export function generateContractAuditMarkdown(
   contractId: string,
   language: "en" | "bn" = "en",
@@ -320,13 +339,18 @@ export function generateRealContractAuditMarkdown(
        : riskScore >= 35 ? (isBn ? "মাঝারি ঝুঁকি (Moderate Risk)" : "Moderate Risk")
        : (isBn ? "নিম্ন ঝুঁকি (Low Risk)" : "Low Risk"));
 
-  const summary =
-    result.summary ||
-    result.executive_summary ||
-    (isBn
-      ? "চুক্তিপত্রের ধারাগুলো বাংলাদেশ আইনের অধীনে পরীক্ষা করা হয়েছে।"
-      : "Clauses evaluated under codified statutes of Bangladesh.");
-  const clauses = result.clauses || [];
+  const summaryFallback = isBn
+    ? "চুক্তিপত্রের ধারাগুলো বাংলাদেশ আইনের অধীনে পরীক্ষা করা হয়েছে।"
+    : "Clauses evaluated under codified statutes of Bangladesh.";
+  const summary = cleanExecutiveSummary(result.summary || result.executive_summary, summaryFallback);
+
+  const rawClauses = (result.clauses || []).slice();
+  rawClauses.sort((a: any, b: any) => {
+    const numA = parseInt(String(a.clause_number || "").replace(/\D+/g, "") || "999", 10);
+    const numB = parseInt(String(b.clause_number || "").replace(/\D+/g, "") || "999", 10);
+    return numA - numB;
+  });
+  const clauses = rawClauses;
   const missingProvisions = result.missing_provisions || [];
   const stampAdvisory = result.stamp_duty_advisory;
   const auditedFor = String(result.audited_for || "CLIENT").toUpperCase();

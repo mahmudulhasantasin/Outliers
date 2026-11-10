@@ -559,7 +559,7 @@ export default function ContractMindPage() {
               )}
             </div>
 
-            <div className="hidden print:block pt-8 mt-12 border-t border-neutral-300 text-xs text-neutral-500 space-y-1.5 font-sans break-inside-avoid print-avoid-break">
+            <div className="hidden print:block pt-3 mt-4 border-t border-neutral-300 text-xs text-neutral-500 space-y-1 font-sans break-inside-avoid print-avoid-break">
               <div className="flex justify-between items-baseline text-[11px] font-medium text-neutral-700">
                 <span>ContractMind · Autonomous Statutory Contract Auditor</span>
                 <span>Verified against bdlaws (Government of Bangladesh)</span>
