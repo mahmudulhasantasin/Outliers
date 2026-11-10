@@ -172,6 +172,24 @@ export const api = {
       body: formData,
       isFormData: true,
     }),
+
+  downloadBlob: async (path: string): Promise<Blob> => {
+    const token = getToken();
+    const reqHeaders: Record<string, string> = {};
+    if (token) {
+      reqHeaders["Authorization"] = `Bearer ${token}`;
+    }
+    const fullUrl = `${BASE_URL}${path}`;
+    const res = await fetch(fullUrl, {
+      method: "GET",
+      headers: reqHeaders,
+    });
+    if (!res.ok) {
+      throw new ApiError(res.status, "Failed to download file");
+    }
+    return res.blob();
+  },
 };
 
 export default api;
+

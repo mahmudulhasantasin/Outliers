@@ -305,6 +305,11 @@ export async function getContractDetail(contractId: string | number): Promise<Co
   return api.get<ContractAuditResult>(`/api/contracts/${contractId}`);
 }
 
+/** Download redlined DOCX file (GET /api/contracts/{id}/download-redline) */
+export async function downloadRedlineDocx(contractId: string | number): Promise<Blob> {
+  return api.downloadBlob(`/api/contracts/${contractId}/download-redline`);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // CHAT TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────
@@ -336,6 +341,7 @@ export interface ChatHistoryMessage {
   content: string;
   citations?: CitedSection[] | null;
   cited_cases?: CitedCase[] | null;
+  suggested_next_steps?: string[] | null;
   created_at?: string;
 }
 
@@ -1620,3 +1626,7 @@ export async function submitFeedback(data: FeedbackPayload): Promise<FeedbackRes
 export async function subscribeNewsletter(email: string): Promise<NewsletterResponse> {
   return api.post<NewsletterResponse>("/api/inquiries/newsletter", { email });
 }
+
+
+
+

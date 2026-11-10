@@ -16,13 +16,14 @@ import {
   uploadContract,
   requestLawyerVerification,
   getContractDetail,
+  downloadRedlineDocx,
   ContractAuditResult,
 } from "@/lib/apiServices";
 import { useAuth } from "@/context/AuthContext";
 import { useNotification } from "@/context/NotificationContext";
 import {
   Upload, ArrowLeft, Bot, Printer, CheckCircle2, Shield,
-  Download, ArrowRight, ShieldCheck, AlertTriangle, Briefcase, Scale,
+  Download, ArrowRight, ShieldCheck, AlertTriangle, Briefcase, Scale, FileText,
 } from "lucide-react";
 
 /**
@@ -72,6 +73,7 @@ export default function ContractMindPage() {
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [selectedContractId, setSelectedContractId] = useState<string>("employment-agreement");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isDownloadingRedline, setIsDownloadingRedline] = useState<boolean>(false);
   const [isDispatching, setIsDispatching] = useState<boolean>(false);
   const [dispatchedDecision, setDispatchedDecision] = useState<DispatchDecision | null>(null);
   const [lawyerSealApplied, setLawyerSealApplied] = useState<boolean>(false);
@@ -273,6 +275,31 @@ export default function ContractMindPage() {
 
   const handleDownloadReport = () => window.print();
 
+  const handleDownloadRedlineDocx = async () => {
+    const contractId = apiContractId || (apiAuditResult as any)?.contract_id || (apiAuditResult as any)?.id;
+    if (!contractId) {
+      toast.error(isBn ? "সংরক্ষিত চুক্তির ক্ষেত্রে DOCX ফাইল ডাউনলোড সম্ভব।" : "Redlined DOCX is available for uploaded agreements.");
+      return;
+    }
+    try {
+      setIsDownloadingRedline(true);
+      const blob = await downloadRedlineDocx(contractId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Redlined_Contract_${contractId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(isBn ? "রেডলাইন করা DOCX ফাইল সফলভাবে ডাউনলোড হয়েছে!" : "Redlined DOCX downloaded successfully!");
+    } catch (err: any) {
+      toast.error(err?.message || (isBn ? "ডাউনলোড করতে ব্যর্থ হয়েছে" : "Failed to download redlined DOCX"));
+    } finally {
+      setIsDownloadingRedline(false);
+    }
+  };
+
   const handleOpenInCopilot = () => {
     const auditObj = apiAuditResult as unknown as Record<string, unknown> | null;
     const currentAuditObj = currentAudit as unknown as Record<string, unknown>;
@@ -471,6 +498,14 @@ export default function ContractMindPage() {
                   <Printer className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "প্রিন্ট / পিডিএফ" : "Print / PDF"}</span>
                 </button>
+                <button onClick={handleDownloadRedlineDocx} disabled={isDownloadingRedline} className="px-3.5 py-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-500/20 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50">
+                  {isDownloadingRedline ? (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  <span>{language === "bn" ? "রেডলাইন (DOCX)" : "Redline (.docx)"}</span>
+                </button>
                 <button onClick={() => handleOpenInCopilot()} className="px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer">
                   <Bot className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "কোপাইলট আলোচনা" : "Open in Copilot"}</span>
@@ -500,9 +535,17 @@ export default function ContractMindPage() {
                   </div>
 
                   <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 flex-wrap w-full sm:w-auto">
-                    <button onClick={handleDownloadReport} className="px-4 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer">
+                    <button onClick={handleDownloadReport} className="px-3.5 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer">
                       <Download className="w-4 h-4 text-(--text-muted)" />
-                      <span>{language === "bn" ? "ডাউনলোড রিপোর্ট (PDF)" : "Download Report (PDF)"}</span>
+                      <span>{language === "bn" ? "রিপোর্ট (PDF)" : "Report (PDF)"}</span>
+                    </button>
+                    <button onClick={handleDownloadRedlineDocx} disabled={isDownloadingRedline} className="px-4 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 flex items-center gap-2 transition-colors cursor-pointer shadow-sm disabled:opacity-50">
+                      {isDownloadingRedline ? (
+                        <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      )}
+                      <span>{language === "bn" ? "ডাউনলোড রেডলাইন (.DOCX)" : "Download Redline (.DOCX)"}</span>
                     </button>
                     <button onClick={handleSendToAdvocate} disabled={isDispatching} className="px-5 py-2.5 rounded-xl text-xs font-bold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 flex items-center gap-2 transition-opacity cursor-pointer shadow-sm disabled:opacity-50">
                       {isDispatching ? (
@@ -574,3 +617,4 @@ export default function ContractMindPage() {
     </AppShell>
   );
 }
+
