@@ -96,13 +96,13 @@ export default function PricingPage() {
 
   const borderClass = "border-(--text-primary)/10";
 
-  // ✅ Check if user is Enterprise
+  // [UPDATED] Check if user is Enterprise
   const isEnterprise = 
     String(user?.role).toLowerCase().includes("enterprise") || 
     user?.role === "enterprise_admin" || 
     user?.role === "enterprise_member";
 
-  // ✅ Determine which balance to show (Company Pool vs Personal)
+  // [UPDATED] Determine which balance to show (Company Pool vs Personal)
   const displayBalance = isEnterprise 
     ? (user?.enterprise_credit_balance ?? 0) 
     : (user?.creditBalance ?? summary?.current_balance ?? 0);
@@ -322,7 +322,7 @@ export default function PricingPage() {
     );
   };
 
-  // ✅ Filter packages based on user role
+  // [UPDATED] Filter packages based on user role
   const displayPackages = packages.filter((pkg) => {
     const isEnterprisePack = pkg.name.toLowerCase().includes("enterprise");
     if (isEnterprise) {

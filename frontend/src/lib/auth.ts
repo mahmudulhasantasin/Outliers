@@ -31,7 +31,7 @@ export interface TokenResponse {
 /**
  * Persist a REAL backend login/verify-otp session.
  *
- * ✅ BUG A FIX:
+ * [UPDATED] BUG A FIX:
  *   When a real token is being stored, any stale demo session
  *   (app_auth_v2 from a previous "Login as Demo Lawyer/Admin" click)
  *   MUST be cleared. Otherwise AuthContext's mount effect will
@@ -41,7 +41,7 @@ export interface TokenResponse {
 export function saveTokenResponse(data: TokenResponse, overrideRole?: string): void {
   if (typeof window === "undefined") return;
 
-  // ✅ BUG A FIX — kill any demo session before writing the real token
+  // [UPDATED] BUG A FIX — kill any demo session before writing the real token
   localStorage.removeItem(DEMO_KEY);
 
   localStorage.setItem(TOKEN_KEY, data.access_token);

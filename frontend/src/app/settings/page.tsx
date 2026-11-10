@@ -81,7 +81,7 @@ export default function SettingsPage() {
     ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("").toUpperCase()
     : "U";
 
-  // ✅ FIX: Separate Admin and Member logic
+  // [UPDATED] FIX: Separate Admin and Member logic
   const isEnterpriseAdmin =
     String(user?.role).toLowerCase() === "enterprise_admin" ||
     Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember);
@@ -94,7 +94,7 @@ export default function SettingsPage() {
   const lawyerStatus = String(user?.lawyerProfile?.verificationStatus || "").toLowerCase();
   const isPendingLawyer = Boolean(user?.lawyerProfile && lawyerStatus !== "verified");
 
-  // ✅ FIX: Dynamic Balance Logic
+  // [UPDATED] FIX: Dynamic Balance Logic
   let displayBalance = user?.creditBalance ?? 0;
   let balanceLabel = isBn ? "উপলব্ধ অ্যাকাউন্ট ক্রেডিট ব্যালেন্স:" : "Available Credit Balance:";
   let balanceDesc = isBn ? "৫০ ক্রেডিট = ১টি সম্পূর্ণ চুক্তি অডিট" : "50 credits = 1 full contract statutory audit";
@@ -190,7 +190,7 @@ export default function SettingsPage() {
     try {
       const [settingsData, payData] = await Promise.allSettled([getMySettings(), getPaymentSummary()]);
       
-      // ✅ FIX: Read from `.lawyer` and map updated backend keys
+      // [UPDATED] FIX: Read from `.lawyer` and map updated backend keys
       if (settingsData.status === "fulfilled" && settingsData.value?.lawyer) {
         const lp = settingsData.value.lawyer;
         if (typeof lp.max_concurrent_tasks === "number") setMaxActiveReviews(lp.max_concurrent_tasks);
@@ -212,7 +212,7 @@ export default function SettingsPage() {
     e.preventDefault();
     setLawyerSettingsLoading(true);
     try {
-      // ✅ FIX: Send updated payload keys that match the backend
+      // [UPDATED] FIX: Send updated payload keys that match the backend
       await updateLawyerSettings({
         max_concurrent_tasks: maxActiveReviews,
         auto_accept_offers: autoAcceptOffers,
@@ -339,7 +339,12 @@ export default function SettingsPage() {
                 <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-(--accent-solid)/10 text-(--accent-solid) border border-(--accent-solid)/20">
                   {String(user?.role).toUpperCase() === "LAWYER" ? (isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer") : String(user?.role).toUpperCase() === "ADMIN" ? (isBn ? "সিস্টেম অ্যাডমিন" : "System Admin") : isEnterprise ? (isBn ? "এন্টারপ্রাইজ ব্যবহারকারী" : "Enterprise") : (isBn ? "সাধারণ ব্যবহারকারী" : "General User")}
                 </span>
-                {photoSuccess && <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold animate-in fade-in">{isBn ? "ছবি সফলভাবে আপলোড হয়েছে ✓" : "Photo uploaded successfully ✓"}</span>}
+                {photoSuccess && (
+                  <span className="inline-flex items-center gap-1 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold animate-in fade-in">
+                    <Check className="w-3 h-3" />
+                    <span>{isBn ? "ছবি সফলভাবে আপলোড হয়েছে" : "Photo uploaded successfully"}</span>
+                  </span>
+                )}
                 {photoError && <span className="text-[11px] text-rose-500 font-medium">{photoError}</span>}
               </div>
             </div>
@@ -420,7 +425,7 @@ export default function SettingsPage() {
         {String(user?.role).toUpperCase() === "LAWYER" && (
           <Section
             title={isBn ? "আইনজীবী কর্মদক্ষতা ও অগ্রাধিকার সেটিংস" : "Advocate Preferences & Workload"}
-            badge={lawyerSettingsToast ? (isBn ? "সংরক্ষিত ✓" : "Saved ✓") : undefined}
+            badge={lawyerSettingsToast ? (isBn ? "সংরক্ষিত" : "Saved") : undefined}
           >
             <form onSubmit={handleSaveLawyerSettings} className="space-y-4">
               {/* Availability Hero Switch */}
@@ -681,7 +686,7 @@ export default function SettingsPage() {
           </Section>
         )}
 
-        {/* ✅ FIX: Credits & Billing Hub Update */}
+        {/* [UPDATED] FIX: Credits & Billing Hub Update */}
         <Section title={isBn ? "ক্রেডিট ও পেমেন্ট ম্যানেজমেন্ট" : "Credits & Billing Hub"}>
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/5">
@@ -694,7 +699,7 @@ export default function SettingsPage() {
                 <p className="text-[11px] text-(--text-muted) mt-1">{balanceDesc}</p>
               </div>
               
-              {/* ✅ MEMBER or PENDING roles jonno Buy button hide koro */}
+              {/* [UPDATED] MEMBER or PENDING roles jonno Buy button hide koro */}
               {!isEnterpriseMember && !isPendingEnterpriseAdmin && !isPendingLawyer && (
                 <button type="button" onClick={() => router.push("/pricing")} className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 self-start sm:self-auto shrink-0 shadow-xs">
                   <Coins className="w-4 h-4 text-amber-400" />

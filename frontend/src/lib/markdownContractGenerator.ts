@@ -11,7 +11,7 @@ import { CONTRACT_AUDITS, ContractAudit } from "@/data/contractAudits";
  * legacy cached title-case "High Risk"/"Review Needed"/"Compliant", or demo data)
  * into a single canonical enum.
  *
- * ✅ FIX #1 — backend now sends "HIGH"/"MODERATE"/"LOW". Old cache & demo data
+ * [UPDATED] FIX #1 — backend now sends "HIGH"/"MODERATE"/"LOW". Old cache & demo data
  *    still use title-case, so this guards against silent "COMPLIANT" fallbacks.
  */
 function normalizeRiskLevel(raw: unknown): "HIGH" | "MEDIUM" | "LOW" {

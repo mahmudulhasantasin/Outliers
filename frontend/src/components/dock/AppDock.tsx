@@ -319,7 +319,7 @@ export default function AppDock() {
 
   return (
     <>
-      {/* ✅ Mobile Top Hamburger Button */}
+      {/* [UPDATED] Mobile Top Hamburger Button */}
       <div className="md:hidden fixed top-4 left-4 z-100">
         <button
           onClick={() => setIsMobileOpen(true)}
@@ -329,7 +329,7 @@ export default function AppDock() {
         </button>
       </div>
 
-      {/* ✅ Mobile Fullscreen Drawer Menu */}
+      {/* [UPDATED] Mobile Fullscreen Drawer Menu */}
       {isMobileOpen && (
         <div className="md:hidden fixed inset-0 z-100 flex bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           {/* Drawer Sidebar */}
@@ -349,7 +349,7 @@ export default function AppDock() {
             <div className="flex flex-col gap-2 overflow-y-auto">
               {items.map((item, index) => (
                 <button
-                  key={index} // ✅ FIX: Changed from item.label to index to resolve TS error
+                  key={index} // [UPDATED] FIX: Changed from item.label to index to resolve TS error
                   onClick={() => {
                     item.onClick();
                     setIsMobileOpen(false);
@@ -372,7 +372,7 @@ export default function AppDock() {
         </div>
       )}
 
-      {/* ✅ Desktop Floating Dock */}
+      {/* [UPDATED] Desktop Floating Dock */}
       <div className="hidden md:block">
         <VerticalDock
           items={items}

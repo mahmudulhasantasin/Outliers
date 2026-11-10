@@ -3,7 +3,7 @@
 import React from "react";
 import AppDock from "@/components/dock/AppDock";
 
-// ✅ FIX: Explicitly define the props interface to resolve the 'IntrinsicAttributes' error
+// [UPDATED] FIX: Explicitly define the props interface to resolve the 'IntrinsicAttributes' error
 interface AppShellProps {
   children: React.ReactNode;
   className?: string;

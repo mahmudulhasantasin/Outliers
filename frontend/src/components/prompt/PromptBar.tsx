@@ -296,7 +296,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
           '--pb-bg': background,
           '--pb-ink': color,
           '--pb-menu': menuBackground,
-          // ✅ FIX: width: 100% and maxWidth for responsive mobile support
+          // [UPDATED] FIX: width: 100% and maxWidth for responsive mobile support
           width: '100%',
           maxWidth: `${width}px`,
           '--pb-radius': `${radius}px`,
@@ -364,7 +364,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
           }}
         />
 
-        {/* ২. ভেতরের মূল বডি (Inner Content) - ✅ Flex Row, Compact Layout */}
+        {/* ২. ভেতরের মূল বডি (Inner Content) - Flex Row, Compact Layout */}
         <div
           className="relative isolate flex cursor-text items-end gap-2 py-2 pl-3 pr-1.5 sm:pl-4 sm:pr-2 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
           style={{ borderRadius: 'var(--pb-radius)' }}

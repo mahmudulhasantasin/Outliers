@@ -154,11 +154,11 @@ export interface UserProfile {
 
   creditBalance: number;
 
-  enterprise_credit_balance?: number | null; // ✅ NEW: Company Pool Balance
+  enterprise_credit_balance?: number | null; // [UPDATED] NEW: Company Pool Balance
 
   
 
-  // ✅ NEW: Member Quota Fields
+  // [UPDATED] NEW: Member Quota Fields
 
   member_credit_quota?: number | null;
 
@@ -600,7 +600,7 @@ function meResponseToProfile(data: any): UserProfile {
 
     
 
-    // ✅ NEW: Mapping member quota fields
+    // [UPDATED] NEW: Mapping member quota fields
 
     member_credit_quota: data.member_credit_quota ?? null,
 
@@ -825,7 +825,7 @@ const DEMO_ENTERPRISE_MEMBER: UserProfile = {
 
   
 
-  // ✅ NEW: Demo Quota Data
+  // [UPDATED] NEW: Demo Quota Data
 
   member_credit_quota: 250,
 

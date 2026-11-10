@@ -16,11 +16,11 @@ import {
   closeChatSession,
   type ChatSession,
   type CitedSection,
-  type CitedCase, // ✅ NEW
+  type CitedCase, // [UPDATED] NEW
 } from "@/lib/apiServices";
 import { useAuth } from "@/context/AuthContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
-import { maskPii } from "@/lib/piiMasker"; // ✅ Client-side PII Masking
+import { maskPii } from "@/lib/piiMasker"; // [UPDATED] Client-side PII Masking
 import {
   Scale,
   ShieldCheck,
@@ -37,7 +37,7 @@ import {
   Copy,
   Check,
   Clock,
-  Gavel, // ✅ NEW
+  Gavel, // [UPDATED] NEW
   Sparkles,
 } from "lucide-react";
 
@@ -50,7 +50,7 @@ interface ChatMessage {
   attachments?: string[];
   citations?: string[];
   apiCitations?: CitedSection[];
-  apiCitedCases?: CitedCase[]; // ✅ NEW
+  apiCitedCases?: CitedCase[]; // [UPDATED] NEW
   nextSteps?: string[];
   isThinking?: boolean;
   thoughtSeconds?: number;
@@ -65,7 +65,7 @@ function parseServerContent(content: unknown) {
       return {
         answerText: content as string,
         apiCitations: [] as CitedSection[],
-        apiCitedCases: [] as CitedCase[], // ✅ NEW
+        apiCitedCases: [] as CitedCase[], // [UPDATED] NEW
         nextSteps: [] as string[],
       };
     }
@@ -76,7 +76,7 @@ function parseServerContent(content: unknown) {
     return {
       answerText: (obj.detailed_answer as string) || (obj.response as string) || "",
       apiCitations: (obj.cited_sections as CitedSection[]) || [],
-      apiCitedCases: (obj.cited_cases as CitedCase[]) || [], // ✅ NEW
+      apiCitedCases: (obj.cited_cases as CitedCase[]) || [], // [UPDATED] NEW
       nextSteps: (obj.suggested_next_steps as string[]) || [],
     };
   }
@@ -84,7 +84,7 @@ function parseServerContent(content: unknown) {
   return {
     answerText: String(content || ""),
     apiCitations: [] as CitedSection[],
-    apiCitedCases: [] as CitedCase[], // ✅ NEW
+    apiCitedCases: [] as CitedCase[], // [UPDATED] NEW
     nextSteps: [] as string[],
   };
 }
@@ -194,7 +194,7 @@ export default function CopilotPage() {
                   textEn: parsedData.answerText || m.content,
                   textBn: parsedData.answerText || m.content,
                   apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
-                  apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // ✅ NEW
+                  apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // [UPDATED] NEW
                   nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
                   isThinking: false,
                 };
@@ -294,7 +294,7 @@ export default function CopilotPage() {
             textEn: parsedData.answerText || m.content,
             textBn: parsedData.answerText || m.content,
             apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
-            apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // ✅ NEW
+            apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // [UPDATED] NEW
             nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
             isThinking: false,
           };
@@ -393,7 +393,7 @@ export default function CopilotPage() {
         setActiveSessionId(sessionId);
       }
 
-      // ✅ SECURITY: Mask PII (emails, phones, NIDs) before sending to the backend AI
+      // [UPDATED] SECURITY: Mask PII (emails, phones, NIDs) before sending to the backend AI
       const { redactedText, stats } = maskPii(promptText, true);
       
       if (stats.totalRedactions > 0) {
@@ -414,7 +414,7 @@ export default function CopilotPage() {
 
       let answerText = "";
       let apiCitations: CitedSection[] = [];
-      let apiCitedCases: CitedCase[] = []; // ✅ NEW
+      let apiCitedCases: CitedCase[] = []; // [UPDATED] NEW
       let nextSteps: string[] = [];
 
       let parsedPayload: unknown = result.response;
@@ -430,7 +430,7 @@ export default function CopilotPage() {
         const obj = parsedPayload as Record<string, unknown>;
         answerText = (obj.detailed_answer as string) || (obj.response as string) || "";
         apiCitations = (obj.cited_sections as CitedSection[]) || [];
-        apiCitedCases = (obj.cited_cases as CitedCase[]) || []; // ✅ NEW
+        apiCitedCases = (obj.cited_cases as CitedCase[]) || []; // [UPDATED] NEW
         nextSteps = (obj.suggested_next_steps as string[]) || [];
       } else if (typeof parsedPayload === "string") {
         answerText = parsedPayload;
@@ -452,7 +452,7 @@ export default function CopilotPage() {
                 textBn: answerText || "বিশ্লেষণ সম্পন্ন হয়েছে।",
                 citations: [],
                 apiCitations,
-                apiCitedCases, // ✅ NEW
+                apiCitedCases, // [UPDATED] NEW
                 nextSteps,
                 isThinking: false,
                 thoughtSeconds: actualSeconds

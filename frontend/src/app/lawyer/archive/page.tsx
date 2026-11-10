@@ -34,6 +34,7 @@ import {
   Lock,
   Clock,
   ShieldAlert,
+  Star,
 } from "lucide-react";
 
 interface ArchivedVerification {
@@ -434,8 +435,9 @@ export default function LawyerArchivePage() {
                 <p className="text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
                   {isBn ? "রেটিং ও বিশ্বাসযোগ্যতা" : "Advocate Rating"}
                 </p>
-                <p className="text-lg sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1 truncate">
-                  {earnings?.rating ?? earnings?.avg_rating ?? 4.8} ★
+                <p className="text-lg sm:text-2xl font-bold font-mono text-[var(--text-primary)] mt-1 truncate inline-flex items-center gap-1.5">
+                  <span>{earnings?.rating ?? earnings?.avg_rating ?? 4.8}</span>
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500 shrink-0" />
                 </p>
                 <span className="text-[10px] text-[var(--text-muted)] truncate block">
                   {isBn ? "ক্লায়েন্ট সন্তুষ্টি" : "Client feedback"}

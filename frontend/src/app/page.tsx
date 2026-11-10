@@ -18,10 +18,10 @@ declare global {
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
-import { useAuth, normalizeUserRole } from "@/context/AuthContext"; // ✅ ADDED normalizeUserRole
+import { useAuth, normalizeUserRole } from "@/context/AuthContext"; // [UPDATED] ADDED normalizeUserRole
 import { useTheme } from "@/context/ThemeContext";
-import api from "@/lib/api"; // ✅ NEW
-import { saveTokenResponse } from "@/lib/auth"; // ✅ NEW
+import api from "@/lib/api"; // [UPDATED] NEW
+import { saveTokenResponse } from "@/lib/auth"; // [UPDATED] NEW
 import { submitFeedback, subscribeNewsletter } from "@/lib/apiServices";
 import {
   Scale,
@@ -53,6 +53,7 @@ import {
   Lock,
   Loader2,
   Clock,
+  Zap,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
 import DitherVeil from "@/components/effects/DitherVeil";
@@ -69,7 +70,7 @@ export default function LandingAndAuthPage() {
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   
-  // ✅ Moved isBn up to the top so all handlers can use it
+  // [UPDATED] Moved isBn up to the top so all handlers can use it
   const isBn = language === "bn";
 
   const {
@@ -83,7 +84,7 @@ export default function LandingAndAuthPage() {
     onboardEnterprise,
     registerEnterpriseMember,
     user,
-    refreshUser, // ✅ NEW - Needed for password reset
+    refreshUser, // [UPDATED] NEW - Needed for password reset
     loginWithGoogle,
   } = useAuth();
 
@@ -102,7 +103,7 @@ export default function LandingAndAuthPage() {
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [slideDirection, setSlideDirection] = useState<"down" | "up">("down");
 
-  // ✅ NEW: Forgot Password Flow State
+  // [UPDATED] NEW: Forgot Password Flow State
   const [forgotStep, setForgotStep] = useState<"none" | "email" | "otp">("none");
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotOtp, setForgotOtp] = useState("");
@@ -284,7 +285,7 @@ export default function LandingAndAuthPage() {
     setPasswordError("");
     setOtpInput("");
     setOtpError("");
-    // ✅ Reset forgot flow
+    // [UPDATED] Reset forgot flow
     setForgotStep("none");
     setForgotError("");
   };
@@ -426,7 +427,7 @@ const handleGoogleResponse = useCallback(
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
 
-      // ✅ NEW: Route unverified users into the OTP flow
+      // [UPDATED] NEW: Route unverified users into the OTP flow
       if (msg.toLowerCase().includes("not verified") || msg.toLowerCase().includes("verify")) {
         setPendingOtpEmail(loginEmail);
         setRegEmail(loginEmail);
@@ -446,7 +447,7 @@ const handleGoogleResponse = useCallback(
     }
   };
 
-  // ✅ NEW: Forgot Password Handlers
+  // [UPDATED] NEW: Forgot Password Handlers
   const handleForgotSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setForgotError("");
@@ -1834,7 +1835,7 @@ const handleGoogleResponse = useCallback(
               <div className="w-full max-w-[400px] mx-auto">
 
                 {/* ══════════════════════════════════════════════════════ */}
-                {/* ✅ FORGOT PASSWORD FLOW (overrides login/signup views) */}
+                {/* [UPDATED] FORGOT PASSWORD FLOW (overrides login/signup views) */}
                 {/* ══════════════════════════════════════════════════════ */}
                 {forgotStep !== "none" && (
                   <>
@@ -2035,7 +2036,7 @@ const handleGoogleResponse = useCallback(
                               {authLoading ? (isBn ? "অপেক্ষা করুন..." : "Signing in...") : (isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace")}
                             </button>
                             
-                            {/* ✅ NEW: Forgot password link */}
+                            {/* [UPDATED] NEW: Forgot password link */}
                             <button
                               type="button"
                               onClick={() => {
@@ -2091,8 +2092,9 @@ const handleGoogleResponse = useCallback(
                                   className="absolute inset-0 w-full h-full z-10 opacity-[0.001] cursor-pointer rounded-full flex items-center justify-center overflow-hidden [&>div]:!w-full [&>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full"
                                 />
                               </div>
-                              <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center">
-                                {isBn ? "⚡ ১ ক্লিকে সাধারণ ব্যবহারকারী অ্যাকাউন্ট ও ১০০ ফ্রি ক্রেডিট" : "⚡ 1-click general account with 100 free credits"}
+                              <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center flex items-center justify-center gap-1">
+                                <Zap className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span>{isBn ? "১ ক্লিকে সাধারণ ব্যবহারকারী অ্যাকাউন্ট ও ১০০ ফ্রি ক্রেডিট" : "1-click general account with 100 free credits"}</span>
                               </p>
                             </div>
 
@@ -2605,14 +2607,19 @@ const handleGoogleResponse = useCallback(
                               >
                                 {authLoading ? (
                                   <Loader2 className="w-4 h-4 animate-spin" />
-                                ) : selectedRole === "lawyer" ? (
-                                  (isBn ? "যাচাই সম্পন্ন ও আবেদন জমা দিন ✓" : "Verify & Submit Lawyer Application ✓")
-                                ) : selectedRole === "enterprise" && entTab === "company" ? (
-                                  (isBn ? "যাচাই সম্পন্ন ও কোম্পানি নিবন্ধন সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓")
-                                ) : selectedRole === "enterprise" && entTab === "member" ? (
-                                  (isBn ? "যাচাই সম্পন্ন ও মেম্বারশিপ আবেদন জমা দিন ✓" : "Verify & Submit Membership Request ✓")
                                 ) : (
-                                  (isBn ? "যাচাই সম্পন্ন ও প্রবেশ করুন ✓" : "Verify & Complete Registration ✓")
+                                  <>
+                                    <Check className="w-4 h-4 shrink-0 stroke-2" />
+                                    <span>
+                                      {selectedRole === "lawyer"
+                                        ? (isBn ? "যাচাই সম্পন্ন ও আবেদন জমা দিন" : "Verify & Submit Lawyer Application")
+                                        : selectedRole === "enterprise" && entTab === "company"
+                                        ? (isBn ? "যাচাই সম্পন্ন ও কোম্পানি নিবন্ধন সম্পন্ন করুন" : "Verify & Complete Registration")
+                                        : selectedRole === "enterprise" && entTab === "member"
+                                        ? (isBn ? "যাচাই সম্পন্ন ও মেম্বারশিপ আবেদন জমা দিন" : "Verify & Submit Membership Request")
+                                        : (isBn ? "যাচাই সম্পন্ন ও প্রবেশ করুন" : "Verify & Complete Registration")}
+                                    </span>
+                                  </>
                                 )}
                               </button>
 

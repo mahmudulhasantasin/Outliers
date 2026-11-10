@@ -704,7 +704,7 @@ export default function ArchivePage() {
                     {record.isLawyerVerified && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>{language === "bn" ? "আইনজীবী দ্বারা যাচাইকৃত ✓" : "Verified by Lawyer ✓"}</span>
+                        <span>{language === "bn" ? "আইনজীবী দ্বারা যাচাইকৃত" : "Verified by Lawyer"}</span>
                       </span>
                     )}
                   </div>

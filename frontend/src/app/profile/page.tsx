@@ -144,7 +144,7 @@ export default function ProfilePage() {
     }
   };
   
-  // ✅ FIX: Separate Admin and Member logic
+  // [UPDATED] FIX: Separate Admin and Member logic
   const isEnterpriseAdmin =
     String(user.role).toLowerCase() === "enterprise_admin" ||
     Boolean(user.enterpriseProfile && !user.enterpriseProfile.isTeamMember);
@@ -154,7 +154,7 @@ export default function ProfilePage() {
   const entStatus = String(user.enterpriseProfile?.verificationStatus || "").toLowerCase();
   const isPendingEnterpriseAdmin = isEnterpriseAdmin && entStatus !== "verified";
 
-  // ✅ FIX: Dynamic Balance Logic
+  // [UPDATED] FIX: Dynamic Balance Logic
   let displayBalance = user?.creditBalance ?? 0;
   let balanceLabel = isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance";
   let balanceDesc = isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations";
@@ -168,7 +168,7 @@ export default function ProfilePage() {
   } else if (isEnterpriseMember) {
     const quota = user?.member_credit_quota ?? 0;
     const used = user?.member_credit_used ?? 0;
-    displayBalance = Math.max(0, quota - used); // ✅ Member sees remaining quota
+    displayBalance = Math.max(0, quota - used); // [UPDATED] Member sees remaining quota
     balanceLabel = isBn ? "আপনার কোটা" : "Your Quota";
     balanceDesc = isBn ? `মোট বরাদ্দ: ${quota} ক্রেডিট` : `Total Allocated: ${quota} credits`;
     topUpLabel = isBn ? "কোটা দেখুন" : "View Quota";

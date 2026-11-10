@@ -11,7 +11,7 @@ import {
   getAdminPendingLawyers,
   getAdminPendingWithdrawals,
   markAdminWithdrawalPaid,
-  approveAdminWithdrawal, // ✅ Added for 2-step withdrawal flow
+  approveAdminWithdrawal, // [UPDATED] Added for 2-step withdrawal flow
   getAdminPendingPayments,
   approveAdminPayment,
   getAdminUsers,
@@ -350,10 +350,10 @@ export default function AdminPage() {
 
   const handleApproveLawyer = async (lawyer: AdminPendingLawyer) => {
     try {
-      // ✅ Only call the Context API once, using the correct lawyer_id
+      // [UPDATED] Only call the Context API once, using the correct lawyer_id
       await approveLawyerByAdmin(lawyer.lawyer_id);
       setLawyersList((prev) => prev.filter((l) => l.lawyer_id !== lawyer.lawyer_id));
-      showMessage(`✓ Advocate ${lawyer.full_name} approved successfully!`);
+      showMessage(`Advocate ${lawyer.full_name} approved successfully!`);
       loadData(true);
     } catch { showMessage("Approval failed. Please try again.", "error"); }
   };
@@ -367,7 +367,7 @@ export default function AdminPage() {
     } catch { showMessage("Failed to approve payment.", "error"); }
   };
 
-  // ✅ NEW: Fix withdrawal flow (2-step process)
+  // [UPDATED] NEW: Fix withdrawal flow (2-step process)
   const handleMarkWithdrawalPaid = async (id: string | number, trxId: string) => {
     try {
       await approveAdminWithdrawal(id);
@@ -580,9 +580,19 @@ export default function AdminPage() {
                 <div key={i} className={`${item.bg} rounded-2xl p-4 border border-(--text-primary)/5`}>
                   <p className="text-[10px] text-(--text-muted) font-semibold uppercase tracking-wider mb-1">{item.label}</p>
                   <p className={`text-3xl font-mono font-black ${item.color}`}>{item.value}</p>
-                  <p className="text-[10px] text-(--text-muted) mt-1 font-medium">
-                    {item.value > 0 ? "⚠ Needs attention" : "✓ All clear"}
-                  </p>
+                  <div className="flex items-center gap-1 text-[10px] text-(--text-muted) mt-1 font-medium">
+                    {item.value > 0 ? (
+                      <>
+                        <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                        <span>{isBn ? "মনোযোগ প্রয়োজন" : "Needs attention"}</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>{isBn ? "সব সম্পন্ন" : "All clear"}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>

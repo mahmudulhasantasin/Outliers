@@ -8,7 +8,7 @@ import { getToken, clearAuth } from "@/lib/auth";
 
 const LIVE_BACKEND_URL = "https://legal-copilot-backend-npq7.onrender.com";
 
-// ✅ FIX: Always fall back to the live backend URL if env var is missing.
+// [UPDATED] FIX: Always fall back to the live backend URL if env var is missing.
 // This prevents the frontend from accidentally hitting its own Vercel domain.
 const BASE_URL = process.env.NEXT_PUBLIC_API_URL || LIVE_BACKEND_URL;
 
@@ -52,7 +52,7 @@ async function request<T>(
 
   const fullUrl = `${BASE_URL}${path}`;
   
-  // ✅ SECURITY: Never log the request body (contains passwords, PII, and contract text)
+  // [UPDATED] SECURITY: Never log the request body (contains passwords, PII, and contract text)
   // Only log the URL in development mode.
   if (process.env.NODE_ENV === "development") {
     console.log(`[API Call] ${method} ${fullUrl}`);
@@ -86,7 +86,7 @@ async function request<T>(
     clearTimeout(timeoutId);
   }
 
-  // ✅ FIX: Only clear auth if 401 occurs on a protected route (NOT login/register).
+  // [UPDATED] FIX: Only clear auth if 401 occurs on a protected route (NOT login/register).
   if (res.status === 401 && !path.includes("/api/auth/login") && !path.includes("/api/auth/register")) {
     clearAuth();
     throw new ApiError(401, "Session expired or unauthorized. Please log in.");
@@ -131,7 +131,7 @@ async function request<T>(
 
   const data = await res.json();
   
-  // ✅ SECURITY: Never log response data in production (contains PII & legal text)
+  // [UPDATED] SECURITY: Never log response data in production (contains PII & legal text)
   if (process.env.NODE_ENV === "development") {
     console.log(`[API Success] ${res.status} ${fullUrl}`);
   }

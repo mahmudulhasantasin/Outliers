@@ -73,8 +73,8 @@ export const HITL_STATUS_CONFIG: Record<string, HITLStatusConfig> = {
     isTerminal: false,
   },
   COMPLETED: {
-    labelEn: "Verified ✓",
-    labelBn: "যাচাইকৃত ✓",
+    labelEn: "Verified",
+    labelBn: "যাচাইকৃত",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
     descriptionEn: "Contract reviewed and verified by a licensed advocate.",
     descriptionBn: "লাইসেন্সধারী আইনজীবী কর্তৃক চুক্তিটি পর্যালোচিত ও প্রত্যায়িত।",
@@ -678,7 +678,7 @@ export async function getActiveTasks(): Promise<ActiveTask[]> {
   }
 }
 
-// ✅ NEW: Upload signature or signed PDF
+// [UPDATED] NEW: Upload signature or signed PDF
 export async function uploadLawyerProof(file: File): Promise<{ file_path: string }> {
   const formData = new FormData();
   formData.append("file", file);
@@ -696,7 +696,7 @@ export async function submitReview(
     risk_override: req.risk_override ?? null,
     verified: req.verified ?? true,
     updated_clauses: req.updated_clauses || [],
-    // ✅ Removed fake hardcoded fallbacks
+    // [UPDATED] Removed fake hardcoded fallbacks
     signature_url: req.signature_url || "",
     signed_pdf_url: req.signed_pdf_url || "",
   };
