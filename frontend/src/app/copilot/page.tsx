@@ -39,6 +39,8 @@ import {
   Clock,
   Gavel, // [UPDATED] NEW
   Sparkles,
+  CheckCircle2,
+  HelpCircle,
 } from "lucide-react";
 
 interface ChatMessage {
@@ -52,6 +54,7 @@ interface ChatMessage {
   apiCitations?: CitedSection[];
   apiCitedCases?: CitedCase[]; // [UPDATED] NEW
   nextSteps?: string[];
+  followUps?: string[];
   isThinking?: boolean;
   thoughtSeconds?: number;
 }
@@ -67,6 +70,7 @@ function parseServerContent(content: unknown) {
         apiCitations: [] as CitedSection[],
         apiCitedCases: [] as CitedCase[], // [UPDATED] NEW
         nextSteps: [] as string[],
+        followUps: [] as string[],
       };
     }
   }
@@ -78,6 +82,7 @@ function parseServerContent(content: unknown) {
       apiCitations: (obj.cited_sections as CitedSection[]) || [],
       apiCitedCases: (obj.cited_cases as CitedCase[]) || [], // [UPDATED] NEW
       nextSteps: (obj.suggested_next_steps as string[]) || [],
+      followUps: (obj.suggested_follow_ups as string[]) || [],
     };
   }
 
@@ -86,6 +91,7 @@ function parseServerContent(content: unknown) {
     apiCitations: [] as CitedSection[],
     apiCitedCases: [] as CitedCase[], // [UPDATED] NEW
     nextSteps: [] as string[],
+    followUps: [] as string[],
   };
 }
 
@@ -195,7 +201,8 @@ export default function CopilotPage() {
                   textBn: parsedData.answerText || m.content,
                   apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
                   apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // [UPDATED] NEW
-                  nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
+                  nextSteps: (m.suggested_next_steps && m.suggested_next_steps.length > 0) ? m.suggested_next_steps : (parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined),
+                  followUps: ((m as any).suggested_follow_ups && (m as any).suggested_follow_ups.length > 0) ? (m as any).suggested_follow_ups : (parsedData.followUps.length > 0 ? parsedData.followUps : undefined),
                   isThinking: false,
                 };
               });
@@ -295,7 +302,8 @@ export default function CopilotPage() {
             textBn: parsedData.answerText || m.content,
             apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
             apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // [UPDATED] NEW
-            nextSteps: parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined,
+            nextSteps: (m.suggested_next_steps && m.suggested_next_steps.length > 0) ? m.suggested_next_steps : (parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined),
+            followUps: ((m as any).suggested_follow_ups && (m as any).suggested_follow_ups.length > 0) ? (m as any).suggested_follow_ups : (parsedData.followUps.length > 0 ? parsedData.followUps : undefined),
             isThinking: false,
           };
         });
@@ -416,6 +424,7 @@ export default function CopilotPage() {
       let apiCitations: CitedSection[] = [];
       let apiCitedCases: CitedCase[] = []; // [UPDATED] NEW
       let nextSteps: string[] = [];
+      let followUps: string[] = [];
 
       let parsedPayload: unknown = result.response;
       if (typeof parsedPayload === "string") {
@@ -432,6 +441,7 @@ export default function CopilotPage() {
         apiCitations = (obj.cited_sections as CitedSection[]) || [];
         apiCitedCases = (obj.cited_cases as CitedCase[]) || []; // [UPDATED] NEW
         nextSteps = (obj.suggested_next_steps as string[]) || [];
+        followUps = (obj.suggested_follow_ups as string[]) || [];
       } else if (typeof parsedPayload === "string") {
         answerText = parsedPayload;
       }
@@ -454,6 +464,7 @@ export default function CopilotPage() {
                 apiCitations,
                 apiCitedCases, // [UPDATED] NEW
                 nextSteps,
+                followUps,
                 isThinking: false,
                 thoughtSeconds: actualSeconds
               }
@@ -737,31 +748,43 @@ export default function CopilotPage() {
                             <span>{language === "bn" ? "সংবিধিবদ্ধ আইনের ধারা ও সাইটেশন (Live RAG Citations):" : "Statutory Citations (Live RAG):"}</span>
                           </div>
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {msg.apiCitations.map((cite, cIdx) => (
-                              <div
-                                key={cIdx}
-                                className="p-2.5 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) text-xs space-y-1 shadow-sm"
-                              >
-                                <div className="flex items-center justify-between font-bold text-(--text-primary) gap-2">
-                                  <span className="text-indigo-600 dark:text-indigo-400 shrink-0">{cite.section_number || cite.section || "Section"}</span>
-                                  {cite.act && (
-                                    <span className="text-[10px] text-(--text-muted) truncate max-w-37.5" title={cite.act}>
-                                      {cite.act}
+                            {msg.apiCitations.map((cite, cIdx) => {
+                              const isLastOdd =
+                                msg.apiCitations!.length % 2 !== 0 &&
+                                cIdx === msg.apiCitations!.length - 1;
+                              return (
+                                <div
+                                  key={cIdx}
+                                  className={`p-2.5 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) text-xs space-y-1 shadow-sm ${
+                                    isLastOdd ? "sm:col-span-2" : ""
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between font-bold text-(--text-primary) gap-2">
+                                    <span className="text-indigo-600 dark:text-indigo-400 shrink-0">
+                                      {cite.section_number || cite.section || "Section"}
                                     </span>
+                                    {cite.act && (
+                                      <span
+                                        className="text-[10px] text-(--text-muted) truncate max-w-xs sm:max-w-md"
+                                        title={cite.act}
+                                      >
+                                        {cite.act}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {(cite.title || cite.act_title) && (
+                                    <p className="font-semibold text-[11px] text-(--text-primary)">
+                                      {cite.title || cite.act_title}
+                                    </p>
+                                  )}
+                                  {(cite.provision_summary || cite.relevance || cite.relevance_summary) && (
+                                    <p className="text-[11px] text-(--text-muted) leading-relaxed">
+                                      {cite.provision_summary || cite.relevance || cite.relevance_summary}
+                                    </p>
                                   )}
                                 </div>
-                                {(cite.title || cite.act_title) && (
-                                  <p className="font-semibold text-[11px] text-(--text-primary)">
-                                    {cite.title || cite.act_title}
-                                  </p>
-                                )}
-                                {(cite.provision_summary || cite.relevance || cite.relevance_summary) && (
-                                  <p className="text-[11px] text-(--text-muted) leading-relaxed">
-                                    {cite.provision_summary || cite.relevance || cite.relevance_summary}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -772,49 +795,90 @@ export default function CopilotPage() {
                             <Gavel className="w-3.5 h-3.5" />
                             <span>{language === "bn" ? "সাম্প্রতিক রায় ও নজির (Live Case Law):" : "Live Case Law & Precedents:"}</span>
                           </div>
-                          <div className="grid grid-cols-1 gap-2">
-                            {msg.apiCitedCases.map((cite, cIdx) => (
-                              <div
-                                key={cIdx}
-                                className="p-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20 text-xs space-y-1 shadow-sm"
-                              >
-                                <p className="font-bold text-amber-900 dark:text-amber-200">
-                                  {cite.case_name || "Case Precedent"}
-                                </p>
-                                {cite.ruling && (
-                                  <p className="text-[11px] text-(--text-muted) leading-relaxed">
-                                    {cite.ruling}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            {msg.apiCitedCases.map((cite, cIdx) => {
+                              const isLastOdd =
+                                msg.apiCitedCases!.length % 2 !== 0 &&
+                                cIdx === msg.apiCitedCases!.length - 1;
+                              return (
+                                <div
+                                  key={cIdx}
+                                  className={`p-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20 text-xs space-y-1 shadow-sm ${
+                                    isLastOdd ? "sm:col-span-2" : ""
+                                  }`}
+                                >
+                                  <p className="font-bold text-amber-900 dark:text-amber-200">
+                                    {cite.case_name || "Case Precedent"}
                                   </p>
-                                )}
-                                {cite.relevance && (
-                                  <p className="text-[11px] text-amber-700 dark:text-amber-400 italic">
-                                    {cite.relevance}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
+                                  {cite.ruling && (
+                                    <p className="text-[11px] text-(--text-muted) leading-relaxed">
+                                      {cite.ruling}
+                                    </p>
+                                  )}
+                                  {cite.relevance && (
+                                    <p className="text-[11px] text-amber-700 dark:text-amber-400 italic">
+                                      {cite.relevance}
+                                    </p>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}
 
-                      {msg.nextSteps && msg.nextSteps.length > 0 && (
-                        <div className="mt-3.5 pt-2 border-t border-(--text-primary)/10 flex flex-wrap gap-1.5 items-center">
-                          <span className="text-[10px] uppercase font-bold text-(--text-muted) mr-1">
-                            {language === "bn" ? "পরবর্তী পদক্ষেপ:" : "Suggested:"}
-                          </span>
-                          {msg.nextSteps.map((step, sIdx) => (
-                            <button
-                              key={sIdx}
-                              type="button"
-                              onClick={() => handleSendPrompt(step)}
-                              className="px-2.5 py-1 rounded-lg text-xs font-medium border border-(--text-primary)/15 hover:border-indigo-400 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left inline-flex items-center gap-1.5"
-                            >
-                              <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
-                              <span>{step}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                      {/* 1. Real-World Action Steps Checklist (Non-interactive Advice) */}
+                      {(() => {
+                        const actionSteps = (msg.nextSteps || []).filter((step) => !step.trim().endsWith("?"));
+                        if (actionSteps.length === 0) return null;
+                        return (
+                          <div className="mt-4 pt-3 border-t border-(--text-primary)/10 space-y-2">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>{language === "bn" ? "বাস্তব জীবনের করণীয় পরামর্শ:" : "Recommended Action Steps:"}</span>
+                            </div>
+                            <div className="rounded-xl p-3 border border-(--text-primary)/10 bg-(--bg-surface) space-y-2">
+                              {actionSteps.map((step, sIdx) => (
+                                <div key={sIdx} className="flex items-start gap-2 text-xs text-(--text-primary) leading-relaxed">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
+                                  <span>{step}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* 2. Interactive Follow-up Questions (Clickable prompts from user's perspective) */}
+                      {(() => {
+                        const followUpQuestions = [
+                          ...(msg.followUps || []),
+                          ...(msg.nextSteps || []).filter((step) => step.trim().endsWith("?")),
+                        ];
+                        const uniqueQuestions = Array.from(new Set(followUpQuestions)).filter(Boolean);
+                        if (uniqueQuestions.length === 0) return null;
+
+                        return (
+                          <div className="mt-3.5 pt-2.5 border-t border-(--text-primary)/10 flex flex-wrap gap-2 items-center">
+                            <div className="w-full flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">
+                              <HelpCircle className="w-3.5 h-3.5" />
+                              <span>{language === "bn" ? "প্রস্তাবিত ফলো-আপ প্রশ্ন:" : "Suggested Follow-up Questions:"}</span>
+                            </div>
+                            {uniqueQuestions.map((question, qIdx) => (
+                              <button
+                                key={qIdx}
+                                type="button"
+                                onClick={() => handleSendPrompt(question)}
+                                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-indigo-500/25 hover:border-indigo-500/60 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left inline-flex items-center gap-2 group"
+                                title={language === "bn" ? "কোপাইলটকে এই প্রশ্নটি জিজ্ঞাসা করতে ক্লিক করুন" : "Click to ask Copilot this question"}
+                              >
+                                <Sparkles className="w-3 h-3 text-indigo-500 shrink-0 group-hover:scale-110 transition-transform" />
+                                <span>{question}</span>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </>
                   )}
                 </div>

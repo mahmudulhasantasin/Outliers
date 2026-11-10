@@ -18,7 +18,9 @@ import {
   FileText,
   ShieldCheck,
   RefreshCw,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
@@ -90,6 +92,14 @@ export default function ArchivePage() {
   
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isRequestingVerification, setIsRequestingVerification] = useState<string | null>(null);
+  const [expandedSummaries, setExpandedSummaries] = useState<Record<string, boolean>>({});
+
+  const toggleSummaryExpand = (id: string) => {
+    setExpandedSummaries((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   const mapItemToRecord = (item: any): ArchivedRecord => {
     const cid = String(item.contract_id || item.id);
@@ -735,9 +745,47 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Statutory Risk Takeaway */}
-                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl wrap-break-word">
-                  {language === "bn" ? record.summaryBn : record.summaryEn}
-                </p>
+                {Boolean(language === "bn" ? record.summaryBn : record.summaryEn) && (
+                  <div className="w-full min-w-0 max-w-3xl">
+                    <div className="border-l-2 border-(--text-primary)/15 pl-3 py-0.5">
+                      <p
+                        className={`text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-400 leading-relaxed font-sans wrap-break-word transition-all ${
+                          expandedSummaries[record.id] ? "" : "line-clamp-2"
+                        }`}
+                        style={
+                          expandedSummaries[record.id]
+                            ? undefined
+                            : {
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }
+                        }
+                      >
+                        {language === "bn" ? record.summaryBn : record.summaryEn}
+                      </p>
+                      {String(language === "bn" ? record.summaryBn : record.summaryEn).length > 130 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSummaryExpand(record.id)}
+                          className="mt-1 text-[11px] font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <span>
+                            {expandedSummaries[record.id]
+                              ? (language === "bn" ? "সংক্ষেপ করুন" : "Show less")
+                              : (language === "bn" ? "আরও দেখুন" : "Show more")}
+                          </span>
+                          {expandedSummaries[record.id] ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Breakdown & Action Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 pt-2 w-full min-w-0">
