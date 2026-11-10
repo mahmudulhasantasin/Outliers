@@ -134,8 +134,6 @@ export default function CopilotPage() {
     Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
     entStatus === "pending" ||
     entStatus === "pending_approval";
-  const isPendingLawyer =
-    user?.lawyerProfile?.verificationStatus === "pending" || userRole === "LAWYER";
   const isPendingMember =
     (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
     ((user as any)?.member_approval_status === "PENDING" ||
@@ -145,12 +143,10 @@ export default function CopilotPage() {
     if (!user) return;
     if (isPendingEnterpriseAdmin) {
       router.replace("/enterprise/pending");
-    } else if (isPendingLawyer) {
-      router.replace("/lawyer/pending");
     } else if (isPendingMember) {
       router.replace("/enterprise/member");
     }
-  }, [user, isPendingEnterpriseAdmin, isPendingLawyer, isPendingMember, router]);
+  }, [user, isPendingEnterpriseAdmin, isPendingMember, router]);
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);
@@ -511,7 +507,7 @@ export default function CopilotPage() {
 
   const groupedSessions = groupSessions(sessions);
 
-  if (isPendingEnterpriseAdmin || isPendingLawyer || isPendingMember) {
+  if (isPendingEnterpriseAdmin || isPendingMember) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
