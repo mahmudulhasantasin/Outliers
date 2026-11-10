@@ -339,6 +339,7 @@ export default function CopilotPage() {
   }, [messages, isTyping]);
 
   const handleSendPrompt = async (text: string, detail?: { attachments?: string[] }) => {
+    if (isTyping) return;
     const rawAttachments = detail?.attachments || [];
     if (!text.trim() && rawAttachments.length === 0) return;
 
@@ -617,7 +618,7 @@ export default function CopilotPage() {
         {/* Chat Messages or Initial Center Screen */}
         {hasMessages ? (
           <div className="flex-1 overflow-y-auto px-1 space-y-4 sm:space-y-5 pb-6">
-            {messages.map((msg) => (
+            {messages.map((msg, idx) => (
               <div
                 key={msg.id}
                 className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
@@ -845,8 +846,12 @@ export default function CopilotPage() {
                         );
                       })()}
 
-                      {/* 2. Interactive Follow-up Questions (Clickable prompts from user's perspective) */}
+                      {/* 2. Interactive Follow-up Questions (Only on the latest completed assistant message) */}
                       {(() => {
+                        // Only show suggestions for the very latest message, and hide while typing
+                        const isLatestMessage = idx === messages.length - 1;
+                        if (!isLatestMessage || isTyping) return null;
+
                         const followUpQuestions = [
                           ...(msg.followUps || []),
                           ...(msg.nextSteps || []).filter((step) => step.trim().endsWith("?")),
@@ -855,7 +860,7 @@ export default function CopilotPage() {
                         if (uniqueQuestions.length === 0) return null;
 
                         return (
-                          <div className="mt-3.5 pt-2.5 border-t border-(--text-primary)/10 flex flex-wrap gap-2 items-center">
+                          <div className="mt-3.5 pt-2.5 border-t border-(--text-primary)/10 flex flex-wrap gap-2 items-center animate-in fade-in duration-200">
                             <div className="w-full flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">
                               <HelpCircle className="w-3.5 h-3.5" />
                               <span>{language === "bn" ? "প্রস্তাবিত ফলো-আপ প্রশ্ন:" : "Suggested Follow-up Questions:"}</span>
@@ -864,8 +869,12 @@ export default function CopilotPage() {
                               <button
                                 key={qIdx}
                                 type="button"
-                                onClick={() => handleSendPrompt(question)}
-                                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-indigo-500/25 hover:border-indigo-500/60 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left inline-flex items-center gap-2 group"
+                                disabled={isTyping}
+                                onClick={() => {
+                                  if (isTyping) return;
+                                  handleSendPrompt(question);
+                                }}
+                                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-indigo-500/25 hover:border-indigo-500/60 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left inline-flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
                                 title={language === "bn" ? "কোপাইলটকে এই প্রশ্নটি জিজ্ঞাসা করতে ক্লিক করুন" : "Click to ask Copilot this question"}
                               >
                                 <Sparkles className="w-3 h-3 text-indigo-500 shrink-0 group-hover:scale-110 transition-transform" />
