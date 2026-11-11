@@ -1,5 +1,6 @@
 "use client";
 
+// Legal Copilot workspace view
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
