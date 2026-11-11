@@ -1167,34 +1167,54 @@ export default function CopilotPage() {
 
   return (
     <AppShell mainClassName="pb-2! md:pb-3!">
+      {/* ─── Desktop: Left Vertical Actions (Aligned directly with vertical dock: left-4, width 60px) ─── */}
+      <div className="hidden md:flex fixed left-4 top-5 z-40 flex-col items-center gap-2.5 w-[60px] select-none">
+        {/* Previous Chat / History Drawer Toggle */}
+        <button
+          type="button"
+          onClick={() => setIsDrawerOpen(true)}
+          title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
+        >
+          <PanelLeftOpen className="w-4 h-4 transition-transform group-hover:scale-105" />
+        </button>
+
+        {/* New Chat Button */}
+        <button
+          type="button"
+          onClick={handleNewChat}
+          title={isBn ? "নতুন চ্যাট" : "New Chat"}
+          className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
+        >
+          <SquarePen className="w-4 h-4 transition-transform group-hover:scale-105" />
+        </button>
+      </div>
+
       <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
-        {/* ─── Top Bar: Left Vertical Actions (Previous Chat & New Chat) ─── */}
-        <header className="shrink-0 flex items-start justify-between gap-2 pb-1.5 sm:pb-2">
-          {/* Left Side: Vertical Shifted Actions (Previous Chat & New Chat) */}
-          <div className="flex flex-col gap-2 shrink-0 z-20">
-            {/* Previous Chat / History Drawer Toggle */}
+        {/* ─── Top Bar: Mobile actions & turn quota ─── */}
+        <header className="shrink-0 flex items-center justify-between gap-2 pb-1.5 sm:pb-2">
+          {/* Mobile Only: Previous Chat & New Chat */}
+          <div className="md:hidden flex items-center gap-1.5">
             <button
               type="button"
               onClick={() => setIsDrawerOpen(true)}
               title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/12 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-xs group"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) transition-all cursor-pointer shadow-xs"
             >
-              <PanelLeftOpen className="w-4 h-4 transition-transform group-hover:scale-105" />
+              <PanelLeftOpen className="w-3.5 h-3.5" />
             </button>
-
-            {/* New Chat Button */}
             <button
               type="button"
               onClick={handleNewChat}
               title={isBn ? "নতুন চ্যাট" : "New Chat"}
-              className="w-9 h-9 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/12 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-xs group"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) transition-all cursor-pointer shadow-xs"
             >
-              <SquarePen className="w-4 h-4 transition-transform group-hover:scale-105" />
+              <SquarePen className="w-3.5 h-3.5" />
             </button>
           </div>
 
           {/* Right Side: Session Turn Quota Badge */}
-          <div className="flex items-center gap-2 ml-auto pt-1">
+          <div className="flex items-center gap-2 ml-auto">
             {activeSessionId && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-card) border border-(--text-primary)/10 text-(--text-muted)">
                 {turnLimit === -1 || turnLimit >= 10000
