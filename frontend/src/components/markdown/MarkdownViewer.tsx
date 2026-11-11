@@ -609,7 +609,9 @@ export default function MarkdownViewer({
         elements.push(
           <blockquote
             key={`bq-${i}`}
-            className="my-2 pl-3.5 border-l-2 border-(--text-primary)/30 text-xs italic text-(--text-primary)/80"
+            className={`my-2 pl-3.5 border-l-2 border-(--text-primary)/30 ${
+              isChat ? "text-[14.5px] leading-[1.7]" : "text-xs"
+            } italic text-(--text-primary)/80`}
           >
             {formatInlineText(bqText)}
           </blockquote>
@@ -623,7 +625,7 @@ export default function MarkdownViewer({
           <h1
             key={`h1-${i}`}
             className={`${
-              isChat ? "text-base sm:text-lg mt-3 mb-1.5" : "text-2xl mt-6 mb-3"
+              isChat ? "text-lg sm:text-xl mt-3.5 mb-1.5" : "text-2xl mt-6 mb-3"
             } font-serif font-bold text-(--text-primary) pb-1 border-b border-(--text-primary)/10`}
           >
             {formatInlineText(line.slice(2))}
@@ -654,7 +656,7 @@ export default function MarkdownViewer({
           <h2
             key={`h2-${i}`}
             className={`${
-              isChat ? "text-sm sm:text-base mt-2.5 mb-1" : "text-lg mt-7 mb-2.5"
+              isChat ? "text-base sm:text-[17px] mt-3 mb-1" : "text-lg mt-7 mb-2.5"
             } font-serif font-bold text-(--text-primary) pb-1 border-b border-(--text-primary)/10 flex items-center`}
           >
             {h2Icon}
@@ -668,7 +670,7 @@ export default function MarkdownViewer({
           <h3
             key={`h3-${i}`}
             className={`${
-              isChat ? "text-xs sm:text-sm mt-2 mb-0.5" : "text-sm mt-5 mb-2"
+              isChat ? "text-[15px] sm:text-base mt-2.5 mb-1" : "text-sm mt-5 mb-2"
             } font-sans font-bold text-(--text-primary)`}
           >
             {formatInlineText(line.slice(4))}
@@ -680,7 +682,9 @@ export default function MarkdownViewer({
         elements.push(
           <h4
             key={`h4-${i}`}
-            className="text-xs font-semibold text-(--text-primary) mt-1.5 mb-0.5"
+            className={`${
+              isChat ? "text-[14.5px] sm:text-[15px] mt-2 mb-0.5" : "text-xs mt-1.5 mb-0.5"
+            } font-semibold text-(--text-primary)`}
           >
             {formatInlineText(line.slice(5))}
           </h4>
@@ -695,9 +699,14 @@ export default function MarkdownViewer({
           const isChecked = match[1].toLowerCase() === "x";
           const checkText = match[2];
           elements.push(
-            <div key={`check-${i}`} className="flex items-start gap-2.5 my-1 text-xs text-(--text-primary)/90">
+            <div
+              key={`check-${i}`}
+              className={`flex items-start gap-2.5 my-1.5 ${
+                isChat ? "text-[15px] leading-[1.75]" : "text-xs leading-relaxed"
+              } text-(--text-primary)/90`}
+            >
               <span
-                className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border ${
+                className={`w-4 h-4 rounded ${isChat ? "mt-1.5" : "mt-0.5"} flex items-center justify-center shrink-0 border ${
                   isChecked
                     ? "bg-emerald-600 border-emerald-600 text-white"
                     : "border-(--text-primary)/30 bg-(--bg-surface)"
@@ -705,7 +714,7 @@ export default function MarkdownViewer({
               >
                 {isChecked && <Check className="w-3 h-3 stroke-3" />}
               </span>
-              <span>{formatInlineText(checkText)}</span>
+              <span className="flex-1">{formatInlineText(checkText)}</span>
             </div>
           );
           continue;
@@ -717,8 +726,19 @@ export default function MarkdownViewer({
         const match = line.trim().match(/^(\d+)[\.\)]\s+(.*)$/);
         if (match) {
           elements.push(
-            <div key={`ol-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-(--text-primary)/90 ml-1">
-              <span className="font-mono font-bold text-(--text-primary)/70 text-[11px] shrink-0 min-w-4.5">
+            <div
+              key={`ol-${i}`}
+              className={`flex items-start gap-2 my-1.5 ${
+                isChat
+                  ? "text-[15px] leading-[1.75]"
+                  : "leading-relaxed text-xs sm:text-[13px]"
+              } text-(--text-primary)/90 ml-1`}
+            >
+              <span
+                className={`font-mono font-bold text-(--text-primary)/70 shrink-0 min-w-5 ${
+                  isChat ? "text-[13px] mt-[2px]" : "text-[11px]"
+                }`}
+              >
                 {match[1]}.
               </span>
               <div className="flex-1">
@@ -735,8 +755,19 @@ export default function MarkdownViewer({
         const match = line.trim().match(/^[\-\*]\s+(.*)$/);
         if (match) {
           elements.push(
-            <div key={`li-${i}`} className="flex items-start gap-2 my-1 leading-relaxed text-xs sm:text-[13px] text-(--text-primary)/90 ml-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-(--text-primary)/50 mt-1.5 shrink-0" />
+            <div
+              key={`li-${i}`}
+              className={`flex items-start gap-2.5 my-1.5 ${
+                isChat
+                  ? "text-[15px] leading-[1.75]"
+                  : "leading-relaxed text-xs sm:text-[13px]"
+              } text-(--text-primary)/90 ml-1`}
+            >
+              <span
+                className={`w-1.5 h-1.5 rounded-full bg-(--text-primary)/50 shrink-0 ${
+                  isChat ? "mt-2.5" : "mt-1.5"
+                }`}
+              />
               <div className="flex-1">
                 {formatInlineText(match[1])}
               </div>
@@ -751,8 +782,8 @@ export default function MarkdownViewer({
         <p
           key={`p-${i}`}
           className={`${
-            isChat ? "text-sm sm:text-[14px]" : "text-xs"
-          } text-(--text-primary)/90 my-1 leading-relaxed`}
+            isChat ? "text-[15px] leading-[1.75] my-1.5" : "text-xs leading-relaxed my-1"
+          } text-(--text-primary)/90`}
         >
           {formatInlineText(line)}
         </p>
@@ -767,7 +798,7 @@ export default function MarkdownViewer({
 
   if (isChat) {
     return (
-      <div className={`font-sans leading-relaxed text-sm sm:text-[14px] space-y-1 ${className}`}>
+      <div className={`font-sans leading-[1.75] text-[15px] space-y-1.5 ${className}`}>
         {renderMarkdownContent(content)}
       </div>
     );

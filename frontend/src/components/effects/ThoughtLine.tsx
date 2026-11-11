@@ -304,18 +304,18 @@ const ThoughtLine: React.FC<ThoughtLineProps> = ({
           data-open={open ? '' : undefined}
           aria-hidden={!open}
         >
-          <div className="min-h-0 overflow-x-visible overflow-y-clip">
-            <div className="flex w-max flex-col gap-[0.45em] pt-[0.6em] pb-[0.2em] pl-[1.6em] text-[0.875em] font-normal whitespace-nowrap">
+          <div className="min-h-0 overflow-x-hidden overflow-y-clip">
+            <div className="flex w-full max-w-full flex-col gap-[0.45em] pt-[0.6em] pb-[0.2em] pl-[1.35em] sm:pl-[1.6em] text-[0.875em] font-normal whitespace-normal">
               {steps.map((text, i) => {
                 const done = !isWorking || i < steps.length - 1;
                 return (
                   <div
                     key={`${i}-${text}`}
-                    className="group/step flex translate-y-0 items-center gap-[0.5em] opacity-100 [transition:opacity_200ms_cubic-bezier(0.23,1,0.32,1),transform_200ms_cubic-bezier(0.23,1,0.32,1)] starting:-translate-y-1 starting:opacity-0 motion-reduce:[transform:none]! motion-reduce:[transition:opacity_200ms_ease]"
+                    className="group/step flex translate-y-0 items-start sm:items-center gap-[0.5em] opacity-100 [transition:opacity_200ms_cubic-bezier(0.23,1,0.32,1),transform_200ms_cubic-bezier(0.23,1,0.32,1)] starting:-translate-y-1 starting:opacity-0 motion-reduce:[transform:none]! motion-reduce:[transition:opacity_200ms_ease]"
                     data-done={done ? '' : undefined}
                   >
                     <span
-                      className="inline-grid h-[1em] w-[1em] flex-none place-items-center opacity-55"
+                      className="inline-grid h-[1em] w-[1em] flex-none place-items-center opacity-55 mt-[0.15em] sm:mt-0"
                       aria-hidden="true"
                     >
                       {done ? (
@@ -324,7 +324,7 @@ const ThoughtLine: React.FC<ThoughtLineProps> = ({
                         <i className="block h-[0.4em] w-[0.4em] rounded-full bg-current [animation:thought-line-pulse_1.6s_cubic-bezier(0.77,0,0.175,1)_infinite] motion-reduce:[animation-duration:2.4s]" />
                       )}
                     </span>
-                    <span className="[transition:opacity_var(--tl-settle)_ease] group-data-[done]/step:opacity-55">
+                    <span className="wrap-break-word [transition:opacity_var(--tl-settle)_ease] group-data-[done]/step:opacity-55">
                       {text}
                     </span>
                   </div>

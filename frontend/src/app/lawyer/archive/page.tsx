@@ -12,6 +12,8 @@ import {
   getLawyerEarnings,
   listWithdrawals,
   requestWithdrawal,
+  CreateWithdrawalPayload,
+  PayoutMethodType,
   EarningsDashboard,
   WithdrawalRequest,
 } from "@/lib/apiServices";
@@ -96,6 +98,9 @@ export default function LawyerArchivePage() {
   // Earnings & Withdrawal state
   const [earnings, setEarnings] = useState<EarningsDashboard | null>(null);
   const [withdrawals, setWithdrawals] = useState<WithdrawalRequest[]>([]);
+  const [payoutMethod, setPayoutMethod] = useState<PayoutMethodType>("BKASH");
+  const [bankName, setBankName] = useState("");
+  const [branchName, setBranchName] = useState("");
   const [withdrawAmount, setWithdrawAmount] = useState<number>(500);
   const [bkashNumber, setBkashNumber] = useState<string>(() => user?.mobile || "");
   const [isSubmittingWithdrawal, setIsSubmittingWithdrawal] = useState(false);
@@ -173,20 +178,56 @@ export default function LawyerArchivePage() {
 
   const handleWithdrawalSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!bkashNumber || withdrawAmount <= 0) return;
+    const rawAccount = bkashNumber.trim();
+    if (!rawAccount || withdrawAmount < 500) {
+      toast.error(isBn ? "সর্বনিম্ন উত্তোলন ৳৫০০ এবং সঠিক অ্যাকাউন্ট নম্বর দিন।" : "Minimum withdrawal is ৳500 with a valid account number.");
+      return;
+    }
+
+    if (payoutMethod === "BANK") {
+      if (bankName.trim().length < 2) {
+        toast.error(isBn ? "ব্যাংকের নাম লিখুন।" : "Please enter your bank name.");
+        return;
+      }
+      if (rawAccount.length < 6) {
+        toast.error(isBn ? "সঠিক ব্যাংক অ্যাকাউন্ট নম্বর দিন।" : "Please enter a valid bank account number.");
+        return;
+      }
+    } else {
+      let normalized = rawAccount.replace(/[\s\-()]/g, "");
+      if (normalized.startsWith("+88")) normalized = normalized.slice(3);
+      else if (normalized.startsWith("88") && normalized.length === 13) normalized = normalized.slice(2);
+      if (!/^01[3-9]\d{8}$/.test(normalized)) {
+        toast.error(
+          isBn
+            ? `${payoutMethod} নম্বরের জন্য সঠিক ১১ ডিজিটের মোবাইল নম্বর (01XXXXXXXXX) দিন।`
+            : `Please enter a valid 11-digit Bangladeshi mobile number for ${payoutMethod}.`
+        );
+        return;
+      }
+    }
+
     try {
       setIsSubmittingWithdrawal(true);
       setWithdrawalSuccess(null);
-      const res = await requestWithdrawal(
-        withdrawAmount,
-        bkashNumber,
-        user?.name || "Advocate"
-      );
+      const payload: CreateWithdrawalPayload = {
+        amount_bdt: withdrawAmount,
+        payout_method: payoutMethod,
+        account_number: rawAccount,
+        bank_name: payoutMethod === "BANK" ? bankName.trim() : undefined,
+        branch_name: payoutMethod === "BANK" ? branchName.trim() || undefined : undefined,
+        account_holder_name: user?.name || "Advocate",
+      };
+      const res = await requestWithdrawal(payload);
+      const refId = (res as any)?.withdrawal_id ?? res?.id ?? "OK";
       setWithdrawalSuccess(
         isBn
-          ? `উইথড্রয়াল রিকোয়েস্ট সফল হয়েছে! রেফারেন্স আইডি: ${res.id}`
-          : `Withdrawal request submitted successfully! Ref: ${res.id}`
+          ? `উইথড্রয়াল রিকোয়েস্ট সফল হয়েছে (${payoutMethod})! রেফারেন্স আইডি: ${refId}`
+          : `Withdrawal request submitted via ${payoutMethod}! Ref: ${refId}`
       );
+      setBkashNumber("");
+      setBankName("");
+      setBranchName("");
       fetchEarningsData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to submit withdrawal request.";
@@ -415,7 +456,7 @@ export default function LawyerArchivePage() {
                   ৳{(earnings?.wallet_balance_bdt ?? earnings?.pending_payout_credits ?? 2500).toLocaleString()}
                 </p>
                 <span className="text-[10px] text-[var(--text-muted)] truncate block">
-                  {isBn ? "বিকাশ পে-আউট যোগ্য" : "Available to withdraw"}
+                  {isBn ? "পেআউট যোগ্য (মাল্টি-চ্যানেল)" : "Available (bKash/Nagad/Bank)"}
                 </span>
               </div>
 
@@ -445,22 +486,49 @@ export default function LawyerArchivePage() {
               </div>
             </div>
 
-            {/* bKash Withdrawal Box */}
+            {/* Multi-Channel Payout Box */}
             <div className={`p-6 sm:p-8 rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-sm space-y-6`}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500">
-                  <Wallet className="w-5 h-5" />
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                    <Wallet className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-serif font-bold text-[var(--text-primary)]">
+                      {isBn ? "অর্থ উত্তোলন রিকোয়েস্ট (MFS ও ব্যাংক)" : "Request Multi-Channel Payout"}
+                    </h3>
+                    <p className="text-xs text-[var(--text-muted)]">
+                      {isBn
+                        ? "bKash, Nagad, Rocket অথবা সরাসরি ব্যাংক অ্যাকাউন্টে আপনার উপার্জিত অর্থ গ্রহণ করুন (ন্যূনতম ৳৫০০)।"
+                        : "Receive your legal review earnings via bKash, Nagad, Rocket, or Bank Transfer (min ৳500)."}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base sm:text-lg font-serif font-bold text-[var(--text-primary)]">
-                    {isBn ? "বিকাশ (bKash) অ্যাকাউন্টে টাকা উত্তোলন" : "Request Payout via bKash"}
-                  </h3>
-                  <p className="text-xs text-[var(--text-muted)]">
-                    {isBn
-                      ? "আপনার অর্জিত ব্যালেন্স সরাসরি আপনার বিকাশ পার্সোনাল অ্যাকাউন্টে গ্রহণ করুন (১ ক্রেডিট = ১ টাকা)।"
-                      : "Directly transfer your review fees to your bKash personal wallet (1 credit = 1 BDT)."}
-                  </p>
-                </div>
+              </div>
+
+              {/* Payout Method Selector */}
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { id: "BKASH", label: "bKash" },
+                    { id: "NAGAD", label: "Nagad" },
+                    { id: "ROCKET", label: "Rocket" },
+                    { id: "BANK", label: isBn ? "ব্যাংক ট্রান্সফার (BEFTN)" : "Bank Transfer" },
+                  ] as const
+                ).map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => setPayoutMethod(m.id)}
+                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer border ${
+                      payoutMethod === m.id
+                        ? "bg-[var(--text-primary)] text-[var(--bg-primary)] border-transparent shadow-sm"
+                        : `${borderClass} bg-[var(--bg-surface)] text-[var(--text-muted)] hover:text-[var(--text-primary)]`
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
               </div>
 
               {withdrawalSuccess && (
@@ -470,14 +538,14 @@ export default function LawyerArchivePage() {
                 </div>
               )}
 
-              <form onSubmit={handleWithdrawalSubmit} className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <form onSubmit={handleWithdrawalSubmit} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
-                    {isBn ? "উত্তোলনের পরিমাণ (টাকা / ক্রেডিট)" : "Withdrawal Amount (BDT / Credits)"}
+                    {isBn ? "উত্তোলনের পরিমাণ (ন্যূনতম ৳৫০০)" : "Withdrawal Amount (Min ৳500)"}
                   </label>
                   <input
                     type="number"
-                    min="100"
+                    min="500"
                     step="50"
                     value={withdrawAmount}
                     onChange={(e) => setWithdrawAmount(Number(e.target.value))}
@@ -486,15 +554,51 @@ export default function LawyerArchivePage() {
                   />
                 </div>
 
+                {payoutMethod === "BANK" && (
+                  <>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
+                        {isBn ? "ব্যাংকের নাম" : "Bank Name"}
+                      </label>
+                      <input
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="e.g. City Bank PLC / BRAC Bank"
+                        required
+                        className={`w-full px-4 py-2.5 rounded-xl text-sm border outline-none ${borderClass} bg-[var(--bg-surface)] text-[var(--text-primary)]`}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
+                        {isBn ? "ব্রাঞ্চের নাম (ঐচ্ছিক)" : "Branch Name (Optional)"}
+                      </label>
+                      <input
+                        type="text"
+                        value={branchName}
+                        onChange={(e) => setBranchName(e.target.value)}
+                        placeholder="e.g. Gulshan Avenue Branch"
+                        className={`w-full px-4 py-2.5 rounded-xl text-sm border outline-none ${borderClass} bg-[var(--bg-surface)] text-[var(--text-primary)]`}
+                      />
+                    </div>
+                  </>
+                )}
+
                 <div>
                   <label className="block text-[11px] font-semibold text-[var(--text-muted)] mb-1.5 uppercase tracking-wider">
-                    {isBn ? "বিকাশ মোবাইল নম্বর" : "bKash Mobile Account"}
+                    {payoutMethod === "BANK"
+                      ? isBn
+                        ? "ব্যাংক অ্যাকাউন্ট নম্বর"
+                        : "Bank Account Number"
+                      : isBn
+                      ? `${payoutMethod} মোবাইল নম্বর`
+                      : `${payoutMethod} Wallet Number`}
                   </label>
                   <input
                     type="text"
                     value={bkashNumber}
                     onChange={(e) => setBkashNumber(e.target.value)}
-                    placeholder="017XXXXXXXX"
+                    placeholder={payoutMethod === "BANK" ? "e.g. 1234567890123" : "017XXXXXXXX"}
                     required
                     className={`w-full px-4 py-2.5 rounded-xl text-sm border outline-none font-mono ${borderClass} bg-[var(--bg-surface)] text-[var(--text-primary)]`}
                   />
@@ -504,14 +608,18 @@ export default function LawyerArchivePage() {
                   <button
                     type="submit"
                     disabled={isSubmittingWithdrawal}
-                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-[#E2136E] text-white hover:opacity-90 transition-opacity cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
+                    className="w-full py-2.5 px-4 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm"
                   >
                     {isSubmittingWithdrawal ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
                       <Send className="w-4 h-4" />
                     )}
-                    <span>{isBn ? "বিকাশ রিকোয়েস্ট পাঠান" : "Submit bKash Request"}</span>
+                    <span>
+                      {isBn
+                        ? `${payoutMethod} পেআউট রিকোয়েস্ট পাঠান`
+                        : `Request via ${payoutMethod === "BANK" ? "Bank Transfer" : payoutMethod}`}
+                    </span>
                   </button>
                 </div>
               </form>
@@ -531,32 +639,50 @@ export default function LawyerArchivePage() {
                         <th className="py-2.5">{isBn ? "আইডি" : "Ref ID"}</th>
                         <th className="py-2.5">{isBn ? "তারিখ" : "Date"}</th>
                         <th className="py-2.5">{isBn ? "পরিমাণ" : "Amount"}</th>
-                        <th className="py-2.5">{isBn ? "বিকাশ নম্বর" : "bKash No"}</th>
+                        <th className="py-2.5">{isBn ? "মাধ্যম" : "Method"}</th>
+                        <th className="py-2.5">{isBn ? "অ্যাকাউন্ট / ব্যাংক" : "Account / Bank"}</th>
                         <th className="py-2.5 text-right">{isBn ? "স্ট্যাটাস" : "Status"}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[var(--text-primary)]/5 font-mono">
-                      {withdrawals.map((w) => (
-                        <tr key={w.id}>
-                          <td className="py-2.5 text-[var(--text-primary)] font-bold">{String(w.id).slice(0, 8)}</td>
-                          <td className="py-2.5 text-[var(--text-muted)]">
-                            {new Date(w.requested_at).toLocaleDateString()}
-                          </td>
-                          <td className="py-2.5 font-bold text-emerald-500">৳{w.amount_bdt ?? w.amount_credits}</td>
-                          <td className="py-2.5 text-[var(--text-muted)]">{w.bkash_number}</td>
-                          <td className="py-2.5 text-right">
-                            <span
-                              className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
-                                w.status === "paid" || w.status === "approved"
-                                  ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                                  : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                              }`}
-                            >
-                              {w.status.toUpperCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {withdrawals.map((w) => {
+                        const st = (w.status || "").toUpperCase();
+                        return (
+                          <tr key={w.id}>
+                            <td className="py-2.5 text-[var(--text-primary)] font-bold">{String(w.id).slice(0, 8)}</td>
+                            <td className="py-2.5 text-[var(--text-muted)]">
+                              {new Date(w.requested_at).toLocaleDateString()}
+                            </td>
+                            <td className="py-2.5 font-bold text-emerald-500">৳{w.amount_bdt ?? w.amount_credits}</td>
+                            <td className="py-2.5">
+                              <span className="px-2 py-0.5 rounded-md bg-[var(--bg-surface)] text-[var(--text-primary)] text-[10px] font-bold">
+                                {w.payout_method || "BKASH"}
+                              </span>
+                            </td>
+                            <td className="py-2.5 text-[var(--text-muted)]">
+                              <div>{w.account_number || w.bkash_number}</div>
+                              {w.bank_name && (
+                                <div className="text-[10px] opacity-80">
+                                  {w.bank_name}{w.branch_name ? ` · ${w.branch_name}` : ""}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 text-right">
+                              <span
+                                className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                  st === "PAID" || st === "APPROVED"
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                                    : st === "REJECTED"
+                                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400"
+                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                }`}
+                              >
+                                {st}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>

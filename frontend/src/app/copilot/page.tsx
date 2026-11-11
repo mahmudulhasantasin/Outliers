@@ -1,1104 +1,2042 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
 import ThoughtLine from "@/components/effects/ThoughtLine";
+import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { useLanguage } from "@/context/LanguageContext";
-import { useTheme } from "@/context/ThemeContext";
+import { useAuth, normalizeUserRole } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { STATUTORY_PROVISIONS, StatutoryProvision } from "@/data/statutoryProvisions";
+import { ApiError } from "@/lib/api";
 import {
+  ChatSession,
+  CitedSection,
+  CitedCase,
+  DetailedChatResponse,
+  StatuteLookupResult,
   createChatSession,
   sendChatQuery,
   listChatSessions,
   getChatSessionHistory,
+  renameChatSession,
   closeChatSession,
-  type ChatSession,
-  type CitedSection,
-  type CitedCase, // [UPDATED] NEW
+  lookupStatuteSection,
 } from "@/lib/apiServices";
-import { useAuth } from "@/context/AuthContext";
-import MarkdownViewer from "@/components/markdown/MarkdownViewer";
-import { maskPii } from "@/lib/piiMasker"; // [UPDATED] Client-side PII Masking
+import { maskPii } from "@/lib/piiMasker";
 import {
-  Scale,
-  ShieldCheck,
-  ExternalLink,
+  ArrowDown,
   BookOpen,
-  X,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Coins,
+  Copy,
+  ExternalLink,
   FileText,
   History,
-  Plus,
-  Trash2,
-  AlertCircle,
-  MessageSquare,
   Loader2,
-  Copy,
-  Check,
-  Clock,
-  Gavel, // [UPDATED] NEW
+  MessageSquarePlus,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Scale,
+  Search,
+  Shield,
+  ShieldCheck,
   Sparkles,
-  CheckCircle2,
-  HelpCircle,
+  Square,
+  Trash2,
+  X,
 } from "lucide-react";
 
-interface ChatMessage {
-  id: string;
-  sender: "user" | "copilot";
-  timestamp: string;
-  textEn: string;
-  textBn: string;
-  attachments?: string[];
-  citations?: string[];
-  apiCitations?: CitedSection[];
-  apiCitedCases?: CitedCase[]; // [UPDATED] NEW
-  nextSteps?: string[];
-  followUps?: string[];
-  isThinking?: boolean;
-  thoughtSeconds?: number;
+// ────────────────────────────────────────────────────────────────────────────
+// Types
+// ────────────────────────────────────────────────────────────────────────────
+
+interface NormalizedCitedSection {
+  act: string;
+  sectionNumber: string;
+  title: string;
+  summary: string;
+  relevance: string;
+  url?: string;
 }
 
-function parseServerContent(content: unknown) {
-  let target = content;
-  if (typeof target === "string") {
-    try {
-      target = JSON.parse(target);
-    } catch {
-      return {
-        answerText: content as string,
-        apiCitations: [] as CitedSection[],
-        apiCitedCases: [] as CitedCase[], // [UPDATED] NEW
-        nextSteps: [] as string[],
-        followUps: [] as string[],
-      };
+interface UiChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  citations?: NormalizedCitedSection[];
+  citedCases?: CitedCase[];
+  actionSteps?: string[];
+  followUps?: string[];
+  needsClarification?: boolean;
+  isThinking?: boolean;
+  thinkingStage?: number;
+  thinkingStartTime?: number;
+  thoughtDuration?: number;
+  thoughtSteps?: string[];
+  isStopped?: boolean;
+  isError?: boolean;
+  errorStatus?: number;
+  retryQuery?: string;
+  piiRedactionsCount?: number;
+  createdAt?: string;
+}
+
+interface ActiveContractContext {
+  contractId: string | number;
+  title: string;
+  summary?: string;
+  riskScore?: number;
+  riskGrade?: string;
+}
+
+interface StatuteModalState {
+  citation: NormalizedCitedSection;
+  loading: boolean;
+  data: StatuteLookupResult | null;
+  fallbackProvision?: StatutoryProvision | null;
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────────────────────────────────
+
+function normalizeCitations(raw?: CitedSection[] | null): NormalizedCitedSection[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: NormalizedCitedSection[] = [];
+
+  for (const item of raw) {
+    if (!item) continue;
+    const act = String(item.act || item.act_title || "Bangladesh Statute").trim();
+    const sec = String(item.section_number || item.section || "").trim();
+    if (!sec) continue;
+    const key = `${act.toLowerCase()}::${sec.toLowerCase()}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    out.push({
+      act,
+      sectionNumber: sec,
+      title: String(item.title || "Statutory Provision").trim(),
+      summary: String(item.provision_summary || "").trim(),
+      relevance: String(item.relevance || item.relevance_summary || "").trim(),
+      url: item.url ? String(item.url).trim() : undefined,
+    });
+  }
+  return out;
+}
+
+function formatActShortName(act: string): string {
+  const cleaned = act.replace(/^the\s+/i, "").trim();
+  const lower = cleaned.toLowerCase();
+  if (lower.includes("code of criminal procedure")) return "CrPC, 1898";
+  if (lower.includes("code of civil procedure")) return "CPC, 1908";
+  if (lower.includes("penal code")) return "Penal Code, 1860";
+  if (lower.includes("contract act")) return "Contract Act, 1872";
+  if (lower.includes("evidence act")) return "Evidence Act, 1872";
+  if (lower.includes("specific relief act")) return "Specific Relief, 1877";
+  if (lower.includes("bangladesh labour act")) return "Labour Act, 2006";
+  if (lower.includes("transfer of property")) return "Transfer of Property";
+  if (lower.includes("constitution")) return "Constitution of BD";
+  if (lower.includes("nari o shishu") || lower.includes("women and children")) {
+    return "Nari O Shishu Act";
+  }
+  if (lower.includes("arbitration")) return "Arbitration Act, 2001";
+  if (lower.includes("companies act")) return "Companies Act, 1994";
+  return cleaned;
+}
+
+function formatSectionPillLabel(sec: string, isBn: boolean): string {
+  const s = sec.trim();
+  if (!s) return "";
+  if (isBn) {
+    if (/^ধারা|^অনুচ্ছেদ/.test(s)) return s;
+    if (/^art(?:icle)?\.?\s+/i.test(s)) {
+      return `অনুচ্ছেদ ${s.replace(/^art(?:icle)?\.?\s+/i, "")}`;
+    }
+    if (/^sec(?:tion)?\.?\s+/i.test(s)) {
+      return `ধারা ${s.replace(/^sec(?:tion)?\.?\s+/i, "")}`;
+    }
+    return `ধারা ${s}`;
+  }
+  if (/^sec(?:tion)?\.?\s+/i.test(s)) {
+    return `Sec ${s.replace(/^sec(?:tion)?\.?\s+/i, "")}`;
+  }
+  if (/^art(?:icle)?\.?\s+/i.test(s)) {
+    return `Art ${s.replace(/^art(?:icle)?\.?\s+/i, "")}`;
+  }
+  if (/^\d/.test(s)) return `Sec ${s}`;
+  return s;
+}
+
+function matchStaticProvision(citation: NormalizedCitedSection): StatutoryProvision | null {
+  const numMatch = citation.sectionNumber.match(/\d+[A-Za-z]?/);
+  if (!numMatch) return null;
+  const targetNum = numMatch[0].toLowerCase();
+  const actLower = citation.act.toLowerCase();
+
+  for (const prov of Object.values(STATUTORY_PROVISIONS)) {
+    const provMatch = prov.sectionEn.match(/\b(\d+[A-Za-z]?)\b/);
+    const provNum = provMatch ? provMatch[1].toLowerCase() : "";
+    const provAct = prov.actTitleEn.toLowerCase();
+    if (provNum && provNum === targetNum) {
+      if (
+        (actLower.includes("contract") && provAct.includes("contract")) ||
+        (actLower.includes("labour") && provAct.includes("labour")) ||
+        (actLower.includes("labor") && provAct.includes("labour"))
+      ) {
+        return prov;
+      }
+    }
+  }
+  return null;
+}
+
+function expandSlashCommand(rawQuery: string, isBn: boolean): string {
+  const trimmed = rawQuery.trim();
+  if (trimmed.startsWith("/audit")) {
+    const rest = trimmed.slice(6).trim();
+    if (!rest) {
+      return isBn
+        ? "বাংলাদেশের চুক্তি আইন, ১৮৭২ এবং প্রযোজ্য আইন অনুযায়ী একটি বাণিজ্যিক চুক্তি অডিট করার মূল ধারা ও ঝুঁকিসমূহ ব্যাখ্যা করুন।"
+        : "Explain the key clauses and risk checkpoints for auditing a commercial contract under Bangladesh Contract Act, 1872.";
+    }
+    return isBn
+      ? `নিম্নলিখিত চুক্তি বা ধারা বাংলাদেশের প্রযোজ্য আইন অনুযায়ী বিস্তারিত আইনি অডিট ও ঝুঁকি বিশ্লেষণ করুন:\n\n${rest}`
+      : `Conduct a structured legal risk audit of the following clause or contract under applicable Bangladesh laws:\n\n${rest}`;
+  }
+  if (trimmed.startsWith("/memo")) {
+    const rest = trimmed.slice(5).trim();
+    if (!rest) {
+      return isBn
+        ? "বাংলাদেশ সুপ্রিম কোর্ট বা জেলা জজ আদালতে দাখিলযোগ্য একটি সংক্ষিপ্ত আইনি মেমো ফরম্যাটে প্রধান উপাদানসমূহ ব্যাখ্যা করুন।"
+        : "Provide a formal Bangladesh legal memorandum template highlighting key statutory and procedural components.";
+    }
+    return isBn
+      ? `নিম্নলিখিত বিষয়ে বাংলাদেশের আইন ও নজির উল্লেখপূর্বক একটি সুসংগঠিত আইনি মেমো (Legal Memo) প্রস্তুত করুন:\n\n${rest}`
+      : `Draft a structured formal legal memorandum under Bangladesh law on the following issue:\n\n${rest}`;
+  }
+  if (trimmed.startsWith("/redline")) {
+    const rest = trimmed.slice(8).trim();
+    if (!rest) {
+      return isBn
+        ? "কোনো একতরফা বা ঝুঁকিপূর্ণ চুক্তির ধারা কীভাবে ভারসাম্যপূর্ণ রেডলাইন (Redline) খসড়ায় রূপান্তর করা উচিত, তা উদাহরণসহ ব্যাখ্যা করুন।"
+        : "Show how to redline high-risk indemnity and non-compete clauses to comply with Bangladesh law.";
+    }
+    return isBn
+      ? `নিম্নলিখিত ধারাটির আইনি দুর্বলতা চিহ্নিত করে নিরাপদ ও ভারসাম্যপূর্ণ বিকল্প রেডলাইন (Redline Draft) লিখে দিন:\n\n${rest}`
+      : `Identify legal vulnerabilities in the following clause and provide a balanced, enforceable redline draft under Bangladesh law:\n\n${rest}`;
+  }
+  return trimmed;
+}
+
+function getPipelineSteps(isBn: boolean, mode: string): string[] {
+  if (mode === "USER_CONTRACT") {
+    return isBn
+      ? [
+          "প্রশ্ন ও চুক্তির প্রেক্ষাপট বিশ্লেষণ করা হচ্ছে...",
+          "আপলোডকৃত চুক্তির ধারা ও ঝুঁকি যাচাই করা হচ্ছে...",
+          "প্রযোজ্য বাংলাদেশ আইন ও বিধি মিলিয়ে দেখা হচ্ছে...",
+          "সুনির্দিষ্ট আইনি পরামর্শ ও করণীয় সাজানো হচ্ছে...",
+        ]
+      : [
+          "Analyzing question and contract scope...",
+          "Inspecting scoped contract clauses and risk points...",
+          "Cross-checking against Bangladesh statutory law...",
+          "Structuring actionable legal guidance...",
+        ];
+  }
+  if (mode === "LAWYER_RESEARCH") {
+    return isBn
+      ? [
+          "আইনি ইস্যু ও কার্যবিধি চিহ্নিত করা হচ্ছে...",
+          "বাংলাদেশের প্রযোজ্য আইন ও ধারা অনুসন্ধান (Live RAG)...",
+          "হাইকোর্ট ও আপিল বিভাগের নজির যাচাই করা হচ্ছে...",
+          "তথ্যসূত্রসহ পেশাদার আইনি বিশ্লেষণ তৈরি হচ্ছে...",
+        ]
+      : [
+          "Parsing legal issue and procedural posture...",
+          "Searching Bangladesh statutory corpus (Live RAG)...",
+          "Verifying Appellate & High Court Division precedents...",
+          "Synthesizing citation-verified legal brief...",
+        ];
+  }
+  return isBn
+    ? [
+        "আপনার প্রশ্ন ও আইনি প্রাসঙ্গিকতা বোঝা হচ্ছে...",
+        "বাংলাদেশের প্রযোজ্য আইন ও ধারা অনুসন্ধান (Live RAG)...",
+        "সংশ্লিষ্ট বিধি ও ব্যতিক্রমসমূহ যাচাই করা হচ্ছে...",
+        "সহজ ও নির্ভুল আইনি উত্তর প্রস্তুত করা হচ্ছে...",
+      ]
+    : [
+        "Analyzing your legal question and context...",
+        "Searching Bangladesh statutory provisions (Live RAG)...",
+        "Verifying procedural rules and exceptions...",
+        "Preparing structured, verified legal response...",
+      ];
+}
+
+function groupSessionsByDate(sessions: ChatSession[], isBn: boolean) {
+  const sorted = [...sessions].sort((a, b) => {
+    const tA = new Date(a.updated_at || a.created_at || 0).getTime();
+    const tB = new Date(b.updated_at || b.created_at || 0).getTime();
+    return tB - tA;
+  });
+
+  const now = new Date();
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const startOfYesterday = startOfToday - 86400000;
+  const startOfLast7Days = startOfToday - 6 * 86400000;
+
+  const groups: { label: string; items: ChatSession[] }[] = [
+    { label: isBn ? "আজ" : "Today", items: [] },
+    { label: isBn ? "গতকাল" : "Yesterday", items: [] },
+    { label: isBn ? "গত ৭ দিন" : "Previous 7 Days", items: [] },
+    { label: isBn ? "পুরাতন" : "Older", items: [] },
+  ];
+
+  for (const s of sorted) {
+    const rawDate = s.updated_at || s.created_at;
+    if (!rawDate) {
+      groups[3].items.push(s);
+      continue;
+    }
+    const ts = new Date(rawDate).getTime();
+    if (Number.isNaN(ts) || ts <= 0) {
+      groups[3].items.push(s);
+    } else if (ts >= startOfToday) {
+      groups[0].items.push(s);
+    } else if (ts >= startOfYesterday) {
+      groups[1].items.push(s);
+    } else if (ts >= startOfLast7Days) {
+      groups[2].items.push(s);
+    } else {
+      groups[3].items.push(s);
     }
   }
 
-  if (target && typeof target === "object") {
-    const obj = target as Record<string, unknown>;
-    return {
-      answerText: (obj.detailed_answer as string) || (obj.response as string) || "",
-      apiCitations: (obj.cited_sections as CitedSection[]) || [],
-      apiCitedCases: (obj.cited_cases as CitedCase[]) || [], // [UPDATED] NEW
-      nextSteps: (obj.suggested_next_steps as string[]) || [],
-      followUps: (obj.suggested_follow_ups as string[]) || [],
-    };
-  }
-
-  return {
-    answerText: String(content || ""),
-    apiCitations: [] as CitedSection[],
-    apiCitedCases: [] as CitedCase[], // [UPDATED] NEW
-    nextSteps: [] as string[],
-    followUps: [] as string[],
-  };
+  return groups.filter((g) => g.items.length > 0);
 }
 
-function groupSessions(sessions: ChatSession[]) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const yesterday = new Date(today);
-  yesterday.setDate(yesterday.getDate() - 1);
-  const lastWeek = new Date(today);
-  lastWeek.setDate(lastWeek.getDate() - 7);
+// ────────────────────────────────────────────────────────────────────────────
+// Subcomponents
+// ────────────────────────────────────────────────────────────────────────────
 
-  const groups: { [key: string]: ChatSession[] } = {
-    Today: [],
-    Yesterday: [],
-    "Previous 7 Days": [],
-    Older: [],
-  };
+function ActionStepsDisclosure({
+  steps,
+  isBn,
+}: {
+  steps: string[];
+  isBn: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  if (!steps.length) return null;
 
-  sessions.forEach((sess) => {
-    const d = sess.created_at ? new Date(sess.created_at) : new Date();
-    if (d >= today) groups["Today"].push(sess);
-    else if (d >= yesterday) groups["Yesterday"].push(sess);
-    else if (d >= lastWeek) groups["Previous 7 Days"].push(sess);
-    else groups["Older"].push(sess);
-  });
+  return (
+    <div className="mt-3 pt-3 border-t border-(--text-primary)/8">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 text-left py-1 text-xs font-semibold text-(--text-primary)/80 hover:text-(--text-primary) transition-colors cursor-pointer"
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+          <span>
+            {isBn
+              ? `পরবর্তী করণীয় পদক্ষেপ (${steps.length})`
+              : `Recommended Action Steps (${steps.length})`}
+          </span>
+        </span>
+        {open ? (
+          <ChevronDown className="w-3.5 h-3.5 text-(--text-muted)" />
+        ) : (
+          <ChevronRight className="w-3.5 h-3.5 text-(--text-muted)" />
+        )}
+      </button>
 
-  return groups;
+      {open && (
+        <ul className="mt-2 space-y-1.5 pl-1">
+          {steps.map((step, idx) => (
+            <li
+              key={idx}
+              className="flex items-start gap-2.5 text-[14px] leading-[1.65] text-(--text-primary)/85"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2.5 shrink-0" />
+              <span className="flex-1 wrap-break-word">{step}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }
+
+function CaseLawPills({
+  cases,
+  isBn,
+}: {
+  cases: CitedCase[];
+  isBn: boolean;
+}) {
+  const [expandedIdx, setExpandedIdx] = useState<number | null>(null);
+  if (!cases.length) return null;
+
+  return (
+    <div className="mt-3 pt-3 border-t border-(--text-primary)/8">
+      <div className="flex items-center gap-1.5 mb-2 text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+        <BookOpen className="w-3.5 h-3.5" />
+        <span>
+          {isBn ? "প্রাসঙ্গিক উচ্চ আদালতের নজির" : "Precedents & Case Law"}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {cases.map((c, idx) => {
+          const active = expandedIdx === idx;
+          return (
+            <button
+              key={`${c.case_name}-${idx}`}
+              type="button"
+              onClick={() => setExpandedIdx(active ? null : idx)}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-medium transition-all cursor-pointer max-w-full ${
+                active
+                  ? "bg-amber-500/15 border-amber-500/40 text-amber-800 dark:text-amber-200"
+                  : "bg-(--bg-surface) border-(--text-primary)/12 text-(--text-primary)/85 hover:border-amber-500/40"
+              }`}
+            >
+              <span className="truncate max-w-[220px] sm:max-w-[300px]">{c.case_name}</span>
+              <ChevronDown
+                className={`w-3 h-3 shrink-0 transition-transform ${
+                  active ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          );
+        })}
+      </div>
+
+      {expandedIdx !== null && cases[expandedIdx] && (
+        <div className="mt-2 p-3 rounded-xl bg-(--bg-surface) border border-amber-500/25 text-[13.5px] leading-[1.6] space-y-1">
+          <div className="font-semibold text-(--text-primary)">
+            {cases[expandedIdx].case_name}
+          </div>
+          {cases[expandedIdx].ruling && (
+            <p className="text-(--text-primary)/85">{cases[expandedIdx].ruling}</p>
+          )}
+          {cases[expandedIdx].relevance && (
+            <p className="text-xs text-(--text-muted)">
+              {cases[expandedIdx].relevance}
+            </p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Main Copilot Page
+// ────────────────────────────────────────────────────────────────────────────
 
 export default function CopilotPage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { theme } = useTheme();
-  const { user, updateUser } = useAuth();
-  const isLawyer = String(user?.role).toUpperCase() === "LAWYER";
+  const isBn = language === "bn";
+  const { user, isAuthenticated, isLoading: authLoading, refreshUser, updateUser } = useAuth();
+  const { toast } = useNotification();
 
-  const userRole = String(user?.role || "").toUpperCase();
-  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
-  const isPendingEnterpriseAdmin =
-    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
-    entStatus === "pending" ||
-    entStatus === "pending_approval";
-  const isPendingMember =
-    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
-    ((user as any)?.member_approval_status === "PENDING" ||
-      user?.enterpriseProfile?.memberApprovalStatus === "PENDING");
+  // Role & Credit Calculations
+  const normalizedRole = normalizeUserRole(user?.role);
+  const isLawyer = normalizedRole === "lawyer";
+  const isEnterpriseAdmin =
+    normalizedRole === "enterprise_admin" || normalizedRole === "enterprise";
+  const isEnterpriseMember = normalizedRole === "enterprise_member";
 
-  useEffect(() => {
-    if (!user) return;
-    if (isPendingEnterpriseAdmin) {
-      router.replace("/enterprise/pending");
-    } else if (isPendingMember) {
-      router.replace("/enterprise/member");
+  const liveCredits = useMemo(() => {
+    if (!user) return 0;
+    if (isEnterpriseMember && user.member_credit_quota != null) {
+      return Math.max(0, user.member_credit_quota - (user.member_credit_used ?? 0));
     }
-  }, [user, isPendingEnterpriseAdmin, isPendingMember, router]);
+    if (isEnterpriseAdmin || isEnterpriseMember) {
+      return user.enterprise_credit_balance ?? user.creditBalance ?? 0;
+    }
+    return user.creditBalance ?? 0;
+  }, [user, isEnterpriseAdmin, isEnterpriseMember]);
 
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [activeCitation, setActiveCitation] = useState<StatutoryProvision | null>(null);
-  const [loadedContractTitle, setLoadedContractTitle] = useState<string | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const canTopUpCredits =
+    normalizedRole === "general" ||
+    (isEnterpriseAdmin &&
+      String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase() === "verified");
+
+  const defaultMode: "GENERAL" | "LAWYER_RESEARCH" = isLawyer
+    ? "LAWYER_RESEARCH"
+    : "GENERAL";
+
+  // Chat State
   const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [showHistoryDrawer, setShowHistoryDrawer] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState<string | number | null>(null);
+  const [activeMode, setActiveMode] = useState<string>(defaultMode);
+  const [turnCount, setTurnCount] = useState<number>(0);
+  const [turnLimit, setTurnLimit] = useState<number>(isLawyer ? 20 : 5);
+  const [messages, setMessages] = useState<UiChatMessage[]>([]);
+  const [activeContractContext, setActiveContractContext] =
+    useState<ActiveContractContext | null>(null);
+
+  const [isBusy, setIsBusy] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+  const [piiMaskEnabled, setPiiMaskEnabled] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  // History Drawer State
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [historySearch, setHistorySearch] = useState("");
+  const [renamingSessionId, setRenamingSessionId] = useState<string | number | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [renamingBusy, setRenamingBusy] = useState(false);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
-  const copyMessageText = (text: string, msgId: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedMsgId(msgId);
-    setTimeout(() => setCopiedMsgId(null), 2000);
-  };
+  // Statute Popup Modal State + Client Memory Cache
+  const [statuteModal, setStatuteModal] = useState<StatuteModalState | null>(null);
+  const [copiedStatute, setCopiedStatute] = useState(false);
+  const statuteCacheRef = useRef<Map<string, StatuteLookupResult>>(new Map());
+  const statuteLookupAbortRef = useRef<AbortController | null>(null);
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // Scroll & Abort Refs
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const latestAssistantRef = useRef<HTMLDivElement | null>(null);
+  const isNearBottomRef = useRef<boolean>(true);
+  const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const initializedRef = useRef<boolean>(false);
 
+  // Keep active mode aligned with role when idle with no open session
   useEffect(() => {
-    let isMounted = true;
-    const contractData = sessionStorage.getItem("active_audit_contract");
-    if (contractData) {
-      try {
-        const parsed = JSON.parse(contractData);
-        const title = language === "bn" ? (parsed.titleBn || parsed.titleEn) : (parsed.titleEn || parsed.titleBn);
-        setLoadedContractTitle(title);
-
-        if (parsed.existingSessionId) {
-          const sid = String(parsed.existingSessionId);
-          setActiveSessionId(sid);
-          setIsLoadingHistory(true);
-          
-          getChatSessionHistory(sid).then((history) => {
-            if (!isMounted) return;
-            if (history && history.messages) {
-              const mapped: ChatMessage[] = history.messages.map((m, idx) => {
-                const parsedData = parseServerContent(m.content);
-                return {
-                  id: `hist-${idx}-${Date.now()}`,
-                  sender: m.role === "assistant" ? "copilot" : "user",
-                  timestamp: m.created_at
-                    ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                    : "History",
-                  textEn: parsedData.answerText || m.content,
-                  textBn: parsedData.answerText || m.content,
-                  apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
-                  apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // [UPDATED] NEW
-                  nextSteps: (m.suggested_next_steps && m.suggested_next_steps.length > 0) ? m.suggested_next_steps : (parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined),
-                  followUps: ((m as any).suggested_follow_ups && (m as any).suggested_follow_ups.length > 0) ? (m as any).suggested_follow_ups : (parsedData.followUps.length > 0 ? parsedData.followUps : undefined),
-                  isThinking: false,
-                };
-              });
-              setMessages(mapped);
-            }
-          }).catch(err => console.warn("Could not load existing session:", err))
-            .finally(() => { if (isMounted) setIsLoadingHistory(false); });
-
-          delete parsed.existingSessionId;
-          sessionStorage.setItem("active_audit_contract", JSON.stringify(parsed));
-        } 
-        else if (parsed.shouldStartNewSession) {
-          delete parsed.shouldStartNewSession;
-          sessionStorage.setItem("active_audit_contract", JSON.stringify(parsed));
-
-          const initContractSession = async () => {
-            const cid = parsed.contractId || parsed.id;
-            try {
-              const sessionTitle = title ? `Audit: ${title.slice(0, 32)}` : "Contract Consultation";
-              const newSession = await createChatSession(sessionTitle, "USER_CONTRACT", cid);
-              if (!isMounted) return;
-
-              const sid = String(newSession.session_id || newSession.id);
-              setActiveSessionId(sid);
-
-              const partiesText = parsed.firstPartyEn && parsed.secondPartyEn
-                ? (language === "bn" ? `${parsed.firstPartyBn || parsed.firstPartyEn} ও ${parsed.secondPartyBn || parsed.secondPartyEn}` : `${parsed.firstPartyEn} & ${parsed.secondPartyEn}`)
-                : null;
-              const summaryText = language === "bn" ? (parsed.summaryBn || parsed.summaryEn) : (parsed.summaryEn || parsed.summaryBn);
-              const riskText = parsed.riskScore != null ? `${parsed.riskScore}/100` : null;
-
-              const introEn = `**Contract Context Attached: ${parsed.titleEn || title}**\n\n${partiesText ? `- **Parties:** ${partiesText}\n` : ""}${riskText ? `- **Assessed Risk:** ${parsed.riskGradeEn || "Audited"} (${riskText})\n` : ""}${summaryText ? `- **Audit Summary:** ${summaryText}\n` : ""}\nI have loaded this agreement and its statutory audit records into our new consultation session. You can ask me to redline any clause under Bangladesh statutes (Labour Act 2006, Contract Act 1872), explain non-compliance liabilities, or draft protective terms. How can I help you?`;
-
-              const introBn = `**চুক্তিপত্রের প্রেক্ষাপট সংযুক্ত করা হয়েছে: ${parsed.titleBn || title}**\n\n${partiesText ? `- **পক্ষসমূহ:** ${partiesText}\n` : ""}${riskText ? `- **আইনি ঝুঁকি:** ${parsed.riskGradeBn || "অডিট সম্পন্ন"} (${riskText})\n` : ""}${summaryText ? `- **অডিট সারাংশ:** ${summaryText}\n` : ""}\nএই চুক্তিপত্র এবং এর অডিট রেকর্ড নতুন চ্যাট সেশনে লোড করা হয়েছে। আপনি বাংলাদেশ আইন (শ্রম আইন ২০০৬, চুক্তি আইন ১৮৭২) অনুযায়ী ধারা সংশোধন, লিগ্যাল ঝুঁকি এবং ড্রাফটিং নিয়ে প্রশ্ন করতে পারেন। আমি কীভাবে সাহায্য করতে পারি?`;
-
-              setMessages([
-                {
-                  id: `intro-${Date.now()}`,
-                  sender: "copilot",
-                  timestamp: "Just now",
-                  textEn: introEn,
-                  textBn: introBn,
-                  isThinking: false,
-                },
-              ]);
-
-              loadSessions();
-            } catch (err: unknown) {
-              console.warn("Could not create initial contract session:", err);
-            }
-          };
-
-          initContractSession();
-        }
-      } catch {
-        // ignore
-      }
+    if (!activeSessionId && !activeContractContext) {
+      setActiveMode(defaultMode);
+      setTurnLimit(isLawyer ? 20 : 5);
     }
-    return () => {
-      isMounted = false;
-    };
-  }, [language]);
+  }, [activeSessionId, activeContractContext, defaultMode, isLawyer]);
 
-  const loadSessions = async () => {
-    setIsLoadingSessions(true);
+  // Animated thinking stages while AI is generating
+  useEffect(() => {
+    if (!isBusy) return;
+    const timer = setInterval(() => {
+      setMessages((prev) =>
+        prev.map((m) => {
+          if (!m.isThinking || !m.thinkingStartTime) return m;
+          const elapsedSec = (Date.now() - m.thinkingStartTime) / 1000;
+          const maxStages = 4;
+          const nextStage = Math.min(maxStages - 1, Math.floor(elapsedSec / 1.8));
+          if (nextStage === m.thinkingStage) return m;
+          return { ...m, thinkingStage: nextStage };
+        })
+      );
+    }, 450);
+    return () => clearInterval(timer);
+  }, [isBusy]);
+
+  // Load sessions helper
+  const fetchSessions = useCallback(async () => {
     try {
-      const data = await listChatSessions();
-      setSessions(data);
+      const list = await listChatSessions();
+      setSessions(list);
+      return list;
     } catch {
-      // noop
-    } finally {
-      setIsLoadingSessions(false);
+      return [];
     }
-  };
-
-  useEffect(() => {
-    loadSessions();
   }, []);
 
-  const handleSelectSession = async (session: ChatSession) => {
-    const sid = String(session.session_id || session.id);
-    setActiveSessionId(sid);
-    setShowHistoryDrawer(false);
-    setIsLoadingHistory(true);
-    try {
-      const history = await getChatSessionHistory(sid);
-      if (history && history.messages) {
-        const mapped: ChatMessage[] = history.messages.map((m, idx) => {
-          const parsedData = parseServerContent(m.content);
-          return {
-            id: `hist-${idx}-${Date.now()}`,
-            sender: m.role === "assistant" ? "copilot" : "user",
-            timestamp: m.created_at
-              ? new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-              : "History",
-            textEn: parsedData.answerText || m.content,
-            textBn: parsedData.answerText || m.content,
-            apiCitations: m.citations || (parsedData.apiCitations.length > 0 ? parsedData.apiCitations : undefined),
-            apiCitedCases: m.cited_cases || (parsedData.apiCitedCases.length > 0 ? parsedData.apiCitedCases : undefined), // [UPDATED] NEW
-            nextSteps: (m.suggested_next_steps && m.suggested_next_steps.length > 0) ? m.suggested_next_steps : (parsedData.nextSteps.length > 0 ? parsedData.nextSteps : undefined),
-            followUps: ((m as any).suggested_follow_ups && (m as any).suggested_follow_ups.length > 0) ? (m as any).suggested_follow_ups : (parsedData.followUps.length > 0 ? parsedData.followUps : undefined),
-            isThinking: false,
-          };
-        });
-        setMessages(mapped);
+  // Load a specific session's messages
+  const handleSelectSession = useCallback(
+    async (session: ChatSession | { session_id: string | number; mode?: string }) => {
+      const sid = session.session_id;
+      setIsLoadingHistory(true);
+      setIsDrawerOpen(false);
+      setConfirmDeleteId(null);
+      setRenamingSessionId(null);
+      try {
+        const res = await getChatSessionHistory(sid);
+        setActiveSessionId(res.session_id);
+        setActiveMode(res.mode || session.mode || defaultMode);
+        setTurnCount(res.message_count ?? Math.ceil(res.messages.length / 2));
+        setTurnLimit(res.message_limit ?? (isLawyer ? 20 : 5));
+        setMessages(
+          res.messages.map((m, idx) => ({
+            id: `hist-${sid}-${idx}-${m.created_at || idx}`,
+            role: m.role,
+            content: m.content,
+            citations: normalizeCitations(m.citations),
+            citedCases: m.cited_cases || undefined,
+            actionSteps: m.suggested_next_steps || undefined,
+            followUps: m.suggested_follow_ups || undefined,
+            needsClarification: m.needs_clarification,
+            createdAt: m.created_at,
+          }))
+        );
+        setTimeout(() => {
+          const el = scrollContainerRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        }, 60);
+      } catch (err) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : isBn
+            ? "চ্যাট হিস্ট্রি লোড করা যায়নি।"
+            : "Failed to load chat history."
+        );
+      } finally {
+        setIsLoadingHistory(false);
       }
-    } catch (err: unknown) {
-      console.error("Failed to load session history:", err);
-    } finally {
-      setIsLoadingHistory(false);
-    }
-  };
+    },
+    [defaultMode, isBn, isLawyer, toast]
+  );
 
-  const handleNewSession = () => {
+  // Initial load: fetch sessions & consume any handoff from ContractMind / Archive / Lawyer Pending
+  useEffect(() => {
+    if (authLoading || !isAuthenticated || !user || initializedRef.current) return;
+    initializedRef.current = true;
+
+    const init = async () => {
+      await fetchSessions();
+      if (typeof window === "undefined") return;
+
+      const rawContext = sessionStorage.getItem("active_audit_contract");
+      if (rawContext) {
+        sessionStorage.removeItem("active_audit_contract");
+        try {
+          const parsed = JSON.parse(rawContext);
+          if (parsed.existingSessionId) {
+            setActiveContractContext({
+              contractId: parsed.contractId || parsed.id,
+              title: isBn
+                ? parsed.titleBn || parsed.titleEn || "চুক্তি পর্যালোচনা"
+                : parsed.titleEn || parsed.titleBn || "Contract Review",
+            });
+            await handleSelectSession({
+              session_id: parsed.existingSessionId,
+              mode: "USER_CONTRACT",
+            });
+            return;
+          }
+          if (parsed.contractId || parsed.id) {
+            setActiveContractContext({
+              contractId: parsed.contractId || parsed.id,
+              title: isBn
+                ? parsed.titleBn || parsed.titleEn || "Contract Context"
+                : parsed.titleEn || parsed.titleBn || "Contract Context",
+              summary: isBn ? parsed.summaryBn : parsed.summaryEn,
+              riskScore: parsed.riskScore,
+              riskGrade: isBn ? parsed.riskGradeBn : parsed.riskGradeEn,
+            });
+            setActiveMode("USER_CONTRACT");
+            setActiveSessionId(null);
+            setMessages([]);
+          }
+        } catch {
+          // Ignore malformed handoff payload
+        }
+      }
+    };
+
+    init();
+  }, [authLoading, isAuthenticated, user, fetchSessions, handleSelectSession, isBn]);
+
+  // Escape key closes Statute Modal or History Drawer
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (statuteModal) {
+          statuteLookupAbortRef.current?.abort();
+          setStatuteModal(null);
+        } else if (isDrawerOpen) {
+          setIsDrawerOpen(false);
+        }
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [statuteModal, isDrawerOpen]);
+
+  // Smart Scroll handler
+  const handleContainerScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const nearBottom = distFromBottom <= 140;
+    isNearBottomRef.current = nearBottom;
+    setShowJumpToBottom(!nearBottom && messages.length > 0);
+  }, [messages.length]);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+    isNearBottomRef.current = true;
+    setShowJumpToBottom(false);
+  }, []);
+
+  // Start fresh chat
+  const handleNewChat = useCallback(() => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsBusy(false);
     setActiveSessionId(null);
     setMessages([]);
-    setShowHistoryDrawer(false);
-    sessionStorage.removeItem("active_audit_contract");
-    setLoadedContractTitle(null);
-  };
+    setTurnCount(0);
+    setActiveMode(activeContractContext ? "USER_CONTRACT" : defaultMode);
+    setTurnLimit(isLawyer ? 20 : 5);
+    setShowJumpToBottom(false);
+    setIsDrawerOpen(false);
+  }, [activeContractContext, defaultMode, isLawyer]);
 
-  const handleCloseSession = async (sessionId: string | number, e: React.MouseEvent) => {
-    e.stopPropagation();
-    try {
-      await closeChatSession(sessionId);
-      setSessions((prev) => prev.filter((s) => String(s.session_id || s.id) !== String(sessionId)));
-      if (String(activeSessionId) === String(sessionId)) {
-        setActiveSessionId(null);
-        setMessages([]);
-      }
-    } catch (err: unknown) {
-      console.error("Failed to close session:", err);
+  // Stop active generation
+  const handleStopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
     }
-  };
+  }, []);
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, isTyping]);
+  // Open Live RAG Statute Modal/Drawer (0 credits + memory cache)
+  const handleOpenStatuteModal = useCallback(
+    async (citation: NormalizedCitedSection) => {
+      statuteLookupAbortRef.current?.abort();
+      const cacheKey = `${citation.act.toLowerCase()}::${citation.sectionNumber.toLowerCase()}`;
+      const fallbackProv = matchStaticProvision(citation);
+      const cached = statuteCacheRef.current.get(cacheKey);
 
-  const handleSendPrompt = async (text: string, detail?: { attachments?: string[] }) => {
-    if (isTyping) return;
-    const rawAttachments = detail?.attachments || [];
-    if (!text.trim() && rawAttachments.length === 0) return;
-
-    const promptText = text.trim() || (language === "bn" ? "সংযুক্ত ফাইল বিশ্লেষণ করুন" : "Analyze attached document(s)");
-
-    const userMessage: ChatMessage = {
-      id: `usr-${Date.now()}`,
-      sender: "user",
-      timestamp: "Just now",
-      textEn: promptText,
-      textBn: promptText,
-      attachments: rawAttachments.length > 0 ? rawAttachments : undefined
-    };
-
-    const copilotMsgId = `cop-${Date.now()}`;
-    const pendingCopilotMessage: ChatMessage = {
-      id: copilotMsgId,
-      sender: "copilot",
-      timestamp: "Just now",
-      textEn: "",
-      textBn: "",
-      citations: [],
-      isThinking: true
-    };
-
-    setMessages((prev) => [...prev, userMessage, pendingCopilotMessage]);
-    setIsTyping(true);
-
-    const startTime = Date.now();
-
-    try {
-      const contractData = sessionStorage.getItem("active_audit_contract");
-      let contractId: string | undefined;
-      if (contractData) {
-        try {
-          const parsed = JSON.parse(contractData);
-          contractId = parsed.contractId || parsed.id;
-        } catch { /* noop */ }
+      setCopiedStatute(false);
+      if (cached) {
+        setStatuteModal({
+          citation,
+          loading: false,
+          data: cached,
+          fallbackProvision: fallbackProv,
+        });
+        return;
       }
 
-      let sessionId = activeSessionId;
-      if (!sessionId) {
-        let mode: "GENERAL" | "LAWYER_RESEARCH" | "USER_CONTRACT" = "GENERAL";
-        if (isLawyer) {
-          mode = "LAWYER_RESEARCH";
-        } else if (contractId) {
-          mode = "USER_CONTRACT";
-        }
-
-        const session = await createChatSession(
-          promptText.length > 40 ? promptText.slice(0, 40) + "..." : promptText,
-          mode,
-          contractId
-        );
-        sessionId = String(session.session_id || session.id);
-        setActiveSessionId(sessionId);
-      }
-
-      // [UPDATED] SECURITY: Mask PII (emails, phones, NIDs) before sending to the backend AI
-      const { redactedText, stats } = maskPii(promptText, true);
-      
-      if (stats.totalRedactions > 0) {
-        console.log(`[PII Shield] Masked ${stats.totalRedactions} PII items from user prompt.`);
-      }
-
-      const queryWithContext = rawAttachments.length > 0
-        ? `[Attached: ${rawAttachments.join(", ")}]\n${redactedText}`
-        : redactedText;
-
-      const result = await sendChatQuery({
-        session_id: sessionId,
-        query: queryWithContext,
-        contract_id: contractId,
+      setStatuteModal({
+        citation,
+        loading: true,
+        data: null,
+        fallbackProvision: fallbackProv,
       });
 
-      loadSessions();
-
-      let answerText = "";
-      let apiCitations: CitedSection[] = [];
-      let apiCitedCases: CitedCase[] = []; // [UPDATED] NEW
-      let nextSteps: string[] = [];
-      let followUps: string[] = [];
-
-      let parsedPayload: unknown = result.response;
-      if (typeof parsedPayload === "string") {
-        try {
-          parsedPayload = JSON.parse(parsedPayload);
-        } catch {
-          // Plain text response fallback
+      const controller = new AbortController();
+      statuteLookupAbortRef.current = controller;
+      try {
+        const res = await lookupStatuteSection(
+          citation.sectionNumber,
+          citation.act,
+          controller.signal
+        );
+        if (res.found && res.verbatim_text) {
+          statuteCacheRef.current.set(cacheKey, res);
         }
-      }
-
-      if (parsedPayload && typeof parsedPayload === "object") {
-        const obj = parsedPayload as Record<string, unknown>;
-        answerText = (obj.detailed_answer as string) || (obj.response as string) || "";
-        apiCitations = (obj.cited_sections as CitedSection[]) || [];
-        apiCitedCases = (obj.cited_cases as CitedCase[]) || []; // [UPDATED] NEW
-        nextSteps = (obj.suggested_next_steps as string[]) || [];
-        followUps = (obj.suggested_follow_ups as string[]) || [];
-      } else if (typeof parsedPayload === "string") {
-        answerText = parsedPayload;
-      }
-
-      if (typeof result.credits_remaining === "number" && updateUser) {
-        updateUser({ creditBalance: result.credits_remaining });
-      }
-
-      const endTime = Date.now();
-      const actualSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
-
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === copilotMsgId
+        setStatuteModal((prev) =>
+          prev &&
+          prev.citation.sectionNumber === citation.sectionNumber &&
+          prev.citation.act === citation.act
+            ? { ...prev, loading: false, data: res }
+            : prev
+        );
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 499) return;
+        setStatuteModal((prev) =>
+          prev
             ? {
-                ...msg,
-                textEn: answerText || "Analysis complete.",
-                textBn: answerText || "বিশ্লেষণ সম্পন্ন হয়েছে।",
-                citations: [],
-                apiCitations,
-                apiCitedCases, // [UPDATED] NEW
-                nextSteps,
-                followUps,
-                isThinking: false,
-                thoughtSeconds: actualSeconds
+                ...prev,
+                loading: false,
+                data: {
+                  found: false,
+                  act: citation.act,
+                  section: citation.sectionNumber,
+                  title: citation.title,
+                  verbatim_text: "",
+                  bdlaws_url:
+                    citation.url || "http://bdlaws.minlaw.gov.bd/laws-of-bangladesh.html",
+                  status: "Summary Only",
+                },
               }
-            : msg
+            : null
+        );
+      }
+    },
+    []
+  );
+
+  // Core send message handler (supports normal send + in-place retry)
+  const handleSendPrompt = useCallback(
+    async (rawText: string, options?: { replaceMessageId?: string }) => {
+      const trimmed = rawText.trim();
+      if (!trimmed || isBusy || !isAuthenticated) return;
+
+      const expandedPrompt = expandSlashCommand(trimmed, isBn);
+      const masked = piiMaskEnabled
+        ? maskPii(expandedPrompt, true)
+        : { redactedText: expandedPrompt, stats: { totalRedactions: 0 } };
+      const finalQueryText = masked.redactedText;
+
+      const nowMs = Date.now();
+      const targetMode: "GENERAL" | "LAWYER_RESEARCH" | "USER_CONTRACT" =
+        activeContractContext
+          ? "USER_CONTRACT"
+          : activeMode === "LAWYER_RESEARCH" || isLawyer
+          ? "LAWYER_RESEARCH"
+          : "GENERAL";
+
+      const assistantMsgId =
+        options?.replaceMessageId || `ast-${nowMs}-${Math.random().toString(36).slice(2, 7)}`;
+
+      const thinkingPlaceholder: UiChatMessage = {
+        id: assistantMsgId,
+        role: "assistant",
+        content: "",
+        isThinking: true,
+        thinkingStage: 0,
+        thinkingStartTime: nowMs,
+        thoughtSteps: getPipelineSteps(isBn, targetMode),
+        retryQuery: trimmed,
+      };
+
+      if (options?.replaceMessageId) {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === options.replaceMessageId ? thinkingPlaceholder : m))
+        );
+      } else {
+        const userMsg: UiChatMessage = {
+          id: `usr-${nowMs}-${Math.random().toString(36).slice(2, 7)}`,
+          role: "user",
+          content: finalQueryText,
+          piiRedactionsCount: masked.stats.totalRedactions,
+          createdAt: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, userMsg, thinkingPlaceholder]);
+      }
+
+      isNearBottomRef.current = true;
+      setShowJumpToBottom(false);
+      setTimeout(() => scrollToBottom("smooth"), 40);
+
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+      setIsBusy(true);
+
+      try {
+        let sid = activeSessionId;
+        if (!sid) {
+          const titleCandidate = trimmed.slice(0, 60) || (isBn ? "আইনি প্রশ্ন" : "Legal Consultation");
+          const created = await createChatSession(
+            titleCandidate,
+            targetMode,
+            activeContractContext?.contractId ?? null
+          );
+          sid = created.session_id;
+          setActiveSessionId(sid);
+          setActiveMode(created.mode || targetMode);
+          setTurnLimit(created.message_limit ?? (isLawyer ? 20 : 5));
+          fetchSessions();
+        }
+
+        const res = await sendChatQuery({
+          session_id: sid,
+          query: finalQueryText,
+          contract_id: activeContractContext?.contractId ?? null,
+          signal: controller.signal,
+        });
+
+        const elapsed = Number(((Date.now() - nowMs) / 1000).toFixed(1));
+
+        let answerText = "";
+        let rawCitations: CitedSection[] | undefined = res.cited_sections;
+        let rawCases: CitedCase[] | undefined;
+        let actionSteps: string[] | undefined;
+        let followUps: string[] | undefined;
+        let needsClarification = false;
+
+        if (typeof res.response === "string") {
+          answerText = res.response;
+        } else if (res.response && typeof res.response === "object") {
+          const r = res.response as DetailedChatResponse;
+          answerText = r.detailed_answer || "";
+          rawCitations = r.cited_sections || res.cited_sections;
+          rawCases = r.cited_cases;
+          actionSteps = r.suggested_next_steps;
+          followUps = r.suggested_follow_ups;
+          needsClarification = Boolean(r.needs_clarification);
+        }
+
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantMsgId
+              ? {
+                  ...m,
+                  content: answerText || (isBn ? "উত্তর পাওয়া যায়নি।" : "No response received."),
+                  citations: normalizeCitations(rawCitations),
+                  citedCases: Array.isArray(rawCases) ? rawCases : undefined,
+                  actionSteps: Array.isArray(actionSteps) ? actionSteps : undefined,
+                  followUps: Array.isArray(followUps) ? followUps : undefined,
+                  needsClarification,
+                  isThinking: false,
+                  thoughtDuration: elapsed,
+                  isStopped: false,
+                  isError: false,
+                  createdAt: new Date().toISOString(),
+                }
+              : m
+          )
+        );
+
+        setTurnCount((c) => c + 1);
+
+        // Live sync credit balance immediately
+        if (typeof res.credits_remaining === "number" && user) {
+          if (isEnterpriseAdmin || isEnterpriseMember) {
+            updateUser({ enterprise_credit_balance: res.credits_remaining });
+          } else {
+            updateUser({ creditBalance: res.credits_remaining });
+          }
+          refreshUser().catch(() => {});
+        }
+
+        fetchSessions();
+
+        // Scroll cleanly to the START of the newly arrived assistant message
+        // (unless the user intentionally scrolled away up the history)
+        setTimeout(() => {
+          if (isNearBottomRef.current && latestAssistantRef.current) {
+            latestAssistantRef.current.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+          }
+        }, 80);
+      } catch (err: unknown) {
+        const elapsed = Number(((Date.now() - nowMs) / 1000).toFixed(1));
+        const isStoppedByUser =
+          (err instanceof ApiError && err.status === 499) ||
+          (err instanceof Error && err.name === "AbortError");
+
+        if (isStoppedByUser) {
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: isBn
+                      ? "উত্তর তৈরি করা আপনার অনুরোধে থামানো হয়েছে।"
+                      : "Response generation was stopped.",
+                    isThinking: false,
+                    thoughtDuration: elapsed,
+                    isStopped: true,
+                    isError: false,
+                    retryQuery: trimmed,
+                  }
+                : m
+            )
+          );
+        } else {
+          const status = err instanceof ApiError ? err.status : 500;
+          const detail =
+            err instanceof Error
+              ? err.message
+              : isBn
+              ? "সার্ভারের সাথে সংযোগ করতে সমস্যা হয়েছে।"
+              : "Failed to communicate with the legal AI engine.";
+
+          setMessages((prev) =>
+            prev.map((m) =>
+              m.id === assistantMsgId
+                ? {
+                    ...m,
+                    content: detail,
+                    isThinking: false,
+                    thoughtDuration: elapsed,
+                    isStopped: false,
+                    isError: true,
+                    errorStatus: status,
+                    retryQuery: trimmed,
+                  }
+                : m
+            )
+          );
+        }
+      } finally {
+        abortControllerRef.current = null;
+        setIsBusy(false);
+      }
+    },
+    [
+      isBusy,
+      isAuthenticated,
+      isBn,
+      piiMaskEnabled,
+      activeContractContext,
+      activeMode,
+      isLawyer,
+      activeSessionId,
+      scrollToBottom,
+      fetchSessions,
+      user,
+      isEnterpriseAdmin,
+      isEnterpriseMember,
+      updateUser,
+      refreshUser,
+    ]
+  );
+
+  // Copy full assistant markdown
+  const handleCopyMessage = useCallback(
+    async (id: string, text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedId(id);
+        setTimeout(() => setCopiedId((curr) => (curr === id ? null : curr)), 1800);
+      } catch {
+        toast.error(isBn ? "কপি করা যায়নি।" : "Could not copy to clipboard.");
+      }
+    },
+    [isBn, toast]
+  );
+
+  // Copy verbatim statute text
+  const handleCopyStatute = useCallback(
+    async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        setCopiedStatute(true);
+        setTimeout(() => setCopiedStatute(false), 1800);
+      } catch {
+        toast.error(isBn ? "কপি করা যায়নি।" : "Could not copy statute text.");
+      }
+    },
+    [isBn, toast]
+  );
+
+  // Rename session in History drawer
+  const handleSaveRename = useCallback(
+    async (sessionId: string | number) => {
+      const nextTitle = renameDraft.trim();
+      if (!nextTitle || renamingBusy) return;
+      setRenamingBusy(true);
+      try {
+        await renameChatSession(sessionId, nextTitle);
+        setSessions((prev) =>
+          prev.map((s) =>
+            String(s.session_id) === String(sessionId) ? { ...s, title: nextTitle } : s
+          )
+        );
+        setRenamingSessionId(null);
+        toast.success(isBn ? "সেশনের নাম পরিবর্তন হয়েছে।" : "Session renamed.");
+      } catch {
+        toast.error(isBn ? "নাম পরিবর্তন করা যায়নি।" : "Failed to rename session.");
+      } finally {
+        setRenamingBusy(false);
+      }
+    },
+    [renameDraft, renamingBusy, isBn, toast]
+  );
+
+  // Close / delete session in History drawer
+  const handleDeleteSession = useCallback(
+    async (sessionId: string | number) => {
+      if (deletingId) return;
+      setDeletingId(sessionId);
+      try {
+        await closeChatSession(sessionId);
+        setSessions((prev) =>
+          prev.filter((s) => String(s.session_id) !== String(sessionId))
+        );
+        if (String(activeSessionId) === String(sessionId)) {
+          handleNewChat();
+        }
+        setConfirmDeleteId(null);
+        toast.success(isBn ? "সেশন মুছে ফেলা হয়েছে।" : "Conversation deleted.");
+      } catch {
+        toast.error(isBn ? "মুছে ফেলা সম্ভব হয়নি।" : "Failed to delete conversation.");
+      } finally {
+        setDeletingId(null);
+      }
+    },
+    [deletingId, activeSessionId, handleNewChat, isBn, toast]
+  );
+
+  // Filtered & grouped sessions for drawer
+  const groupedSessions = useMemo(() => {
+    const q = historySearch.trim().toLowerCase();
+    const filtered = q
+      ? sessions.filter(
+          (s) =>
+            (s.title || "").toLowerCase().includes(q) ||
+            (s.mode || "").toLowerCase().includes(q)
         )
-      );
-    } catch (err: unknown) {
-      console.error("Chat Query failed:", err);
-      
-      const endTime = Date.now();
-      const actualSeconds = parseFloat(((endTime - startTime) / 1000).toFixed(1));
-      
-      const errMsg = err instanceof Error ? err.message : "Sorry, I encountered an error connecting to the legal knowledge base. Please try again.";
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === copilotMsgId
-            ? {
-                ...msg,
-                textEn: errMsg,
-                textBn: err instanceof Error ? err.message : "দুঃখিত, আইনি জ্ঞান ভাণ্ডারে সংযোগ করতে সমস্যা হয়েছে। আবার চেষ্টা করুন।",
-                citations: [],
-                isThinking: false,
-                thoughtSeconds: actualSeconds
-              }
-            : msg
-        )
-      );
-    } finally {
-      setIsTyping(false);
+      : sessions;
+    return groupSessionsByDate(filtered, isBn);
+  }, [sessions, historySearch, isBn]);
+
+  // Empty-screen starter prompts tailored to role & contract mode
+  const starterPrompts = useMemo(() => {
+    if (activeContractContext) {
+      return isBn
+        ? [
+            "এই চুক্তির সবচেয়ে ঝুঁকিপূর্ণ ধারাগুলো কী কী?",
+            "টার্মিনেশন ও ক্ষতিপূরণ ধারা বাংলাদেশের আইন অনুযায়ী কতটা বৈধ?",
+            "আমার স্বার্থ রক্ষায় কোন ধারাগুলো সংশোধন (Redline) করা উচিত?",
+          ]
+        : [
+            "What are the highest-risk clauses in this contract?",
+            "Are the termination & indemnity terms enforceable under Bangladesh law?",
+            "Which clauses should I redline to protect my rights?",
+          ];
     }
-  };
+    if (isLawyer) {
+      return isBn
+        ? [
+            "দণ্ডবিধি ১৮৬০-এর ধারা ৩০২ বনাম ৩০৪ এর শাস্তি ও জামিন প্রক্রিয়া বিশ্লেষণ করুন",
+            "সুনির্দিষ্ট প্রতিকার আইন, ১৮৭৭-এর ধারা ৪২ ও ৫৪ অনুযায়ী ঘোষণা ও নিষেধাজ্ঞার শর্ত",
+            "ফৌজদারি কার্যবিধি ধারা ৪৯৭ ও ৪৯৮ অনুযায়ী আগাম জামিনের আইনি ভিত্তি ও নজির",
+          ]
+        : [
+            "Compare Section 302 vs Section 304 of Penal Code, 1860 with bail posture",
+            "Elements for declaratory & injunction suits under Sections 42 & 54 Specific Relief Act",
+            "Anticipatory bail principles under Section 498 CrPC with HCD jurisprudence",
+          ];
+    }
+    return isBn
+      ? [
+          "চাকরির চুক্তিতে অযৌক্তিক নন-কম্পিট (Non-compete) ধারা কি বৈধ?",
+          "বিনা নোটিশে চাকরিচ্যুত করলে বাংলাদেশ শ্রম আইনে কী প্রতিকার পাওয়া যায়?",
+          "বাড়ি বা দোকান ভাড়া চুক্তি করার আগে কোন বিষয়গুলো যাচাই করতে হবে?",
+        ]
+      : [
+          "Is a strict post-employment non-compete clause valid in Bangladesh?",
+          "What are my rights under the Bangladesh Labour Act if terminated without notice?",
+          "Key legal checks before signing a commercial lease or rental agreement",
+        ];
+  }, [activeContractContext, isLawyer, isBn]);
 
-  const hasMessages = messages.length > 0;
+  const turnLimitReached = turnLimit !== -1 && turnCount >= turnLimit;
 
-  const currentActiveSession = sessions.find(
-    (s) => String(s.session_id || s.id) === String(activeSessionId)
-  );
-  const messageLimitReached = Boolean(
-    currentActiveSession &&
-      typeof currentActiveSession.message_count === "number" &&
-      typeof currentActiveSession.message_limit === "number" &&
-      currentActiveSession.message_count >= currentActiveSession.message_limit
-  );
-
-  const groupedSessions = groupSessions(sessions);
-
-  if (isPendingEnterpriseAdmin || isPendingMember) {
+  // Loading / Auth Guard
+  if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-      </div>
+      <AppShell>
+        <div className="h-[calc(100dvh-5rem)] flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-(--text-muted)" />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return (
+      <AppShell>
+        <div className="h-[calc(100dvh-6rem)] max-w-lg mx-auto flex flex-col items-center justify-center text-center px-4">
+          <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
+            <Scale className="w-6 h-6" />
+          </div>
+          <h1 className="text-xl font-serif font-bold text-(--text-primary) mb-2">
+            {isBn ? "এডভোটেক কোপাইলট ব্যবহার করতে সাইন ইন করুন" : "Sign in to access Advotech Copilot"}
+          </h1>
+          <p className="text-sm text-(--text-muted) mb-5">
+            {isBn
+              ? "যাচাইকৃত বাংলাদেশি আইন, ধারা ভিত্তিক Live RAG এবং আইনি পরামর্শের জন্য আপনার একাউন্টে লগইন করুন।"
+              : "Access verified Bangladesh statutory citations, Live RAG analysis, and saved legal consultations."}
+          </p>
+          <button
+            type="button"
+            onClick={() => router.push("/login")}
+            className="px-5 py-2.5 rounded-xl bg-(--accent-solid) text-(--accent-contrast) text-sm font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+          >
+            {isBn ? "সাইন ইন পেজে যান" : "Go to Sign In"}
+          </button>
+        </div>
+      </AppShell>
     );
   }
 
   return (
-    <AppShell>
-      <div className="relative z-10 flex flex-col h-[calc(100vh-80px)] w-full max-w-4xl mx-auto font-sans px-3 sm:px-4 overflow-x-hidden">
-        
-        {/* Top Control Bar */}
-        <div className="mb-2 px-3 sm:px-3.5 py-2 rounded-2xl flex items-center justify-between gap-2 sm:gap-3 text-xs bg-(--bg-card) border border-(--text-primary)/10 shadow-xs">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <MessageSquare className="w-4 h-4 text-indigo-500 shrink-0" />
-            <span className="font-semibold truncate max-w-full text-(--text-primary)">
-              {currentActiveSession
-                ? currentActiveSession.title
-                : activeSessionId
-                ? `${language === "bn" ? "সেশন" : "Session"} #${activeSessionId}`
-                : isLawyer
-                ? "Advocate AI Research"
-                : language === "bn"
-                ? "নতুন আইনি পরামর্শ"
-                : "New Legal Consultation"}
-            </span>
-            {isLawyer && !loadedContractTitle && (
-              <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-700 border border-purple-200 whitespace-nowrap">
-                LAWYER MODE
-              </span>
-            )}
-            {currentActiveSession && (
-              <span
-                className={`hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold whitespace-nowrap ${
-                  messageLimitReached
-                    ? "bg-rose-100 text-rose-700 dark:bg-rose-950/80 dark:text-rose-300 border border-rose-300"
-                    : "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/60 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800"
-                }`}
-              >
-                {currentActiveSession.message_count ?? messages.filter((m) => m.sender === "user").length} /{" "}
-                {currentActiveSession.message_limit ?? (isLawyer ? 20 : 5)} {language === "bn" ? "বার্তা" : "msgs"}
+    <AppShell mainClassName="pb-2! md:pb-3!">
+      <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0">
+        {/* ─── Top Bar (Fixed outside scroller so bubbles never collide underneath) ─── */}
+        <header className="shrink-0 flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-(--text-primary)/8">
+          <div className="flex items-center gap-2 min-w-0">
+            {/* Session Turn Quota Badge */}
+            {activeSessionId && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-card) border border-(--text-primary)/10 text-(--text-muted)">
+                {turnLimit === -1 || turnLimit >= 10000
+                  ? `${turnCount} ${isBn ? "বার্তা" : "turns"}`
+                  : `${turnCount}/${turnLimit} ${isBn ? "টার্ন" : "turns"}`}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {activeSessionId && (
-              <button
-                onClick={handleNewSession}
-                className="px-2.5 py-1 rounded-xl text-xs font-medium border border-(--text-primary)/15 hover:bg-neutral-100 dark:hover:bg-neutral-800 text-(--text-primary) transition-colors flex items-center gap-1 cursor-pointer"
-                title={language === "bn" ? "নতুন সেশন শুরু করুন" : "Start New Consultation"}
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">{language === "bn" ? "নতুন চ্যাট" : "New Chat"}</span>
-              </button>
-            )}
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
+            {/* Live Credit Balance Pill */}
+            <Link
+              href={canTopUpCredits ? "/pricing" : "/profile"}
+              title={
+                canTopUpCredits
+                  ? isBn
+                    ? "ক্রেডিট টপ-আপ ও প্যাকেজ দেখুন"
+                    : "Top up credits & packages"
+                  : isBn
+                  ? "প্রোফাইল ও ক্রেডিট দেখুন"
+                  : "View profile & credits"
+              }
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
+                liveCredits <= 2
+                  ? "bg-amber-500/12 border-amber-500/35 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
+                  : "bg-(--bg-card) border-(--text-primary)/12 text-(--text-primary) hover:border-(--text-primary)/25"
+              }`}
+            >
+              <Coins className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+              <span>{liveCredits.toLocaleString()}</span>
+              <span className="hidden sm:inline text-(--text-muted) font-medium">
+                {isBn ? "ক্রেডিট" : "credits"}
+              </span>
+            </Link>
 
+            {/* Sovereign PII Masking Toggle */}
             <button
-              onClick={() => {
-                setShowHistoryDrawer(true);
-                loadSessions();
-              }}
-              className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer shadow-xs"
-              title={language === "bn" ? "চ্যাট হিস্ট্রি দেখুন" : "View Chat History"}
+              type="button"
+              onClick={() => setPiiMaskEnabled((v) => !v)}
+              title={
+                piiMaskEnabled
+                  ? isBn
+                    ? "PII সুরক্ষা চালু আছে (ফোন/NID গোপন থাকবে)"
+                    : "Client PII Masking ON (phone/NID redacted)"
+                  : isBn
+                  ? "PII সুরক্ষা বন্ধ"
+                  : "Client PII Masking OFF"
+              }
+              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                piiMaskEnabled
+                  ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
+                  : "bg-(--bg-card) border-(--text-primary)/12 text-(--text-muted)"
+              }`}
+            >
+              {piiMaskEnabled ? (
+                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+              ) : (
+                <Shield className="w-3.5 h-3.5 shrink-0" />
+              )}
+              <span className="hidden md:inline">PII</span>
+            </button>
+
+            {/* New Chat Button */}
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium bg-(--bg-card) border border-(--text-primary)/12 text-(--text-primary) hover:border-(--text-primary)/25 transition-colors cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">
+                {isBn ? "নতুন চ্যাট" : "New Chat"}
+              </span>
+            </button>
+
+            {/* History Drawer Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 hover:opacity-90 transition-opacity cursor-pointer"
             >
               <History className="w-3.5 h-3.5" />
-              <span>{language === "bn" ? "হিস্ট্রি" : "History"}</span>
+              <span className="hidden sm:inline">
+                {isBn ? "হিস্ট্রি" : "History"}
+              </span>
               {sessions.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-black/20 dark:bg-white/20">
+                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 dark:bg-black/15">
                   {sessions.length}
                 </span>
               )}
             </button>
           </div>
-        </div>
+        </header>
 
-        {/* Loading Session History Indicator */}
-        {isLoadingHistory && (
-          <div className="mb-2 py-3 px-4 rounded-xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-200/50 dark:border-indigo-800/50 flex items-center justify-center gap-2 text-xs text-indigo-600 dark:text-indigo-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span>{language === "bn" ? "পূর্ববর্তী কথোপকথনের ইতিহাস লোড হচ্ছে..." : "Loading chat session history..."}</span>
-          </div>
-        )}
-
-        {/* Context Bar if contract is loaded */}
-        {loadedContractTitle && (
-          <div className="mb-3 px-4 py-2 rounded-xl shadow-xs flex items-center justify-between text-xs bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)">
-            <div className="flex items-center gap-2 truncate">
-              <FileText className="w-4 h-4 text-(--text-primary) shrink-0" />
-              <span className="font-semibold text-(--text-primary) hidden sm:inline">
-                {language === "bn" ? "চুক্তির কনটেক্সট সক্রিয়:" : "Active Contract:"}
+        {/* Optional Scoped Contract Banner */}
+        {activeContractContext && (
+          <div className="shrink-0 mt-2 px-3 py-2 rounded-xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileText className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <span className="font-semibold text-(--text-primary) truncate">
+                {activeContractContext.title}
               </span>
-              <span className="text-(--text-muted) truncate">{loadedContractTitle}</span>
+              {activeContractContext.riskGrade && (
+                <span className="hidden sm:inline px-2 py-0.5 rounded-full bg-(--bg-card) text-[11px] text-(--text-muted) shrink-0">
+                  {activeContractContext.riskGrade}
+                </span>
+              )}
             </div>
             <button
+              type="button"
               onClick={() => {
-                sessionStorage.removeItem("active_audit_contract");
-                setLoadedContractTitle(null);
+                setActiveContractContext(null);
+                setActiveMode(defaultMode);
               }}
-              className="text-neutral-400 hover:text-black dark:hover:text-white transition-colors shrink-0 ml-2"
+              className="p-1 rounded-md hover:bg-(--text-primary)/10 text-(--text-muted) cursor-pointer shrink-0"
+              title={isBn ? "চুক্তি কনটেক্সট সরান" : "Clear contract scope"}
             >
               <X className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
 
-        {/* Chat Messages or Initial Center Screen */}
-        {hasMessages ? (
-          <div className="flex-1 overflow-y-auto px-1 space-y-4 sm:space-y-5 pb-6">
-            {messages.map((msg, idx) => (
-              <div
-                key={msg.id}
-                className={`flex flex-col ${msg.sender === "user" ? "items-end" : "items-start"}`}
-              >
-                <div
-                  className={`max-w-[90%] sm:max-w-[78%] transition-all duration-300 ${
-                    msg.sender === "user"
-                      ? "p-4 sm:p-5 rounded-3xl rounded-br-md shadow-md"
-                      : msg.isThinking
-                      ? "p-2 shadow-none"
-                      : "p-4 sm:p-5 rounded-3xl shadow-md rounded-bl-md"
-                  }`}
-                  style={
-                    msg.sender === "user"
-                      ? { backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }
-                      : msg.isThinking
-                      ? { background: "transparent" }
-                      : { backgroundColor: "var(--bg-card)", color: "var(--text-primary)" }
-                  }
-                >
-                  {msg.sender === "copilot" && (
-                    <div className={msg.isThinking ? "" : "mb-3"}>
-                      <ThoughtLine
-                        working={msg.isThinking ?? false}
-                        elapsed={msg.isThinking ? undefined : (msg.thoughtSeconds ?? 1.5)}
-                        steps={[]}
-                        label={language === "bn" ? "আইনি বিশ্লেষণ চলছে…" : "Thinking…"}
-                        doneLabel={language === "bn" ? "বিশ্লেষণ সম্পন্ন" : "Thought for"}
-                        glyph="sparkle"
-                        fontSize={msg.isThinking ? 15 : 13}
-                        breathPeriod={1.6}
-                        breathDepth={0.45}
-                        settleDuration={350}
-                        settleBlur={2}
-                        collapsible={false}
-                        collapseOnSettle={true}
-                        showTimer
-                        color={msg.isThinking
-                          ? (theme === "dark" ? "#E4E4E7" : "#171717")
-                          : (theme === "dark" ? "#A1A1AA" : "#525252")
-                        }
-                        glyphColor="#2563eb"
-                        onSettle={(seconds) => console.log(`thought for ${seconds}s`)}
-                      />
-                    </div>
-                  )}
+        {/* ─── Middle Scrollable Chat Viewport with Soft Edge Fades ─── */}
+        <div className="relative flex-1 min-h-0 flex flex-col">
+          {/* Top Gradient Mask (smooth visual transition under top bar) */}
+          <div className="pointer-events-none absolute top-0 inset-x-0 h-5 bg-linear-to-b from-(--bg-primary) to-transparent z-10" />
 
-                  {msg.sender === "user" && (
-                    <div className="space-y-2 wrap-break-word">
-                      {msg.attachments && msg.attachments.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pb-1">
-                          {msg.attachments.map((file, idx) => (
-                            <span
-                              key={`${file}-${idx}`}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-black/10 dark:bg-white/10"
-                            >
-                              <FileText className="w-3.5 h-3.5 opacity-70" />
-                              <span className="max-w-50 truncate">{file}</span>
+          <div
+            ref={scrollContainerRef}
+            onScroll={handleContainerScroll}
+            className="flex-1 overflow-y-auto px-1 sm:px-2 pt-5 pb-10 space-y-5 scroll-smooth"
+          >
+            {isLoadingHistory ? (
+              <div className="h-full flex flex-col items-center justify-center gap-2 text-sm text-(--text-muted)">
+                <Loader2 className="w-6 h-6 animate-spin" />
+                <span>{isBn ? "আলোচনা লোড হচ্ছে..." : "Loading conversation..."}</span>
+              </div>
+            ) : messages.length === 0 ? (
+              /* Clean Empty Onboarding State with Starter Chips */
+              <div className="min-h-full flex flex-col items-center justify-center py-6 px-2 text-center">
+                <h1 className="text-xl sm:text-2xl font-serif font-bold text-(--text-primary) mb-1.5">
+                  {isBn
+                    ? "এডভোটেক আইনি কোপাইলট"
+                    : "Advotech Legal Copilot"}
+                </h1>
+                <p className="text-sm text-(--text-muted) max-w-lg mb-6 leading-relaxed">
+                  {isBn
+                    ? "বাংলাদেশের সংবিধান, দণ্ডবিধি, চুক্তি আইন, শ্রম আইন ও আদালতের নজির থেকে যাচাইকৃত উত্তর পান।"
+                    : "Ask any legal question grounded in Bangladesh statutes, bdlaws gazette texts, and Supreme Court precedents."}
+                </p>
+
+                <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-left">
+                  {starterPrompts.map((prompt, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => handleSendPrompt(prompt)}
+                      className="group p-3.5 rounded-2xl bg-(--bg-card) border border-(--text-primary)/10 hover:border-indigo-500/40 hover:shadow-xs transition-all text-left cursor-pointer flex flex-col justify-between gap-2"
+                    >
+                      <span className="text-[13.5px] leading-relaxed font-medium text-(--text-primary)/90 group-hover:text-(--text-primary)">
+                        {prompt}
+                      </span>
+                      <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
+                        <span>{isBn ? "জিজ্ঞাসা করুন" : "Ask now"}</span>
+                        <ChevronRight className="w-3 h-3" />
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              messages.map((msg, idx) => {
+                const isLastAssistant =
+                  msg.role === "assistant" &&
+                  idx === messages.map((m) => m.role).lastIndexOf("assistant");
+
+                if (msg.role === "user") {
+                  return (
+                    <div key={msg.id} className="flex justify-end">
+                      <div className="max-w-[88%] sm:max-w-[75%] rounded-2xl rounded-tr-sm px-4 py-2.5 sm:px-5 sm:py-3 bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 shadow-xs">
+                        <p className="text-[15px] leading-[1.65] whitespace-pre-wrap wrap-break-word">
+                          {msg.content}
+                        </p>
+                        {msg.piiRedactionsCount ? (
+                          <div className="mt-1.5 flex items-center gap-1 text-[10.5px] opacity-75">
+                            <ShieldCheck className="w-3 h-3" />
+                            <span>
+                              {isBn
+                                ? `${msg.piiRedactionsCount}টি ব্যক্তিগত তথ্য সুরক্ষিত করা হয়েছে`
+                                : `${msg.piiRedactionsCount} PII item(s) masked locally`}
                             </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Assistant Turn
+                const currentSteps = msg.thoughtSteps || getPipelineSteps(isBn, activeMode);
+                const visibleSteps = msg.isThinking
+                  ? currentSteps.slice(0, (msg.thinkingStage ?? 0) + 1)
+                  : msg.thoughtSteps || [];
+
+                return (
+                  <div
+                    key={msg.id}
+                    ref={isLastAssistant ? latestAssistantRef : undefined}
+                    className="flex flex-col items-start scroll-mt-5"
+                  >
+                    <div
+                      className={`w-full sm:max-w-[88%] rounded-2xl border px-4 py-3.5 sm:px-6 sm:py-4.5 shadow-2xs transition-colors ${
+                        msg.isError
+                          ? "bg-rose-500/6 border-rose-500/25"
+                          : msg.isStopped
+                          ? "bg-amber-500/5 border-amber-500/25"
+                          : "bg-(--bg-card)/90 border-(--text-primary)/8"
+                      }`}
+                    >
+                      {/* Top Header: Animated Step-by-step ThoughtLine + Copy Button */}
+                      <div className="flex items-start justify-between gap-3 mb-2">
+                        <div className="min-w-0 flex-1">
+                          <ThoughtLine
+                            working={Boolean(msg.isThinking)}
+                            elapsed={
+                              msg.isThinking ? undefined : msg.thoughtDuration
+                            }
+                            showTimer={Boolean(msg.isThinking) || msg.thoughtDuration != null}
+                            collapsible
+                            collapseOnSettle
+                            color="var(--text-primary)"
+                            fontSize={13}
+                            steps={visibleSteps}
+                            label={isBn ? "বিশ্লেষণ চলছে" : "Thinking"}
+                            doneLabel={
+                              msg.thoughtDuration != null
+                                ? isBn
+                                  ? "সময়"
+                                  : "Thought for"
+                                : isBn
+                                ? "যাচাইকৃত উত্তর"
+                                : "Verified Legal Brief"
+                            }
+                          />
+                        </div>
+
+                        {!msg.isThinking && msg.content && !msg.isError && !msg.isStopped && (
+                          <button
+                            type="button"
+                            onClick={() => handleCopyMessage(msg.id, msg.content)}
+                            className="p-1.5 rounded-lg text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/6 transition-colors shrink-0 cursor-pointer"
+                            title={isBn ? "উত্তর কপি করুন" : "Copy response"}
+                          >
+                            {copiedId === msg.id ? (
+                              <Check className="w-3.5 h-3.5 text-emerald-500" />
+                            ) : (
+                              <Copy className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Thinking / Stopped / Error / Verified Answer Body */}
+                      {msg.isThinking ? (
+                        <div className="py-1 space-y-2 animate-pulse">
+                          <div className="h-3 w-4/5 rounded bg-(--text-primary)/8" />
+                          <div className="h-3 w-3/5 rounded bg-(--text-primary)/6" />
+                        </div>
+                      ) : msg.isStopped || msg.isError ? (
+                        <div className="space-y-3">
+                          <p
+                            className={`text-[14.5px] leading-relaxed ${
+                              msg.isError
+                                ? "text-rose-700 dark:text-rose-300"
+                                : "text-(--text-primary)/85"
+                            }`}
+                          >
+                            {msg.content}
+                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {msg.retryQuery && (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleSendPrompt(msg.retryQuery!, {
+                                    replaceMessageId: msg.id,
+                                  })
+                                }
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold hover:opacity-90 transition-opacity cursor-pointer"
+                              >
+                                <RotateCcw className="w-3.5 h-3.5" />
+                                <span>{isBn ? "আবার চেষ্টা করুন" : "Retry"}</span>
+                              </button>
+                            )}
+                            {(msg.errorStatus === 402 ||
+                              msg.errorStatus === 403 ||
+                              /credit|ক্রেডিট|quota/i.test(msg.content)) &&
+                              canTopUpCredits && (
+                                <Link
+                                  href="/pricing"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                                >
+                                  <Coins className="w-3.5 h-3.5" />
+                                  <span>{isBn ? "ক্রেডিট কিনুন" : "Top Up Credits"}</span>
+                                </Link>
+                              )}
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <MarkdownViewer content={msg.content} variant="chat" />
+
+                          {/* Compact Live RAG Statutory Section Pills (Click to open Full Law Modal) */}
+                          {msg.citations && msg.citations.length > 0 && (
+                            <div className="mt-4 pt-3 border-t border-(--text-primary)/8">
+                              <div className="flex items-center justify-between gap-2 mb-2">
+                                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                                  <Scale className="w-3.5 h-3.5" />
+                                  <span>
+                                    {isBn
+                                      ? "যাচাইকৃত ধারা (ক্লিক করে পূর্ণ আইন দেখুন)"
+                                      : "Statutory Citations (Live RAG)"}
+                                  </span>
+                                </span>
+                                <span className="text-[10.5px] text-(--text-muted) hidden sm:inline">
+                                  {isBn ? "ফ্রি প্রিভিউ" : "Click pill to read full law"}
+                                </span>
+                              </div>
+
+                              <div className="flex flex-wrap gap-1.5">
+                                {msg.citations.map((cit, cIdx) => (
+                                  <button
+                                    key={`${cit.act}-${cit.sectionNumber}-${cIdx}`}
+                                    type="button"
+                                    onClick={() => handleOpenStatuteModal(cit)}
+                                    className="group inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-(--bg-surface) border border-indigo-500/25 hover:border-indigo-500/60 hover:bg-indigo-500/8 transition-all text-left cursor-pointer max-w-full shadow-2xs"
+                                  >
+                                    <BookOpen className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400 shrink-0" />
+                                    <span className="text-xs font-bold text-indigo-700 dark:text-indigo-300 whitespace-nowrap">
+                                      {formatSectionPillLabel(cit.sectionNumber, isBn)}
+                                    </span>
+                                    <span className="text-[11px] text-(--text-muted) truncate max-w-[140px] sm:max-w-[190px]">
+                                      · {formatActShortName(cit.act)}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Compact Precedent / Case Law Pills */}
+                          {msg.citedCases && msg.citedCases.length > 0 && (
+                            <CaseLawPills cases={msg.citedCases} isBn={isBn} />
+                          )}
+
+                          {/* Clean Collapsible Action Steps */}
+                          {msg.actionSteps && msg.actionSteps.length > 0 && (
+                            <ActionStepsDisclosure steps={msg.actionSteps} isBn={isBn} />
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    {/* Suggested Follow-ups cleanly OUTSIDE the main card */}
+                    {!msg.isThinking &&
+                      isLastAssistant &&
+                      msg.followUps &&
+                      msg.followUps.length > 0 &&
+                      !turnLimitReached && (
+                        <div className="mt-2.5 w-full sm:max-w-[88%] flex flex-wrap gap-1.5">
+                          {msg.followUps.map((fq, fIdx) => (
+                            <button
+                              key={fIdx}
+                              type="button"
+                              disabled={isBusy}
+                              onClick={() => handleSendPrompt(fq)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-(--bg-card) border border-(--text-primary)/12 hover:border-indigo-500/45 text-xs font-medium text-(--text-primary)/85 hover:text-(--text-primary) transition-all cursor-pointer disabled:opacity-50 text-left"
+                            >
+                              <MessageSquarePlus className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                              <span className="wrap-break-word">{fq}</span>
+                            </button>
                           ))}
                         </div>
                       )}
-                      <p className="text-sm sm:text-[15px] leading-relaxed font-sans">
-                        {language === "bn" ? msg.textBn : msg.textEn}
-                      </p>
-                    </div>
-                  )}
-
-                  {msg.sender === "copilot" && !msg.isThinking && (msg.textEn || msg.textBn) && (
-                    <>
-                      <div className="copilot-markdown-reply wrap-break-word overflow-x-auto">
-                        <MarkdownViewer
-                          variant="chat"
-                          content={language === "bn" ? msg.textBn : msg.textEn}
-                        />
-                      </div>
-
-                      <div className="mt-2 flex items-center justify-end">
-                        <button
-                          type="button"
-                          onClick={() => copyMessageText(language === "bn" ? msg.textBn : msg.textEn, msg.id)}
-                          className="p-1 rounded-md text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"
-                          title={language === "bn" ? "মেসেজ কপি করুন" : "Copy message"}
-                        >
-                          {copiedMsgId === msg.id ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5 opacity-60 hover:opacity-100" />
-                          )}
-                        </button>
-                      </div>
-
-                      {msg.citations && msg.citations.length > 0 && (
-                        <div className="mt-3.5 flex flex-wrap gap-2 items-center">
-                          <span className="text-[11px] font-medium flex items-center gap-1 text-(--text-muted)">
-                            <Scale className="w-3 h-3 text-(--text-muted)" />
-                            {language === "bn" ? "যাচাইকৃত আইনি রেফারেন্স:" : "Statutory Citations:"}
-                          </span>
-                          {msg.citations.map((citeId) => {
-                            const provision = STATUTORY_PROVISIONS[citeId];
-                            if (!provision) return null;
-                            return (
-                              <button
-                                key={citeId}
-                                onClick={() => setActiveCitation(provision)}
-                                className="px-3 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm cursor-pointer bg-(--bg-surface) text-(--text-primary)"
-                              >
-                                <span>
-                                  {language === "bn"
-                                    ? provision.sectionBn.split(" - ")[0]
-                                    : provision.sectionEn.split(" - ")[0]}
-                                </span>
-                                <BookOpen className="w-3 h-3 text-neutral-500 dark:text-neutral-400" />
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {msg.apiCitations && msg.apiCitations.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-(--text-primary)/10 space-y-2">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-600 dark:text-indigo-400">
-                            <Scale className="w-3.5 h-3.5" />
-                            <span>{language === "bn" ? "সংবিধিবদ্ধ আইনের ধারা ও সাইটেশন (Live RAG Citations):" : "Statutory Citations (Live RAG):"}</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {msg.apiCitations.map((cite, cIdx) => {
-                              const isLastOdd =
-                                msg.apiCitations!.length % 2 !== 0 &&
-                                cIdx === msg.apiCitations!.length - 1;
-                              return (
-                                <div
-                                  key={cIdx}
-                                  className={`p-2.5 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) text-xs space-y-1 shadow-sm ${
-                                    isLastOdd ? "sm:col-span-2" : ""
-                                  }`}
-                                >
-                                  <div className="flex items-center justify-between font-bold text-(--text-primary) gap-2">
-                                    <span className="text-indigo-600 dark:text-indigo-400 shrink-0">
-                                      {cite.section_number || cite.section || "Section"}
-                                    </span>
-                                    {cite.act && (
-                                      <span
-                                        className="text-[10px] text-(--text-muted) truncate max-w-xs sm:max-w-md"
-                                        title={cite.act}
-                                      >
-                                        {cite.act}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {(cite.title || cite.act_title) && (
-                                    <p className="font-semibold text-[11px] text-(--text-primary)">
-                                      {cite.title || cite.act_title}
-                                    </p>
-                                  )}
-                                  {(cite.provision_summary || cite.relevance || cite.relevance_summary) && (
-                                    <p className="text-[11px] text-(--text-muted) leading-relaxed">
-                                      {cite.provision_summary || cite.relevance || cite.relevance_summary}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {msg.apiCitedCases && msg.apiCitedCases.length > 0 && (
-                        <div className="mt-4 pt-3 border-t border-(--text-primary)/10 space-y-2">
-                          <div className="flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
-                            <Gavel className="w-3.5 h-3.5" />
-                            <span>{language === "bn" ? "সাম্প্রতিক রায় ও নজির (Live Case Law):" : "Live Case Law & Precedents:"}</span>
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                            {msg.apiCitedCases.map((cite, cIdx) => {
-                              const isLastOdd =
-                                msg.apiCitedCases!.length % 2 !== 0 &&
-                                cIdx === msg.apiCitedCases!.length - 1;
-                              return (
-                                <div
-                                  key={cIdx}
-                                  className={`p-3 rounded-xl border border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20 text-xs space-y-1 shadow-sm ${
-                                    isLastOdd ? "sm:col-span-2" : ""
-                                  }`}
-                                >
-                                  <p className="font-bold text-amber-900 dark:text-amber-200">
-                                    {cite.case_name || "Case Precedent"}
-                                  </p>
-                                  {cite.ruling && (
-                                    <p className="text-[11px] text-(--text-muted) leading-relaxed">
-                                      {cite.ruling}
-                                    </p>
-                                  )}
-                                  {cite.relevance && (
-                                    <p className="text-[11px] text-amber-700 dark:text-amber-400 italic">
-                                      {cite.relevance}
-                                    </p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* 1. Real-World Action Steps Checklist (Non-interactive Advice) */}
-                      {(() => {
-                        const actionSteps = (msg.nextSteps || []).filter((step) => !step.trim().endsWith("?"));
-                        if (actionSteps.length === 0) return null;
-                        return (
-                          <div className="mt-4 pt-3 border-t border-(--text-primary)/10 space-y-2">
-                            <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                              <span>{language === "bn" ? "বাস্তব জীবনের করণীয় পরামর্শ:" : "Recommended Action Steps:"}</span>
-                            </div>
-                            <div className="rounded-xl p-3 border border-(--text-primary)/10 bg-(--bg-surface) space-y-2">
-                              {actionSteps.map((step, sIdx) => (
-                                <div key={sIdx} className="flex items-start gap-2 text-xs text-(--text-primary) leading-relaxed">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
-                                  <span>{step}</span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })()}
-
-                      {/* 2. Interactive Follow-up Questions (Only on the latest completed assistant message) */}
-                      {(() => {
-                        // Only show suggestions for the very latest message, and hide while typing
-                        const isLatestMessage = idx === messages.length - 1;
-                        if (!isLatestMessage || isTyping) return null;
-
-                        const followUpQuestions = [
-                          ...(msg.followUps || []),
-                          ...(msg.nextSteps || []).filter((step) => step.trim().endsWith("?")),
-                        ];
-                        const uniqueQuestions = Array.from(new Set(followUpQuestions)).filter(Boolean);
-                        if (uniqueQuestions.length === 0) return null;
-
-                        return (
-                          <div className="mt-3.5 pt-2.5 border-t border-(--text-primary)/10 flex flex-wrap gap-2 items-center animate-in fade-in duration-200">
-                            <div className="w-full flex items-center gap-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 mb-0.5">
-                              <HelpCircle className="w-3.5 h-3.5" />
-                              <span>{language === "bn" ? "প্রস্তাবিত ফলো-আপ প্রশ্ন:" : "Suggested Follow-up Questions:"}</span>
-                            </div>
-                            {uniqueQuestions.map((question, qIdx) => (
-                              <button
-                                key={qIdx}
-                                type="button"
-                                disabled={isTyping}
-                                onClick={() => {
-                                  if (isTyping) return;
-                                  handleSendPrompt(question);
-                                }}
-                                className="px-3 py-1.5 rounded-xl text-xs font-medium border border-indigo-500/25 hover:border-indigo-500/60 hover:bg-indigo-500/10 bg-(--bg-surface) text-(--text-primary) cursor-pointer transition-all shadow-xs text-left inline-flex items-center gap-2 group disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={language === "bn" ? "কোপাইলটকে এই প্রশ্নটি জিজ্ঞাসা করতে ক্লিক করুন" : "Click to ask Copilot this question"}
-                              >
-                                <Sparkles className="w-3 h-3 text-indigo-500 shrink-0 group-hover:scale-110 transition-transform" />
-                                <span>{question}</span>
-                              </button>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </>
-                  )}
-                </div>
-              </div>
-            ))}
-
-            <div ref={messagesEndRef} />
-          </div>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center -mt-8 px-2 sm:px-0">
-            <div className="text-center mb-8">
-              <h2 className="text-2xl sm:text-3xl font-medium tracking-tight mb-2 text-(--text-primary)">
-                {isLawyer ? "Advocate AI Research" : (language === "bn" ? "এডভোটেক কোপাইলট" : "Advotech Copilot")}
-              </h2>
-              <p className="text-xs sm:text-sm font-normal text-neutral-500 dark:text-neutral-400">
-                {language === "bn"
-                  ? "বাংলাদেশের সংবিধিবদ্ধ আইনের নির্ভরযোগ্য সহায়তায় যেকোনো প্রশ্ন করুন"
-                  : isLawyer 
-                  ? "Research statutes, draft notices, and analyze case law with verifiable citations"
-                  : "Ask statutory questions with verifiable citations"}
-              </p>
-            </div>
-
-            <div className="w-full max-w-155 shadow-sm rounded-[22px] mx-auto">
-              <PromptBar
-                placeholder={
-                  language === "bn"
-                    ? "আইনি প্রশ্ন বা চুক্তির ধারা জানতে লিখুন..."
-                    : "Ask anything about contracts or Bangladesh statutes..."
-                }
-                busy={isTyping}
-                onSend={handleSendPrompt}
-              />
-            </div>
-          </div>
-        )}
-
-        {messageLimitReached && (
-          <div className="my-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-200 text-xs flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-amber-600 dark:text-amber-400 shrink-0" />
-              <span>
-                {language === "bn"
-                  ? `এই সেশনের সর্বোচ্চ বার্তা সীমা (${currentActiveSession?.message_limit ?? 5}টি বার্তা) অতিক্রান্ত হয়েছে। পরবর্তী প্রশ্নের জন্য নতুন সেশন শুরু করুন।`
-                  : `Session message limit reached (${currentActiveSession?.message_limit ?? 5} messages). Please start a new consultation to continue.`}
-              </span>
-            </div>
-            <button
-              onClick={handleNewSession}
-              className="px-3.5 py-1.5 rounded-xl font-bold bg-indigo-600 hover:bg-indigo-700 text-white shrink-0 transition-colors shadow-xs cursor-pointer flex items-center gap-1.5 w-full sm:w-auto justify-center mt-2 sm:mt-0"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>{language === "bn" ? "নতুন সেশন" : "New Session"}</span>
-            </button>
-          </div>
-        )}
-
-        {hasMessages && !messageLimitReached && (
-          <div className="pt-2 pb-2 flex justify-center w-full">
-            <div className="w-full max-w-180">
-              <PromptBar
-                placeholder={
-                  language === "bn"
-                    ? "আইনি প্রশ্ন বা চুক্তির ধারা জানতে লিখুন..."
-                    : "Ask follow-up question..."
-                }
-                busy={isTyping}
-                onSend={handleSendPrompt}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* ফ্লোটিং চ্যাট হিস্ট্রি ড্রয়ার */}
-        {showHistoryDrawer && (
-          <div className="fixed inset-0 z-50 flex justify-end items-center p-3 sm:p-6 bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="w-full sm:w-105 h-full max-h-[85vh] sm:max-h-[90vh] shadow-2xl flex flex-col rounded-3xl overflow-hidden bg-(--bg-card) border border-(--text-primary)/10 animate-in slide-in-from-right duration-300">
-              
-              <div className="p-5 border-b border-(--text-primary)/10 bg-(--bg-card)/95 backdrop-blur-md flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-2">
-                  <History className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-base font-bold text-(--text-primary)">{language === "bn" ? "আইনি চ্যাট ইতিহাস" : "Chat History"}</h3>
-                </div>
-                <button onClick={() => setShowHistoryDrawer(false)} className="p-1.5 rounded-lg text-(--text-muted) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"><X className="w-5 h-5" /></button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4 space-y-6">
-                <button onClick={handleNewSession} className="w-full py-3 px-4 rounded-2xl text-xs font-bold border-2 border-dashed border-indigo-500/30 hover:border-indigo-500 hover:bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                  <Plus className="w-4 h-4" />
-                  <span>{language === "bn" ? "নতুন পরামর্শ শুরু করুন" : "Start New Consultation"}</span>
-                </button>
-
-                {isLoadingSessions ? (
-                  <div className="py-12 flex flex-col items-center justify-center gap-2 text-(--text-muted) text-xs">
-                    <Loader2 className="w-5 h-5 animate-spin text-indigo-500" />
-                    <span>{language === "bn" ? "লোড হচ্ছে..." : "Loading sessions..."}</span>
                   </div>
-                ) : sessions.length === 0 ? (
-                  <div className="py-12 text-center text-xs text-(--text-muted) space-y-1">
-                    <p>{language === "bn" ? "কোনো হিস্ট্রি পাওয়া যায়নি।" : "No chat history found."}</p>
+                );
+              })
+            )}
+          </div>
+
+          {/* Floating "Jump to Bottom" Pill */}
+          {showJumpToBottom && (
+            <button
+              type="button"
+              onClick={() => scrollToBottom("smooth")}
+              className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-neutral-900/95 text-white dark:bg-neutral-100/95 dark:text-neutral-900 shadow-lg text-xs font-semibold hover:scale-[1.02] transition-transform cursor-pointer backdrop-blur-xs"
+            >
+              <ArrowDown className="w-3.5 h-3.5" />
+              <span>{isBn ? "নিচে যান" : "Jump to bottom"}</span>
+            </button>
+          )}
+
+          {/* Bottom Gradient Mask above PromptBar */}
+          <div className="pointer-events-none absolute bottom-0 inset-x-0 h-7 bg-linear-to-t from-(--bg-primary) via-(--bg-primary)/75 to-transparent z-10" />
+        </div>
+
+        {/* ─── Bottom PromptBar / Stop / Turn Limit Footer ─── */}
+        <footer className="shrink-0 pt-1 w-full max-w-2xl mx-auto">
+          {turnLimitReached ? (
+            <div className="p-3.5 rounded-2xl bg-(--bg-card) border border-(--text-primary)/12 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+              <div className="text-xs sm:text-sm text-(--text-primary)/85">
+                {isBn
+                  ? `এই সেশনের ${turnLimit} টার্ন সীমা পূর্ণ হয়েছে। নতুন প্রশ্ন করতে নতুন চ্যাট শুরু করুন।`
+                  : `You have reached the ${turnLimit}-turn limit for this consultation. Start a new chat to continue.`}
+              </div>
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="shrink-0 inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold hover:opacity-90 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>{isBn ? "নতুন চ্যাট শুরু করুন" : "Start New Chat"}</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-1.5 flex flex-col items-center">
+              {isBusy && (
+                <div className="w-full flex items-center justify-center sm:justify-end">
+                  <button
+                    type="button"
+                    onClick={handleStopGeneration}
+                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11.5px] font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer"
+                  >
+                    <Square className="w-3 h-3 fill-current" />
+                    <span>{isBn ? "থামান" : "Stop generating"}</span>
+                  </button>
+                </div>
+              )}
+
+              <PromptBar
+                busy={isBusy}
+                width={660}
+                onSend={(text) => handleSendPrompt(text)}
+                onStop={handleStopGeneration}
+                placeholder={
+                  isBn
+                    ? "আইনি প্রশ্ন বা ধারা লিখুন... (/audit, /memo, /redline)"
+                    : "Ask a question about Bangladesh law... (type / for commands)"
+                }
+                className="mx-auto"
+              />
+            </div>
+          )}
+        </footer>
+      </div>
+
+      {/* ─── Live RAG Statute Popup Modal / Mobile Bottom Sheet ─── */}
+      {statuteModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/55 backdrop-blur-xs p-0 sm:p-4"
+          onClick={() => {
+            statuteLookupAbortRef.current?.abort();
+            setStatuteModal(null);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="w-full sm:max-w-2xl max-h-[88dvh] sm:max-h-[85vh] rounded-t-3xl sm:rounded-3xl bg-(--bg-card) border border-(--text-primary)/15 shadow-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="shrink-0 px-5 pt-4 pb-3.5 border-b border-(--text-primary)/10 flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/12 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
+                    <ShieldCheck className="w-3 h-3" />
+                    <span>
+                      {statuteModal.data?.found
+                        ? isBn
+                          ? "যাচাইকৃত মূল আইন"
+                          : "Verified Gazette Text"
+                        : isBn
+                        ? "যাচাইকৃত তথ্যসূত্র"
+                        : "Statutory Reference"}
+                    </span>
+                  </span>
+                  <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
+                    {formatSectionPillLabel(statuteModal.citation.sectionNumber, isBn)}
+                  </span>
+                </div>
+
+                <h2 className="text-base sm:text-lg font-serif font-bold text-(--text-primary) leading-snug wrap-break-word">
+                  {statuteModal.data?.title &&
+                  statuteModal.data.title !== "Statutory Provision"
+                    ? statuteModal.data.title
+                    : statuteModal.citation.title &&
+                      statuteModal.citation.title !== "Statutory Provision"
+                    ? statuteModal.citation.title
+                    : statuteModal.fallbackProvision
+                    ? isBn
+                      ? statuteModal.fallbackProvision.sectionBn
+                      : statuteModal.fallbackProvision.sectionEn
+                    : statuteModal.citation.sectionNumber}
+                </h2>
+                <p className="text-xs text-(--text-muted)">
+                  {statuteModal.data?.act || statuteModal.citation.act}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  statuteLookupAbortRef.current?.abort();
+                  setStatuteModal(null);
+                }}
+                className="p-2 rounded-full hover:bg-(--text-primary)/8 text-(--text-muted) hover:text-(--text-primary) cursor-pointer shrink-0"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              {/* Why Cited / AI Context */}
+              {(statuteModal.citation.summary || statuteModal.citation.relevance) && (
+                <div className="p-3.5 rounded-2xl bg-indigo-500/6 border border-indigo-500/20 space-y-1.5">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">
+                    {isBn ? "আপনার প্রশ্নে প্রাসঙ্গিকতা" : "Relevance to Your Question"}
+                  </div>
+                  {statuteModal.citation.summary && (
+                    <p className="text-[14px] leading-relaxed text-(--text-primary)/90">
+                      {statuteModal.citation.summary}
+                    </p>
+                  )}
+                  {statuteModal.citation.relevance && (
+                    <p className="text-xs leading-relaxed text-(--text-muted)">
+                      {statuteModal.citation.relevance}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Full Verbatim Statutory Text */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-bold uppercase tracking-wider text-(--text-muted)">
+                    {isBn ? "পূর্ণ মূল আইন (Verbatim Provision)" : "Full Verbatim Provision"}
+                  </span>
+                  {(statuteModal.data?.verbatim_text ||
+                    statuteModal.fallbackProvision?.fullTextEn) && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        handleCopyStatute(
+                          statuteModal.data?.verbatim_text ||
+                            (isBn
+                              ? statuteModal.fallbackProvision?.fullTextBn
+                              : statuteModal.fallbackProvision?.fullTextEn) ||
+                            ""
+                        )
+                      }
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-(--bg-surface) border border-(--text-primary)/12 text-[11px] font-medium text-(--text-primary) hover:border-(--text-primary)/30 cursor-pointer"
+                    >
+                      {copiedStatute ? (
+                        <>
+                          <Check className="w-3 h-3 text-emerald-500" />
+                          <span>{isBn ? "কপি হয়েছে" : "Copied"}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          <span>{isBn ? "টেক্সট কপি" : "Copy text"}</span>
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+
+                {statuteModal.loading ? (
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 space-y-2.5">
+                    <div className="flex items-center gap-2 text-xs text-(--text-muted)">
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>
+                        {isBn
+                          ? "বাংলাদেশ আইন আর্কাইভ থেকে পূর্ণ ধারা আনা হচ্ছে..."
+                          : "Fetching verbatim gazette text from Live RAG archive..."}
+                      </span>
+                    </div>
+                    <div className="h-3 w-full rounded bg-(--text-primary)/8 animate-pulse" />
+                    <div className="h-3 w-5/6 rounded bg-(--text-primary)/8 animate-pulse" />
+                    <div className="h-3 w-4/6 rounded bg-(--text-primary)/6 animate-pulse" />
+                  </div>
+                ) : statuteModal.data?.verbatim_text ? (
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-[15px] leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-serif">
+                    {statuteModal.data.verbatim_text}
+                  </div>
+                ) : statuteModal.fallbackProvision?.fullTextEn ? (
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-[15px] leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-serif">
+                    {isBn
+                      ? statuteModal.fallbackProvision.fullTextBn
+                      : statuteModal.fallbackProvision.fullTextEn}
                   </div>
                 ) : (
-                  Object.entries(groupedSessions).map(([groupName, groupSessions]) => {
-                    if (groupSessions.length === 0) return null;
-                    return (
-                      <div key={groupName} className="space-y-2">
-                        <h4 className="text-[10px] uppercase font-bold tracking-wider text-(--text-muted) ml-1">
-                          {language === "bn" 
-                            ? groupName === "Today" ? "আজ" : groupName === "Yesterday" ? "গতকাল" : groupName === "Previous 7 Days" ? "গত ৭ দিন" : "পুরনো"
-                            : groupName}
-                        </h4>
-                        <div className="space-y-1">
-                          {groupSessions.map((sess) => {
-                            const sid = String(sess.session_id || sess.id);
-                            const isActive = String(activeSessionId) === sid;
-                            const isContract = sess.mode === "USER_CONTRACT" || sess.mode === "LAWYER_RESEARCH" || sess.mode === "CONTRACT_REVIEW";
-                            
-                            return (
-                              <div
-                                key={sid}
-                                onClick={() => handleSelectSession(sess)}
-                                className={`group p-3 rounded-2xl border transition-all cursor-pointer flex items-start justify-between gap-2 ${
-                                  isActive 
-                                    ? "border-indigo-500/50 bg-indigo-50/50 dark:bg-indigo-950/30 shadow-xs" 
-                                    : "border-transparent hover:bg-(--bg-surface) hover:border-(--text-primary)/10"
-                                }`}
-                              >
-                                <div className="min-w-0 flex-1">
-                                  <div className="flex items-center gap-1.5 mb-1">
-                                    {isContract ? <FileText className="w-3.5 h-3.5 text-sky-500 shrink-0" /> : <MessageSquare className="w-3.5 h-3.5 text-indigo-500 shrink-0" />}
-                                    <span className={`font-semibold text-xs truncate ${isActive ? "text-indigo-700 dark:text-indigo-300" : "text-(--text-primary)"}`}>
-                                      {sess.title}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-2 text-[10px] text-(--text-muted)">
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="w-3 h-3" />
-                                      {sess.updated_at ? new Date(sess.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recent"}
-                                    </span>
-                                    <span>·</span>
-                                    <span>{sess.message_count || 0} messages</span>
-                                  </div>
-                                </div>
-
-                                <button
-                                  onClick={(e) => handleCloseSession(sid, e)}
-                                  className="opacity-0 group-hover:opacity-100 p-1.5 rounded-lg text-(--text-muted) hover:text-rose-500 hover:bg-rose-500/10 transition-all shrink-0"
-                                  title={language === "bn" ? "সেশন মুছুন" : "Delete session"}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-xs leading-relaxed text-(--text-muted)">
+                    {isBn
+                      ? "এই ধারার পূর্ণ মূল টেক্সট ডাটাবেজে পাওয়া যায়নি। নিচের অফিসিয়াল bdlaws লিংক থেকে অথবা কোপাইলটকে সহজ ব্যাখ্যার জন্য জিজ্ঞাসা করতে পারেন।"
+                      : "Full gazette text is not indexed for this specific citation. You can open the official bdlaws portal below or ask Copilot for a deeper explanation."}
+                  </div>
                 )}
               </div>
+            </div>
 
-              <div className="p-4 border-t border-(--text-primary)/10 bg-(--bg-card) shrink-0">
-                <button onClick={() => setShowHistoryDrawer(false)} className="w-full py-2.5 rounded-xl text-xs font-medium border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer">
-                  {language === "bn" ? "বন্ধ করুন" : "Close"}
+            {/* Modal Footer */}
+            <div className="shrink-0 px-5 py-3.5 border-t border-(--text-primary)/10 bg-(--bg-surface)/60 flex flex-wrap items-center justify-between gap-2.5">
+              <a
+                href={
+                  statuteModal.data?.bdlaws_url ||
+                  statuteModal.citation.url ||
+                  "http://bdlaws.minlaw.gov.bd/laws-of-bangladesh.html"
+                }
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-(--text-primary)/80 hover:text-(--text-primary) transition-colors"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>{isBn ? "অফিসিয়াল bdlaws দেখুন" : "Official bdlaws"}</span>
+              </a>
+
+              <button
+                type="button"
+                disabled={isBusy || turnLimitReached}
+                onClick={() => {
+                  const act = statuteModal.data?.act || statuteModal.citation.act;
+                  const sec = statuteModal.data?.section || statuteModal.citation.sectionNumber;
+                  statuteLookupAbortRef.current?.abort();
+                  setStatuteModal(null);
+                  const secDisplay = /^(sec|art|ধারা|অনুচ্ছেদ)/i.test(sec) ? sec : `Section ${sec}`;
+                  const followPrompt = isBn
+                    ? `${act}-এর ${formatSectionPillLabel(sec, true)} সহজ বাংলায় বাস্তব উদাহরণসহ বুঝিয়ে বলুন।`
+                    : `Explain ${secDisplay} of ${act} in plain language with practical examples.`;
+                  handleSendPrompt(followPrompt);
+                }}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 text-xs font-semibold hover:opacity-90 transition-opacity disabled:opacity-50 cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>
+                  {isBn ? "সহজ ব্যাখ্যা চান" : "Ask Copilot to explain"}
+                </span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── History Slide-Over Drawer (Search, Rename, Date Groups, Mobile-Visible Delete) ─── */}
+      {isDrawerOpen && (
+        <div
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end items-start sm:items-center p-3 pt-16 sm:p-6"
+          onClick={() => setIsDrawerOpen(false)}
+        >
+          <aside
+            className="w-[min(92vw,380px)] max-h-[75dvh] sm:max-h-[82vh] bg-(--bg-card) border border-(--text-primary)/12 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Drawer Header */}
+            <div className="shrink-0 p-4 border-b border-(--text-primary)/10 space-y-3">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <History className="w-4 h-4 text-(--text-primary)" />
+                  <h2 className="font-serif font-bold text-base text-(--text-primary)">
+                    {isBn ? "চ্যাট হিস্ট্রি" : "Consultation History"}
+                  </h2>
+                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-(--bg-surface) text-(--text-muted)">
+                    {sessions.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-(--text-primary)/8 text-(--text-muted) cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
                 </button>
               </div>
-            </div>
-          </div>
-        )}
 
-        {/* Citation Modal */}
-        {activeCitation && (
-          <div className="fixed inset-y-0 right-0 z-50 w-full sm:w-120 shadow-2xl p-5 sm:p-7 flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-200 bg-(--bg-card) text-(--text-primary)">
-            <div className="space-y-5">
-              <div className="flex items-center justify-between pb-3 border-b border-(--text-primary)/10">
-                <div className="flex items-center gap-2 text-xs font-semibold text-(--text-primary)">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                  <span>{language === "bn" ? "সরকারি bdlaws আইনভাণ্ডার" : "Verified Official Statute"}</span>
+              {/* Search Input */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 text-(--text-muted) absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={historySearch}
+                  onChange={(e) => setHistorySearch(e.target.value)}
+                  placeholder={isBn ? "আলোচনা খুঁজুন..." : "Search consultations..."}
+                  className="w-full pl-8 pr-8 py-2 rounded-xl bg-(--bg-surface) border border-(--text-primary)/12 text-xs text-(--text-primary) placeholder:text-(--text-muted) focus:outline-none focus:border-indigo-500/50"
+                />
+                {historySearch && (
+                  <button
+                    type="button"
+                    onClick={() => setHistorySearch("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-primary) cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Grouped Sessions List */}
+            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+              {groupedSessions.length === 0 ? (
+                <div className="py-12 text-center text-xs text-(--text-muted)">
+                  {historySearch
+                    ? isBn
+                      ? "কোনো মিল পাওয়া যায়নি।"
+                      : "No matching consultations found."
+                    : isBn
+                    ? "এখনো কোনো চ্যাট হিস্ট্রি নেই।"
+                    : "No saved consultations yet."}
                 </div>
-                <button onClick={() => setActiveCitation(null)} className="p-1 rounded-lg transition-colors text-(--text-muted) hover:text-(--text-primary) cursor-pointer"><X className="w-5 h-5" /></button>
-              </div>
+              ) : (
+                groupedSessions.map((group) => (
+                  <div key={group.label} className="space-y-1.5">
+                    <div className="px-2 text-[10.5px] font-bold uppercase tracking-wider text-(--text-muted)">
+                      {group.label}
+                    </div>
+                    {group.items.map((sess) => {
+                      const isActive = String(sess.session_id) === String(activeSessionId);
+                      const isRenaming = String(renamingSessionId) === String(sess.session_id);
+                      const isConfirmingDel =
+                        String(confirmDeleteId) === String(sess.session_id);
 
-              <div>
-                <span className="text-[11px] font-semibold tracking-wider uppercase block mb-1 text-(--text-muted)">
-                  {language === "bn" ? activeCitation.actTitleBn : activeCitation.actTitleEn}
-                </span>
-                <h3 className="text-lg font-bold leading-snug text-(--text-primary)">
-                  {language === "bn" ? activeCitation.sectionBn : activeCitation.sectionEn}
-                </h3>
-              </div>
+                      return (
+                        <div
+                          key={String(sess.session_id)}
+                          className={`rounded-xl border px-3 py-2.5 transition-colors ${
+                            isActive
+                              ? "bg-indigo-500/10 border-indigo-500/35"
+                              : "bg-(--bg-surface)/70 border-(--text-primary)/8 hover:border-(--text-primary)/20"
+                          }`}
+                        >
+                          {isRenaming ? (
+                            <div className="flex items-center gap-1.5">
+                              <input
+                                type="text"
+                                value={renameDraft}
+                                onChange={(e) => setRenameDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveRename(sess.session_id);
+                                  if (e.key === "Escape") setRenamingSessionId(null);
+                                }}
+                                autoFocus
+                                className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-(--bg-card) border border-indigo-500/40 text-xs text-(--text-primary) focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                disabled={renamingBusy}
+                                onClick={() => handleSaveRename(sess.session_id)}
+                                className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer shrink-0"
+                              >
+                                {renamingBusy ? (
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                ) : (
+                                  <Check className="w-3 h-3" />
+                                )}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setRenamingSessionId(null)}
+                                className="p-1.5 rounded-lg hover:bg-(--text-primary)/10 text-(--text-muted) cursor-pointer shrink-0"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="flex items-start justify-between gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleSelectSession(sess)}
+                                className="flex-1 min-w-0 text-left cursor-pointer"
+                              >
+                                <div className="text-xs font-semibold text-(--text-primary) truncate">
+                                  {sess.title || (isBn ? "আইনি পরামর্শ" : "Legal Consultation")}
+                                </div>
+                                <div className="mt-1 flex items-center gap-2 text-[10.5px] text-(--text-muted)">
+                                  <span>
+                                    {sess.mode === "LAWYER_RESEARCH"
+                                      ? "Research"
+                                      : sess.mode === "USER_CONTRACT"
+                                      ? "Contract"
+                                      : "General"}
+                                  </span>
+                                  <span>·</span>
+                                  <span>
+                                    {sess.message_count ?? 0}/
+                                    {sess.message_limit === -1 || (sess.message_limit ?? 0) >= 10000
+                                      ? "∞"
+                                      : sess.message_limit ?? 5}
+                                  </span>
+                                </div>
+                              </button>
 
-              <div className="p-4 rounded-2xl text-xs leading-relaxed space-y-1 bg-(--bg-surface) text-(--text-primary)">
-                <span className="font-bold block">{language === "bn" ? "সহজ আইনি ব্যাখ্যা:" : "Key Takeaway:"}</span>
-                <p className="text-(--text-muted)">{language === "bn" ? activeCitation.summaryBn : activeCitation.summaryEn}</p>
-              </div>
-
-              <div>
-                <span className="text-[11px] font-bold uppercase tracking-wider block mb-2 text-(--text-muted)">
-                  {language === "bn" ? "আইনের হুবহু ধারা (Statutory Verbatim):" : "Statutory Provision Text:"}
-                </span>
-                <div className="p-4 rounded-2xl font-serif text-xs leading-relaxed whitespace-pre-line border-l-2 bg-(--bg-surface) text-(--text-primary) border-(--text-primary)/15">
-                  {language === "bn" ? activeCitation.fullTextBn : activeCitation.fullTextEn}
-                </div>
-              </div>
+                              {/* Always-visible Rename & Delete Controls (works cleanly on mobile touch) */}
+                              <div className="flex items-center gap-1 shrink-0">
+                                {isConfirmingDel ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      disabled={String(deletingId) === String(sess.session_id)}
+                                      onClick={() => handleDeleteSession(sess.session_id)}
+                                      className="px-2 py-1 rounded-lg bg-rose-600 text-white text-[10.5px] font-semibold hover:bg-rose-700 cursor-pointer"
+                                    >
+                                      {String(deletingId) === String(sess.session_id)
+                                        ? "..."
+                                        : isBn
+                                        ? "মুছুন"
+                                        : "Delete"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => setConfirmDeleteId(null)}
+                                      className="px-2 py-1 rounded-lg bg-(--bg-card) border border-(--text-primary)/12 text-[10.5px] text-(--text-muted) cursor-pointer"
+                                    >
+                                      {isBn ? "না" : "No"}
+                                    </button>
+                                  </>
+                                ) : (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setConfirmDeleteId(null);
+                                        setRenamingSessionId(sess.session_id);
+                                        setRenameDraft(sess.title || "");
+                                      }}
+                                      className="p-1.5 rounded-lg text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-colors cursor-pointer"
+                                      title={isBn ? "নাম পরিবর্তন করুন" : "Rename"}
+                                    >
+                                      <Pencil className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setRenamingSessionId(null);
+                                        setConfirmDeleteId(sess.session_id);
+                                      }}
+                                      className="p-1.5 rounded-lg text-(--text-muted) hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                                      title={isBn ? "মুছে ফেলুন" : "Delete"}
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))
+              )}
             </div>
-
-            <div className="pt-6 border-t border-(--text-primary)/10 mt-6">
-              <a href={activeCitation.bdlawsUrl} target="_blank" rel="noopener noreferrer" className="w-full py-3 px-4 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm hover:opacity-90 bg-(--accent-solid) text-(--accent-contrast)">
-                <span>{language === "bn" ? "bdlaws ওয়েবসাইটে আসল ধারাটি দেখুন" : "View on Official bdlaws Portal"}</span>
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
-          </div>
-        )}
-      </div>
+          </aside>
+        </div>
+      )}
     </AppShell>
   );
 }

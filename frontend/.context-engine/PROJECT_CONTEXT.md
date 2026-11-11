@@ -1,7 +1,7 @@
 # Project Context
 
 > Status: INITIALIZED  
-> Last Verified: 2026-11-08  
+> Last Verified: 2026-11-11  
 > Engine Version: 1.0.0  
 
 ## Project identity
@@ -25,12 +25,12 @@
   - `src/app/copilot/page.tsx`: Conversational legal research copilot with chat sessions, statutory provisions drawer, client-side PII masking, and Markdown viewer.
   - `src/app/contractmind/page.tsx`: Autonomous contract risk auditor supporting PDF/DOCX/image uploads, clause risk scoring against Bangladesh statutes, redline suggestions, and advocate dispatching.
   - `src/app/archive/page.tsx`: Stored contract audit repository with risk filters, search, HITL status badges, and Markdown/PDF export.
-  - `src/app/admin/page.tsx`: Super-admin control panel for approving advocates, managing enterprise tenants, reviewing bKash payments, and processing payouts.
+  - `src/app/admin/page.tsx`: Super-admin control panel for approving advocates, managing enterprise tenants, inspecting SSLCommerz gateway payments & reconciliation, adjusting user/enterprise credits, and processing multi-channel payouts.
   - `src/app/enterprise/admin/page.tsx`: Corporate workspace for team credit pools, member invite/quota management, playbook rule enforcement, and audit logs.
   - `src/app/enterprise/member/page.tsx`: Enterprise member workspace for playbook-guided audits and shared contracts.
-  - `src/app/lawyer/pending/page.tsx`: Advocate queue for viewing incoming offers (3-hour acceptance window), active tasks, submitting certified reviews, and requesting withdrawals.
-  - `src/app/lawyer/archive/page.tsx`: Advocate historical verified review log.
-  - `src/app/pricing/page.tsx`: Credit package catalog and manual bKash payment gateway (TrxID submission workflow).
+  - `src/app/lawyer/pending/page.tsx`: Advocate verification pending status portal.
+  - `src/app/lawyer/archive/page.tsx`: Advocate completed reviews repository, earnings ledger, and multi-channel payout requests (bKash, Nagad, Rocket, Bank Transfer).
+  - `src/app/pricing/page.tsx`: Credit package catalog, SSLCommerz Verified Payment Gateway checkout, pre-checkout phone prompt modal, callback status verification, and payment history.
   - `src/app/profile/page.tsx`: User profile management, advocate/enterprise credentials, credit ledger view, and avatar upload.
   - `src/app/settings/page.tsx`: Application preferences, security controls, password changes, and account deletion.
 
@@ -52,7 +52,7 @@
 
 - **API & Network Integration**:
   - `src/lib/api.ts`: Fetch-based singleton HTTP client automatically attaching Bearer tokens, enforcing a 90-second timeout with `AbortController`, handling 401 unauthenticated redirects, supporting `FormData` uploads, and parsing FastAPI/Pydantic validation errors.
-  - `src/lib/apiServices.ts`: 1,550-line strongly typed service module covering all domain modules (contracts, chat sessions, lawyer tasks/earnings, enterprise members/playbooks, bKash payments, settings, and admin metrics).
+  - `src/lib/apiServices.ts`: Strongly typed service module covering all domain modules (contracts, chat sessions, lawyer tasks/earnings/multi-channel withdrawals, enterprise members/playbooks, SSLCommerz payments, settings, and admin gateway ledger & credit adjustments).
   - Next.js Rewrites (`next.config.ts`): Proxies `/api/:path*` to `BACKEND_INTERNAL_URL` || `NEXT_PUBLIC_API_URL` || `https://legal-copilot-backend-npq7.onrender.com`.
 
 - **Client-Side Sovereign Logic**:
@@ -68,7 +68,7 @@
 | `src/context/PersonaContext.tsx` | Persona management for tailored contract advice | `PersonaProvider`, `usePersona`, `PERSONAS` | React |
 | `src/context/ThemeContext.tsx` | Dark/Light theme toggle & root class toggle | `ThemeProvider`, `useTheme` | React |
 | `src/lib/api.ts` | Central HTTP client with Bearer auth & timeout handling | `api`, `ApiError` | `src/lib/auth.ts` |
-| `src/lib/apiServices.ts` | Typed backend API endpoints and data interfaces | `uploadContract`, `getContractHistory`, `createChatSession`, `sendChatQuery`, `getLawyerQueue`, `submitReview`, `getCompanyDashboard`, `initiatePayment`, `getAdminDashboardStats` | `src/lib/api.ts` |
+| `src/lib/apiServices.ts` | Typed backend API endpoints and data interfaces | `uploadContract`, `getContractHistory`, `createChatSession`, `sendChatQuery`, `getLawyerQueue`, `submitReview`, `getCompanyDashboard`, `getPaymentGatewayConfig`, `initiatePayment`, `verifyPaymentStatus`, `getAdminPayments`, `adjustAdminUserCredits`, `adjustAdminEnterpriseCredits` | `src/lib/api.ts` |
 | `src/lib/auth.ts` | Local token and session storage operations | `saveTokenResponse`, `getToken`, `clearAuth`, `getRoleHint`, `setRoleHint` | Web Storage API |
 | `src/lib/dispatcher.ts` | Advocate matching algorithm | `runDispatchAlgorithm`, `INITIAL_DEMO_LAWYERS` | Pure TS |
 | `src/lib/piiMasker.ts` | Sovereign client-side PII redactor | `maskPii`, `PiiRedactionResult` | Pure TS |

@@ -1,7 +1,7 @@
 # Project Map
 
 > Status: INITIALIZED  
-> Last Verified: 2026-11-08  
+> Last Verified: 2026-11-11  
 
 ## Repository overview
 - `src/`: Core frontend source code.
@@ -10,12 +10,12 @@
     - `src/app/copilot/`: Interactive legal research chat interface.
     - `src/app/contractmind/`: Contract upload, clause extraction, and statutory risk auditor.
     - `src/app/archive/`: Stored contract memos and audit history.
-    - `src/app/admin/`: Super-admin management portal (lawyers, enterprises, payments, withdrawals).
+    - `src/app/admin/`: Super-admin management portal (lawyers, enterprises, SSLCommerz gateway ledger, credit adjustments, withdrawals).
     - `src/app/enterprise/admin/`: Enterprise admin portal (team credits, members, playbooks, shared vault).
     - `src/app/enterprise/member/`: Enterprise member workspace.
-    - `src/app/lawyer/pending/`: Advocate review task queue, offer acceptance, and certified review submission.
-    - `src/app/lawyer/archive/`: Advocate completed reviews repository.
-    - `src/app/pricing/`: Credit packages, pricing tiers, and bKash payment gateway.
+    - `src/app/lawyer/pending/`: Advocate verification status view.
+    - `src/app/lawyer/archive/`: Advocate completed reviews, earnings ledger, and multi-channel payouts.
+    - `src/app/pricing/`: Credit packages, pricing tiers, and SSLCommerz payment gateway.
     - `src/app/profile/`: User profile, credentials, and avatar upload.
     - `src/app/settings/`: Account preferences, security, and settings.
     - `src/app/dashboard/`: Role-based route dispatcher.
@@ -72,8 +72,8 @@
 | **Contract Archive** | `src/app/archive/page.tsx`, `src/lib/apiServices.ts`, `src/lib/markdownContractGenerator.ts` | `getContractHistory`, `deleteContract`, `generateContractAuditMarkdown` | User contract repository, audit memo viewing, and print export |
 | **Advocate Marketplace (HITL)** | `src/app/lawyer/pending/page.tsx`, `src/app/lawyer/archive/page.tsx`, `src/lib/apiServices.ts` | `getLawyerQueue`, `acceptOffer`, `declineOffer`, `getActiveTasks`, `submitReview`, `getLawyerEarnings` | 3-hour offer queue, task review, proof upload, advocate seal, earnings |
 | **Enterprise Management** | `src/app/enterprise/admin/page.tsx`, `src/app/enterprise/member/page.tsx`, `src/lib/apiServices.ts` | `getCompanyDashboard`, `listMembers`, `adjustMemberQuota`, `uploadPlaybook`, `listPlaybooks` | Company credit pool, team quotas, compliance playbooks, shared vault |
-| **Billing & Payments** | `src/app/pricing/page.tsx`, `src/lib/apiServices.ts` | `listPackages`, `initiatePayment`, `submitTrxId`, `listMyPayments` | Credit bundles, manual bKash merchant payment and TrxID verification |
-| **System Administration** | `src/app/admin/page.tsx`, `src/lib/apiServices.ts` | `getAdminDashboardStats`, `approveLawyer`, `rejectLawyer`, `approveAdminPayment`, `markAdminWithdrawalPaid` | Super-admin verification of lawyers, enterprises, payments, and payouts |
+| **Billing & Payments** | `src/app/pricing/page.tsx`, `src/lib/apiServices.ts` | `listPackages`, `getPaymentGatewayConfig`, `initiatePayment`, `verifyPaymentStatus`, `listMyPayments` | Credit bundles, SSLCommerz checkout redirect, pre-checkout phone prompt, and payment verification |
+| **System Administration** | `src/app/admin/page.tsx`, `src/lib/apiServices.ts` | `getAdminDashboardStats`, `getAdminPayments`, `reconcileAdminPayment`, `adjustAdminUserCredits`, `adjustAdminEnterpriseCredits`, `markAdminWithdrawalPaid` | Super-admin verification, gateway ledger reconciliation, credit adjustments, and multi-channel payouts |
 | **Profile & Settings** | `src/app/profile/page.tsx`, `src/app/settings/page.tsx`, `src/lib/apiServices.ts` | `getMySettings`, `updateProfile`, `changePassword`, `uploadProfilePhoto` | User account settings, avatar upload, password changes |
 | **Markdown & Redline View** | `src/components/markdown/MarkdownViewer.tsx` | `MarkdownViewer`, `DiffRedlineBlock` | Custom syntax for statutory redlines, callouts, and advocate seals |
 

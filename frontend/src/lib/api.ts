@@ -20,6 +20,8 @@ interface ApiOptions {
   headers?: Record<string, string>;
   /** Skip JSON serialisation (for FormData uploads) */
   isFormData?: boolean;
+  /** Optional external AbortSignal for user cancellation */
+  signal?: AbortSignal;
 }
 
 export class ApiError extends Error {
@@ -36,7 +38,7 @@ async function request<T>(
   path: string,
   options: ApiOptions = {}
 ): Promise<T> {
-  const { method = "GET", body, headers = {}, isFormData = false } = options;
+  const { method = "GET", body, headers = {}, isFormData = false, signal } = options;
 
   const token = getToken();
   const reqHeaders: Record<string, string> = { ...headers };
@@ -60,6 +62,18 @@ async function request<T>(
 
   let res: Response;
   const controller = new AbortController();
+  let abortedByCaller = Boolean(signal?.aborted);
+  const handleExternalAbort = () => {
+    abortedByCaller = true;
+    controller.abort();
+  };
+  if (signal) {
+    if (signal.aborted) {
+      controller.abort();
+    } else {
+      signal.addEventListener("abort", handleExternalAbort, { once: true });
+    }
+  }
   const timeoutId = setTimeout(() => controller.abort(), 90000);
 
   try {
@@ -77,6 +91,9 @@ async function request<T>(
   } catch (netErr: unknown) {
     const err = netErr as { name?: string };
     if (err?.name === "AbortError") {
+      if (abortedByCaller || signal?.aborted) {
+        throw new ApiError(499, "Request stopped by user.");
+      }
       console.error(`[API Timeout] ${method} ${fullUrl} exceeded 90s`);
       throw new ApiError(408, "Request timed out after 90s. AI model might be busy.");
     }
@@ -84,6 +101,9 @@ async function request<T>(
     throw new ApiError(0, "Network connection error. Please verify backend connectivity.");
   } finally {
     clearTimeout(timeoutId);
+    if (signal) {
+      signal.removeEventListener("abort", handleExternalAbort);
+    }
   }
 
   // [UPDATED] FIX: Only clear auth if 401 occurs on a protected route (NOT login/register).
@@ -142,29 +162,32 @@ async function request<T>(
 // ─── Convenience wrappers ───────────────────────────────────────────────────
 
 export const api = {
-  get: <T>(path: string, extraHeaders?: Record<string, string>) =>
-    request<T>(path, { method: "GET", headers: extraHeaders }),
+  get: <T>(path: string, extraHeaders?: Record<string, string>, signal?: AbortSignal) =>
+    request<T>(path, { method: "GET", headers: extraHeaders, signal }),
 
   post: <T>(
     path: string,
     body?: Record<string, unknown>,
-    extraHeaders?: Record<string, string>
-  ) => request<T>(path, { method: "POST", body, headers: extraHeaders }),
+    extraHeaders?: Record<string, string>,
+    signal?: AbortSignal
+  ) => request<T>(path, { method: "POST", body, headers: extraHeaders, signal }),
 
   patch: <T>(
     path: string,
     body?: Record<string, unknown>,
-    extraHeaders?: Record<string, string>
-  ) => request<T>(path, { method: "PATCH", body, headers: extraHeaders }),
+    extraHeaders?: Record<string, string>,
+    signal?: AbortSignal
+  ) => request<T>(path, { method: "PATCH", body, headers: extraHeaders, signal }),
 
   put: <T>(
     path: string,
     body?: Record<string, unknown>,
-    extraHeaders?: Record<string, string>
-  ) => request<T>(path, { method: "PUT", body, headers: extraHeaders }),
+    extraHeaders?: Record<string, string>,
+    signal?: AbortSignal
+  ) => request<T>(path, { method: "PUT", body, headers: extraHeaders, signal }),
 
-  delete: <T>(path: string, extraHeaders?: Record<string, string>) =>
-    request<T>(path, { method: "DELETE", headers: extraHeaders }),
+  delete: <T>(path: string, extraHeaders?: Record<string, string>, signal?: AbortSignal) =>
+    request<T>(path, { method: "DELETE", headers: extraHeaders, signal }),
 
   upload: <T>(path: string, formData: FormData) =>
     request<T>(path, {
