@@ -472,6 +472,8 @@ export default function CopilotPage() {
 
   const canTopUpCredits =
     normalizedRole === "general" ||
+    (normalizedRole === "lawyer" &&
+      String(user?.lawyerProfile?.verificationStatus || "").toLowerCase() === "verified") ||
     (isEnterpriseAdmin &&
       String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase() === "verified");
 
