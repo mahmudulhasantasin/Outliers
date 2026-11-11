@@ -1166,29 +1166,31 @@ export default function CopilotPage() {
   }
 
   return (
-    <AppShell mainClassName="pb-2! md:pb-3!">
+    <AppShell mainClassName="pb-2! md:pb-3!" hideDock={isDrawerOpen}>
       {/* ─── Desktop: Left Vertical Actions (Aligned directly with vertical dock: left-4, width 60px) ─── */}
-      <div className="hidden md:flex fixed left-4 top-5 z-40 flex-col items-center gap-2.5 w-[60px] select-none">
-        {/* Previous Chat / History Drawer Toggle */}
-        <button
-          type="button"
-          onClick={() => setIsDrawerOpen(true)}
-          title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
-        >
-          <PanelLeftOpen className="w-4 h-4 transition-transform group-hover:scale-105" />
-        </button>
+      {!isDrawerOpen && (
+        <div className="hidden md:flex fixed left-4 top-5 z-40 flex-col items-center gap-2.5 w-[60px] select-none">
+          {/* Previous Chat / History Drawer Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
+          >
+            <PanelLeftOpen className="w-4 h-4 transition-transform group-hover:scale-105" />
+          </button>
 
-        {/* New Chat Button */}
-        <button
-          type="button"
-          onClick={handleNewChat}
-          title={isBn ? "নতুন চ্যাট" : "New Chat"}
-          className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
-        >
-          <SquarePen className="w-4 h-4 transition-transform group-hover:scale-105" />
-        </button>
-      </div>
+          {/* New Chat Button */}
+          <button
+            type="button"
+            onClick={handleNewChat}
+            title={isBn ? "নতুন চ্যাট" : "New Chat"}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
+          >
+            <SquarePen className="w-4 h-4 transition-transform group-hover:scale-105" />
+          </button>
+        </div>
+      )}
 
       <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
         {/* ─── Top Bar: Mobile actions & turn quota ─── */}
@@ -1774,14 +1776,14 @@ export default function CopilotPage() {
         </div>
       )}
 
-      {/* ─── History Slide-Over Drawer (Search, Rename, Date Groups, Mobile-Visible Delete) ─── */}
+      {/* ─── History Slide-Over Drawer (Left-Side Full Height Slide-In) ─── */}
       {isDrawerOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end items-start sm:items-center p-3 pt-16 sm:p-6"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-start items-stretch animate-in fade-in duration-200"
           onClick={() => setIsDrawerOpen(false)}
         >
           <aside
-            className="w-[min(92vw,380px)] max-h-[75dvh] sm:max-h-[82vh] bg-(--bg-card) border border-(--text-primary)/12 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
+            className="w-[min(88vw,360px)] h-full bg-(--bg-card) border-r border-(--text-primary)/12 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-250 ease-out"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header */}

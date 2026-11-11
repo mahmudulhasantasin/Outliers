@@ -8,22 +8,26 @@ interface AppShellProps {
   children: React.ReactNode;
   className?: string;
   mainClassName?: string;
+  hideDock?: boolean;
 }
 
 export default function AppShell({
   children,
   className = "",
-  mainClassName = ""
+  mainClassName = "",
+  hideDock = false,
 }: AppShellProps) {
   return (
     <div
       className={`relative flex min-h-screen w-full transition-colors duration-200 overflow-x-hidden print:overflow-visible print:block print:w-full print:min-h-0 ${className}`}
       style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}
     >
-      {/* Left Vertical Dock - Hidden during Print / PDF Export */}
-      <div className="print:hidden">
-        <AppDock />
-      </div>
+      {/* Left Vertical Dock - Hidden during Print / PDF Export or when hideDock is active */}
+      {!hideDock && (
+        <div className="print:hidden">
+          <AppDock />
+        </div>
+      )}
 
       {/* Main Workspace Area with clearance for the left dock on desktop and top hamburger clearance on mobile - Reset on Print */}
       <main
