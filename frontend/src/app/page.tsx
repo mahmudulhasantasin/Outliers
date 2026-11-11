@@ -937,11 +937,6 @@ const handleGoogleResponse = useCallback(
                   <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-2">
                     {isBn ? "এডভোটেক কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Advotech Copilot & ContractMind"}
                   </h2>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
-                    {isBn
-                      ? "বাংলাদেশের সংবিধিবদ্ধ আইনের ভিত্তিতে নির্ভুল আইনি গবেষণা ও তাৎক্ষণিক চুক্তি অডিট।"
-                      : "Codified statutory precision with verifiable legal citations & automated risk audits."}
-                  </p>
                 </div>
               </FadeContent>
 
@@ -1066,11 +1061,6 @@ const handleGoogleResponse = useCallback(
                 <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight mb-3">
                   {isBn ? "সবার জন্য উপযুক্ত সমাধান" : "Tailored For Every Need"}
                 </h2>
-                <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-xl mx-auto leading-relaxed">
-                  {isBn
-                    ? "সাধারণ নাগরিক, আইনজীবী এবং এন্টারপ্রাইজের আইনি সুরক্ষায়।"
-                    : "Built for individuals, advocates, and growing enterprises."}
-                </p>
               </div>
             </FadeContent>
 
@@ -2094,7 +2084,6 @@ const handleGoogleResponse = useCallback(
                               </div>
                               <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center flex items-center justify-center gap-1">
                                 <Zap className="w-3 h-3 text-amber-500 shrink-0" />
-                                <span>{isBn ? "১ ক্লিকে সাধারণ ব্যবহারকারী অ্যাকাউন্ট ও ১০০ ফ্রি ক্রেডিট" : "1-click general account with 100 free credits"}</span>
                               </p>
                             </div>
 
