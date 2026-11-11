@@ -540,7 +540,7 @@ export default function ArchivePage() {
       <div className="legal-screen-only w-full max-w-4xl mx-auto px-1 sm:px-6 pt-2 sm:pt-8 pb-24 sm:pb-32 font-sans min-w-0">
         
         {/* Page Header */}
-        <div className="pb-6 sm:pb-8 border-b" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        <div className="pb-4">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2 text-xs text-neutral-400 uppercase tracking-wider font-semibold">
               <FolderClock className="w-4 h-4" />
@@ -567,37 +567,38 @@ export default function ArchivePage() {
               : "Repository of audited contracts, statutory compliance assessments, and legally protected redlines under Bangladesh statutes."}
           </p>
 
-          {/* Quick Stats Strip */}
-          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-3 sm:gap-6 pt-5 sm:pt-6 mt-5 sm:mt-6 border-t text-xs" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)", color: "var(--text-muted)" }}>
-            <div className="min-w-0">
-              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">{records.length}</span>
-              <span>{language === "bn" ? "মোট অডিট" : "Total Audits"}</span>
-            </div>
-            <div className="min-w-0">
-              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
-                {tabCounts.HIGH}
-              </span>
-              <span>{language === "bn" ? "উচ্চ ঝুঁকিপূর্ণ চুক্তি" : "High Risk Contracts"}</span>
-            </div>
-            <div className="min-w-0">
-              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
-                {tabCounts.MODERATE}
-              </span>
-              <span>{language === "bn" ? "পর্যালোচনা প্রয়োজন" : "Review Needed"}</span>
-            </div>
-            <div className="min-w-0">
-              <span className="font-semibold text-sm mr-1.5 text-(--text-primary)">
-                {tabCounts.LOW}
-              </span>
-              <span>{language === "bn" ? "আইনসম্মত চুক্তি" : "Compliant Contracts"}</span>
-            </div>
+          {/* Quick Filter Buttons (Transformed from Stats Strip) */}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 pt-4 mt-4 text-xs select-none">
+            {[
+              { id: "ALL", labelEn: "Total Audits", labelBn: "মোট অডিট", count: records.length },
+              { id: "HIGH", labelEn: "High Risk Contracts", labelBn: "উচ্চ ঝুঁকিপূর্ণ চুক্তি", count: tabCounts.HIGH },
+              { id: "MODERATE", labelEn: "Review Needed", labelBn: "পর্যালোচনা প্রয়োজন", count: tabCounts.MODERATE },
+              { id: "LOW", labelEn: "Compliant Contracts", labelBn: "আইনসম্মত চুক্তি", count: tabCounts.LOW }
+            ].map((f) => {
+              const isActive = selectedRisk === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setSelectedRisk(f.id)}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-all cursor-pointer ${
+                    isActive
+                      ? "bg-(--text-primary) text-(--bg-primary) font-semibold shadow-xs"
+                      : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/6"
+                  }`}
+                >
+                  <span className="font-bold text-sm leading-none">{f.count}</span>
+                  <span className="text-xs">{language === "bn" ? f.labelBn : f.labelEn}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Search & Filter Bar */}
-        <div className="py-4 sm:py-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 border-b w-full" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        {/* Search Bar (Clean without border lines or horizontal duplicate filters) */}
+        <div className="py-2 w-full">
           {/* Search Box */}
-          <div className="relative w-full md:w-80 lg:w-96 shrink-0">
+          <div className="relative w-full md:w-80 lg:w-96">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -626,37 +627,6 @@ export default function ArchivePage() {
                 <X className="w-3.5 h-3.5" />
               </button>
             )}
-          </div>
-
-          {/* Filter Pills with real counts */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto shrink-0 no-scrollbar">
-            {[
-              { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
-              { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
-              { id: "MODERATE", labelEn: "Review Needed", labelBn: "পর্যালোচনা প্রয়োজন", count: tabCounts.MODERATE },
-              { id: "LOW", labelEn: "Compliant", labelBn: "আইনসম্মত", count: tabCounts.LOW }
-            ].map((filter) => (
-              <button
-                key={filter.id}
-                onClick={() => setSelectedRisk(filter.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-colors cursor-pointer shrink-0 ${
-                  selectedRisk === filter.id
-                    ? "bg-(--text-primary) text-(--bg-primary) font-semibold shadow-xs"
-                    : "opacity-60 hover:opacity-100 bg-neutral-200/50 dark:bg-neutral-800/50"
-                }`}
-              >
-                <span>{language === "bn" ? filter.labelBn : filter.labelEn}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold ${
-                    selectedRisk === filter.id
-                      ? "bg-(--bg-primary) text-(--text-primary)"
-                      : "bg-neutral-300 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300"
-                  }`}
-                >
-                  {filter.count}
-                </span>
-              </button>
-            ))}
           </div>
         </div>
 
