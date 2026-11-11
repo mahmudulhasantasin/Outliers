@@ -1,5 +1,6 @@
 "use client";
 
+// Legal Copilot workspace view
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -475,6 +476,8 @@ export default function CopilotPage() {
 
   const canTopUpCredits =
     normalizedRole === "general" ||
+    (normalizedRole === "lawyer" &&
+      String(user?.lawyerProfile?.verificationStatus || "").toLowerCase() === "verified") ||
     (isEnterpriseAdmin &&
       String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase() === "verified");
 

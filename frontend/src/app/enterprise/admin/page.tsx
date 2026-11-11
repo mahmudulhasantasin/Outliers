@@ -632,9 +632,19 @@ export default function EnterpriseAdminPage() {
                     </span>
                   </div>
                 </div>
-                <p className="text-[11px] text-[var(--text-muted)]">
-                  {usedThisMonth.toLocaleString()} {isBn ? "ক্রেডিট এ মাসে ব্যবহৃত।" : "credits used this month."}
-                </p>
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-[11px] text-[var(--text-muted)]">
+                    {usedThisMonth.toLocaleString()} {isBn ? "ক্রেডিট এ মাসে ব্যবহৃত।" : "credits used this month."}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/pricing")}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer shrink-0"
+                  >
+                    <span>{isBn ? "পুল রিচার্জ" : "Top Up Pool"}</span>
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Playbook */}
