@@ -16,6 +16,7 @@ declare global {
   }
 }
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth, normalizeUserRole } from "@/context/AuthContext"; // [UPDATED] ADDED normalizeUserRole
@@ -34,9 +35,7 @@ import {
   Globe2,
   Star,
   Quote,
-  ChevronDown,
   User,
-  Scale as ScaleIcon,
   Building2,
   CheckCircle2,
   ChevronLeft,
@@ -46,10 +45,10 @@ import {
   Users,
   Sparkles,
   AlertTriangle,
-  Plus,
-  ChevronRight,
   Check,
   Shield,
+  ShieldCheck,
+  Landmark,
   Lock,
   Loader2,
   Clock,
@@ -69,7 +68,7 @@ export default function LandingAndAuthPage() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
-  
+
   // [UPDATED] Moved isBn up to the top so all handlers can use it
   const isBn = language === "bn";
 
@@ -290,7 +289,7 @@ export default function LandingAndAuthPage() {
     setForgotError("");
   };
 
-const handleGoogleResponse = useCallback(
+  const handleGoogleResponse = useCallback(
     async (response: { credential?: string }) => {
       if (!response?.credential) {
         setAuthError(isBn ? "গুগল সাইন-ইন ব্যর্থ হয়েছে।" : "Google sign in failed.");
@@ -437,7 +436,7 @@ const handleGoogleResponse = useCallback(
         setSelectedRole("general");
         setRegStep("otp");
         setAuthError("");
-        resendOtp(loginEmail).catch(() => {});
+        resendOtp(loginEmail).catch(() => { });
         return;
       }
 
@@ -564,8 +563,8 @@ const handleGoogleResponse = useCallback(
         err instanceof Error
           ? err.message
           : language === "bn"
-          ? "নিবন্ধন ব্যর্থ হয়েছে। ইনপুটগুলো পুনরায় চেক করুন।"
-          : "Registration failed. Please check your inputs.";
+            ? "নিবন্ধন ব্যর্থ হয়েছে। ইনপুটগুলো পুনরায় চেক করুন।"
+            : "Registration failed. Please check your inputs.";
 
       if (
         msg.toLowerCase().includes("exists") ||
@@ -661,8 +660,8 @@ const handleGoogleResponse = useCallback(
         err instanceof Error
           ? err.message
           : language === "bn"
-          ? "অবৈধ বা মেয়াদোত্তীর্ণ ওটিপি কোড।"
-          : "Invalid or expired OTP code.";
+            ? "অবৈধ বা মেয়াদোত্তীর্ণ ওটিপি কোড।"
+            : "Invalid or expired OTP code.";
       setOtpError(msg);
     } finally {
       setAuthLoading(false);
@@ -731,23 +730,23 @@ const handleGoogleResponse = useCallback(
               : "rgba(231, 231, 221, 0.88)",
         }}
       >
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-10 h-20 flex items-center justify-between gap-2">
           {/* Brand Logo */}
-          <a href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 lg:gap-3.5 group shrink-0 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center shrink-0">
               <Image
                 src="/logo.svg"
                 alt="Advotech Copilot"
-                width={40}
-                height={40}
-                className="w-10 h-10 object-contain dark:invert transition-transform group-hover:scale-105"
+                width={48}
+                height={48}
+                className="w-full h-full object-contain dark:invert transition-transform group-hover:scale-105"
                 priority
               />
             </div>
-            <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-[var(--text-primary)]">
+            <span className="font-serif font-bold text-base sm:text-2xl lg:text-3xl tracking-tight text-[var(--text-primary)] whitespace-nowrap">
               Advotech Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
             </span>
-          </a>
+          </Link>
 
           {/* Center Nav Links */}
           <nav className="hidden md:flex items-center gap-7 text-xs sm:text-[13px] font-medium tracking-wide uppercase text-[var(--text-muted)]">
@@ -758,32 +757,32 @@ const handleGoogleResponse = useCallback(
             <a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ফিচারসমূহ" : "Features"}</a>
             <a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "কার জন্য" : "Who Is It For"}</a>
             <a href="#reviews" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রিভিউ" : "Reviews"}</a>
-            <a href="#consultation" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "আইনি পরামর্শ" : "Consultation"}</a>
+            <a href="#suggestion" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ও মতামত" : "Suggestion"}</a>
           </nav>
 
           {/* Right Buttons */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0">
             {/* Language Toggle */}
             <button
               type="button"
               onClick={() => setLanguage(isBn ? "en" : "bn")}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] flex items-center gap-1 cursor-pointer`}
+              className={`px-2 sm:px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] flex items-center gap-1 cursor-pointer`}
             >
               <Globe2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              <span>{isBn ? "EN" : "বাং"}</span>
+              <span>{isBn ? "EN" : "BN"}</span>
             </button>
 
             {/* Theme Toggle */}
             <button
               type="button"
               onClick={toggleTheme}
-              className={`p-2 rounded-xl text-xs font-medium transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer`}
+              className={`p-1.5 sm:p-2 rounded-xl text-xs font-medium transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer`}
               aria-label="Toggle theme"
             >
               {theme === "dark" ? (
-                <Sun className="w-4 h-4 text-amber-400" />
+                <Sun className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-[var(--text-muted)]" />
+                <Moon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[var(--text-muted)]" />
               )}
             </button>
 
@@ -797,11 +796,11 @@ const handleGoogleResponse = useCallback(
                     role === "ADMIN"
                       ? "/admin"
                       : role === "LAWYER"
-                      ? "/lawyer/pending"
-                      : "/dashboard"
+                        ? "/lawyer/pending"
+                        : "/dashboard"
                   );
                 }}
-                className="whitespace-nowrap shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                className="whitespace-nowrap shrink-0 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "ওয়ার্কস্পেস" : "Workspace"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -810,7 +809,7 @@ const handleGoogleResponse = useCallback(
               <button
                 type="button"
                 onClick={() => openLoginModal(false)}
-                className="whitespace-nowrap shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                className="whitespace-nowrap shrink-0 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "লগইন" : "Sign In"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -827,7 +826,7 @@ const handleGoogleResponse = useCallback(
 
         {/* ── SECTION 1: EDITORIAL LUXURY HERO (MATCHING REFERENCE DESIGN WITH VIDEO) ── */}
         <section className="relative min-h-[90vh] lg:min-h-[94vh] w-full max-w-7xl mx-auto px-6 lg:px-12 pt-6 sm:pt-10 pb-16 flex flex-col justify-between overflow-hidden">
-          
+
           {/* Subtle Ambient Studio Light Gradients */}
           <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-gradient-to-b from-amber-500/10 via-amber-700/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
           <div className="absolute bottom-10 left-10 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -837,7 +836,7 @@ const handleGoogleResponse = useCallback(
 
             {/* ── Left Column: Editorial Headline & Actions (lg:col-span-6) ── */}
             <div className="lg:col-span-6 flex flex-col justify-center text-left z-20">
-              
+
               {/* Massive Bold Architectural Typography */}
               <h1 className="text-4xl sm:text-6xl lg:text-[72px] font-sans font-black tracking-tight leading-[1.04] uppercase text-[var(--text-primary)] mb-6">
                 {isBn ? (
@@ -856,22 +855,21 @@ const handleGoogleResponse = useCallback(
               </h1>
 
               {/* Subtitle */}
-              <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-md leading-relaxed mb-8">
+              <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-md leading-relaxed mb-6 lg:mb-8">
                 {isBn
                   ? "আপনার অধিকার সুরক্ষা ও ভবিষ্যৎ চুক্তি নিরাপত্তায় নিবেদিত বাংলাদেশের প্রথম সংবিধিবদ্ধ এআই লিগ্যাল প্ল্যাটফর্ম।"
                   : "A Dedicated Legal & AI Platform Committed to Protecting Your Rights, Reviewing Contracts, and Securing Your Future."}
               </p>
 
-              {/* Action Buttons (Orange Primary + Modern Secondary) */}
-              <div className="flex items-center gap-4 mb-10">
-                <button
-                  type="button"
-                  onClick={() => openLoginModal(false)}
+              {/* Action Buttons (Desktop: in Left Column) */}
+              <div className="hidden lg:flex items-center gap-4 mb-10">
+                <a
+                  href="#contact"
                   className="px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-95 hover:opacity-95 flex items-center gap-2 cursor-pointer bg-[#f2591f] text-white hover:bg-[#e04f18]"
                 >
                   <span>{isBn ? "পরামর্শ নিন" : "Contact Us"}</span>
                   <ArrowUpRight className="w-4 h-4" />
-                </button>
+                </a>
 
                 <a
                   href="#features"
@@ -883,11 +881,11 @@ const handleGoogleResponse = useCallback(
             </div>
 
             {/* ── Right Column: Video & Floating Glass Cards (lg:col-span-6) ── */}
-            <div className="lg:col-span-6 relative flex items-center justify-center min-h-[460px] sm:min-h-[560px] lg:min-h-[620px]">
-              
+            <div className="lg:col-span-6 relative flex flex-col items-center justify-center min-h-[460px] sm:min-h-[560px] lg:min-h-[620px]">
+
               {/* ── Central Character Container: Firefly with Interactive DitherVeil Effect ── */}
               <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
-                
+
                 {/* Backlight halo glow */}
                 <div className="absolute inset-8 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-2xl pointer-events-none" />
 
@@ -917,6 +915,24 @@ const handleGoogleResponse = useCallback(
                   />
                 </div>
               </div>
+
+              {/* Action Buttons (Mobile: Below Statue) */}
+              <div className="flex lg:hidden items-center justify-center gap-3.5 sm:gap-4 mt-6 sm:mt-8 mb-4 w-full z-20">
+                <a
+                  href="#contact"
+                  className="px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-95 hover:opacity-95 flex items-center gap-2 cursor-pointer bg-[#f2591f] text-white hover:bg-[#e04f18]"
+                >
+                  <span>{isBn ? "পরামর্শ নিন" : "Contact Us"}</span>
+                  <ArrowUpRight className="w-4 h-4" />
+                </a>
+
+                <a
+                  href="#features"
+                  className={`px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all border ${borderClass} hover:border-[var(--text-primary)]/40 flex items-center gap-2 cursor-pointer bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs`}
+                >
+                  <span>{isBn ? "বিস্তারিত জানুন" : "Learn More"}</span>
+                </a>
+              </div>
             </div>
           </div>
         </section>
@@ -928,272 +944,282 @@ const handleGoogleResponse = useCallback(
             className="w-full relative lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden flex items-center justify-center bg-[var(--bg-primary)] py-12 lg:py-0"
             style={{ zIndex: 10 }}
           >
-            <section id="features" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+            <section id="features" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full scroll-mt-24">
               <FadeContent effect="mist" duration={1.2} threshold={0.15}>
                 <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
                     {isBn ? "প্রধান ফিচারসমূহ" : "Core Capabilities"}
                   </span>
                   <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-2">
-                    {isBn ? "এডভোটেক কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Advotech Copilot & ContractMind"}
+                    {isBn ? "লিগ্যাল কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Legal Copilot & ContractMind"}
                   </h2>
                 </div>
               </FadeContent>
 
-          <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-              {/* Feature 1 Card: Advotech Copilot */}
-              <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-indigo-500/40 transition-all duration-300 group`}>
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Scale className="w-7 h-7" />
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                      Feature 01
-                    </span>
-                  </div>
-
-                  <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
-                    Advotech Copilot
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
-                    {isBn
-                      ? "বাংলাদেশের সংবিধিবদ্ধ আইন সংহিতা (bdlaws), সুপ্রিম কোর্টের নজির ও ধারাভিত্তিক রেফারেন্সসহ সার্বক্ষণিক এআই আইনি পরামর্শক।"
-                      : "Intelligent legal advisory grounded in verified Bangladesh statutes and High Court Division precedents with zero hallucination guarantee."}
-                  </p>
-
-                  <div className="space-y-3.5 mb-8">
-                    {[
-                      isBn ? "সরাসরি bdlaws থেকে অনুচ্ছেদ ও ধারা ভেরিফিকেশন" : "Direct bdlaws statutory clause & section mapping",
-                      isBn ? "বাংলা ও ইংরেজি উভয় ভাষায় সাবলীল আইনি ব্যাখ্যা" : "Bilingual fluent legal reasoning (Bengali & English)",
-                      isBn ? "সুপ্রিম কোর্টের ল্যান্ডমার্ক রায় ও নজিরের সংযোগ" : "Citations to Supreme Court rulings and precedents",
-                      isBn ? "কেস স্টাডি বিশ্লেষণ ও লিগ্যাল নোটিউট ড্রাফটিং" : "Case study synthesis and instant legal notice drafting",
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+              <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                  {/* Feature 1 Card: Legal Copilot */}
+                  <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/legal-copilot.png"
+                          alt="Legal Copilot"
+                          width={56}
+                          height={56}
+                          className="w-12 h-12 sm:w-14 sm:h-14 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="pt-6 border-t border-[var(--text-primary)]/10">
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(false)}
-                    className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:gap-3 transition-all cursor-pointer"
-                  >
-                    <span>{isBn ? "এডভোটেক কোপাইলট ওপেন করুন" : "Launch Advotech Copilot"}</span>
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                      <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
+                        Legal Copilot
+                      </h3>
+                      <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
+                        {isBn
+                          ? "বাংলাদেশের সংবিধিবদ্ধ আইন সংহিতা (bdlaws), সুপ্রিম কোর্টের নজির ও ধারাভিত্তিক রেফারেন্সসহ সার্বক্ষণিক এআই আইনি পরামর্শক।"
+                          : "Intelligent legal advisory grounded in verified Bangladesh statutes and High Court Division precedents with zero hallucination guarantee."}
+                      </p>
 
-              {/* Feature 2 Card: ContractMind */}
-              <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-amber-500/40 transition-all duration-300 group`}>
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Shield className="w-7 h-7" />
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                      Feature 02
-                    </span>
-                  </div>
-
-                  <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
-                    ContractMind
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
-                    {isBn
-                      ? "স্বয়ংক্রিয় চুক্তি অডিট, ক্ষতিকর ধারা শনাক্তকরণ, রিস্ক স্কোরিং এবং এক ক্লিকে বিকল্প ধারা সংশোধনের ড্রাফট প্রস্তুতকারী সিস্টেম।"
-                      : "Autonomous contract risk auditing, unfair clause detection, statutory compliance scoring, and automated redline revisions."}
-                  </p>
-
-                  <div className="space-y-3.5 mb-8">
-                    {[
-                      isBn ? "কন্ট্রাক্ট অ্যাক্ট ১৮৭২ ও শ্রম আইন ২০০৬ এর অসামঞ্জস্যতা শনাক্তকরণ" : "Detection of conflicts with Contract Act 1872 & Labour Law 2006",
-                      isBn ? "০-১০০ স্কেলে তাৎক্ষণিক সামগ্রিক রিস্ক স্কোর ও রেড-ফ্ল্যাগ অ্যালার্ট" : "Instant 0-100 overall risk score with color-coded red flags",
-                      isBn ? "এক ক্লিকে বিকল্প ও ভারসাম্যপূর্ণ ক্লজ জেনারেশন (Redline Draft)" : "One-click balanced alternative clause recommendations",
-                      isBn ? "ক্লায়েন্ট সাইড PII অটো-রেডাকশন (ব্যক্তিগত তথ্য সম্পূর্ণ নিরাপদ)" : "Client-side PII auto-redaction before cloud transmission",
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 mt-0.5">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+                      <div className="space-y-3.5 mb-8">
+                        {[
+                          isBn ? "সরাসরি bdlaws থেকে অনুচ্ছেদ ও ধারা ভেরিফিকেশন" : "Direct bdlaws statutory clause & section mapping",
+                          isBn ? "বাংলা ও ইংরেজি উভয় ভাষায় সাবলীল আইনি ব্যাখ্যা" : "Bilingual fluent legal reasoning (Bengali & English)",
+                          isBn ? "সুপ্রিম কোর্টের ল্যান্ডমার্ক রায় ও নজিরের সংযোগ" : "Citations to Supreme Court rulings and precedents",
+                          isBn ? "কেস স্টাডি বিশ্লেষণ ও লিগ্যাল নোটিউট ড্রাফটিং" : "Case study synthesis and instant legal notice drafting",
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-3">
+                            <Check className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
+                            <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="pt-6 border-t border-[var(--text-primary)]/10">
+                      <button
+                        type="button"
+                        onClick={() => openLoginModal(false)}
+                        className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[var(--text-primary)] hover:opacity-80 hover:gap-3 transition-all cursor-pointer"
+                      >
+                        <span>{isBn ? "লিগ্যাল কোপাইলট ওপেন করুন" : "Launch Legal Copilot"}</span>
+                        <ArrowUpRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Feature 2 Card: ContractMind */}
+                  <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/contractmind.png"
+                          alt="ContractMind"
+                          width={48}
+                          height={48}
+                          className="w-11 h-11 sm:w-12 sm:h-12 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
+                      </div>
+
+                      <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
+                        ContractMind
+                      </h3>
+                      <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
+                        {isBn
+                          ? "স্বয়ংক্রিয় চুক্তি অডিট, ক্ষতিকর ধারা শনাক্তকরণ, রিস্ক স্কোরিং এবং এক ক্লিকে বিকল্প ধারা সংশোধনের ড্রাফট প্রস্তুতকারী সিস্টেম।"
+                          : "Autonomous contract risk auditing, unfair clause detection, statutory compliance scoring, and automated redline revisions."}
+                      </p>
+
+                      <div className="space-y-3.5 mb-8">
+                        {[
+                          isBn ? "কন্ট্রাক্ট অ্যাক্ট ১৮৭২ ও শ্রম আইন ২০০৬ এর অসামঞ্জস্যতা শনাক্তকরণ" : "Detection of conflicts with Contract Act 1872 & Labour Law 2006",
+                          isBn ? "০-১০০ স্কেলে তাৎক্ষণিক সামগ্রিক রিস্ক স্কোর ও রেড-ফ্ল্যাগ অ্যালার্ট" : "Instant 0-100 overall risk score with color-coded red flags",
+                          isBn ? "এক ক্লিকে বিকল্প ও ভারসাম্যপূর্ণ ক্লজ জেনারেশন (Redline Draft)" : "One-click balanced alternative clause recommendations",
+                          isBn ? "ক্লায়েন্ট সাইড PII অটো-রেডাকশন (ব্যক্তিগত তথ্য সম্পূর্ণ নিরাপদ)" : "Client-side PII auto-redaction before cloud transmission",
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-3">
+                            <Check className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
+                            <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-[var(--text-primary)]/10">
+                      <button
+                        type="button"
+                        onClick={() => openLoginModal(false)}
+                        className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[var(--text-primary)] hover:opacity-80 hover:gap-3 transition-all cursor-pointer"
+                      >
+                        <span>{isBn ? "কন্ট্রাক্ট অডিট শুরু করুন" : "Start Contract Audit"}</span>
+                        <ArrowUpRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="pt-6 border-t border-[var(--text-primary)]/10">
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(false)}
-                    className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 hover:gap-3 transition-all cursor-pointer"
-                  >
-                    <span>{isBn ? "কন্ট্রাক্ট অডিট শুরু করুন" : "Start Contract Audit"}</span>
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </FadeContent>
-        </section>
+              </FadeContent>
+            </section>
           </div>
 
           {/* Section 3: CURTAIN on desktop (lg:), natural seamless flow on mobile */}
           <section
             id="for-whom"
-            className="relative py-16 lg:py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15"
+            className="relative py-16 lg:py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15 scroll-mt-24"
             style={{ zIndex: 20 }}
           >
-          <div className="max-w-6xl mx-auto">
-            <FadeContent effect="mist" duration={1.2} threshold={0.15}>
-              <div className="text-center max-w-3xl mx-auto mb-16">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
-                  {isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}
-                </span>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight mb-3">
-                  {isBn ? "সবার জন্য উপযুক্ত সমাধান" : "Tailored For Every Need"}
-                </h2>
-              </div>
-            </FadeContent>
-
-            <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Persona 1: General Users / SME / Freelancer */}
-                <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300`}>
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6">
-                      <User className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-serif font-semibold mb-2">
-                      {isBn ? "সাধারণ ব্যবহারকারী ও ফ্রিল্যান্সার" : "Individuals & Freelancers"}
-                    </h3>
-                    <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
-                      {isBn
-                        ? "জটিল আইনি মারপ্যাঁচ না বুঝেই যেকোনো চুক্তি সই করার ঝুঁকি এড়ান। নিজের অধিকার রক্ষা করুন চোখের পলকে।"
-                        : "Demystify confusing contract jargon before signing. Protect your livelihood, salary terms, and IP rights effortlessly."}
-                    </p>
-
-                    <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span>{isBn ? "নিয়োগ চুক্তি ও অফার লেটার সহজ বাংলায় রিভিউ" : "Plain-English / Bengali employment contract audit"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span>{isBn ? "বাড়ি ভাড়া ও সার্ভিস এগ্রিমেন্টের ঝুঁকি শনাক্ত" : "Tenancy & freelancer service clause validation"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span>{isBn ? "তাৎক্ষণিক আইনি অধিকার ও প্রতিকার জানার সুবিধা" : "Instant clarity on your statutory statutory rights"}</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(true)}
-                    className="w-full py-2.5 rounded-xl text-xs font-semibold border border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-colors cursor-pointer"
-                  >
-                    {isBn ? "ব্যক্তিগত অ্যাকাউন্ট শুরু করুন" : "Start as Individual"}
-                  </button>
+            <div className="max-w-6xl mx-auto">
+              <FadeContent effect="mist" duration={1.2} threshold={0.15}>
+                <div className="text-center max-w-3xl mx-auto mb-16">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2 block">
+                    {isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight mb-3">
+                    {isBn ? "সবার জন্য উপযুক্ত সমাধান" : "Tailored For Every Need"}
+                  </h2>
                 </div>
+              </FadeContent>
 
-                {/* Persona 2: Lawyers & Advocates */}
-                <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border-2 border-amber-500/40 shadow-xl flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 relative`}>
-                  <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-black">
-                    {isBn ? "পেশাদার ওয়ার্কস্পেস" : "Advocate Portal"}
-                  </div>
+              <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* Persona 1: General Users / SME / Freelancer */}
+                  <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/general-user.png"
+                          alt={isBn ? "সাধারণ ব্যবহারকারী" : "Individuals"}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                      <h3 className="text-xl font-serif font-semibold mb-2">
+                        {isBn ? "সাধারণ ব্যবহারকারী" : "Individuals"}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
+                        {isBn
+                          ? "জটিল আইনি মারপ্যাঁচ না বুঝেই যেকোনো চুক্তি সই করার ঝুঁকি এড়ান। নিজের অধিকার রক্ষা করুন চোখের পলকে।"
+                          : "Demystify confusing contract jargon before signing. Protect your livelihood, salary terms, and IP rights effortlessly."}
+                      </p>
 
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-6">
-                      <Gavel className="w-6 h-6" />
+                      <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "নিয়োগ চুক্তি ও অফার লেটার সহজ বাংলায় রিভিউ" : "Plain-English / Bengali employment contract audit"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "বাড়ি ভাড়া ও সার্ভিস এগ্রিমেন্টের ঝুঁকি শনাক্ত" : "Tenancy & freelancer service clause validation"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "তাৎক্ষণিক আইনি অধিকার ও প্রতিকার জানার সুবিধা" : "Instant clarity on your statutory statutory rights"}</span>
+                        </li>
+                      </ul>
                     </div>
-                    <h3 className="text-xl font-serif font-semibold mb-2">
-                      {isBn ? "আইনজীবী ও অ্যাডভোকেট" : "Lawyers & Advocates"}
-                    </h3>
-                    <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
-                      {isBn
-                        ? "ঘণ্টার পর ঘণ্টা ম্যানুয়াল কেস রিসার্চ এবং ক্লজ ড্রাফটিং এর সময় বাঁচান। শতভাগ সংবিধিবদ্ধ নির্ভরযোগ্যতায় পরামর্শ দিন।"
-                        : "Accelerate case research, citation discovery, and contract review with verified Supreme Court precedents and statute references."}
-                    </p>
 
-                    <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        <span>{isBn ? "বার কাউন্সিল তালিকাভুক্ত অ্যাডভোকেট স্পেস" : "Bar Council verified credential management"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        <span>{isBn ? "৫০ পাতার চুক্তি চোখের পলকে অডিট ও রেডলাইন" : "Audit 50+ page commercial contracts in seconds"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        <span>{isBn ? "সুপ্রিম কোর্ট ও bdlaws ক্রস-রেফারেন্সিং" : "Automated statutory cross-referencing"}</span>
-                      </li>
-                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => openLoginModal(true)}
+                      className={`w-full py-2.5 rounded-xl text-xs font-semibold border ${borderClass} text-[var(--text-primary)] hover:border-[var(--text-primary)]/40 hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer`}
+                    >
+                      {isBn ? "ব্যক্তিগত অ্যাকাউন্ট শুরু করুন" : "Start as Individual"}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(true)}
-                    className="w-full py-2.5 rounded-xl text-xs font-semibold bg-amber-500 text-black hover:opacity-90 transition-opacity font-bold cursor-pointer"
-                  >
-                    {isBn ? "আইনজীবী হিসেবে যুক্ত হোন" : "Join as Advocate"}
-                  </button>
-                </div>
-
-                {/* Persona 3: Enterprise & Companies */}
-                <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300`}>
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-6">
-                      <Building2 className="w-6 h-6" />
+                  {/* Persona 2: Lawyers & Advocates */}
+                  <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 hover:border-[var(--text-primary)]/30 transition-all duration-300 relative group`}>
+                    <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--text-primary)] text-[var(--bg-primary)]">
+                      {isBn ? "পেশাদার ওয়ার্কস্পেস" : "Advocate Portal"}
                     </div>
-                    <h3 className="text-xl font-serif font-semibold mb-2">
-                      {isBn ? "কোম্পানি ও এন্টারপ্রাইজ" : "Enterprise & Legal Teams"}
-                    </h3>
-                    <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
-                      {isBn
-                        ? "মাল্টি-মেম্বার টিম কোলাবরেশন, ভেন্ডর চুক্তি যাচাই এবং সার্বভৌম গোপনীয়তার সাথে কর্পোরেট কমপ্লায়েন্স নিয়ন্ত্রণ করুন।"
-                        : "Centralize corporate contract risk, manage internal legal counsel access, and enforce institutional compliance standards."}
-                    </p>
 
-                    <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        <span>{isBn ? "অ্যাডমিন প্যানেল ও টিম মেম্বার রেফারেল কোড" : "Central admin dashboard with referral code onboarding"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        <span>{isBn ? "ভেন্ডর ও পার্টনারশিপ চুক্তির কমপ্লায়েন্স অডিট" : "Vendor, NDA, and partnership risk scoring"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        <span>{isBn ? "সার্বভৌম ডেটা প্রাইভেসি ও এনক্রিপশন" : "Sovereign client-side PII encryption"}</span>
-                      </li>
-                    </ul>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/lawyer.png"
+                          alt={isBn ? "আইনজীবী ও অ্যাডভোকেট" : "Lawyers & Advocates"}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                      <h3 className="text-xl font-serif font-semibold mb-2">
+                        {isBn ? "আইনজীবী ও অ্যাডভোকেট" : "Lawyers & Advocates"}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
+                        {isBn
+                          ? "ঘণ্টার পর ঘণ্টা ম্যানুয়াল কেস রিসার্চ এবং ক্লজ ড্রাফটিং এর সময় বাঁচান। শতভাগ সংবিধিবদ্ধ নির্ভরযোগ্যতায় পরামর্শ দিন।"
+                          : "Accelerate case research, citation discovery, and contract review with verified Supreme Court precedents and statute references."}
+                      </p>
+
+                      <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "বার কাউন্সিল তালিকাভুক্ত অ্যাডভোকেট স্পেস" : "Bar Council verified credential management"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "৫০ পাতার চুক্তি চোখের পলকে অডিট ও রেডলাইন" : "Audit 50+ page commercial contracts in seconds"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "সুপ্রিম কোর্ট ও bdlaws ক্রস-রেফারেন্সিং" : "Automated statutory cross-referencing"}</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openLoginModal(true)}
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--text-primary)] text-[var(--bg-primary)] hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-sm"
+                    >
+                      {isBn ? "আইনজীবী হিসেবে যুক্ত হোন" : "Join as Advocate"}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(true)}
-                    className="w-full py-2.5 rounded-xl text-xs font-semibold border border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
-                  >
-                    {isBn ? "এন্টারপ্রাইজ রেজিস্ট্রেশন" : "Register Enterprise"}
-                  </button>
+                  {/* Persona 3: Enterprise & Companies */}
+                  <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 text-[var(--text-primary)] flex items-center justify-start">
+                        <Landmark className="w-9 h-9 transition-transform group-hover:scale-105" strokeWidth={1.75} />
+                      </div>
+                      <h3 className="text-xl font-serif font-semibold mb-2">
+                        {isBn ? "কোম্পানি ও এন্টারপ্রাইজ" : "Enterprise & Legal Teams"}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
+                        {isBn
+                          ? "মাল্টি-মেম্বার টিম কোলাবরেশন, ভেন্ডর চুক্তি যাচাই এবং সার্বভৌম গোপনীয়তার সাথে কর্পোরেট কমপ্লায়েন্স নিয়ন্ত্রণ করুন।"
+                          : "Centralize corporate contract risk, manage internal legal counsel access, and enforce institutional compliance standards."}
+                      </p>
+
+                      <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "অ্যাডমিন প্যানেল ও টিম মেম্বার রেফারেল কোড" : "Central admin dashboard with referral code onboarding"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "ভেন্ডর ও পার্টনারশিপ চুক্তির কমপ্লায়েন্স অডিট" : "Vendor, NDA, and partnership risk scoring"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "সার্বভৌম ডেটা প্রাইভেসি ও এনক্রিপশন" : "Sovereign client-side PII encryption"}</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openLoginModal(true)}
+                      className={`w-full py-2.5 rounded-xl text-xs font-semibold border ${borderClass} text-[var(--text-primary)] hover:border-[var(--text-primary)]/40 hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer`}
+                    >
+                      {isBn ? "এন্টারপ্রাইজ রেজিস্ট্রেশন" : "Register Enterprise"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </FadeContent>
-          </div>
-        </section>
-      </div>
+              </FadeContent>
+            </div>
+          </section>
+        </div>
 
         {/* ── SECTION 4: STATS & TRUST BAR ── */}
         <section className="py-16 px-6 lg:px-10 max-w-6xl mx-auto w-full">
@@ -1228,7 +1254,7 @@ const handleGoogleResponse = useCallback(
             className="w-full relative lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden flex items-center justify-center bg-[var(--bg-primary)] py-12 lg:py-0"
             style={{ zIndex: 10 }}
           >
-            <section id="reviews" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+            <section id="reviews" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full scroll-mt-24">
               <FadeContent effect="mist" duration={1.2} threshold={0.15}>
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10 gap-4">
                   <div>
@@ -1251,11 +1277,10 @@ const handleGoogleResponse = useCallback(
                         key={idx}
                         type="button"
                         onClick={() => handleTestimonialChange(idx)}
-                        className={`group flex flex-col lg:flex-row items-center lg:items-center text-center lg:text-left gap-2 lg:gap-4 p-2.5 sm:p-3 lg:p-4.5 rounded-2xl transition-all duration-300 cursor-pointer border border-transparent relative ${
-                          activeTestimonial === idx
+                        className={`group flex flex-col lg:flex-row items-center lg:items-center text-center lg:text-left gap-2 lg:gap-4 p-2.5 sm:p-3 lg:p-4.5 rounded-2xl transition-all duration-300 cursor-pointer border border-transparent relative ${activeTestimonial === idx
                             ? "bg-[var(--bg-card)] shadow-md shadow-black/5 lg:translate-x-2"
                             : "bg-[var(--bg-card)]/40 hover:bg-[var(--bg-card)] opacity-60 hover:opacity-100"
-                        }`}
+                          }`}
                       >
                         {/* Active indicator: bottom bar on mobile, left bar on desktop */}
                         {activeTestimonial === idx && (
@@ -1266,19 +1291,17 @@ const handleGoogleResponse = useCallback(
                         )}
 
                         {/* Avatar */}
-                        <div className={`w-11 h-11 sm:w-12 sm:h-12 lg:w-13 lg:h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${
-                          activeTestimonial === idx
+                        <div className={`w-11 h-11 sm:w-12 sm:h-12 lg:w-13 lg:h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${activeTestimonial === idx
                             ? "scale-105 shadow-sm ring-2 ring-amber-500/30"
                             : "grayscale-[30%] group-hover:grayscale-0"
-                        }`}>
+                          }`}>
                           <Image src={t.avatar} alt={t.name} fill className="object-cover" />
                         </div>
-                        
+
                         {/* Name & Role */}
                         <div className="w-full min-w-0">
-                          <div className={`font-semibold text-[11px] sm:text-xs lg:text-sm truncate transition-colors ${
-                            activeTestimonial === idx ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
-                          }`}>
+                          <div className={`font-semibold text-[11px] sm:text-xs lg:text-sm truncate transition-colors ${activeTestimonial === idx ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
+                            }`}>
                             {t.name}
                           </div>
                           <div className="text-[9px] sm:text-[10px] lg:text-xs text-[var(--text-muted)] truncate mt-0.5">
@@ -1300,11 +1323,10 @@ const handleGoogleResponse = useCallback(
                     {/* Vertical ticker animated content container */}
                     <div
                       key={activeTestimonial}
-                      className={`relative z-10 flex flex-col justify-between h-full ${
-                        slideDirection === "down"
+                      className={`relative z-10 flex flex-col justify-between h-full ${slideDirection === "down"
                           ? "animate-[rollDownIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
                           : "animate-[rollUpIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
-                      }`}
+                        }`}
                     >
                       <div className="overflow-hidden">
                         <Quote className="w-9 h-9 text-amber-500/50 mb-4 transition-transform duration-300" />
@@ -1334,8 +1356,8 @@ const handleGoogleResponse = useCallback(
 
           {/* Section 6: CURTAIN on desktop (lg:), natural seamless flow on mobile */}
           <section
-            id="consultation"
-            className="relative pt-16 lg:pt-20 pb-20 lg:pb-36 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15"
+            id="suggestion"
+            className="relative pt-16 lg:pt-20 pb-20 lg:pb-36 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15 scroll-mt-24"
             style={{ zIndex: 20 }}
           >
             <div className="max-w-6xl mx-auto">
@@ -1433,10 +1455,6 @@ const handleGoogleResponse = useCallback(
                             </>
                           )}
                         </button>
-                        <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
-                          <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>{isBn ? "আপনার তথ্য সম্পূর্ণ সুরক্ষিত ও গোপনীয়" : "Encrypted & 100% Confidential"}</span>
-                        </span>
                       </div>
                     </form>
                   </div>
@@ -1477,8 +1495,8 @@ const handleGoogleResponse = useCallback(
                       />
                     </div>
 
-                    <div className={`p-4 rounded-2xl bg-[var(--bg-card)] border ${borderClass} flex items-center gap-3.5 shadow-xs`}>
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <div className="p-4 rounded-2xl bg-[var(--bg-card)] flex items-center gap-3.5">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0 text-[var(--text-primary)]">
                         <Phone className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
@@ -1499,7 +1517,7 @@ const handleGoogleResponse = useCallback(
           <div className="max-w-7xl mx-auto px-6 lg:px-10">
             {/* Desktop 3-part layout / Mobile stacked layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-              
+
               {/* Left Column Group: 2 Sub-Columns */}
               <div className="order-2 lg:order-1 lg:col-span-4 grid grid-cols-2 gap-6 pt-6 lg:pt-14 pb-4">
                 {/* Col 1: Platform & Capabilities */}
@@ -1534,7 +1552,7 @@ const handleGoogleResponse = useCallback(
               {/* Center Elevated Tabbed Hanging Card (Website's native card theme) */}
               <div className="order-1 lg:order-2 lg:col-span-4 flex justify-center -translate-y-8 sm:-translate-y-12 z-30">
                 <div className="relative w-full max-w-md bg-[var(--bg-card)] text-[var(--text-primary)] rounded-b-[28px] sm:rounded-b-[36px] p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.6)] border-x border-b border-[var(--text-primary)]/15 text-center">
-                  
+
                   {/* Left 3D Fold Ribbon Flap */}
                   <div className="absolute top-0 -left-4 sm:-left-5 w-4 sm:w-5 h-4 sm:h-5 overflow-hidden pointer-events-none">
                     <svg viewBox="0 0 20 20" className="w-full h-full fill-[var(--text-primary)]/20">
@@ -1640,7 +1658,7 @@ const handleGoogleResponse = useCallback(
                     <li><a href="#" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "হোম পেজ" : "Home"}</a></li>
                     <li><a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}</a></li>
                     <li><a href="#reviews" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ক্লায়েন্ট রিভিউ" : "Client Reviews"}</a></li>
-                    <li><a href="#consultation" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ফর্ম" : "Consultation Form"}</a></li>
+                    <li><a href="#suggestion" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ফর্ম" : "Suggestion Form"}</a></li>
                     <li>
                       <button
                         type="button"
@@ -1654,11 +1672,11 @@ const handleGoogleResponse = useCallback(
                 </div>
 
                 {/* Col 4: Direct Support & Contact */}
-                <div>
+                <div id="contact" className="scroll-mt-24">
                   <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
                     {isBn ? "সাপোর্ট ও যোগাযোগ" : "Support & Contact"}
                   </div>
-                  
+
                   <div className="space-y-2.5 text-xs text-[var(--text-muted)]">
                     {/* WhatsApp */}
                     <a
@@ -1758,17 +1776,17 @@ const handleGoogleResponse = useCallback(
                   mouseInteraction parallaxStrength={0.5} grain grainIntensity={0.05}
                 />
               </div>
-              <div className="relative z-10 flex items-center gap-2.5">
-                <div className="w-8 h-8 flex items-center justify-center">
+              <div className="relative z-10 flex items-center gap-3.5">
+                <div className="w-11 h-11 flex items-center justify-center">
                   <Image
                     src="/logo.svg"
                     alt="Advotech Copilot"
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 object-contain dark:invert"
+                    width={44}
+                    height={44}
+                    className="w-11 h-11 object-contain dark:invert"
                   />
                 </div>
-                <span className="font-semibold text-base tracking-tight text-[var(--text-primary)]">Advotech Copilot</span>
+                <span className="font-bold text-xl sm:text-[22px] tracking-tight text-[var(--text-primary)]">Advotech Copilot</span>
               </div>
 
               {/* Subtitle, Heading, Description & Feature Cards: Hidden on mobile, shown on desktop (md:) */}
@@ -1782,41 +1800,7 @@ const handleGoogleResponse = useCallback(
                 <p className="text-xs leading-relaxed text-[var(--text-muted)] mb-6">
                   {isBn ? "বাংলাদেশের সংবিধিবদ্ধ আইন, শ্রম আইন ও চুক্তি আইনের নির্ভরযোগ্য যাচাইকরণ।" : "Verify legal risks against Bangladesh statutes. Zero hallucination guaranteed."}
                 </p>
-                <div className="flex flex-col gap-3 mt-4">
-                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
-                    <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">
-                        {isBn ? "বাংলাদেশ সংবিধিবদ্ধ আইন সংহিতা" : "Codified BD Statutes"}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                        {isBn ? "শ্রম আইন ২০০৬ ও চুক্তি আইন ১৮৭২ এর ওপর ভিত্তি করে প্রস্তুত।" : "Zero statutory hallucination under Bangladesh Labour & Contract Acts."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
-                    <Gavel className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">
-                        {isBn ? "আইনজীবী ভেরিফিকেশন নেটওয়ার্ক" : "Advocate Verification Network"}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                        {isBn ? "বাংলাদেশ বার কাউন্সিল তালিকাভুক্ত আইনজীবীদের দ্বারা আইনগত অনুমোদন।" : "Bar Council enrolled advocates for statutory review and digital signoff."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
-                    <Lock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">
-                        {isBn ? "এন্টারপ্রাইজ নিরাপত্তা ও PII গোপনীয়তা" : "Enterprise Privacy & Security"}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                        {isBn ? "সংবেদনশীল তথ্য ও ব্যক্তিগত উপাত্তের ক্লায়েন্ট-সাইড মাস্কিং।" : "Automated client-side sensitive PII masking with bank-grade encryption."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+
               </div>
             </div>
 
@@ -1960,7 +1944,7 @@ const handleGoogleResponse = useCallback(
                         onClick={() => { setIsSignUp(true); setRegStep("role"); setAuthError(""); }}
                         className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
                       >
-                        {isBn ? "নতুন নিবন্ধন (Sign Up)" : "Register (Sign Up)"}
+                        {isBn ? "নতুন নিবন্ধন" : "Register"}
                       </button>
                     </div>
 
@@ -2025,7 +2009,7 @@ const handleGoogleResponse = useCallback(
                             <button type="submit" disabled={authLoading} className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] disabled:opacity-60">
                               {authLoading ? (isBn ? "অপেক্ষা করুন..." : "Signing in...") : (isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace")}
                             </button>
-                            
+
                             {/* [UPDATED] NEW: Forgot password link */}
                             <button
                               type="button"
@@ -2083,21 +2067,12 @@ const handleGoogleResponse = useCallback(
                                 />
                               </div>
                               <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center flex items-center justify-center gap-1">
-                                <Zap className="w-3 h-3 text-amber-500 shrink-0" />
                               </p>
                             </div>
 
                             {authError && isSignUp && regStep === "role" && (
                               <p className="text-xs text-red-500 mb-2 px-1 text-center">{authError}</p>
                             )}
-
-                            <div className="relative flex items-center mb-4">
-                              <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
-                              <span className="flex-shrink mx-3 text-xs text-[var(--text-muted)] font-medium">
-                                {isBn ? "অথবা নির্দিষ্ট রোলে যোগ দিন" : "or choose specialized role"}
-                              </span>
-                              <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
-                            </div>
 
                             <div className="flex flex-col gap-3">
                               {/* General */}
@@ -2214,14 +2189,11 @@ const handleGoogleResponse = useCallback(
                                     <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                 </div>
-                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800/40">
-                                  <Sparkles className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                                  <p className="text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed">
-                                    {isBn
-                                      ? "তাৎক্ষণিক অ্যাক্সেস — ওটিপি যাচাই সম্পন্ন হলেই পাবেন ১০০ ফ্রি ক্রেডিট এবং সম্পূর্ণ এআই কোপাইলট।"
-                                      : "Instant Access — verify via email OTP to instantly activate your account with 100 bonus credits."}
-                                  </p>
-                                </div>
+                                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                  {isBn
+                                    ? "ওটিপি যাচাইয়ের পর একাউন্ট সক্রিয় হবে।"
+                                    : "Account will be activated after OTP verification."}
+                                </p>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                 {regPassword && regPassword.length < 6 && (
                                   <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
@@ -2302,14 +2274,11 @@ const handleGoogleResponse = useCallback(
                                     </select>
                                   </div>
                                 </div>
-                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40">
-                                  <Clock className="w-4 h-4 text-amber-500 shrink-0 mt-0.5 animate-pulse" />
-                                  <p className="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed">
-                                    {isBn
-                                      ? "সিস্টেম অ্যাডমিন যাচাইকরণ — ওটিপি যাচাইয়ের পর আপনার বার কাউন্সিল সনদটি সিস্টেম অ্যাডমিন দ্বারা যাচাই ও অনুমোদিত হবে।"
-                                      : "Verification by System Admin — after email OTP verification, your credentials will be manually verified by System Admin."}
-                                  </p>
-                                </div>
+                                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                  {isBn
+                                    ? "ওটিপি যাচাইয়ের পর বার কাউন্সিল সনদ অ্যাডমিন কর্তৃক অনুমোদিত হবে।"
+                                    : "Credentials will be reviewed by admin after OTP verification."}
+                                </p>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
                                 {regPassword && regPassword.length < 6 && (
                                   <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
@@ -2398,14 +2367,11 @@ const handleGoogleResponse = useCallback(
                                         <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
                                       </div>
                                     </div>
-                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/40">
-                                      <Clock className="w-4 h-4 text-purple-500 shrink-0 mt-0.5 animate-pulse" />
-                                      <p className="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed">
-                                        {isBn
-                                          ? "সিস্টেম অ্যাডমিন যাচাইকরণ — অ্যাডমিন অনুমোদনের পর কোম্পানি ওয়ার্কস্পেস সক্রিয় হবে এবং মেম্বার যুক্ত করার রেফারেল কোড পাবেন।"
-                                          : "Verification by System Admin — after approval, your corporate workspace will unlock and a company referral code will be issued for member onboarding."}
-                                      </p>
-                                    </div>
+                                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                      {isBn
+                                        ? "অ্যাডমিন অনুমোদনের পর কোম্পানি ওয়ার্কস্পেস সক্রিয় হবে।"
+                                        : "Corporate workspace will unlock after admin approval."}
+                                    </p>
                                     {regPassword && regPassword.length < 6 && (
                                       <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
                                     )}
@@ -2477,14 +2443,11 @@ const handleGoogleResponse = useCallback(
                                         <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
                                       </div>
                                     </div>
-                                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50/70 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-800/40">
-                                      <Clock className="w-4 h-4 text-purple-500 shrink-0 mt-0.5 animate-pulse" />
-                                      <p className="text-[11px] text-purple-800 dark:text-purple-300 leading-relaxed">
-                                        {isBn
-                                          ? "কোম্পানি অ্যাডমিন অনুমোদন — ওটিপি যাচাইয়ের পর আপনার কোম্পানি অ্যাডমিন আপনার মেম্বারশিপ ও ক্রেডিট কোটা অনুমোদন করবেন।"
-                                          : "Verification by Company Admin — after email OTP verification, your company admin will review and approve your membership."}
-                                      </p>
-                                    </div>
+                                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                      {isBn
+                                        ? "ওটিপি যাচাইয়ের পর কোম্পানি অ্যাডমিন অনুমোদন করবেন।"
+                                        : "Membership will be reviewed by company admin after OTP verification."}
+                                    </p>
                                     {regPassword && regPassword.length < 6 && (
                                       <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
                                     )}
@@ -2603,10 +2566,10 @@ const handleGoogleResponse = useCallback(
                                       {selectedRole === "lawyer"
                                         ? (isBn ? "যাচাই সম্পন্ন ও আবেদন জমা দিন" : "Verify & Submit Lawyer Application")
                                         : selectedRole === "enterprise" && entTab === "company"
-                                        ? (isBn ? "যাচাই সম্পন্ন ও কোম্পানি নিবন্ধন সম্পন্ন করুন" : "Verify & Complete Registration")
-                                        : selectedRole === "enterprise" && entTab === "member"
-                                        ? (isBn ? "যাচাই সম্পন্ন ও মেম্বারশিপ আবেদন জমা দিন" : "Verify & Submit Membership Request")
-                                        : (isBn ? "যাচাই সম্পন্ন ও প্রবেশ করুন" : "Verify & Complete Registration")}
+                                          ? (isBn ? "যাচাই সম্পন্ন ও কোম্পানি নিবন্ধন সম্পন্ন করুন" : "Verify & Complete Registration")
+                                          : selectedRole === "enterprise" && entTab === "member"
+                                            ? (isBn ? "যাচাই সম্পন্ন ও মেম্বারশিপ আবেদন জমা দিন" : "Verify & Submit Membership Request")
+                                            : (isBn ? "যাচাই সম্পন্ন ও প্রবেশ করুন" : "Verify & Complete Registration")}
                                     </span>
                                   </>
                                 )}
