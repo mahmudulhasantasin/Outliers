@@ -48,7 +48,6 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
-  Square,
   Trash2,
   X,
 } from "lucide-react";
@@ -1544,19 +1543,6 @@ export default function CopilotPage() {
             </div>
           ) : (
             <div className="space-y-1.5 flex flex-col items-center">
-              {isBusy && (
-                <div className="w-full flex items-center justify-center sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={handleStopGeneration}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11.5px] font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer"
-                  >
-                    <Square className="w-3 h-3 fill-current" />
-                    <span>{isBn ? "থামান" : "Stop generating"}</span>
-                  </button>
-                </div>
-              )}
-
               <PromptBar
                 busy={isBusy}
                 width={660}
