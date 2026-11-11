@@ -1580,7 +1580,7 @@ export default function CopilotPage() {
         </div>
 
         {/* ─── Bottom PromptBar / Stop / Turn Limit Footer ─── */}
-        <footer className="shrink-0 pt-1 w-full max-w-4xl mx-auto">
+        <footer className="shrink-0 pt-1 w-full max-w-2xl mx-auto">
           {turnLimitReached ? (
             <div className="p-3.5 rounded-2xl bg-(--bg-card) border border-(--text-primary)/12 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
               <div className="text-xs sm:text-sm text-(--text-primary)/85">
@@ -1614,13 +1614,13 @@ export default function CopilotPage() {
 
               <PromptBar
                 busy={isBusy}
-                width={896}
+                width={660}
                 onSend={(text) => handleSendPrompt(text)}
                 onStop={handleStopGeneration}
                 placeholder={
                   isBn
-                    ? "বাংলাদেশের যেকোনো আইন বা চুক্তি সম্পর্কে লিখুন... (/audit, /memo, /redline)"
-                    : "Ask any question about Bangladesh law... (type / for /audit, /memo, /redline)"
+                    ? "আইনি প্রশ্ন বা ধারা লিখুন... (/audit, /memo, /redline)"
+                    : "Ask a question about Bangladesh law... (type / for commands)"
                 }
                 className="mx-auto"
               />
