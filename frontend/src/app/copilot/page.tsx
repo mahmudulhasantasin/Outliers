@@ -1144,7 +1144,7 @@ export default function CopilotPage() {
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
             <Scale className="w-6 h-6" />
           </div>
-          <h1 className="text-xl font-serif font-bold text-(--text-primary) mb-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-(--text-primary) mb-2">
             {isBn ? "এডভোটেক কোপাইলট ব্যবহার করতে সাইন ইন করুন" : "Sign in to access Advotech Copilot"}
           </h1>
           <p className="text-sm text-(--text-muted) mb-5">
@@ -1166,7 +1166,7 @@ export default function CopilotPage() {
 
   return (
     <AppShell mainClassName="pb-2! md:pb-3!">
-      <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0">
+      <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
         {/* ─── Top Bar (Fixed outside scroller so bubbles never collide underneath) ─── */}
         <header className="shrink-0 flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-(--text-primary)/8">
           <div className="flex items-center gap-2 min-w-0">
@@ -1310,31 +1310,31 @@ export default function CopilotPage() {
             ) : messages.length === 0 ? (
               /* Clean Empty Onboarding State with Starter Chips */
               <div className="min-h-full flex flex-col items-center justify-center py-6 px-2 text-center">
-                <h1 className="text-xl sm:text-2xl font-serif font-bold text-(--text-primary) mb-1.5">
+                <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-(--text-primary)">
                   {isBn
                     ? "এডভোটেক আইনি কোপাইলট"
                     : "Advotech Legal Copilot"}
                 </h1>
-                <p className="text-sm text-(--text-muted) max-w-lg mb-6 leading-relaxed">
+                <p className="text-xs sm:text-sm text-(--text-muted) max-w-lg mx-auto font-normal leading-relaxed mb-8">
                   {isBn
                     ? "বাংলাদেশের সংবিধান, দণ্ডবিধি, চুক্তি আইন, শ্রম আইন ও আদালতের নজির থেকে যাচাইকৃত উত্তর পান।"
                     : "Ask any legal question grounded in Bangladesh statutes, bdlaws gazette texts, and Supreme Court precedents."}
                 </p>
 
-                <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-left">
+                <div className="w-full max-w-3xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-left">
                   {starterPrompts.map((prompt, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => handleSendPrompt(prompt)}
-                      className="group p-3.5 rounded-2xl bg-(--bg-card) border border-(--text-primary)/10 hover:border-indigo-500/40 hover:shadow-xs transition-all text-left cursor-pointer flex flex-col justify-between gap-2"
+                      className="group p-4 rounded-2xl bg-(--bg-card) border border-(--text-primary)/10 hover:border-(--text-primary)/30 hover:shadow-xs transition-all text-left cursor-pointer flex flex-col justify-between gap-3"
                     >
-                      <span className="text-[13.5px] leading-relaxed font-medium text-(--text-primary)/90 group-hover:text-(--text-primary)">
+                      <span className="text-xs sm:text-sm font-normal text-(--text-primary)/90 group-hover:text-(--text-primary) leading-relaxed">
                         {prompt}
                       </span>
-                      <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
+                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
                         <span>{isBn ? "জিজ্ঞাসা করুন" : "Ask now"}</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </button>
                   ))}
@@ -1662,7 +1662,7 @@ export default function CopilotPage() {
                   </span>
                 </div>
 
-                <h2 className="text-base sm:text-lg font-serif font-bold text-(--text-primary) leading-snug wrap-break-word">
+                <h2 className="text-base sm:text-lg font-semibold text-(--text-primary) leading-snug wrap-break-word">
                   {statuteModal.data?.title &&
                   statuteModal.data.title !== "Statutory Provision"
                     ? statuteModal.data.title
@@ -1765,11 +1765,11 @@ export default function CopilotPage() {
                     <div className="h-3 w-4/6 rounded bg-(--text-primary)/6 animate-pulse" />
                   </div>
                 ) : statuteModal.data?.verbatim_text ? (
-                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-[15px] leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-serif">
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-sm leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-sans">
                     {statuteModal.data.verbatim_text}
                   </div>
                 ) : statuteModal.fallbackProvision?.fullTextEn ? (
-                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-[15px] leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-serif">
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-sm leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-sans">
                     {isBn
                       ? statuteModal.fallbackProvision.fullTextBn
                       : statuteModal.fallbackProvision.fullTextEn}
@@ -1841,7 +1841,7 @@ export default function CopilotPage() {
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <History className="w-4 h-4 text-(--text-primary)" />
-                  <h2 className="font-serif font-bold text-base text-(--text-primary)">
+                  <h2 className="font-semibold text-base text-(--text-primary)">
                     {isBn ? "চ্যাট হিস্ট্রি" : "Consultation History"}
                   </h2>
                   <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-(--bg-surface) text-(--text-muted)">
