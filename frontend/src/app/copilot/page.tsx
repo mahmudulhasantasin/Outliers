@@ -2072,6 +2072,80 @@ export default function CopilotPage() {
                 ))
               )}
             </div>
+
+            {/* Bottom Profile Footer (Gemini-style: Avatar, Name, Role badge, Go Icon) */}
+            <div className="shrink-0 p-3 border-t border-(--text-primary)/8 bg-(--bg-card)">
+              {user ? (
+                <Link
+                  href="/profile"
+                  className="flex items-center justify-between gap-2.5 p-2 rounded-2xl hover:bg-(--text-primary)/6 transition-colors group cursor-pointer"
+                  title={isBn ? "প্রোফাইলে যান" : "Go to Profile"}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* User Avatar */}
+                    <div className="w-9 h-9 rounded-full bg-(--text-primary)/10 text-(--text-primary) font-semibold text-xs flex items-center justify-center shrink-0 overflow-hidden">
+                      {user.profile_photo_url || user.avatarUrl ? (
+                        <Image
+                          src={user.profile_photo_url || user.avatarUrl || ""}
+                          alt={user.name || "User"}
+                          width={36}
+                          height={36}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <span>
+                          {(user.name || "User")
+                            .split(" ")
+                            .map((p) => p[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Name & Role */}
+                    <div className="min-w-0 flex flex-col">
+                      <span className="text-xs font-semibold text-(--text-primary) truncate leading-snug">
+                        {user.name || (isBn ? "ব্যবহারকারী" : "User")}
+                      </span>
+                      <span className="text-[11px] text-(--text-muted) capitalize leading-snug">
+                        {isLawyer
+                          ? isBn
+                            ? "আইনজীবী (Lawyer)"
+                            : "Lawyer"
+                          : isEnterpriseAdmin || isEnterpriseMember
+                          ? "Enterprise"
+                          : isBn
+                          ? "সাধারণ (General)"
+                          : "General"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Go / Arrow Icon */}
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-(--text-muted) group-hover:text-(--text-primary) group-hover:bg-(--text-primary)/8 transition-all shrink-0">
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="flex items-center justify-between gap-2 p-2 rounded-2xl hover:bg-(--text-primary)/6 transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-(--text-primary)/10 flex items-center justify-center text-(--text-primary)">
+                      <SquarePen className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-(--text-primary)">
+                      {isBn ? "সাইন ইন করুন" : "Sign In"}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-(--text-muted) group-hover:text-(--text-primary)" />
+                </Link>
+              )}
+            </div>
           </aside>
         </div>
       )}
