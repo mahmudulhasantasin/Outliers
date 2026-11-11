@@ -505,7 +505,7 @@ export default function ProfilePage() {
               </p>
               <p className="text-[11px] text-(--text-muted) mt-0.5">
                 {isLawyer
-                  ? isBn ? "bKash উত্তোলন ও আয়ের হিসাব" : "bKash payout & earnings ledger"
+                  ? isBn ? "পেআউট ও আয়ের হিসাব (bKash / Nagad / Bank)" : "Multi-channel payout & earnings ledger"
                   : balanceDesc}
               </p>
             </div>
