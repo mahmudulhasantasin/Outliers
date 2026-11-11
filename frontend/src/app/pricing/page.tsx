@@ -26,6 +26,8 @@ import {
   Building2,
   Check,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Coins,
   Copy,
@@ -171,6 +173,7 @@ function PricingContent() {
   const [verifyingId, setVerifyingId] = useState<string | number | null>(null);
   const [cancellingId, setCancellingId] = useState<string | number | null>(null);
   const [historyFilter, setHistoryFilter] = useState<string>("ALL");
+  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const hasLoadedRef = useRef(false);
   const handledCallbackRef = useRef<string | null>(null);
@@ -423,6 +426,8 @@ function PricingContent() {
     historyFilter === "ALL"
       ? payments
       : payments.filter((p) => (p.status || "").toUpperCase() === historyFilter);
+  const visiblePayments = showAllHistory ? filteredPayments : filteredPayments.slice(0, 3);
+  const hasMorePayments = filteredPayments.length > 3;
 
   const channels = gatewayConfig?.supported_channels || [
     "VISA",
@@ -810,7 +815,10 @@ function PricingContent() {
               {["ALL", "APPROVED", "PENDING", "FAILED", "CANCELLED"].map((st) => (
                 <button
                   key={st}
-                  onClick={() => setHistoryFilter(st)}
+                  onClick={() => {
+                    setHistoryFilter(st);
+                    setShowAllHistory(false);
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
                     historyFilter === st
                       ? "bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
@@ -831,8 +839,9 @@ function PricingContent() {
                     : "No payment records match the selected filter."}
                 </div>
               ) : (
-                <div className="divide-y divide-black/5 dark:divide-white/5">
-                  {filteredPayments.map((p) => {
+                <>
+                  <div className="divide-y divide-black/5 dark:divide-white/5">
+                    {visiblePayments.map((p) => {
                     const statusUpper = (p.status || "").toUpperCase();
                     const isPending = statusUpper === "PENDING";
                     return (
@@ -915,7 +924,35 @@ function PricingContent() {
                       </div>
                     );
                   })}
-                </div>
+                  </div>
+                  {hasMorePayments && (
+                    <div className="border-t border-black/5 dark:border-white/5 px-4 py-3 flex items-center justify-between gap-3 bg-[var(--bg-surface)]/40">
+                      <span className="text-[11px] text-[var(--text-muted)]">
+                        {isBn
+                          ? `${visiblePayments.length}টি দেখানো হচ্ছে (মোট ${filteredPayments.length}টি)`
+                          : `Showing ${visiblePayments.length} of ${filteredPayments.length} transactions`}
+                      </span>
+                      <button
+                        onClick={() => setShowAllHistory((prev) => !prev)}
+                        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl minimal-surface text-xs font-semibold text-[var(--text-primary)] hover:opacity-80 transition cursor-pointer"
+                      >
+                        {showAllHistory ? (
+                          <>
+                            {isBn ? "কম দেখান" : "Show Less"}
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </>
+                        ) : (
+                          <>
+                            {isBn
+                              ? `আরও দেখুন (+${filteredPayments.length - 3})`
+                              : `See More (+${filteredPayments.length - 3})`}
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
