@@ -542,7 +542,7 @@ function PricingContent() {
   if (!authLoading && user && (isPendingEnterpriseAdmin || isPendingLawyer || isPendingMember)) {
     return (
       <AppShell>
-        <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="min-h-screen flex items-center justify-center p-6 font-sans">
           <div className="minimal-card p-8 flex flex-col items-center gap-3 text-center max-w-sm">
             <Loader2 className="w-7 h-7 animate-spin text-[var(--text-muted)]" />
             <p className="text-sm font-semibold text-[var(--text-primary)]">
@@ -558,7 +558,7 @@ function PricingContent() {
 
   return (
     <AppShell>
-      <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-10">
+      <div className="min-h-screen py-10 px-4 sm:px-6 lg:px-8 max-w-6xl mx-auto space-y-10 font-sans">
         {/* Hero Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
@@ -575,12 +575,12 @@ function PricingContent() {
                 </span>
               )}
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-[var(--text-primary)]">
+            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-[var(--text-primary)]">
               {isBn
                 ? "ক্রেডিট প্যাকেজ ও বিলিং"
                 : "Credit Packages & Online Checkout"}
             </h1>
-            <p className="text-sm sm:text-base text-[var(--text-muted)] leading-relaxed">
+            <p className="text-sm sm:text-base text-[var(--text-muted)] leading-relaxed font-normal">
               {isBn
                 ? "কার্ড, বিকাশ, নগদ, রকেট বা ইন্টারনেট ব্যাংকিং ব্যবহার করে তাৎক্ষণিকভাবে আপনার ওয়ালেটে ক্রেডিট যুক্ত করুন।"
                 : "Top up your legal AI credits securely via Cards, bKash, Nagad, Rocket, or NetBanking with instant server-side validation."}
@@ -1122,7 +1122,7 @@ function PricingContent() {
 
       {/* Pre-Checkout Mobile Number Prompt Modal */}
       {phoneModalPkg && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs font-sans">
           <div className="minimal-card w-full max-w-md p-6 space-y-5 relative animate-in fade-in zoom-in-95 duration-200">
             <button
               onClick={() => setPhoneModalPkg(null)}
