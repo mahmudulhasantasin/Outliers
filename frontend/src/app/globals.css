@@ -3,7 +3,7 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --font-serif: var(--font-bangla), "Tiro Bangla", Georgia, Cambria, "Times New Roman", Times, serif;
+  --font-serif: var(--font-bangla), var(--font-tiro-bangla), 'Tiro Bangla', Georgia, Cambria, 'Times New Roman', Times, serif;
 }
 
 :root {

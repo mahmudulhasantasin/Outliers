@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
-import localFont from "next/font/local";
+import Script from "next/script";
+import { Inter, Tiro_Bangla } from "next/font/google";
+
 import "./globals.css";
 import { LanguageProvider } from "@/context/LanguageContext";
 import { PersonaProvider } from "@/context/PersonaContext";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -13,19 +15,10 @@ const inter = Inter({
   display: "swap",
 });
 
-const tiroBangla = localFont({
-  src: [
-    {
-      path: "../../public/fonts/TiroBangla-Regular.ttf",
-      weight: "400",
-      style: "normal",
-    },
-    {
-      path: "../../public/fonts/TiroBangla-Italic.ttf",
-      weight: "400",
-      style: "italic",
-    },
-  ],
+const tiroBangla = Tiro_Bangla({
+  subsets: ["bengali", "latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
   variable: "--font-bangla",
   display: "swap",
 });
@@ -60,11 +53,14 @@ export default function RootLayout({
         className={`${inter.variable} ${tiroBangla.variable} font-sans h-full min-h-screen antialiased`}
         style={{ fontFamily: "var(--font-bangla), var(--font-inter), 'Tiro Bangla', serif, sans-serif" }}
       >
+        <Script src="https://accounts.google.com/gsi/client" strategy="afterInteractive" />
         <ThemeProvider>
           <LanguageProvider>
             <PersonaProvider>
               <AuthProvider>
-                {children}
+                <NotificationProvider>
+                  {children}
+                </NotificationProvider>
               </AuthProvider>
             </PersonaProvider>
           </LanguageProvider>

@@ -73,8 +73,8 @@ export const HITL_STATUS_CONFIG: Record<string, HITLStatusConfig> = {
     isTerminal: false,
   },
   COMPLETED: {
-    labelEn: "Verified ✓",
-    labelBn: "যাচাইকৃত ✓",
+    labelEn: "Verified",
+    labelBn: "যাচাইকৃত",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800",
     descriptionEn: "Contract reviewed and verified by a licensed advocate.",
     descriptionBn: "লাইসেন্সধারী আইনজীবী কর্তৃক চুক্তিটি পর্যালোচিত ও প্রত্যায়িত।",
@@ -125,6 +125,12 @@ export interface ContractHistoryItem {
   overall_risk?: string;
   risk_grade?: string;
   risk_score: number | null;
+  high_risk_count?: number;
+  moderate_risk_count?: number;
+  medium_risk_count?: number;
+  compliant_count?: number;
+  summary?: string;
+  executive_summary?: string;
   created_at: string;
   updated_at?: string;
   download_url?: string;
@@ -155,6 +161,15 @@ export interface ContractAuditResult {
     LOW?: number;
   };
   clauses: ContractClause[];
+  missing_provisions?: Array<{
+    provision_id: string;
+    title: string;
+    statutory_reference: string;
+    risk_explanation: string;
+    severity: string;
+  }>;
+  audited_for?: string;
+  stamp_duty_advisory?: string;
   hitl_status?: HITLStatus | string;
   lawyer_name?: string | null;
   lawyer_notes?: string | null;
@@ -177,6 +192,11 @@ export interface ContractClause {
   proposed_safe_redline?: string | null;
   statute_reference?: string;
   statute_citation?: string;
+  statutory_status?: string;
+  is_statute_verified?: boolean;
+  statute_verified_label?: string;
+  commercial_risk?: string;
+  negotiation_guidance?: string;
   is_compliant?: boolean;
   key_obligations?: string[];
 }
@@ -201,12 +221,14 @@ export interface VerificationRequestResponse {
 /** Upload a contract file for AI audit (POST /api/contracts/upload) */
 export async function uploadContract(
   file: File,
-  title?: string
+  title?: string,
+  auditedFor: string = "CLIENT"
 ): Promise<ContractAuditResult> {
   const formData = new FormData();
   const fileTitle = title || file.name.replace(/\.[^/.]+$/, "") || "Contract Document";
   formData.append("title", fileTitle);
   formData.append("file", file);
+  formData.append("audited_for", auditedFor);
   return api.upload<ContractAuditResult>("/api/contracts/upload", formData);
 }
 
@@ -235,6 +257,12 @@ export async function getContractHistory(
       overall_risk: risk,
       risk_grade: risk,
       risk_score: typeof item.risk_score === "number" ? item.risk_score : null,
+      high_risk_count: typeof item.high_risk_count === "number" ? item.high_risk_count : undefined,
+      moderate_risk_count: typeof item.moderate_risk_count === "number" ? item.moderate_risk_count : undefined,
+      medium_risk_count: typeof item.medium_risk_count === "number" ? item.medium_risk_count : undefined,
+      compliant_count: typeof item.compliant_count === "number" ? item.compliant_count : undefined,
+      summary: item.summary ?? item.executive_summary,
+      executive_summary: item.executive_summary ?? item.summary,
       created_at: item.created_at || new Date().toISOString(),
       updated_at: item.updated_at || item.created_at,
       download_url: item.download_url,
@@ -277,6 +305,11 @@ export async function getContractDetail(contractId: string | number): Promise<Co
   return api.get<ContractAuditResult>(`/api/contracts/${contractId}`);
 }
 
+/** Download redlined DOCX file (GET /api/contracts/{id}/download-redline) */
+export async function downloadRedlineDocx(contractId: string | number): Promise<Blob> {
+  return api.downloadBlob(`/api/contracts/${contractId}/download-redline`);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // CHAT TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────
@@ -299,6 +332,7 @@ export interface ChatMessage {
   content: string;
   citations?: CitedSection[] | null;
   cited_sections?: CitedSection[] | null;
+  cited_cases?: CitedCase[] | null;
   created_at?: string;
 }
 
@@ -306,6 +340,10 @@ export interface ChatHistoryMessage {
   role: "user" | "assistant";
   content: string;
   citations?: CitedSection[] | null;
+  cited_cases?: CitedCase[] | null;
+  suggested_next_steps?: string[] | null;
+  suggested_follow_ups?: string[] | null;
+  needs_clarification?: boolean;
   created_at?: string;
 }
 
@@ -329,16 +367,36 @@ export interface CitedSection {
   url?: string;
 }
 
+export interface CitedCase {
+  case_name: string;
+  ruling?: string;
+  relevance?: string;
+}
+
 export interface DetailedChatResponse {
   detailed_answer: string;
   cited_sections?: CitedSection[];
+  cited_cases?: CitedCase[];
   suggested_next_steps?: string[];
+  suggested_follow_ups?: string[];
+  needs_clarification?: boolean;
 }
 
 export interface ChatQueryRequest {
   session_id: string | number;
   query: string;
   contract_id?: string | number | null;
+  signal?: AbortSignal;
+}
+
+export interface StatuteLookupResult {
+  found: boolean;
+  act: string;
+  section: string;
+  title: string;
+  verbatim_text: string;
+  bdlaws_url: string;
+  status: string;
 }
 
 export interface ChatQueryResponse {
@@ -375,7 +433,7 @@ export async function listChatSessions(): Promise<ChatSession[]> {
       status: s.status || "active",
       message_count: typeof s.message_count === "number" ? s.message_count : 0,
       message_limit: typeof s.message_limit === "number" ? s.message_limit : 5,
-      created_at: s.created_at,
+      created_at: s.created_at || s.updated_at,
       updated_at: s.updated_at || s.created_at,
     };
   });
@@ -423,6 +481,10 @@ export async function getChatSessionHistory(
         role: m.role as "user" | "assistant",
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
+        cited_cases: m.cited_cases || null,
+        suggested_next_steps: Array.isArray(m.suggested_next_steps) ? m.suggested_next_steps : null,
+        suggested_follow_ups: Array.isArray(m.suggested_follow_ups) ? m.suggested_follow_ups : null,
+        needs_clarification: Boolean(m.needs_clarification),
         created_at: m.created_at,
       })),
     };
@@ -437,6 +499,10 @@ export async function getChatSessionHistory(
         role: m.role as "user" | "assistant",
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
+        cited_cases: m.cited_cases || null,
+        suggested_next_steps: Array.isArray(m.suggested_next_steps) ? m.suggested_next_steps : null,
+        suggested_follow_ups: Array.isArray(m.suggested_follow_ups) ? m.suggested_follow_ups : null,
+        needs_clarification: Boolean(m.needs_clarification),
         created_at: m.created_at,
       })),
     };
@@ -460,8 +526,35 @@ export async function sendChatQuery(req: ChatQueryRequest): Promise<ChatQueryRes
   if (req.contract_id != null) {
     payload.contract_id = typeof req.contract_id === "string" ? parseInt(req.contract_id, 10) || req.contract_id : req.contract_id;
   }
-  const data = await api.post<ChatQueryResponse>("/api/chat/query", payload);
+  const data = await api.post<ChatQueryResponse>("/api/chat/query", payload, undefined, req.signal);
   return data;
+}
+
+/** Rename a chat session (PATCH /api/chat/sessions/{session_id}) */
+export async function renameChatSession(
+  sessionId: string | number,
+  title: string
+): Promise<{ session_id: string | number; title: string }> {
+  const sid = typeof sessionId === "string" ? parseInt(sessionId, 10) || sessionId : sessionId;
+  return api.patch<{ session_id: string | number; title: string }>(
+    `/api/chat/sessions/${sid}`,
+    { title }
+  );
+}
+
+/** Lookup full verbatim statute text from Live RAG vector store (GET /api/chat/statute-lookup, 0 credits) */
+export async function lookupStatuteSection(
+  section: string,
+  act?: string,
+  signal?: AbortSignal
+): Promise<StatuteLookupResult> {
+  const params = new URLSearchParams({ section });
+  if (act) params.set("act", act);
+  return api.get<StatuteLookupResult>(
+    `/api/chat/statute-lookup?${params.toString()}`,
+    undefined,
+    signal
+  );
 }
 
 /** Close a chat session (POST /api/chat/sessions/{session_id}/close) */
@@ -533,17 +626,34 @@ export interface EarningItem {
   completed_at: string;
 }
 
+export type PayoutMethodType = "BKASH" | "NAGAD" | "ROCKET" | "BANK";
+
 export interface WithdrawalRequest {
   id: string | number;
   amount_bdt: number;
   amount_credits?: number;
+  payout_method: PayoutMethodType;
+  account_number: string;
   bkash_number: string;
+  bank_name?: string | null;
+  branch_name?: string | null;
   account_holder_name?: string;
+  lawyer_name?: string;
+  lawyer_email?: string;
   status: string;
   requested_at: string;
   processed_at?: string;
   admin_note?: string;
   payout_trx_id?: string;
+}
+
+export interface CreateWithdrawalPayload {
+  amount_bdt: number;
+  payout_method: PayoutMethodType;
+  account_number: string;
+  bank_name?: string;
+  branch_name?: string;
+  account_holder_name: string;
 }
 
 export interface SubmitReviewClauseItem {
@@ -639,6 +749,13 @@ export async function getActiveTasks(): Promise<ActiveTask[]> {
   }
 }
 
+// [UPDATED] NEW: Upload signature or signed PDF
+export async function uploadLawyerProof(file: File): Promise<{ file_path: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  return api.upload<{ file_path: string }>("/api/lawyer/upload-proof", formData);
+}
+
 /** Submit a review for a contract (POST /api/lawyer/active/{memo_id}/submit) */
 export async function submitReview(
   memoId: string | number,
@@ -650,8 +767,9 @@ export async function submitReview(
     risk_override: req.risk_override ?? null,
     verified: req.verified ?? true,
     updated_clauses: req.updated_clauses || [],
-    signature_url: req.signature_url || `signatures/lawyer_${memoId}.png`,
-    signed_pdf_url: req.signed_pdf_url || `signed_contracts/memo_${memoId}_final.pdf`,
+    // [UPDATED] Removed fake hardcoded fallbacks
+    signature_url: req.signature_url || "",
+    signed_pdf_url: req.signed_pdf_url || "",
   };
   return api.post<SubmitReviewResponse>(`/api/lawyer/active/${memoId}/submit`, payload);
 }
@@ -690,38 +808,65 @@ export async function getLawyerEarnings(): Promise<EarningsDashboard> {
 }
 
 /** List withdrawal requests (GET /api/lawyer/withdrawals) */
+function normalizePayoutMethod(raw: any): PayoutMethodType {
+  const m = String(raw || "BKASH").toUpperCase();
+  if (m === "NAGAD" || m === "ROCKET" || m === "BANK") return m;
+  return "BKASH";
+}
+
 export async function listWithdrawals(): Promise<WithdrawalRequest[]> {
   try {
     const data = await api.get<any[]>("/api/lawyer/withdrawals");
     if (!Array.isArray(data)) return [];
-    return data.map((w: any) => ({
-      id: w.id,
-      amount_bdt: w.amount_bdt ?? w.amount_credits ?? 0,
-      amount_credits: w.amount_credits ?? w.amount_bdt ?? 0,
-      bkash_number: w.bkash_number || "",
-      account_holder_name: w.account_holder_name || "Advocate",
-      status: (w.status || "PENDING").toUpperCase(),
-      requested_at: w.requested_at || new Date().toISOString(),
-      processed_at: w.processed_at,
-      admin_note: w.admin_note,
-      payout_trx_id: w.payout_trx_id,
-    }));
+    return data.map((w: any) => {
+      const accountNo = w.account_number || w.bkash_number || "";
+      return {
+        id: w.id,
+        amount_bdt: w.amount_bdt ?? w.amount_credits ?? 0,
+        amount_credits: w.amount_credits ?? w.amount_bdt ?? 0,
+        payout_method: normalizePayoutMethod(w.payout_method),
+        account_number: accountNo,
+        bkash_number: w.bkash_number || accountNo,
+        bank_name: w.bank_name || null,
+        branch_name: w.branch_name || null,
+        account_holder_name: w.account_holder_name || "Advocate",
+        status: (w.status || "PENDING").toUpperCase(),
+        requested_at: w.requested_at || new Date().toISOString(),
+        processed_at: w.processed_at,
+        admin_note: w.admin_note,
+        payout_trx_id: w.payout_trx_id,
+      };
+    });
   } catch {
     return [];
   }
 }
 
-/** Request a withdrawal (BDT via bKash) (POST /api/lawyer/withdrawals/request) */
+/** Request a multi-channel withdrawal (bKash, Nagad, Rocket, Bank) (POST /api/lawyer/withdrawals/request) */
 export async function requestWithdrawal(
-  amountBdt: number,
-  bkashNumber: string,
+  payloadOrAmount: CreateWithdrawalPayload | number,
+  bkashNumber?: string,
   accountHolderName: string = "Advocate"
 ): Promise<WithdrawalRequest> {
-  return api.post<WithdrawalRequest>("/api/lawyer/withdrawals/request", {
-    amount_bdt: amountBdt,
-    bkash_number: bkashNumber,
-    account_holder_name: accountHolderName,
-  });
+  const body =
+    typeof payloadOrAmount === "number"
+      ? {
+          amount_bdt: payloadOrAmount,
+          payout_method: "BKASH",
+          account_number: bkashNumber || "",
+          bkash_number: bkashNumber || "",
+          account_holder_name: accountHolderName,
+        }
+      : {
+          amount_bdt: payloadOrAmount.amount_bdt,
+          payout_method: payloadOrAmount.payout_method,
+          account_number: payloadOrAmount.account_number,
+          bkash_number: payloadOrAmount.account_number,
+          bank_name: payloadOrAmount.bank_name || undefined,
+          branch_name: payloadOrAmount.branch_name || undefined,
+          account_holder_name: payloadOrAmount.account_holder_name,
+        };
+  return api.post<WithdrawalRequest>("/api/lawyer/withdrawals/request", body);
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -838,17 +983,38 @@ export async function adjustMemberQuota(
   await api.post(`/api/company/members/${userId}/quota`, { delta, reason });
 }
 
+export interface UploadPlaybookResponse {
+  status: string;
+  playbook_id: string;
+  title: string;
+  rules_extracted_count: number;
+  rules: any[];
+}
+
 /** Upload a company playbook (JSON or PDF) */
-export async function uploadPlaybook(file: File, title?: string): Promise<Playbook> {
+export async function uploadPlaybook(file: File, title?: string): Promise<UploadPlaybookResponse> {
   const formData = new FormData();
   formData.append("title", title || file.name.replace(/\.[^/.]+$/, "") || "Corporate Playbook");
   formData.append("file", file);
-  return api.upload<Playbook>("/api/company/playbook/upload", formData);
+  return api.upload<UploadPlaybookResponse>("/api/company/playbook/upload", formData);
 }
 
 /** List company playbooks */
 export async function listPlaybooks(): Promise<Playbook[]> {
-  return api.get<Playbook[]>("/api/company/playbooks");
+  try {
+    const res = await api.get<any[]>("/api/company/playbooks");
+    if (!Array.isArray(res)) return [];
+    return res.map((item) => ({
+      id: item.id,
+      title: item.title,
+      version: item.version ?? "1.0",
+      is_active: item.is_active,
+      rule_count: item.rules_count ?? item.rule_count ?? 0,
+      created_at: item.created_at,
+    }));
+  } catch {
+    return [];
+  }
 }
 
 /** Delete a playbook */
@@ -888,19 +1054,21 @@ export interface UserSettings {
   credit_balance: number;
   is_verified: boolean;
   is_phone_verified: boolean;
-  lawyer_profile?: LawyerSettings;
+  lawyer?: LawyerSettings;
+  enterprise?: any;
 }
 
 export interface LawyerSettings {
-  bar_council_no?: string;
-  field_of_law?: string;
-  bar_association?: string;
-  chamber_name?: string;
-  verification_status?: string;
-  max_active_reviews?: number;
+  bar_council_id?: string;
+  specializations?: string[];
+  availability?: string;
+  wallet_balance_bdt?: number;
+  completed_reviews?: number;
+  rating?: number;
+  monthly_free_chat_used?: number;
+  monthly_free_chat_remaining?: number;
+  max_concurrent_tasks?: number;
   auto_accept_offers?: boolean;
-  is_available?: boolean;
-  preferred_domains?: string[];
 }
 
 export interface UpdateProfileRequest {
@@ -917,13 +1085,11 @@ export interface ChangePasswordRequest {
 }
 
 export interface UpdateLawyerSettingsRequest {
-  bar_association?: string;
-  chamber_name?: string;
-  field_of_law?: string;
-  max_active_reviews?: number;
+  specializations?: string[];
+  availability?: "AVAILABLE" | "UNAVAILABLE" | "ON_LEAVE";
+  bio?: string;
+  max_concurrent_tasks?: number;
   auto_accept_offers?: boolean;
-  is_available?: boolean;
-  preferred_domains?: string[];
 }
 
 /** Get current user settings */
@@ -947,6 +1113,13 @@ export async function changePassword(req: ChangePasswordRequest): Promise<{ mess
   });
 }
 
+/** Set password directly for OAuth users without an existing password */
+export async function setPassword(new_password: string): Promise<{ message: string }> {
+  return api.post<{ message: string }>("/api/settings/set-password", {
+    new_password,
+  });
+}
+
 /** Upload profile photo (POST /api/settings/upload-photo) */
 export async function uploadProfilePhoto(
   file: File
@@ -967,8 +1140,15 @@ export async function updateLawyerSettings(
 }
 
 // ────────────────────────────────────────────────────────────────────────────
-// PAYMENT TYPES & HOOKS (bKash Manual Flow - Section 4)
+// PAYMENT TYPES & HOOKS (SSLCommerz Gateway)
 // ────────────────────────────────────────────────────────────────────────────
+
+export interface PaymentGatewayConfig {
+  gateway: string;
+  sslcommerz_configured: boolean;
+  is_sandbox: boolean;
+  supported_channels: string[];
+}
 
 export interface CreditPackage {
   id: number | string;
@@ -985,13 +1165,6 @@ export interface CreditPackage {
   display_order?: number;
 }
 
-export interface BkashPaymentInstructions {
-  bkash_number: string;
-  bkash_type?: string;
-  instructions_en?: string;
-  instructions_bn?: string;
-}
-
 export interface InitiatePaymentResponse {
   payment_id: number | string;
   reference_code: string;
@@ -1000,17 +1173,17 @@ export interface InitiatePaymentResponse {
   credits: number;
   package_name?: string;
   expires_at: string;
-  bkash: BkashPaymentInstructions;
-  bkash_number?: string;
-  instructions?: string;
-  next_step?: string;
+  method: string;
+  gateway_url: string;
+  session_key?: string | null;
+  is_sandbox: boolean;
 }
 
-export interface SubmitTrxResponse {
+export interface VerifyPaymentResponse {
   status: string;
-  payment_id: number | string;
+  credits_granted: number;
+  code?: string;
   message: string;
-  current_status: string;
 }
 
 export interface CancelPaymentResponse {
@@ -1021,6 +1194,7 @@ export interface Payment {
   id: number | string;
   reference_code: string;
   amount_bdt: number;
+  store_amount_bdt?: number | null;
   credits_to_grant?: number;
   bonus_credits?: number;
   total_credits: number;
@@ -1028,11 +1202,26 @@ export interface Payment {
   package_name?: string;
   package?: { id: number | string; name: string };
   purpose?: string;
-  status: "PENDING" | "PENDING_VERIFICATION" | "APPROVED" | "REJECTED" | "EXPIRED" | string;
+  status:
+    | "PENDING"
+    | "PENDING_VERIFICATION"
+    | "APPROVED"
+    | "REJECTED"
+    | "FAILED"
+    | "CANCELLED"
+    | "EXPIRED"
+    | string;
   method?: string;
   trx_id?: string;
   bkash_trx_id?: string;
   sender_number?: string;
+  val_id?: string | null;
+  bank_tran_id?: string | null;
+  card_type?: string | null;
+  card_issuer?: string | null;
+  card_brand?: string | null;
+  gateway_status?: string | null;
+  gateway_validated_at?: string | null;
   admin_note?: string | null;
   created_at: string;
   initiated_at: string;
@@ -1047,6 +1236,8 @@ export interface PaymentSummary {
   awaiting_admin: number;
   approved: number;
   rejected: number;
+  failed: number;
+  cancelled: number;
   total_topup_bdt: number;
   total_spent_bdt?: number;
   total_credits_purchased?: number;
@@ -1078,24 +1269,35 @@ export async function listPackages(): Promise<CreditPackage[]> {
   });
 }
 
-/** Initiate a payment for a package (POST /api/payments/initiate) */
+/** Get public payment gateway capability status (GET /api/payments/config) */
+export async function getPaymentGatewayConfig(): Promise<PaymentGatewayConfig> {
+  try {
+    return await api.get<PaymentGatewayConfig>("/api/payments/config");
+  } catch {
+    return {
+      gateway: "SSLCOMMERZ",
+      sslcommerz_configured: false,
+      is_sandbox: true,
+      supported_channels: ["VISA", "MasterCard", "bKash", "Nagad", "Rocket", "NetBanking"],
+    };
+  }
+}
+
+/** Initiate an SSLCommerz checkout session for a package (POST /api/payments/initiate) */
 export async function initiatePayment(
   packageId: number | string,
+  customerPhone?: string,
   fallbackPackage?: Partial<CreditPackage>
 ): Promise<InitiatePaymentResponse> {
   const parsedId = typeof packageId === "string" ? parseInt(packageId, 10) || packageId : packageId;
+  const body: Record<string, any> = { package_id: parsedId };
+  if (customerPhone && customerPhone.trim()) {
+    body.customer_phone = customerPhone.trim();
+  }
 
-  const data = await api.post<any>("/api/payments/initiate", {
-    package_id: parsedId,
-  });
-
-  const credits = data.total_credits ?? data.credits ?? fallbackPackage?.total_credits ?? fallbackPackage?.credits ?? 0;
-  const bkashObj: BkashPaymentInstructions = data.bkash || {
-    bkash_number: data.bkash_number || "01711000000",
-    bkash_type: "Merchant",
-    instructions_en: data.instructions || "1. Open bKash app.\n2. Choose 'Send Money' or 'Payment'.\n3. Send to bKash Number.\n4. Enter the Reference Code.\n5. Copy the TrxID from confirmation SMS and submit below.",
-    instructions_bn: "১. বিকাশ অ্যাপ খুলুন।\n২. 'Send Money' বা 'Payment' নির্বাচন করুন।\n৩. বিকাশ নম্বরে টাকা পাঠান।\n৪. রেফারেন্স ফিল্ডে রেফারেন্স কোডটি দিন।\n৫. কনফার্মেশন এসএমএস থেকে TrxID কপি করে নিচে জমা দিন।",
-  };
+  const data = await api.post<any>("/api/payments/initiate", body);
+  const credits =
+    data.total_credits ?? data.credits ?? fallbackPackage?.total_credits ?? fallbackPackage?.credits ?? 0;
 
   return {
     payment_id: data.payment_id,
@@ -1105,30 +1307,62 @@ export async function initiatePayment(
     credits,
     package_name: data.package_name ?? fallbackPackage?.name ?? "Credit Package",
     expires_at: data.expires_at || new Date(Date.now() + 86400000).toISOString(),
-    bkash: bkashObj,
-    bkash_number: bkashObj.bkash_number,
-    instructions: bkashObj.instructions_en,
-    next_step: data.next_step,
+    method: data.method || "SSLCOMMERZ",
+    gateway_url: data.gateway_url,
+    session_key: data.session_key ?? null,
+    is_sandbox: Boolean(data.is_sandbox ?? true),
   };
 }
 
-/** Submit bKash TRX ID for a payment (POST /api/payments/{payment_id}/submit-trx) */
-export async function submitTrxId(
-  paymentId: string | number,
-  trxId: string,
-  senderNumber: string = "01700000000"
-): Promise<SubmitTrxResponse> {
+/** Manually re-verify a PENDING payment directly with SSLCommerz (POST /api/payments/{payment_id}/verify) */
+export async function verifyPaymentStatus(
+  paymentId: string | number
+): Promise<VerifyPaymentResponse> {
   const pid = typeof paymentId === "string" ? parseInt(paymentId, 10) || paymentId : paymentId;
-  return await api.post<SubmitTrxResponse>(`/api/payments/${pid}/submit-trx`, {
-    trx_id: trxId.trim(),
-    sender_number: senderNumber.trim(),
-  });
+  return await api.post<VerifyPaymentResponse>(`/api/payments/${pid}/verify`);
 }
 
 /** Cancel a pending payment (POST /api/payments/{payment_id}/cancel) */
 export async function cancelPayment(paymentId: string | number): Promise<CancelPaymentResponse> {
   const pid = typeof paymentId === "string" ? parseInt(paymentId, 10) || paymentId : paymentId;
   return await api.post<CancelPaymentResponse>(`/api/payments/${pid}/cancel`);
+}
+
+function mapPaymentRecord(p: any): Payment {
+  const credits = p.total_credits ?? p.credits_to_grant ?? p.credits ?? 0;
+  const trx = p.trx_id ?? p.bank_tran_id ?? p.bkash_trx_id ?? "";
+  const created = p.created_at ?? p.initiated_at ?? new Date().toISOString();
+  return {
+    id: p.id,
+    reference_code: p.reference_code || `PAY-${p.id}`,
+    amount_bdt: p.amount_bdt ?? 0,
+    store_amount_bdt: p.store_amount_bdt ?? null,
+    credits_to_grant: p.credits_to_grant ?? credits,
+    bonus_credits: p.bonus_credits ?? 0,
+    total_credits: credits,
+    credits,
+    package_name: p.package_name || p.reference_code || "Credit Package",
+    purpose: p.purpose || "CREDIT_TOPUP",
+    status: (p.status || "PENDING").toUpperCase(),
+    method: p.method || "SSLCOMMERZ",
+    trx_id: trx,
+    bkash_trx_id: trx,
+    sender_number: p.sender_number || "",
+    val_id: p.val_id ?? null,
+    bank_tran_id: p.bank_tran_id ?? null,
+    card_type: p.card_type ?? null,
+    card_issuer: p.card_issuer ?? null,
+    card_brand: p.card_brand ?? null,
+    gateway_status: p.gateway_status ?? null,
+    gateway_validated_at: p.gateway_validated_at ?? null,
+    admin_note: p.admin_note ?? null,
+    created_at: created,
+    initiated_at: created,
+    updated_at: p.updated_at || created,
+    trx_submitted_at: p.trx_submitted_at,
+    reviewed_at: p.reviewed_at,
+    expires_at: p.expires_at,
+  };
 }
 
 /** List user's payments (GET /api/payments/my) */
@@ -1141,67 +1375,14 @@ export async function listMyPayments(
   if (status) path += `&status=${status}`;
   const data = await api.get<any[]>(path);
   if (!Array.isArray(data)) return [];
-
-  return data.map((p: any) => {
-    const credits = p.total_credits ?? p.credits_to_grant ?? p.credits ?? 0;
-    const trx = p.trx_id ?? p.bkash_trx_id ?? "";
-    const created = p.created_at ?? p.initiated_at ?? new Date().toISOString();
-    return {
-      id: p.id,
-      reference_code: p.reference_code || `PAY-${p.id}`,
-      amount_bdt: p.amount_bdt ?? 0,
-      credits_to_grant: p.credits_to_grant ?? credits,
-      bonus_credits: p.bonus_credits ?? 0,
-      total_credits: credits,
-      credits,
-      package_name: p.package_name || p.reference_code || "Credit Package",
-      purpose: p.purpose || "CREDIT_TOPUP",
-      status: (p.status || "PENDING").toUpperCase(),
-      method: p.method || "BKASH",
-      trx_id: trx,
-      bkash_trx_id: trx,
-      sender_number: p.sender_number || "",
-      admin_note: p.admin_note ?? null,
-      created_at: created,
-      initiated_at: created,
-      updated_at: p.updated_at || created,
-      trx_submitted_at: p.trx_submitted_at,
-      reviewed_at: p.reviewed_at,
-      expires_at: p.expires_at,
-    };
-  });
+  return data.map(mapPaymentRecord);
 }
 
 /** Get a specific payment (GET /api/payments/{payment_id}) */
 export async function getPayment(paymentId: string | number): Promise<Payment> {
   const pid = typeof paymentId === "string" ? parseInt(paymentId, 10) || paymentId : paymentId;
   const p = await api.get<any>(`/api/payments/${pid}`);
-  const credits = p.total_credits ?? p.credits_to_grant ?? p.credits ?? 0;
-  const trx = p.trx_id ?? p.bkash_trx_id ?? "";
-  const created = p.created_at ?? p.initiated_at ?? new Date().toISOString();
-  return {
-    id: p.id,
-    reference_code: p.reference_code || `PAY-${p.id}`,
-    amount_bdt: p.amount_bdt ?? 0,
-    credits_to_grant: p.credits_to_grant ?? credits,
-    bonus_credits: p.bonus_credits ?? 0,
-    total_credits: credits,
-    credits,
-    package_name: p.package_name || p.reference_code || "Credit Package",
-    purpose: p.purpose || "CREDIT_TOPUP",
-    status: (p.status || "PENDING").toUpperCase(),
-    method: p.method || "BKASH",
-    trx_id: trx,
-    bkash_trx_id: trx,
-    sender_number: p.sender_number || "",
-    admin_note: p.admin_note ?? null,
-    created_at: created,
-    initiated_at: created,
-    updated_at: p.updated_at || created,
-    trx_submitted_at: p.trx_submitted_at,
-    reviewed_at: p.reviewed_at,
-    expires_at: p.expires_at,
-  };
+  return mapPaymentRecord(p);
 }
 
 /** Get payment summary (GET /api/payments/summary/me) */
@@ -1211,6 +1392,8 @@ export async function getPaymentSummary(): Promise<PaymentSummary> {
   const awaitingAdm = data?.awaiting_admin ?? 0;
   const approved = data?.approved ?? 0;
   const rejected = data?.rejected ?? 0;
+  const failed = data?.failed ?? 0;
+  const cancelled = data?.cancelled ?? 0;
   const totalTopup = data?.total_topup_bdt ?? data?.total_spent_bdt ?? 0;
 
   return {
@@ -1218,11 +1401,13 @@ export async function getPaymentSummary(): Promise<PaymentSummary> {
     awaiting_admin: awaitingAdm,
     approved,
     rejected,
+    failed,
+    cancelled,
     total_topup_bdt: totalTopup,
     total_spent_bdt: totalTopup,
     total_credits_purchased: data?.total_credits_purchased ?? 0,
     current_balance: data?.current_balance,
-    payment_count: pendingSub + awaitingAdm + approved + rejected,
+    payment_count: pendingSub + awaitingAdm + approved + rejected + failed + cancelled,
   };
 }
 
@@ -1231,7 +1416,7 @@ export async function getPaymentSummary(): Promise<PaymentSummary> {
 // ────────────────────────────────────────────────────────────────────────────
 
 export interface AdminPendingLawyer {
-  id: string | number;
+  lawyer_id: string | number;
   user_id?: string | number;
   full_name: string;
   email: string;
@@ -1270,9 +1455,13 @@ export async function getAdminDashboardStats(): Promise<AdminDashboardStats> {
 /** Get pending lawyer verification queue (GET /api/admin/lawyers/pending) */
 export async function getAdminPendingLawyers(): Promise<AdminPendingLawyer[]> {
   try {
-    const res = await api.get<AdminPendingLawyer[]>("/api/admin/lawyers/pending");
-    if (Array.isArray(res)) return res;
-    return [];
+    const res = await api.get<any[]>("/api/admin/lawyers/pending");
+    if (!Array.isArray(res)) return [];
+    return res.map((item) => ({
+      ...item,
+      lawyer_id: item.lawyer_id ?? item.id,
+      created_at: item.applied_at ?? item.created_at,
+    }));
   } catch {
     return [];
   }
@@ -1305,12 +1494,24 @@ export async function suspendLawyer(
   });
 }
 
-/** Get pending withdrawals queue (GET /api/admin/withdrawals/pending) */
+/** Get open withdrawals queue (PENDING + APPROVED) (GET /api/admin/withdrawals/pending) */
 export async function getAdminPendingWithdrawals(): Promise<WithdrawalRequest[]> {
   try {
-    const res = await api.get<WithdrawalRequest[]>("/api/admin/withdrawals/pending");
-    if (Array.isArray(res)) return res;
-    return [];
+    const res = await api.get<any[]>("/api/admin/withdrawals/pending");
+    if (!Array.isArray(res)) return [];
+    return res.map((item) => {
+      const accountNo = item.account_number || item.bkash_number || "";
+      return {
+        ...item,
+        id: item.withdrawal_id ?? item.id,
+        payout_method: normalizePayoutMethod(item.payout_method),
+        account_number: accountNo,
+        bkash_number: item.bkash_number || accountNo,
+        bank_name: item.bank_name || null,
+        branch_name: item.branch_name || null,
+        status: (item.status || "PENDING").toUpperCase(),
+      };
+    });
   } catch {
     return [];
   }
@@ -1375,9 +1576,88 @@ export async function getAdminPendingPayments(): Promise<AdminPendingPayment[]> 
   }
 }
 
-/** Approve a pending payment */
+/** Approve a legacy pending verification payment */
 export async function approveAdminPayment(id: string | number, note?: string): Promise<any> {
   return api.post(`/api/admin/payments/${id}/approve`, { admin_note: note || "Approved via Admin Portal" });
+}
+
+export interface AdminPaymentRecord {
+  payment_id: number | string;
+  reference_code: string;
+  method: string;
+  purpose: string;
+  status: string;
+  amount_bdt: number;
+  store_amount_bdt?: number | null;
+  total_credits: number;
+  package_name?: string | null;
+  payer_type: "user" | "enterprise" | string;
+  user_id?: number | null;
+  user_name?: string | null;
+  user_email?: string | null;
+  enterprise_id?: number | null;
+  enterprise_name?: string | null;
+  sender_number?: string | null;
+  trx_id?: string | null;
+  gateway_session_key?: string | null;
+  val_id?: string | null;
+  bank_tran_id?: string | null;
+  card_type?: string | null;
+  card_issuer?: string | null;
+  card_brand?: string | null;
+  gateway_status?: string | null;
+  admin_note?: string | null;
+  created_at: string;
+  gateway_validated_at?: string | null;
+  reviewed_at?: string | null;
+}
+
+/** Get full gateway payment ledger (GET /api/admin/payments) */
+export async function getAdminPayments(params?: {
+  status?: string;
+  search?: string;
+}): Promise<AdminPaymentRecord[]> {
+  try {
+    const qs = new URLSearchParams();
+    if (params?.status && params.status !== "ALL") qs.set("status", params.status);
+    if (params?.search?.trim()) qs.set("search", params.search.trim());
+    const suffix = qs.toString() ? `?${qs.toString()}` : "";
+    const res = await api.get<AdminPaymentRecord[]>(`/api/admin/payments${suffix}`);
+    return Array.isArray(res) ? res : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Reconcile a pending payment directly with SSLCommerz (POST /api/admin/payments/{id}/reconcile) */
+export async function reconcileAdminPayment(
+  paymentId: string | number
+): Promise<VerifyPaymentResponse> {
+  return api.post<VerifyPaymentResponse>(`/api/admin/payments/${paymentId}/reconcile`);
+}
+
+/** Adjust an individual user's credit balance (POST /api/admin/users/{id}/adjust-credits) */
+export async function adjustAdminUserCredits(
+  userId: number,
+  amount: number,
+  reason: string
+): Promise<{ status: string; new_balance: number; amount: number }> {
+  return api.post<{ status: string; new_balance: number; amount: number }>(
+    `/api/admin/users/${userId}/adjust-credits`,
+    { amount, reason }
+  );
+}
+
+/** Adjust an enterprise's pooled credit balance (POST /api/admin/enterprises/{id}/adjust-credits) */
+export async function adjustAdminEnterpriseCredits(
+  enterpriseId: number,
+  amount: number,
+  reason: string
+): Promise<{ status: string; new_balance: number; amount: number }> {
+  return api.post<{ status: string; new_balance: number; amount: number }>(
+    `/api/admin/enterprises/${enterpriseId}/adjust-credits`,
+    { amount, reason }
+  );
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1502,7 +1782,43 @@ export async function getSharedContracts(): Promise<SharedContractItem[]> {
   }
 }
 
-/** Get specific contract details by ID (GET /api/contracts/{id}) 
-export async function getContractDetail(contractId: string | number): Promise<ContractAuditResult> {
-  return api.get<ContractAuditResult>(`/api/contracts/${contractId}`);
-}*/
+// ──────────────────────────────────────────────────────────
+// INQUIRIES & NEWSLETTER
+// ──────────────────────────────────────────────────────────
+
+export interface FeedbackPayload {
+  name: string;
+  contact: string;
+  suggestion: string;
+  [key: string]: unknown;
+}
+
+export interface FeedbackResponse {
+  status: string;
+  message: string;
+  feedback_id?: number;
+}
+
+export interface NewsletterResponse {
+  status: string;
+  message: string;
+  is_subscribed?: boolean;
+}
+
+/** Submit user feedback or suggestion (POST /api/inquiries/feedback) */
+export async function submitFeedback(data: FeedbackPayload): Promise<FeedbackResponse> {
+  return api.post<FeedbackResponse>("/api/inquiries/feedback", {
+    name: data.name,
+    contact: data.contact,
+    suggestion: data.suggestion,
+  });
+}
+
+/** Subscribe to statutory insights newsletter (POST /api/inquiries/newsletter) */
+export async function subscribeNewsletter(email: string): Promise<NewsletterResponse> {
+  return api.post<NewsletterResponse>("/api/inquiries/newsletter", { email });
+}
+
+
+
+

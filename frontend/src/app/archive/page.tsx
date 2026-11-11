@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { getContractHistory, deleteContract, HITL_STATUS_CONFIG, requestLawyerVerification } from "@/lib/apiServices";
 import {
   FolderClock,
@@ -17,7 +18,9 @@ import {
   FileText,
   ShieldCheck,
   RefreshCw,
-  X
+  X,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
@@ -52,14 +55,33 @@ interface ArchivedRecord {
 export default function ArchivePage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user, refreshUser } = useAuth(); 
+  const { user, refreshUser } = useAuth();
+  const { toast, confirm } = useNotification(); 
+
+  const userRole = String(user?.role || "").toUpperCase();
+  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
+  const isPendingEnterpriseAdmin =
+    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
+    entStatus === "pending" ||
+    entStatus === "pending_approval";
+  const isPendingLawyer = user?.lawyerProfile?.verificationStatus === "pending";
+  const isPendingMember =
+    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
+    ((user as any)?.member_approval_status === "PENDING" ||
+      user?.enterpriseProfile?.memberApprovalStatus === "PENDING");
 
   useEffect(() => {
-    const userRole = String(user?.role).toUpperCase();
-    if (userRole === "LAWYER") {
+    if (!user) return;
+    if (isPendingEnterpriseAdmin) {
+      router.replace("/enterprise/pending");
+    } else if (isPendingLawyer) {
+      router.replace("/lawyer/pending");
+    } else if (isPendingMember) {
+      router.replace("/enterprise/member");
+    } else if (userRole === "LAWYER") {
       router.replace("/lawyer/archive");
     }
-  }, [user, router]);
+  }, [user, isPendingEnterpriseAdmin, isPendingLawyer, isPendingMember, userRole, router]);
 
   const [records, setRecords] = useState<ArchivedRecord[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -70,6 +92,14 @@ export default function ArchivePage() {
   
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isRequestingVerification, setIsRequestingVerification] = useState<string | null>(null);
+  const [expandedSummaries, setExpandedSummaries] = useState<Record<string, boolean>>({});
+
+  const toggleSummaryExpand = (id: string) => {
+    setExpandedSummaries((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
   const mapItemToRecord = (item: any): ArchivedRecord => {
     const cid = String(item.contract_id || item.id);
@@ -379,36 +409,46 @@ export default function ArchivePage() {
   };
 
   const handleRequestLawyer = async (record: ArchivedRecord) => {
-    if (!confirm(language === "bn" ? "আপনি কি নিশ্চিত এই চুক্তিটি লইয়ারের কাছে ভেরিফিকেশনের জন্য পাঠাতে চান? এটি ১৫০০ ক্রেডিট কাটবে।" : "Are you sure you want to request lawyer verification? This will deduct 1500 credits.")) return;
+    const ok = await confirm({
+      title: language === "bn" ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট" : "Request Lawyer Verification",
+      message: language === "bn" ? "আপনি কি নিশ্চিত এই চুক্তিটি লইয়ারের কাছে ভেরিফিকেশনের জন্য পাঠাতে চান? এটি ১৫০০ ক্রেডিট কাটবে।" : "Are you sure you want to request lawyer verification? This will deduct 1500 credits.",
+      confirmText: language === "bn" ? "ভেরিফিকেশন পাঠান" : "Dispatch Verification",
+      variant: "primary",
+    });
+    if (!ok) return;
     
     setIsRequestingVerification(record.id);
     try {
       await requestLawyerVerification(record.contractId);
-      alert(language === "bn" ? "সফলভাবে লইয়ার ভেরিফিকেশনের জন্য পাঠানো হয়েছে!" : "Successfully dispatched to lawyer queue!");
+      toast.success(language === "bn" ? "সফলভাবে লইয়ার ভেরিফিকেশনের জন্য পাঠানো হয়েছে!" : "Successfully dispatched to lawyer queue!");
       if (refreshUser) refreshUser().catch(() => {});
       fetchHistory();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to request verification";
-      alert(msg);
+      toast.error(msg);
     } finally {
       setIsRequestingVerification(null);
     }
   };
 
   const handleDelete = async (id: string) => {
-    const confirmDelete = window.confirm(
-      language === "bn"
+    const ok = await confirm({
+      title: language === "bn" ? "অডিট মেমো মুছে ফেলবেন?" : "Delete Contract Audit?",
+      message: language === "bn"
         ? "আপনি কি নিশ্চিত এই অডিটটি মুছে ফেলতে চান? এটি আর ফিরে পাবেন না।"
-        : "Are you sure you want to delete this audit? This action cannot be undone."
-    );
-    if (!confirmDelete) return;
+        : "Are you sure you want to delete this audit? This action cannot be undone.",
+      confirmText: language === "bn" ? "মুছে ফেলুন" : "Delete Audit",
+      variant: "danger",
+    });
+    if (!ok) return;
 
     setDeletingId(id);
     try {
       await deleteContract(id);
+      toast.success(language === "bn" ? "অডিট সফলভাবে মুছে ফেলা হয়েছে।" : "Audit memo deleted successfully.");
       setRecords((prev) => prev.filter((r) => r.id !== id));
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to delete contract. Please try again.");
+      toast.error(err instanceof Error ? err.message : "Failed to delete contract. Please try again.");
     } finally {
       setDeletingId(null);
     }
@@ -417,6 +457,14 @@ export default function ArchivePage() {
   const printTargetRecord = printRecord || previewRecord;
 
   if (String(user?.role).toUpperCase() === "LAWYER") {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (isPendingEnterpriseAdmin || isPendingLawyer || isPendingMember || userRole === "LAWYER") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -547,9 +595,9 @@ export default function ArchivePage() {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="py-5 sm:py-6 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 border-b w-full min-w-0" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+        <div className="py-4 sm:py-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4 border-b w-full" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
           {/* Search Box */}
-          <div className="relative flex-1 max-w-full sm:max-w-md w-full min-w-0">
+          <div className="relative w-full md:w-80 lg:w-96 shrink-0">
             <Search className="w-4 h-4 text-neutral-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
@@ -563,8 +611,8 @@ export default function ArchivePage() {
               }}
               placeholder={
                 language === "bn"
-                  ? "চুক্তির নাম, স্কোর, পক্ষ বা আইন অনুযায়ী অনুসন্ধান..."
-                  : "Search by title, score, party, or statute..."
+                  ? "চুক্তির নাম, স্কোর বা আইন অনুযায়ী খুঁজুন..."
+                  : "Search by title, score, or statute..."
               }
               className="w-full pl-10 pr-9 py-2 rounded-full text-xs outline-none transition-all border border-(--text-primary)/10 focus:border-(--text-primary)/30 focus:ring-1 focus:ring-(--text-primary)/20 bg-(--bg-surface) text-(--text-primary)"
             />
@@ -581,7 +629,7 @@ export default function ArchivePage() {
           </div>
 
           {/* Filter Pills with real counts */}
-          <div className="flex items-center gap-1.5 self-start sm:self-auto overflow-x-auto pb-1 sm:pb-0 pr-2 sm:pr-0 w-full max-w-full no-scrollbar min-w-0">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 w-full md:w-auto shrink-0 no-scrollbar">
             {[
               { id: "ALL", labelEn: "All Audits", labelBn: "সকল অডিট", count: tabCounts.ALL },
               { id: "HIGH", labelEn: "High Risk", labelBn: "উচ্চ ঝুঁকি", count: tabCounts.HIGH },
@@ -666,7 +714,7 @@ export default function ArchivePage() {
                     {record.isLawyerVerified && (
                       <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
                         <ShieldCheck className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                        <span>{language === "bn" ? "আইনজীবী দ্বারা যাচাইকৃত ✓" : "Verified by Lawyer ✓"}</span>
+                        <span>{language === "bn" ? "আইনজীবী দ্বারা যাচাইকৃত" : "Verified by Lawyer"}</span>
                       </span>
                     )}
                   </div>
@@ -697,9 +745,47 @@ export default function ArchivePage() {
                 </div>
 
                 {/* Statutory Risk Takeaway */}
-                <p className="text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-300 leading-relaxed font-sans max-w-3xl wrap-break-word">
-                  {language === "bn" ? record.summaryBn : record.summaryEn}
-                </p>
+                {Boolean(language === "bn" ? record.summaryBn : record.summaryEn) && (
+                  <div className="w-full min-w-0 max-w-3xl">
+                    <div className="border-l-2 border-(--text-primary)/15 pl-3 py-0.5">
+                      <p
+                        className={`text-xs sm:text-[13px] text-neutral-600 dark:text-neutral-400 leading-relaxed font-sans wrap-break-word transition-all ${
+                          expandedSummaries[record.id] ? "" : "line-clamp-2"
+                        }`}
+                        style={
+                          expandedSummaries[record.id]
+                            ? undefined
+                            : {
+                                display: "-webkit-box",
+                                WebkitLineClamp: 2,
+                                WebkitBoxOrient: "vertical",
+                                overflow: "hidden",
+                              }
+                        }
+                      >
+                        {language === "bn" ? record.summaryBn : record.summaryEn}
+                      </p>
+                      {String(language === "bn" ? record.summaryBn : record.summaryEn).length > 130 && (
+                        <button
+                          type="button"
+                          onClick={() => toggleSummaryExpand(record.id)}
+                          className="mt-1 text-[11px] font-semibold text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-200 inline-flex items-center gap-1 cursor-pointer transition-colors"
+                        >
+                          <span>
+                            {expandedSummaries[record.id]
+                              ? (language === "bn" ? "সংক্ষেপ করুন" : "Show less")
+                              : (language === "bn" ? "আরও দেখুন" : "Show more")}
+                          </span>
+                          {expandedSummaries[record.id] ? (
+                            <ChevronUp className="w-3 h-3" />
+                          ) : (
+                            <ChevronDown className="w-3 h-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Breakdown & Action Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 pt-2 w-full min-w-0">
@@ -783,13 +869,17 @@ export default function ArchivePage() {
               </div>
             ))
           ) : (
-            <div className="py-20 text-center space-y-3 w-full">
-              <FileText className="w-8 h-8 text-neutral-300 mx-auto" />
-              <p className="text-sm font-medium text-(--text-primary)">
+            <div className="py-16 sm:py-20 text-center space-y-3 w-full">
+              <FileText className="w-8 h-8 text-neutral-300 dark:text-neutral-700 mx-auto" />
+              <p className="text-sm font-semibold text-(--text-primary)">
                 {language === "bn" ? "কোনো সংরক্ষিত অডিট পাওয়া যায়নি" : "No archived audits found"}
               </p>
               <p className="text-xs text-neutral-400 max-w-sm mx-auto wrap-break-word">
-                {searchQuery.trim().length > 0
+                {records.length === 0
+                  ? language === "bn"
+                    ? "আপনার অ্যাকাউন্টে এখনও কোনো চুক্তি অডিট করা হয়নি। নতুন চুক্তি অডিট করতে নিচের বাটনে ক্লিক করুন।"
+                    : "You have not audited any contracts yet. Upload a contract in the workspace to get started."
+                  : searchQuery.trim().length > 0
                   ? language === "bn"
                     ? `"${searchQuery.trim()}" দিয়ে কোনো চুক্তি মেলেনি। বানান পরীক্ষা করুন অথবা সার্চ ক্লিয়ার করুন।`
                     : `No contracts matched your search for "${searchQuery.trim()}". Try different keywords or clear search.`
@@ -797,7 +887,16 @@ export default function ArchivePage() {
                   ? "আপনার নির্বাচনের সাথে মিলে এমন কোনো চুক্তিপত্র পাওয়া যায়নি। অন্য কিওয়ার্ড বা ফিল্টার দিয়ে চেষ্টা করুন।"
                   : "No contracts matched your filter criteria. Try selecting another tab or clearing search."}
               </p>
-              {searchQuery.trim().length > 0 && (
+              {records.length === 0 ? (
+                <button
+                  type="button"
+                  onClick={() => router.push("/contractmind")}
+                  className="mt-3 inline-flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
+                >
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                  <span>{language === "bn" ? "চুক্তি অডিট শুরু করুন" : "Start Contract Audit"}</span>
+                </button>
+              ) : searchQuery.trim().length > 0 ? (
                 <button
                   type="button"
                   onClick={() => setSearchQuery("")}
@@ -806,7 +905,7 @@ export default function ArchivePage() {
                   <X className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "সার্চ ক্লিয়ার করুন" : "Clear search"}</span>
                 </button>
-              )}
+              ) : null}
             </div>
           )}
         </div>

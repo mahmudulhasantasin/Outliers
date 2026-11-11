@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import MarkdownViewer from "@/components/markdown/MarkdownViewer";
 import { generateContractAuditMarkdown } from "@/lib/markdownContractGenerator";
 import {
@@ -14,6 +15,7 @@ import {
   getActiveTasks,
   submitReview,
   startContractReviewChat,
+  uploadLawyerProof, // [UPDATED] NEW
 } from "@/lib/apiServices";
 import {
   Inbox,
@@ -22,6 +24,7 @@ import {
   FileText,
   AlertTriangle,
   CheckCircle2,
+  RefreshCw,
   ShieldAlert,
   ArrowUpRight,
   Search,
@@ -34,9 +37,11 @@ import {
   Ban,
   XCircle,
   Edit3,
+  UploadCloud, // [UPDATED] NEW
+  FileCheck,   // [UPDATED] NEW
 } from "lucide-react";
 
-// ✅ FIX: Defined strict interface for clauses instead of 'any'
+// [UPDATED] FIX: Defined strict interface for clauses instead of 'any'
 interface EditableClause {
   clause_number: string;
   clause_title: string;
@@ -62,7 +67,7 @@ interface PendingContract {
   priority: "high" | "normal";
   contractId?: string;
   submitDeadline?: string;
-  clauses?: EditableClause[]; // ✅ Replaced any[] with EditableClause[]
+  clauses?: EditableClause[]; // [UPDATED] Replaced any[] with EditableClause[]
 }
 
 const LiveTimer = ({ deadline }: { deadline?: string }) => {
@@ -100,7 +105,9 @@ const LiveTimer = ({ deadline }: { deadline?: string }) => {
 export default function LawyerPendingPage() {
   const router = useRouter();
   const { language } = useLanguage();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
+  const { toast, prompt } = useNotification();
+  const [isRefreshingVerification, setIsRefreshingVerification] = useState(false);
   const isBn = language === "bn";
 
   const verificationStatus = user?.lawyerProfile?.verificationStatus || "pending";
@@ -117,7 +124,7 @@ export default function LawyerPendingPage() {
       return;
     }
     const userRole = String(user.role).toUpperCase();
-    if (userRole !== "LAWYER" && userRole !== "ADMIN") {
+    if (userRole !== "LAWYER" && userRole !== "ADMIN" && !user?.lawyerProfile) {
       router.replace("/dashboard");
     }
   }, [user, router]);
@@ -132,7 +139,7 @@ export default function LawyerPendingPage() {
 
   const [advocateNotes, setAdvocateNotes] = useState("");
   
-  // ✅ FIX: Replaced any[] with EditableClause[]
+  // [UPDATED] FIX: Replaced any[] with EditableClause[]
   const [editableClauses, setEditableClauses] = useState<EditableClause[]>([]);
   
   const [checklist, setChecklist] = useState({
@@ -142,6 +149,12 @@ export default function LawyerPendingPage() {
   });
   const [isSealing, setIsSealing] = useState(false);
   const [sealedSuccess, setSealedSuccess] = useState(false);
+
+  // [UPDATED] NEW: File upload states for Fix D
+  const [signaturePath, setSignaturePath] = useState("");
+  const [signedPdfPath, setSignedPdfPath] = useState("");
+  const [isUploadingSign, setIsUploadingSign] = useState(false);
+  const [isUploadingPdf, setIsUploadingPdf] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -196,7 +209,7 @@ export default function LawyerPendingPage() {
             priority: "high",
             contractId: String(item.contract_id || item.memo_id),
             submitDeadline: item.submit_deadline,
-            clauses: (item.clauses_analysis as EditableClause[]) || [], // ✅ Type Cast
+            clauses: (item.clauses_analysis as EditableClause[]) || [], // [UPDATED] Type Cast
           }));
           setActiveTasks(mappedActive);
         }
@@ -209,7 +222,7 @@ export default function LawyerPendingPage() {
 
     if (typeof window !== "undefined") {
       try {
-        // ✅ FIX: Cast JSON.parse result to PendingContract[]
+        // [UPDATED] FIX: Cast JSON.parse result to PendingContract[]
         const stored = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]") as PendingContract[];
         if (Array.isArray(stored) && stored.length > 0) {
           setPendingList((prev) => {
@@ -249,12 +262,15 @@ export default function LawyerPendingPage() {
     setEditableClauses(contract.clauses ? JSON.parse(JSON.stringify(contract.clauses)) : []);
     setModalTab("markdown");
     setSealedSuccess(false);
+    // [UPDATED] NEW: Reset file paths
+    setSignaturePath("");
+    setSignedPdfPath("");
   };
 
   const handleAccept = async (id: string) => {
     try {
       await acceptOffer(id);
-      alert(isBn ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে! (সময়সীমা: ৩ ঘণ্টা)।" : "Contract offer accepted! (3-hour SLA window).");
+      toast.success(isBn ? "চুক্তি সফলভাবে গ্রহণ করা হয়েছে! (সময়সীমা: ৩ ঘণ্টা)।" : "Contract offer accepted! (3-hour SLA window).");
       
       const acceptedItem = pendingList.find((p) => p.id === id);
       if (acceptedItem) {
@@ -264,16 +280,23 @@ export default function LawyerPendingPage() {
         setActiveSubTab("active");
       }
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : (isBn ? "চুক্তি গ্রহণ ব্যর্থ হয়েছে।" : "Failed to accept offer"));
+      toast.error(err instanceof Error ? err.message : (isBn ? "চুক্তি গ্রহণ ব্যর্থ হয়েছে।" : "Failed to accept offer"));
     }
   };
 
   const handleDecline = async (id: string) => {
-    const reason = prompt(isBn ? "বাতিলের কারণ লিখুন:" : "Enter reason for declining:") || "Outside my specialization area.";
+    const reason = await prompt({
+      title: isBn ? "অফার প্রত্যাখ্যান" : "Decline Contract Offer",
+      message: isBn ? "বাতিলের কারণ লিখুন:" : "Enter reason for declining:",
+      placeholder: isBn ? "কারণ উল্লেখ করুন..." : "Specify reason...",
+      defaultValue: "Outside my specialization area.",
+      confirmText: isBn ? "প্রত্যাখ্যান করুন" : "Decline",
+    });
+    if (!reason) return;
     try {
       await declineOffer(id, reason);
       setPendingList((prev) => prev.filter((p) => p.id !== id));
-      alert(isBn ? "অফার প্রত্যাখ্যান করা হয়েছে।" : "Offer declined and re-queued.");
+      toast.info(isBn ? "অফার প্রত্যাখ্যান করা হয়েছে।" : "Offer declined and re-queued.");
     } catch {
       setPendingList((prev) => prev.filter((p) => p.id !== id));
     }
@@ -294,12 +317,48 @@ export default function LawyerPendingPage() {
       sessionStorage.setItem("active_audit_contract", JSON.stringify(contextPayload));
       router.push("/copilot");
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : "Failed to start AI chat session");
+      toast.error(err instanceof Error ? err.message : "Failed to start AI chat session");
+    }
+  };
+
+  // [UPDATED] NEW: Upload handlers
+  const handleUploadSignature = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingSign(true);
+    try {
+      const res = await uploadLawyerProof(file);
+      setSignaturePath(res.file_path);
+    } catch {
+      toast.error(isBn ? "স্বাক্ষর আপলোড ব্যর্থ হয়েছে" : "Failed to upload signature");
+    } finally {
+      setIsUploadingSign(false);
+    }
+  };
+
+  const handleUploadPdf = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingPdf(true);
+    try {
+      const res = await uploadLawyerProof(file);
+      setSignedPdfPath(res.file_path);
+    } catch {
+      toast.error(isBn ? "সাইনকৃত পিডিএফ আপলোড ব্যর্থ হয়েছে" : "Failed to upload signed PDF");
+    } finally {
+      setIsUploadingPdf(false);
     }
   };
 
   const handleApproveAndSeal = async () => {
     if (!selectedContract) return;
+    
+    // [UPDATED] NEW: Validate that files are uploaded
+    if (!signaturePath || !signedPdfPath) {
+      toast.warning(isBn ? "অনুগ্রহ করে সিলমোহর দেওয়ার আগে আপনার স্বাক্ষর এবং সাইনকৃত পিডিএফ আপলোড করুন।" : "Please upload your signature and signed PDF before applying the seal.");
+      return;
+    }
+    
     setIsSealing(true);
 
     try {
@@ -308,8 +367,8 @@ export default function LawyerPendingPage() {
         lawyer_notes: advocateNotes,
         verified: true,
         updated_clauses: editableClauses,
-        signature_url: `signatures/lawyer_${user?.id || "42"}.png`,
-        signed_pdf_url: `signed_contracts/memo_${selectedContract.id}_final.pdf`,
+        signature_url: signaturePath, // [UPDATED] Real path
+        signed_pdf_url: signedPdfPath, // [UPDATED] Real path
       });
     } catch (err: unknown) {
       console.warn("Submit review note:", err);
@@ -321,7 +380,7 @@ export default function LawyerPendingPage() {
 
       if (typeof window !== "undefined") {
         const userArchiveKey = user?.email ? `verified_contracts_archive_${user.email}` : "verified_contracts_archive";
-        // ✅ FIX: Cast JSON.parse result to unknown[] to satisfy ESLint, or specific type if defined
+        // [UPDATED] FIX: Cast JSON.parse result to unknown[] to satisfy ESLint, or specific type if defined
         const archive = JSON.parse(localStorage.getItem(userArchiveKey) || "[]") as Record<string, unknown>[];
         const newVerified = {
           id: `ver-${selectedContract.id}`,
@@ -339,7 +398,7 @@ export default function LawyerPendingPage() {
         };
         localStorage.setItem(userArchiveKey, JSON.stringify([newVerified, ...archive]));
 
-        // ✅ FIX: Cast JSON.parse result to PendingContract[]
+        // [UPDATED] FIX: Cast JSON.parse result to PendingContract[]
         const dispatched = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]") as PendingContract[];
         localStorage.setItem("dispatched_pending_contracts", JSON.stringify(dispatched.filter((d) => d.id !== selectedContract.id)));
       }
@@ -373,7 +432,8 @@ export default function LawyerPendingPage() {
     : "";
 
   const userRole = user ? String(user.role).toUpperCase() : "";
-  if (!user || (userRole !== "LAWYER" && userRole !== "ADMIN")) {
+  const hasLawyerProfile = !!user?.lawyerProfile;
+  if (!user || (userRole !== "LAWYER" && userRole !== "ADMIN" && !hasLawyerProfile)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
@@ -441,7 +501,29 @@ export default function LawyerPendingPage() {
                     : "Your Bar Council certificate is currently awaiting administrative approval. Access remains locked until your advocate status is verified."}
                 </p>
                 <div className="flex items-center justify-center gap-3 flex-wrap">
-                  <button onClick={() => router.push("/profile")} className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--bg-surface) text-(--text-primary) transition-colors cursor-pointer">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (refreshUser) {
+                        setIsRefreshingVerification(true);
+                        await refreshUser();
+                        setTimeout(() => setIsRefreshingVerification(false), 500);
+                      }
+                    }}
+                    disabled={isRefreshingVerification}
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingVerification ? "animate-spin" : ""}`} />
+                    <span>
+                      {isRefreshingVerification
+                        ? (isBn ? "চেক করা হচ্ছে..." : "Checking...")
+                        : (isBn ? "ভেরিফিকেশন স্ট্যাটাস রিফ্রেশ করুন" : "Refresh Verification Status")}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => router.push("/profile")}
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--bg-surface) text-(--text-primary) transition-colors cursor-pointer"
+                  >
                     {isBn ? "প্রোফাইল দেখুন" : "View Profile"}
                   </button>
                 </div>
@@ -818,6 +900,63 @@ export default function LawyerPendingPage() {
                       </p>
                     </div>
 
+                    {/* [UPDATED] NEW: File Uploads Section */}
+                    <div className="space-y-4">
+                      <label className="text-xs font-semibold text-(--text-primary) block">
+                        {isBn ? "প্রমাণপত্র আপলোড (আবশ্যক):" : "Required Uploads:"}
+                      </label>
+
+                      <div className="p-3 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-950/30 flex items-center justify-center shrink-0">
+                            <FileCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-(--text-primary)">{isBn ? "আইনজীবীর স্বাক্ষর (ছবি)" : "Advocate Signature (Image)"}</p>
+                            <p className="text-[10px] text-(--text-muted) flex items-center gap-1">
+                              {signaturePath ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <span>{isBn ? "সফলভাবে আপলোড হয়েছে" : "Uploaded successfully"}</span>
+                                </>
+                              ) : (
+                                "PNG or JPG format"
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <label className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${signaturePath ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-(--bg-card) text-(--text-primary) border-(--text-primary)/20 hover:bg-(--text-primary)/5"}`}>
+                          {isUploadingSign ? "Uploading..." : signaturePath ? "Change" : "Upload"}
+                          <input type="file" accept="image/png, image/jpeg" className="hidden" onChange={handleUploadSignature} disabled={isUploadingSign} />
+                        </label>
+                      </div>
+
+                      <div className="p-3 rounded-xl border border-(--text-primary)/10 bg-(--bg-surface) flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/30 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-rose-600 dark:text-rose-400" />
+                          </div>
+                          <div>
+                            <p className="text-xs font-bold text-(--text-primary)">{isBn ? "সাইনকৃত চুক্তিপত্র (PDF)" : "Signed Contract (PDF)"}</p>
+                            <p className="text-[10px] text-(--text-muted) flex items-center gap-1">
+                              {signedPdfPath ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-500 shrink-0" />
+                                  <span>{isBn ? "সফলভাবে আপলোড হয়েছে" : "Uploaded successfully"}</span>
+                                </>
+                              ) : (
+                                "PDF format only"
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <label className={`px-3 py-1.5 rounded-lg text-xs font-semibold cursor-pointer border transition-colors ${signedPdfPath ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-(--bg-card) text-(--text-primary) border-(--text-primary)/20 hover:bg-(--text-primary)/5"}`}>
+                          {isUploadingPdf ? "Uploading..." : signedPdfPath ? "Change" : "Upload"}
+                          <input type="file" accept=".pdf" className="hidden" onChange={handleUploadPdf} disabled={isUploadingPdf} />
+                        </label>
+                      </div>
+                    </div>
+
                     <div className="space-y-3">
                       <label className="text-xs font-semibold text-(--text-primary) block">
                         {isBn ? "সংবিধিবদ্ধ আইনি যাচাইকরণ চেকলিস্ট:" : "Statutory Verification Checkpoints:"}
@@ -861,7 +1000,7 @@ export default function LawyerPendingPage() {
                         </div>
                         <div className="text-xs leading-snug">
                           <p className="font-bold uppercase tracking-wider text-[11px] text-emerald-700 dark:text-emerald-300">
-                            ✓ BANGLADESH BAR COUNCIL ADVOCATE SEAL APPLIED
+                            BANGLADESH BAR COUNCIL ADVOCATE SEAL APPLIED
                           </p>
                           <p className="text-[11px] opacity-90 mt-0.5">
                             Digitally sealed by Adv. Tanvir Ahmed (SC-DH-48912/2016). Contract moved to Sovereign Verified Archive.
@@ -895,15 +1034,15 @@ export default function LawyerPendingPage() {
                     <button
                       type="button"
                       onClick={handleApproveAndSeal}
-                      disabled={isSealing || sealedSuccess}
+                      disabled={isSealing || sealedSuccess || isUploadingSign || isUploadingPdf}
                       className="px-5 py-2.5 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 transition-colors cursor-pointer disabled:opacity-50 shadow-sm"
                     >
                       {isSealing ? (
                         <><div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" /><span>{isBn ? "সিলমোহর প্রয়োগ হচ্ছে..." : "Applying Statutory Seal..."}</span></>
                       ) : sealedSuccess ? (
-                        <><Check className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদিত ও সিলমোহরযুক্ত ✓" : "Approved & Sealed ✓"}</span></>
+                        <><Check className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদিত ও সিলমোহরযুক্ত" : "Approved & Sealed"}</span></>
                       ) : (
-                        <><ShieldCheck className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদন ও সিলমোহর দিন ✓" : "Approve & Seal ✓"}</span></>
+                        <><ShieldCheck className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদন ও সিলমোহর দিন" : "Approve & Seal"}</span></>
                       )}
                     </button>
                   )}

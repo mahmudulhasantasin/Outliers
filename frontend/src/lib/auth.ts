@@ -3,6 +3,8 @@ const TOKEN_KEY = "contractmind_token";
 const USER_KEY = "contractmind_user";
 const DEMO_KEY = "app_auth_v2";       // set by AuthContext.persistDemo()
 const ROLE_HINT_KEY = "cm_role";      // set by AuthContext.login() for quick routing
+const ENTERPRISE_PROFILE_KEY = "cm_enterprise_profile";
+const LAWYER_PROFILE_KEY = "cm_lawyer_profile";
 
 export interface StoredUser {
   id: string;
@@ -29,7 +31,7 @@ export interface TokenResponse {
 /**
  * Persist a REAL backend login/verify-otp session.
  *
- * ✅ BUG A FIX:
+ * [UPDATED] BUG A FIX:
  *   When a real token is being stored, any stale demo session
  *   (app_auth_v2 from a previous "Login as Demo Lawyer/Admin" click)
  *   MUST be cleared. Otherwise AuthContext's mount effect will
@@ -39,7 +41,7 @@ export interface TokenResponse {
 export function saveTokenResponse(data: TokenResponse, overrideRole?: string): void {
   if (typeof window === "undefined") return;
 
-  // ✅ BUG A FIX — kill any demo session before writing the real token
+  // [UPDATED] BUG A FIX — kill any demo session before writing the real token
   localStorage.removeItem(DEMO_KEY);
 
   localStorage.setItem(TOKEN_KEY, data.access_token);
@@ -91,6 +93,8 @@ export function clearAuth(): void {
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(DEMO_KEY);
   localStorage.removeItem(ROLE_HINT_KEY);
+  localStorage.removeItem(ENTERPRISE_PROFILE_KEY);
+  localStorage.removeItem(LAWYER_PROFILE_KEY);
 }
 
 export function isAuthenticated(): boolean {

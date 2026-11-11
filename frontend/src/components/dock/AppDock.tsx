@@ -207,27 +207,119 @@ export default function AppDock() {
     },
   ];
 
+  // ── Pending Enterprise Admin Dock ──
+  const pendingEnterpriseAdminItems: VerticalDockItemData[] = [
+    {
+      icon: <Building2 className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "এন্টারপ্রাইজ ভেরিফিকেশন স্ট্যাটাস" : "Enterprise Verification",
+      isActive: pathname.startsWith("/enterprise/pending"),
+      onClick: () => router.push("/enterprise/pending"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও প্রতিষ্ঠান" : "Profile & Organization",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
+  // ── Pending Lawyer Dock ──
+  const pendingLawyerItems: VerticalDockItemData[] = [
+    {
+      icon: <Inbox className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "আইনজীবী ভেরিফিকেশন স্ট্যাটাস" : "Lawyer Verification",
+      isActive: pathname.startsWith("/lawyer/pending"),
+      onClick: () => router.push("/lawyer/pending"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও সনদ" : "Profile & Credentials",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
+  // ── Pending Enterprise Member Dock ──
+  const pendingMemberItems: VerticalDockItemData[] = [
+    {
+      icon: <Building2 className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "কোম্পানি অনুমোদন স্ট্যাটাস" : "Company Approval Status",
+      isActive: pathname.startsWith("/enterprise/member"),
+      onClick: () => router.push("/enterprise/member"),
+    },
+    {
+      icon: <Settings className="w-5 h-5" />,
+      label: isBn ? "সেটিংস" : "Settings",
+      isActive: pathname === "/settings",
+      onClick: () => router.push("/settings"),
+    },
+    {
+      icon: <User className="w-5 h-5" />,
+      label: isBn ? "প্রোফাইল ও কোটা" : "Profile & Quota",
+      isActive: pathname === "/profile",
+      onClick: () => router.push("/profile"),
+    },
+  ];
+
   const userRole = String(user?.role || role).toUpperCase();
-  const isLawyer = userRole === "LAWYER";
+  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
+  const isPendingEnterpriseAdmin =
+    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
+    entStatus === "pending" ||
+    entStatus === "pending_approval";
+
+  const lawyerStatus = String(user?.lawyerProfile?.verificationStatus || "").toLowerCase();
+  const isPendingLawyer =
+    Boolean(user?.lawyerProfile && lawyerStatus !== "verified") ||
+    (userRole === "LAWYER" && lawyerStatus !== "verified") ||
+    lawyerStatus === "pending";
+
+  const memberStatus = String(
+    user?.enterpriseProfile?.memberApprovalStatus || (user as any)?.member_approval_status || ""
+  ).toUpperCase();
+  const isPendingMember =
+    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
+    (memberStatus === "PENDING" || (memberStatus !== "APPROVED" && memberStatus !== ""));
+
+  const isVerifiedLawyer = userRole === "LAWYER" && lawyerStatus === "verified";
+  const isVerifiedEnterpriseAdmin =
+    (userRole === "ENTERPRISE_ADMIN" || (userRole === "ENTERPRISE" && !user?.enterpriseProfile?.isTeamMember)) &&
+    entStatus === "verified";
+  const isVerifiedEnterpriseMember =
+    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) && !isPendingMember;
 
   const items =
     userRole === "ADMIN"
       ? adminItems
-      : isLawyer
+      : isPendingEnterpriseAdmin
+      ? pendingEnterpriseAdminItems
+      : isPendingLawyer
+      ? pendingLawyerItems
+      : isPendingMember
+      ? pendingMemberItems
+      : isVerifiedLawyer
       ? lawyerItems
-      : userRole === "ENTERPRISE_ADMIN"
+      : isVerifiedEnterpriseAdmin
       ? enterpriseAdminItems
-      : userRole === "ENTERPRISE_MEMBER"
+      : isVerifiedEnterpriseMember
       ? enterpriseMemberItems
-      : userRole === "ENTERPRISE" && user?.enterpriseProfile?.isTeamMember
-      ? enterpriseMemberItems
-      : userRole === "ENTERPRISE"
-      ? enterpriseAdminItems
       : generalItems;
 
   return (
     <>
-      {/* ✅ Mobile Top Hamburger Button */}
+      {/* [UPDATED] Mobile Top Hamburger Button */}
       <div className="md:hidden fixed top-4 left-4 z-100">
         <button
           onClick={() => setIsMobileOpen(true)}
@@ -237,7 +329,7 @@ export default function AppDock() {
         </button>
       </div>
 
-      {/* ✅ Mobile Fullscreen Drawer Menu */}
+      {/* [UPDATED] Mobile Fullscreen Drawer Menu */}
       {isMobileOpen && (
         <div className="md:hidden fixed inset-0 z-100 flex bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
           {/* Drawer Sidebar */}
@@ -257,7 +349,7 @@ export default function AppDock() {
             <div className="flex flex-col gap-2 overflow-y-auto">
               {items.map((item, index) => (
                 <button
-                  key={index} // ✅ FIX: Changed from item.label to index to resolve TS error
+                  key={index} // [UPDATED] FIX: Changed from item.label to index to resolve TS error
                   onClick={() => {
                     item.onClick();
                     setIsMobileOpen(false);
@@ -280,7 +372,7 @@ export default function AppDock() {
         </div>
       )}
 
-      {/* ✅ Desktop Floating Dock */}
+      {/* [UPDATED] Desktop Floating Dock */}
       <div className="hidden md:block">
         <VerticalDock
           items={items}

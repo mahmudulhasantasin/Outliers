@@ -16,12 +16,14 @@ import {
   uploadContract,
   requestLawyerVerification,
   getContractDetail,
+  downloadRedlineDocx,
   ContractAuditResult,
 } from "@/lib/apiServices";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import {
   Upload, ArrowLeft, Bot, Printer, CheckCircle2, Shield,
-  Download, ArrowRight, ShieldCheck, AlertTriangle,
+  Download, ArrowRight, ShieldCheck, AlertTriangle, Briefcase, Scale, FileText,
 } from "lucide-react";
 
 /**
@@ -64,12 +66,14 @@ export default function ContractMindPage() {
   const router = useRouter();
   const { language } = useLanguage();
   const { user, updateUser, refreshUser } = useAuth();
+  const { toast } = useNotification();
   const isBn = language === "bn";
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [isLoaded, setIsLoaded] = useState<boolean>(false);
   const [selectedContractId, setSelectedContractId] = useState<string>("employment-agreement");
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [isDownloadingRedline, setIsDownloadingRedline] = useState<boolean>(false);
   const [isDispatching, setIsDispatching] = useState<boolean>(false);
   const [dispatchedDecision, setDispatchedDecision] = useState<DispatchDecision | null>(null);
   const [lawyerSealApplied, setLawyerSealApplied] = useState<boolean>(false);
@@ -77,13 +81,31 @@ export default function ContractMindPage() {
   const [apiContractId, setApiContractId] = useState<string | null>(null);
   const [apiAuditResult, setApiAuditResult] = useState<ContractAuditResult | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [auditedFor, setAuditedFor] = useState<"CLIENT" | "VENDOR" | "NEUTRAL">("CLIENT");
+
+  const userRole = String(user?.role || "").toUpperCase();
+  const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
+  const isPendingEnterpriseAdmin =
+    Boolean(user?.enterpriseProfile && !user?.enterpriseProfile?.isTeamMember && entStatus !== "verified") ||
+    entStatus === "pending" ||
+    entStatus === "pending_approval";
+  const isPendingLawyer =
+    user?.lawyerProfile?.verificationStatus === "pending" || userRole === "LAWYER";
+  const isPendingMember =
+    (userRole === "ENTERPRISE_MEMBER" || user?.enterpriseProfile?.isTeamMember) &&
+    ((user as any)?.member_approval_status === "PENDING" ||
+      user?.enterpriseProfile?.memberApprovalStatus === "PENDING");
 
   useEffect(() => {
-    const userRole = String(user?.role).toUpperCase();
-    if (userRole === "LAWYER") {
+    if (!user) return;
+    if (isPendingEnterpriseAdmin) {
+      router.replace("/enterprise/pending");
+    } else if (isPendingLawyer) {
       router.replace("/lawyer/pending");
+    } else if (isPendingMember) {
+      router.replace("/enterprise/member");
     }
-  }, [user, router]);
+  }, [user, isPendingEnterpriseAdmin, isPendingLawyer, isPendingMember, router]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -148,7 +170,7 @@ export default function ContractMindPage() {
 
     setIsAnalyzing(true);
     try {
-      const result = await uploadContract(file);
+      const result = await uploadContract(file, undefined, auditedFor);
       setApiContractId(String(result.contract_id));
       setApiAuditResult(result);
       
@@ -200,7 +222,7 @@ export default function ContractMindPage() {
         }
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : "Failed to request lawyer verification";
-        alert(errorMessage || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
+        toast.error(errorMessage || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
         setIsDispatching(false);
         return;
       }
@@ -252,6 +274,31 @@ export default function ContractMindPage() {
   };
 
   const handleDownloadReport = () => window.print();
+
+  const handleDownloadRedlineDocx = async () => {
+    const contractId = apiContractId || (apiAuditResult as any)?.contract_id || (apiAuditResult as any)?.id;
+    if (!contractId) {
+      toast.error(isBn ? "সংরক্ষিত চুক্তির ক্ষেত্রে DOCX ফাইল ডাউনলোড সম্ভব।" : "Redlined DOCX is available for uploaded agreements.");
+      return;
+    }
+    try {
+      setIsDownloadingRedline(true);
+      const blob = await downloadRedlineDocx(contractId);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Redlined_Contract_${contractId}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(isBn ? "রেডলাইন করা DOCX ফাইল সফলভাবে ডাউনলোড হয়েছে!" : "Redlined DOCX downloaded successfully!");
+    } catch (err: any) {
+      toast.error(err?.message || (isBn ? "ডাউনলোড করতে ব্যর্থ হয়েছে" : "Failed to download redlined DOCX"));
+    } finally {
+      setIsDownloadingRedline(false);
+    }
+  };
 
   const handleOpenInCopilot = () => {
     const auditObj = apiAuditResult as unknown as Record<string, unknown> | null;
@@ -305,6 +352,14 @@ export default function ContractMindPage() {
 
   const markdownAuditContent = sanitizeAuditMarkdown(rawAuditContent);
 
+  if (isPendingEnterpriseAdmin || isPendingLawyer || isPendingMember) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-primary)">
+        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <AppShell>
       <div className="w-full min-h-screen pb-32 font-sans" style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
@@ -331,6 +386,52 @@ export default function ContractMindPage() {
                 </div>
               </div>
             )}
+
+            {/* Party Perspective Selector */}
+            <div className="w-full max-w-xl mb-4 p-2.5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <span className="text-xs font-semibold text-(--text-primary) px-1 flex items-center gap-1.5">
+                <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                <span>{isBn ? "কার স্বার্থে অডিট হবে:" : "Audit Perspective:"}</span>
+              </span>
+              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                <button
+                  type="button"
+                  onClick={() => setAuditedFor("CLIENT")}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    auditedFor === "CLIENT"
+                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
+                      : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
+                  }`}
+                >
+                  <Shield className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>{isBn ? "ক্লায়েন্ট / ক্রেতা" : "Protect Client"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditedFor("VENDOR")}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    auditedFor === "VENDOR"
+                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
+                      : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
+                  }`}
+                >
+                  <Briefcase className="w-3.5 h-3.5 text-amber-500" />
+                  <span>{isBn ? "সার্ভিস প্রোভাইডার" : "Protect Vendor"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuditedFor("NEUTRAL")}
+                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    auditedFor === "NEUTRAL"
+                      ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
+                      : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
+                  }`}
+                >
+                  <Scale className="w-3.5 h-3.5 text-sky-500" />
+                  <span>{isBn ? "নিরপেক্ষ" : "Neutral"}</span>
+                </button>
+              </div>
+            </div>
 
             <div
               onDragOver={(e) => e.preventDefault()}
@@ -397,6 +498,14 @@ export default function ContractMindPage() {
                   <Printer className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "প্রিন্ট / পিডিএফ" : "Print / PDF"}</span>
                 </button>
+                <button onClick={handleDownloadRedlineDocx} disabled={isDownloadingRedline} className="px-3.5 py-1.5 rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold hover:bg-emerald-500/20 flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50">
+                  {isDownloadingRedline ? (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  )}
+                  <span>{language === "bn" ? "রেডলাইন (DOCX)" : "Redline (.docx)"}</span>
+                </button>
                 <button onClick={() => handleOpenInCopilot()} className="px-3.5 py-1.5 rounded-xl bg-black dark:bg-white text-white dark:text-black text-xs font-medium hover:opacity-90 transition-opacity flex items-center gap-1.5 cursor-pointer">
                   <Bot className="w-3.5 h-3.5" />
                   <span>{language === "bn" ? "কোপাইলট আলোচনা" : "Open in Copilot"}</span>
@@ -426,9 +535,17 @@ export default function ContractMindPage() {
                   </div>
 
                   <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 flex-wrap w-full sm:w-auto">
-                    <button onClick={handleDownloadReport} className="px-4 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer">
+                    <button onClick={handleDownloadReport} className="px-3.5 py-2.5 rounded-xl border border-(--text-primary)/15 text-xs font-semibold text-(--text-primary) hover:bg-(--text-primary)/5 flex items-center gap-2 transition-colors cursor-pointer">
                       <Download className="w-4 h-4 text-(--text-muted)" />
-                      <span>{language === "bn" ? "ডাউনলোড রিপোর্ট (PDF)" : "Download Report (PDF)"}</span>
+                      <span>{language === "bn" ? "রিপোর্ট (PDF)" : "Report (PDF)"}</span>
+                    </button>
+                    <button onClick={handleDownloadRedlineDocx} disabled={isDownloadingRedline} className="px-4 py-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-bold hover:bg-emerald-500/20 flex items-center gap-2 transition-colors cursor-pointer shadow-sm disabled:opacity-50">
+                      {isDownloadingRedline ? (
+                        <div className="w-4 h-4 rounded-full border-2 border-current border-t-transparent animate-spin" />
+                      ) : (
+                        <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      )}
+                      <span>{language === "bn" ? "ডাউনলোড রেডলাইন (.DOCX)" : "Download Redline (.DOCX)"}</span>
                     </button>
                     <button onClick={handleSendToAdvocate} disabled={isDispatching} className="px-5 py-2.5 rounded-xl text-xs font-bold bg-(--accent-solid) text-(--accent-contrast) hover:opacity-90 flex items-center gap-2 transition-opacity cursor-pointer shadow-sm disabled:opacity-50">
                       {isDispatching ? (
@@ -485,7 +602,7 @@ export default function ContractMindPage() {
               )}
             </div>
 
-            <div className="hidden print:block pt-8 mt-12 border-t border-neutral-300 text-xs text-neutral-500 space-y-1.5 font-sans break-inside-avoid print-avoid-break">
+            <div className="hidden print:block pt-3 mt-4 border-t border-neutral-300 text-xs text-neutral-500 space-y-1 font-sans break-inside-avoid print-avoid-break">
               <div className="flex justify-between items-baseline text-[11px] font-medium text-neutral-700">
                 <span>ContractMind · Autonomous Statutory Contract Auditor</span>
                 <span>Verified against bdlaws (Government of Bangladesh)</span>
@@ -500,3 +617,4 @@ export default function ContractMindPage() {
     </AppShell>
   );
 }
+

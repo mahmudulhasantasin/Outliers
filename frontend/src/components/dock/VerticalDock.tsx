@@ -192,7 +192,7 @@ export default function VerticalDock({
             priority
           />
         </Link>
-        {/* ✅ FIX: Updated Tailwind classes to v4 canonical format (h-px and bg-(--var)) */}
+        {/* [UPDATED] FIX: Updated Tailwind classes to v4 canonical format (h-px and bg-(--var)) */}
         <div className="w-6 h-px bg-(--text-primary)/10 mb-0.5" />
 
         {items.map((item, index) => (

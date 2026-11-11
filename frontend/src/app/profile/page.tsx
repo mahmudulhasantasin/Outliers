@@ -40,10 +40,11 @@ import {
   AlertCircle,
   RefreshCw,
   Inbox,
+  Lock,
 } from "lucide-react";
 
 export default function ProfilePage() {
-  const { user, updateUser, refreshUser, logout } = useAuth();
+  const { user, updateUser, refreshUser, logout, isLoading } = useAuth();
   const { language } = useLanguage();
   const router = useRouter();
   const isBn = language === "bn";
@@ -76,6 +77,7 @@ export default function ProfilePage() {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [imgError, setImgError] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCheckingLawyerStatus, setIsCheckingLawyerStatus] = useState(false);
 
   // Sync draft states when user loads
   useEffect(() => {
@@ -108,11 +110,16 @@ export default function ProfilePage() {
   }, []);
 
   useEffect(() => {
-    loadActivityStats();
-    if (refreshUser) {
-      refreshUser().catch(() => {});
+    if (user) {
+      loadActivityStats();
     }
-  }, [loadActivityStats, refreshUser]);
+  }, [user, loadActivityStats]);
+
+  useEffect(() => {
+    if (!isLoading && !user) {
+      router.replace("/login");
+    }
+  }, [isLoading, user, router]);
 
   if (!user) {
     return (
@@ -127,13 +134,32 @@ export default function ProfilePage() {
     );
   }
 
-  const isLawyer = String(user.role).toUpperCase() === "LAWYER";
-  
-  // ✅ FIX: Separate Admin and Member logic
-  const isEnterpriseAdmin = String(user.role).toLowerCase() === "enterprise_admin";
-  const isEnterpriseMember = String(user.role).toLowerCase() === "enterprise_member";
+  const isLawyer = String(user.role).toUpperCase() === "LAWYER" || !!user.lawyerProfile;
 
-  // ✅ FIX: Dynamic Balance Logic
+  const handleRefreshLawyerStatus = async () => {
+    setIsCheckingLawyerStatus(true);
+    try {
+      if (refreshUser) {
+        await refreshUser();
+      }
+    } catch (err) {
+      console.warn("Could not refresh status:", err);
+    } finally {
+      setTimeout(() => setIsCheckingLawyerStatus(false), 500);
+    }
+  };
+  
+  // [UPDATED] FIX: Separate Admin and Member logic
+  const isEnterpriseAdmin =
+    String(user.role).toLowerCase() === "enterprise_admin" ||
+    Boolean(user.enterpriseProfile && !user.enterpriseProfile.isTeamMember);
+  const isEnterpriseMember =
+    String(user.role).toLowerCase() === "enterprise_member" ||
+    Boolean(user.enterpriseProfile?.isTeamMember);
+  const entStatus = String(user.enterpriseProfile?.verificationStatus || "").toLowerCase();
+  const isPendingEnterpriseAdmin = isEnterpriseAdmin && entStatus !== "verified";
+
+  // [UPDATED] FIX: Dynamic Balance Logic
   let displayBalance = user?.creditBalance ?? 0;
   let balanceLabel = isBn ? "উপলব্ধ ক্রেডিট" : "Credit Balance";
   let balanceDesc = isBn ? "আইনি অডিট ও চ্যাটের জন্য কার্যকর" : "For audits & legal consultations";
@@ -147,7 +173,7 @@ export default function ProfilePage() {
   } else if (isEnterpriseMember) {
     const quota = user?.member_credit_quota ?? 0;
     const used = user?.member_credit_used ?? 0;
-    displayBalance = Math.max(0, quota - used); // ✅ Member sees remaining quota
+    displayBalance = Math.max(0, quota - used); // [UPDATED] Member sees remaining quota
     balanceLabel = isBn ? "আপনার কোটা" : "Your Quota";
     balanceDesc = isBn ? `মোট বরাদ্দ: ${quota} ক্রেডিট` : `Total Allocated: ${quota} credits`;
     topUpLabel = isBn ? "কোটা দেখুন" : "View Quota";
@@ -410,12 +436,12 @@ export default function ProfilePage() {
                 {isLawyer ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 px-2.5 py-0.5 rounded-full border border-indigo-500/20">
                     <Gavel className="w-3 h-3" />
-                    <span>{isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer"}</span>
+                    <span>{isBn ? (verificationStatus === "verified" ? "নিবন্ধিত আইনজীবী" : "আইনজীবী (ভেরিফিকেশন পেন্ডিং)") : (verificationStatus === "verified" ? "Lawyer" : "Lawyer (Pending Verification)")}</span>
                   </span>
                 ) : isEnterpriseAdmin ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
                     <Building2 className="w-3 h-3" />
-                    <span>{isBn ? "এন্টারপ্রাইজ অ্যাডমিন" : "Enterprise Admin"}</span>
+                    <span>{isBn ? (isPendingEnterpriseAdmin ? "এন্টারপ্রাইজ অ্যাডমিন (অনুমোদন অপেক্ষমাণ)" : "এন্টারপ্রাইজ অ্যাডমিন") : (isPendingEnterpriseAdmin ? "Enterprise Admin (Pending Review)" : "Enterprise Admin")}</span>
                   </span>
                 ) : isEnterpriseMember ? (
                   <span className="inline-flex items-center gap-1 font-semibold bg-purple-500/10 text-purple-600 dark:text-purple-400 px-2.5 py-0.5 rounded-full border border-purple-500/20">
@@ -479,16 +505,24 @@ export default function ProfilePage() {
               </p>
               <p className="text-[11px] text-(--text-muted) mt-0.5">
                 {isLawyer
-                  ? isBn ? "bKash উত্তোলন ও আয়ের হিসাব" : "bKash payout & earnings ledger"
+                  ? isBn ? "পেআউট ও আয়ের হিসাব (bKash / Nagad / Bank)" : "Multi-channel payout & earnings ledger"
                   : balanceDesc}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/pricing")}
+              onClick={() => {
+                if (isPendingEnterpriseAdmin) {
+                  router.push("/enterprise/pending");
+                } else if (isLawyer) {
+                  router.push(verificationStatus === "verified" ? "/lawyer/archive" : "/lawyer/pending");
+                } else {
+                  router.push("/pricing");
+                }
+              }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-(--accent-solid) hover:underline cursor-pointer pt-1"
             >
-              <span>{isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : topUpLabel}</span>
+              <span>{isPendingEnterpriseAdmin ? (isBn ? "ভেরিফিকেশন স্ট্যাটাস" : "View Status") : isLawyer ? (isBn ? "উপার্জন ও উত্তোলন" : "View Earnings") : topUpLabel}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -497,7 +531,9 @@ export default function ProfilePage() {
           <div className="p-5 rounded-2xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "এন্টারপ্রাইজ চুক্তি" : "Enterprise Contracts"
+                  : isLawyer
                   ? isBn ? "সিলমোহরকৃত চুক্তি" : "Sealed Contracts"
                   : isBn ? "সংরক্ষিত চুক্তি অডিট" : "Archived Audits"}
               </span>
@@ -505,20 +541,30 @@ export default function ProfilePage() {
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-(--text-primary)">
-                {auditCount !== null ? auditCount : "0"}
+                {isPendingEnterpriseAdmin ? "0" : (auditCount !== null ? auditCount : "0")}
               </p>
               <p className="text-[11px] text-(--text-muted) mt-0.5">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "অনুমোদনের পর টিম অডিট দৃশ্যমান হবে" : "Team audits visible once approved"
+                  : isLawyer
                   ? isBn ? "আইনগতভাবে অনুমোদিত চুক্তিপত্র" : "Statutorily sealed memos"
                   : isBn ? "যাচাইকৃত ও সংরক্ষিত চুক্তিপত্র" : "Analyzed contract memos"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push(isLawyer ? "/lawyer/archive" : "/archive")}
+              onClick={() => {
+                if (isPendingEnterpriseAdmin) {
+                  router.push("/enterprise/pending");
+                } else if (isLawyer) {
+                  router.push(verificationStatus === "verified" ? "/lawyer/archive" : "/lawyer/pending");
+                } else {
+                  router.push("/archive");
+                }
+              }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-(--text-primary) hover:underline cursor-pointer pt-1"
             >
-              <span>{isBn ? "আর্কাইভ দেখুন" : "View archive"}</span>
+              <span>{isPendingEnterpriseAdmin ? (isBn ? "স্ট্যাটাস দেখুন" : "View Status") : (isBn ? "আর্কাইভ দেখুন" : "View archive")}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -527,32 +573,46 @@ export default function ProfilePage() {
           <div className="p-5 rounded-2xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col justify-between space-y-3">
             <div className="flex items-center justify-between text-neutral-500">
               <span className="text-xs font-medium uppercase tracking-wider">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "এন্টারপ্রাইজ ওয়ার্কস্পেস" : "Enterprise Workspace"
+                  : isLawyer
                   ? isBn ? "রিভিউ কিউ ও কাজ" : "Review Station"
                   : isBn ? "কপাইলট সেশন" : "Legal Sessions"}
               </span>
               {isLawyer ? (
                 <Inbox className="w-4 h-4 text-purple-500" />
+              ) : isPendingEnterpriseAdmin ? (
+                <Building2 className="w-4 h-4 text-purple-500" />
               ) : (
                 <MessageSquare className="w-4 h-4 text-emerald-500" />
               )}
             </div>
             <div>
               <p className="text-2xl font-mono font-bold text-(--text-primary)">
-                {isLawyer ? (isBn ? "পেন্ডিং তালিকা" : "Review Queue") : (chatCount !== null ? chatCount : "—")}
+                {isPendingEnterpriseAdmin ? "—" : isLawyer ? (isBn ? "পেন্ডিং তালিকা" : "Review Queue") : (chatCount !== null ? chatCount : "—")}
               </p>
               <p className="text-[11px] text-(--text-muted) mt-0.5">
-                {isLawyer
+                {isPendingEnterpriseAdmin
+                  ? isBn ? "অ্যাডমিন অনুমোদন সম্পন্ন হলে আনলক হবে" : "Unlocks once approved by admin"
+                  : isLawyer
                   ? isBn ? "নতুন ক্লায়েন্ট চুক্তি পর্যালোচনা" : "Pending client contracts"
                   : isBn ? "বাংলাদেশ আইনের প্রশ্নোত্তর" : "BD statute consultations"}
               </p>
             </div>
             <button
               type="button"
-              onClick={() => router.push(isLawyer ? "/lawyer/pending" : "/copilot")}
+              onClick={() => {
+                if (isPendingEnterpriseAdmin) {
+                  router.push("/enterprise/pending");
+                } else if (isLawyer) {
+                  router.push("/lawyer/pending");
+                } else {
+                  router.push("/copilot");
+                }
+              }}
               className="inline-flex items-center gap-1 text-xs font-semibold text-(--text-primary) hover:underline cursor-pointer pt-1"
             >
-              <span>{isLawyer ? (isBn ? "রিভিউ স্টেশন খুলুন" : "Open Review Station") : (isBn ? "চ্যাট শুরু করুন" : "Open copilot")}</span>
+              <span>{isPendingEnterpriseAdmin ? (isBn ? "অনুমোদন স্ট্যাটাস দেখুন" : "View Approval Status") : isLawyer ? (isBn ? "রিভিউ স্টেশন খুলুন" : "Open Review Station") : (isBn ? "চ্যাট শুরু করুন" : "Open copilot")}</span>
               <ArrowRight className="w-3 h-3" />
             </button>
           </div>
@@ -712,25 +772,85 @@ export default function ProfilePage() {
                 {lawyerProfile.barAssociation || "Supreme Court Bar Association"}
               </div>
 
-              <div className="sm:col-span-3 pt-2 flex items-center gap-4 flex-wrap">
-                <button
-                  type="button"
-                  onClick={() => router.push("/lawyer/pending")}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
-                >
-                  <span>{isBn ? "আইনজীবী পোর্টালে যান →" : "Go to Lawyer Portal →"}</span>
-                </button>
-
-                {verificationStatus !== "verified" && (
+              {verificationStatus === "verified" ? (
+                <div className="sm:col-span-3 pt-3 flex items-center gap-3 flex-wrap">
                   <button
                     type="button"
-                    onClick={() => router.push("/admin")}
-                    className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    onClick={() => router.push("/lawyer/pending")}
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white transition-colors cursor-pointer shadow-xs flex items-center gap-1.5"
                   >
-                    <span>{isBn ? "অ্যাডমিন প্যানেলে অনুমোদন দেখুন →" : "Open Admin Approval Panel →"}</span>
+                    <Gavel className="w-3.5 h-3.5" />
+                    <span>{isBn ? "আইনজীবী ওয়ার্কস্পেসে প্রবেশ করুন →" : "Open Advocate Workspace →"}</span>
                   </button>
-                )}
-              </div>
+                  <button
+                    type="button"
+                    onClick={() => router.push("/lawyer/archive")}
+                    className="px-4 py-2.5 rounded-xl text-xs font-semibold border border-(--text-primary)/15 hover:bg-(--text-primary)/5 text-(--text-primary) transition-colors cursor-pointer"
+                  >
+                    <span>{isBn ? "সম্পন্ন অডিট হিস্টোরি" : "Verified Review Archive"}</span>
+                  </button>
+                </div>
+              ) : verificationStatus === "rejected" ? (
+                <div className="sm:col-span-3 pt-3 space-y-2">
+                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-700 dark:text-rose-300 space-y-1">
+                    <p className="font-bold flex items-center gap-1.5">
+                      <AlertCircle className="w-4 h-4 shrink-0" />
+                      <span>{isBn ? "আইনজীবী আবেদন বাতিল করা হয়েছে" : "Advocate Application Rejected"}</span>
+                    </p>
+                    <p className="text-[11px] text-rose-700/80 dark:text-rose-300/80 leading-relaxed">
+                      {isBn
+                        ? "দুঃখিত, আপনার বার কাউন্সিল সনদটি যাচাই করা সম্ভব হয়নি।"
+                        : "We could not verify your credentials with the Bangladesh Bar Council registry."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="sm:col-span-3 pt-3 space-y-3">
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs space-y-2">
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-bold">
+                        <Clock className="w-4 h-4 animate-pulse shrink-0" />
+                        <span>{isBn ? "সিস্টেম অ্যাডমিন ভেরিফিকেশন প্রক্রিয়াধীন" : "System Admin Verification Pending"}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleRefreshLawyerStatus}
+                        disabled={isCheckingLawyerStatus}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${isCheckingLawyerStatus ? "animate-spin" : ""}`} />
+                        <span>{isCheckingLawyerStatus ? (isBn ? "চেক হচ্ছে..." : "Checking...") : (isBn ? "স্ট্যাটাস রিফ্রেশ করুন" : "Refresh Status")}</span>
+                      </button>
+                    </div>
+                    <p className="text-amber-800/80 dark:text-amber-200/80 text-[11px] leading-relaxed">
+                      {isBn
+                        ? "আপনার বার কাউন্সিল সনদটি বর্তমানে সিস্টেম অ্যাডমিনের পর্যালোচনায় রয়েছে। অ্যাডমিন অনুমোদন প্রদান করার সাথে সাথে ওয়ার্কস্পেস আনলক হবে এবং ক্লায়েন্টদের চুক্তি আপনার কিউতে আসবে।"
+                        : "Your Bar Council credentials are currently awaiting system admin verification. Once approved, the lawyer review workspace and contract dispatch queue will be activated automatically."}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-4 flex-wrap pt-1">
+                    <button
+                      type="button"
+                      onClick={() => router.push("/lawyer/pending")}
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                    >
+                      <Lock className="w-3.5 h-3.5 text-amber-600" />
+                      <span>{isBn ? "ওয়ার্কস্পেস প্রিভিউ ও স্ট্যাটাস দেখুন (লকড) →" : "View Workspace Queue Status (Locked) →"}</span>
+                    </button>
+
+                    {String(user?.role).toUpperCase() === "ADMIN" && (
+                      <button
+                        type="button"
+                        onClick={() => router.push("/admin")}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                      >
+                        <span>{isBn ? "অ্যাডমিন প্যানেলে অনুমোদন করুন →" : "Open Admin Approval Panel →"}</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

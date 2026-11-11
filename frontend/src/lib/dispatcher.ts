@@ -125,7 +125,7 @@ export function runDispatchAlgorithm(
       if (domainMatch >= 1.0) reasons.push("Domain Specialist");
       if (affinityBonus > 0) reasons.push("Client Continuity");
       if (workloadPenalty < 0.4) reasons.push("Optimal SLA Capacity");
-      reasons.push(`${lawyer.rating.toFixed(2)}★ Rating`);
+      reasons.push(`${lawyer.rating.toFixed(1)}/5.0 Rating`);
       bestReason = reasons.join(" • ");
     }
   }

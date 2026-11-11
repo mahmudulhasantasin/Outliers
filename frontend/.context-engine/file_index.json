@@ -1,0 +1,386 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-08T16:12:58+00:00",
+  "root": "C:\\Users\\tasin\\Desktop\\Outliers\\frontend",
+  "file_count": 54,
+  "files": [
+    {
+      "path": ".gitignore",
+      "extension": "",
+      "size_bytes": 521,
+      "sha256": "cfdbd5a321f3ba279e434c025fc9a44bf2d3bd3a1af5affb8429d79bd18af054",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "AGENTS.md",
+      "extension": ".md",
+      "size_bytes": 2789,
+      "sha256": "4b28bd6874fb275e6c2a4b761911220b356c4e4be266e7fee45bdff61670e707",
+      "modified_at": "2026-11-08T16:10:30+00:00"
+    },
+    {
+      "path": "README.md",
+      "extension": ".md",
+      "size_bytes": 1486,
+      "sha256": "3b3ed71ebf50e973209bc634f6849e8ecf235a6c0686c285e1f36af5caa1c2cc",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "extension": ".mjs",
+      "size_bytes": 1007,
+      "sha256": "ee6eddab53de71e07fba00a8711296dfaade9aeb83aa8374e18a96adf60ec266",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "next-env.d.ts",
+      "extension": ".ts",
+      "size_bytes": 303,
+      "sha256": "b8b3a344484b959af5e4e3fc1a1609dac3cb9ece0cdeb6c145be29bc4c491000",
+      "modified_at": "2026-10-26T17:46:12+00:00"
+    },
+    {
+      "path": "next.config.ts",
+      "extension": ".ts",
+      "size_bytes": 1037,
+      "sha256": "000240eb69f79747384eb8b78ad462f71ba950d8acfde7202f8c2fe9e5c61906",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "package-lock.json",
+      "extension": ".json",
+      "size_bytes": 246978,
+      "sha256": "905d17b6cdfa34126843bdba75829091fcb6c8871614ebcb9c26eee8920292d2",
+      "modified_at": "2026-10-26T17:52:11+00:00"
+    },
+    {
+      "path": "package.json",
+      "extension": ".json",
+      "size_bytes": 808,
+      "sha256": "49f6bc1d8b28f12b8d71f7daff5ebb4bd5123338558ffbab3bfa468f7ab36730",
+      "modified_at": "2026-10-26T17:52:11+00:00"
+    },
+    {
+      "path": "tsconfig.json",
+      "extension": ".json",
+      "size_bytes": 704,
+      "sha256": "dbacf04aa5f38c1ce4b0f030fbb84e5adff19306fb785b2e4aafef9c58705658",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/globals.css",
+      "extension": ".css",
+      "size_bytes": 4956,
+      "sha256": "b8f82197b6f1af35721d42af8092a1556d0340d0c63573e73e460310b4e1b658",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/layout.tsx",
+      "extension": ".tsx",
+      "size_bytes": 2297,
+      "sha256": "bafaeb08b58e24cc4f99a08d81105cdd51e2e562faca55861aa21ca5201a9aab",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 157404,
+      "sha256": "22705bf56ec85792259c64bb2cdebc8339fddc9848756fe5e125c19aefa676f2",
+      "modified_at": "2026-10-26T17:37:04+00:00"
+    },
+    {
+      "path": "src/app/admin/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 65993,
+      "sha256": "5f630c6faa9872fc936b35d2f7b7f0530d31617e5194fdacfe39564230d84350",
+      "modified_at": "2026-10-26T18:08:23+00:00"
+    },
+    {
+      "path": "src/app/archive/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 45204,
+      "sha256": "4aaa5eef10016fea1c7c4a082b5635a8e1c25b77318210823b667abbe5688cb6",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/contractmind/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 27476,
+      "sha256": "1e860dcc28a276c116c647cf4ae2c17182e47e057966d5a92e160ca061a4c466",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/copilot/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 50799,
+      "sha256": "829636336b7c2d6aa39c1ae2fa8730977e2984fd8b44d47654a034bd523e14c0",
+      "modified_at": "2026-10-26T18:25:17+00:00"
+    },
+    {
+      "path": "src/app/dashboard/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 966,
+      "sha256": "cc796d121d68178b230d18a887c84c2f47e8193abba3fc4aded125c9e99d8690",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/enterprise/admin/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 65777,
+      "sha256": "1f2fef91c5dfd6c8e62b08867835057ed4cfb9bab6a716c9f3b88aa612e3d2a7",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/enterprise/member/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 15851,
+      "sha256": "ae1d0429dd0d92f30e4b12a8ce28d3e47c7eebda42d0e16340d70298cbd23d06",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/lawyer/archive/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 32813,
+      "sha256": "2f2cd43ace71f5f42303c5f1890ae3b84dbdf0f598e3677f10c3492210215a19",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/lawyer/pending/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 56681,
+      "sha256": "bc2f6b153ac0127c9ece0018ef544fc5d1936c1ff81a544e6c3c2a161bc0e1ef",
+      "modified_at": "2026-10-26T19:03:00+00:00"
+    },
+    {
+      "path": "src/app/login/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 889,
+      "sha256": "bff2ef096c59cb3b4f14ba317955ef33c10b176a65d3a9d43e32198f683be7c1",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/pricing/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 39773,
+      "sha256": "92616a34b729d603bb730452ba42b9b3a02c600e235c0251338053dc33674dc1",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/profile/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 47958,
+      "sha256": "6b521cc028a734a83c5bd4476372f1ec82b490b10277d5a43110a260b6fabcc2",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/app/settings/page.tsx",
+      "extension": ".tsx",
+      "size_bytes": 43228,
+      "sha256": "58939e7c51b19a28d1a8ce8ebcc9ec2981e9fafe24f81db6aba2c2ebaf9da661",
+      "modified_at": "2026-10-26T18:34:37+00:00"
+    },
+    {
+      "path": "src/components/dock/AppDock.tsx",
+      "extension": ".tsx",
+      "size_bytes": 11345,
+      "sha256": "4d06010915d6f916ebee70fefaf90ccf227f6b16d7664fd037d81f5383a47aa3",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/dock/VerticalDock.tsx",
+      "extension": ".tsx",
+      "size_bytes": 6310,
+      "sha256": "6cf5c99aa53484a05622363e8cc2ab6db0437dfcdd1e6f752498796ff833cc14",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/Aurora.tsx",
+      "extension": ".tsx",
+      "size_bytes": 7261,
+      "sha256": "8f52c8ccb50cc4ad712ceeec87d4f9f88838959e70972948e3401ebec6c92412",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/CountUp.tsx",
+      "extension": ".tsx",
+      "size_bytes": 2168,
+      "sha256": "de3e4059f6e04b8606f3c08a3bd2d9e3266ecf260ccf03d23eb2db73e2612395",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/DitherVeil.tsx",
+      "extension": ".tsx",
+      "size_bytes": 28511,
+      "sha256": "be964d92929dbf91866e267ecc2ce27775414a35813888c97a7ec946c9064d5f",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/DotField.tsx",
+      "extension": ".tsx",
+      "size_bytes": 9250,
+      "sha256": "144ada0645c902d095c554a76ac3c74feb2e6c82ad801644582eef08a6ea56f6",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/FadeContent.tsx",
+      "extension": ".tsx",
+      "size_bytes": 14196,
+      "sha256": "c836563b863590cdc3986b0781256ab6b01a421d044f37a67cf02adce05fb8d5",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/GradientWaves.tsx",
+      "extension": ".tsx",
+      "size_bytes": 11958,
+      "sha256": "8d10389cae3bb9641465b700467d6d96bad4ed566d0ba531711ce9b28910ef50",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/PixelSwap.tsx",
+      "extension": ".tsx",
+      "size_bytes": 17086,
+      "sha256": "b757aa31859562c3cdafa9184bfb63b1068ae7cbf4cca99155d71c7785b091dd",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/SmoothScrollProvider.tsx",
+      "extension": ".tsx",
+      "size_bytes": 3427,
+      "sha256": "f689a6678528306ab79e3bcd04c30394d2e8ba1d16bfe1d5f4f752f707001222",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/effects/ThoughtLine.tsx",
+      "extension": ".tsx",
+      "size_bytes": 14415,
+      "sha256": "12582b3249865dbbf1809103ec6aace922168f8af91715c05911d90db9319291",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/layout/AppShell.tsx",
+      "extension": ".tsx",
+      "size_bytes": 1476,
+      "sha256": "f6d172b38f680b1e195cbeb70a2dab3db9f61ebfbf7d6bfa2745391ee3e644c8",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/markdown/MarkdownViewer.tsx",
+      "extension": ".tsx",
+      "size_bytes": 21075,
+      "sha256": "cc47f3dbae83a6dd82324546fce05c1f0f63db6c29f2fd748dfcd5e7d052f961",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/components/prompt/PromptBar.tsx",
+      "extension": ".tsx",
+      "size_bytes": 15416,
+      "sha256": "0e4255e2c070f7a94a391db62ed40b3493f68ff4ce1e1f2f9ae0fb12346d5f85",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/context/AuthContext.tsx",
+      "extension": ".tsx",
+      "size_bytes": 24076,
+      "sha256": "c2bcdbb12f54ceba041f91304e7df4e0618223ac946015862a705f8e777a0909",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/context/LanguageContext.tsx",
+      "extension": ".tsx",
+      "size_bytes": 7323,
+      "sha256": "ea491df011ed6c873a32e2653cb37c80663482fcb930fa41a8c4a9ad55902c39",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/context/PersonaContext.tsx",
+      "extension": ".tsx",
+      "size_bytes": 3311,
+      "sha256": "e07fd409757af82fb16e20b6404bc883bc6a1bb301388930323816df629de12d",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/context/ThemeContext.tsx",
+      "extension": ".tsx",
+      "size_bytes": 1467,
+      "sha256": "9a336376b69027a3cf380806fde2b9365459f4659a61d42b429eda3ac1a821b9",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/data/contractAudits.ts",
+      "extension": ".ts",
+      "size_bytes": 33433,
+      "sha256": "ac8a3a93dde7c0eec835cbd366b5aec65a4ae7661b9693eb07a8c9bfb2165ce3",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/data/enterpriseData.ts",
+      "extension": ".ts",
+      "size_bytes": 16054,
+      "sha256": "d3f34914d16dcb068aa6716761c1cdc0342ac7278c30a54d8e7189ac9a9828e6",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/data/sampleContracts.ts",
+      "extension": ".ts",
+      "size_bytes": 6246,
+      "sha256": "5b1b9d60799993ff2ad6b331492502647fddc63f6547a1fb59d71379302596f3",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/data/statutoryProvisions.ts",
+      "extension": ".ts",
+      "size_bytes": 9522,
+      "sha256": "698e0060fdc491db34b5cdb3675375a341173108e9f7c318e89f0c691811cfbe",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/lib/api.ts",
+      "extension": ".ts",
+      "size_bytes": 5866,
+      "sha256": "10c19dacab24494769dda363abc4498174f5bc2165984782459704d916a19637",
+      "modified_at": "2026-10-26T18:04:05+00:00"
+    },
+    {
+      "path": "src/lib/apiServices.ts",
+      "extension": ".ts",
+      "size_bytes": 55788,
+      "sha256": "0a92af1906e675a38271e32432deff178844e11c87106cab50ecd06b3c46fba5",
+      "modified_at": "2026-10-26T18:58:58+00:00"
+    },
+    {
+      "path": "src/lib/auth.ts",
+      "extension": ".ts",
+      "size_bytes": 3441,
+      "sha256": "3f73e78353d3c98db0f9fa84083bb2f4ea631330ea9cfcbe27f5d3daa8956a53",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/lib/dispatcher.ts",
+      "extension": ".ts",
+      "size_bytes": 3864,
+      "sha256": "0ce247e96861f5b69a57aa51c2de402b7bd65030fdcd0e1cea3769a96e65324b",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/lib/markdownContractGenerator.ts",
+      "extension": ".ts",
+      "size_bytes": 17283,
+      "sha256": "aafb866e2e4911d4a5393e36429efb2b896f699a3aad0ed983948c470f0646cf",
+      "modified_at": "2026-10-26T17:07:13+00:00"
+    },
+    {
+      "path": "src/lib/piiMasker.ts",
+      "extension": ".ts",
+      "size_bytes": 2427,
+      "sha256": "6246f0839fc321dd724c9e5a9edbe4ae7aa4ce3e52a327e63e0e93eb9afc7a05",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    },
+    {
+      "path": "src/lib/utils.ts",
+      "extension": ".ts",
+      "size_bytes": 175,
+      "sha256": "9e45d6d21e0d57bf85930ba2bf6fdd9f5f0175d1129844356081a6050975deb1",
+      "modified_at": "2026-10-26T15:13:31+00:00"
+    }
+  ]
+}

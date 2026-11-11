@@ -9,9 +9,14 @@ import { useLanguage } from "@/context/LanguageContext";
 import {
   getAdminDashboardStats,
   getAdminPendingLawyers,
-  approveLawyer,
   getAdminPendingWithdrawals,
   markAdminWithdrawalPaid,
+  approveAdminWithdrawal, // [UPDATED] Added for 2-step withdrawal flow
+  AdminPaymentRecord,
+  getAdminPayments,
+  reconcileAdminPayment,
+  adjustAdminUserCredits,
+  adjustAdminEnterpriseCredits,
   getAdminPendingPayments,
   approveAdminPayment,
   getAdminUsers,
@@ -33,7 +38,7 @@ import {
   X, Eye, Loader2, DollarSign, TrendingUp, TrendingDown, Banknote,
   Search, ChevronRight, AlertCircle, ArrowUpRight, ArrowDownRight,
   LayoutDashboard, UserCheck, Building, CircleDollarSign, LogOut,
-  Clock, CheckCheck, XCircle,
+  Clock, CheckCheck, XCircle, Coins, ShieldCheck,
 } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -44,10 +49,18 @@ interface UserDetailData {
   phone: string | null;
   role: string;
   credit_balance: number;
+  member_credit_quota?: number;
+  member_credit_used?: number;
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
   enterprise_id: number | null;
+  enterprise_details?: {
+    id: number;
+    name: string;
+    pool_balance: number;
+    member_limit: number;
+  } | null;
   profile_photo_url?: string | null;
   lawyer_profile: {
     bar_council_id: string;
@@ -275,6 +288,23 @@ export default function AdminPage() {
   const [financials, setFinancials] = useState<AdminFinancials | null>(null);
   const [lawyersList, setLawyersList] = useState<AdminPendingLawyer[]>([]);
   const [withdrawalsList, setWithdrawalsList] = useState<WithdrawalRequest[]>([]);
+  const [gatewayPayments, setGatewayPayments] = useState<AdminPaymentRecord[]>([]);
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState<string>("ALL");
+  const [paymentSearch, setPaymentSearch] = useState<string>("");
+  const [reconcilingPaymentId, setReconcilingPaymentId] = useState<string | number | null>(null);
+  const [adjustTarget, setAdjustTarget] = useState<{
+    kind: "user" | "enterprise";
+    id: number;
+    label: string;
+    currentBalance: number;
+    enterpriseId?: number | null;
+    enterpriseName?: string | null;
+    enterpriseBalance?: number | null;
+  } | null>(null);
+  const [adjustScope, setAdjustScope] = useState<"user" | "enterprise">("user");
+  const [adjustAmount, setAdjustAmount] = useState<string>("");
+  const [adjustReason, setAdjustReason] = useState<string>("");
+  const [adjusting, setAdjusting] = useState(false);
   const [paymentsList, setPaymentsList] = useState<AdminPendingPayment[]>([]);
   const [usersList, setUsersList] = useState<AdminUser[]>([]);
   const [enterprisesList, setEnterprisesList] = useState<AdminPendingEnterprise[]>([]);
@@ -303,12 +333,13 @@ export default function AdminPage() {
     if (!silent) setIsLoading(true);
     else setIsRefreshing(true);
     try {
-      const [statsRes, finRes, lawyersRes, withRes, payRes, usersRes, entRes] = await Promise.allSettled([
+      const [statsRes, finRes, lawyersRes, withRes, payRes, gwPayRes, usersRes, entRes] = await Promise.allSettled([
         getAdminDashboardStats(),
         getAdminFinancials(),
         getAdminPendingLawyers(),
         getAdminPendingWithdrawals(),
         getAdminPendingPayments(),
+        getAdminPayments(),
         getAdminUsers(),
         getAdminPendingEnterprises(),
       ]);
@@ -317,6 +348,7 @@ export default function AdminPage() {
       if (lawyersRes.status === "fulfilled" && Array.isArray(lawyersRes.value)) setLawyersList(lawyersRes.value);
       if (withRes.status === "fulfilled" && Array.isArray(withRes.value)) setWithdrawalsList(withRes.value);
       if (payRes.status === "fulfilled" && Array.isArray(payRes.value)) setPaymentsList(payRes.value);
+      if (gwPayRes.status === "fulfilled" && Array.isArray(gwPayRes.value)) setGatewayPayments(gwPayRes.value);
       if (usersRes.status === "fulfilled" && Array.isArray(usersRes.value)) setUsersList(usersRes.value);
       if (entRes.status === "fulfilled" && Array.isArray(entRes.value)) setEnterprisesList(entRes.value);
     } catch {
@@ -342,10 +374,10 @@ export default function AdminPage() {
 
   const handleApproveLawyer = async (lawyer: AdminPendingLawyer) => {
     try {
-      await approveLawyerByAdmin(lawyer.id);
-      await approveLawyer(lawyer.id).catch(() => {});
-      setLawyersList((prev) => prev.filter((l) => l.id !== lawyer.id));
-      showMessage(`✓ Advocate ${lawyer.full_name} approved successfully!`);
+      // [UPDATED] Only call the Context API once, using the correct lawyer_id
+      await approveLawyerByAdmin(lawyer.lawyer_id);
+      setLawyersList((prev) => prev.filter((l) => l.lawyer_id !== lawyer.lawyer_id));
+      showMessage(`Advocate ${lawyer.full_name} approved successfully!`);
       loadData(true);
     } catch { showMessage("Approval failed. Please try again.", "error"); }
   };
@@ -357,6 +389,97 @@ export default function AdminPage() {
       showMessage(isBn ? "পেমেন্ট অনুমোদিত হয়েছে এবং ক্রেডিট যুক্ত হয়েছে।" : "Payment approved & credits added.");
       loadData(true);
     } catch { showMessage("Failed to approve payment.", "error"); }
+  };
+
+  const handleReconcilePayment = async (id: string | number) => {
+    setReconcilingPaymentId(id);
+    try {
+      const res = await reconcileAdminPayment(id);
+      if (res.status === "APPROVED") {
+        showMessage(
+          isBn
+            ? `SSLCommerz থেকে যাচাইকৃত: ${res.credits_granted} ক্রেডিট যুক্ত হয়েছে।`
+            : `Reconciled via SSLCommerz (+${res.credits_granted} credits).`
+        );
+      } else {
+        showMessage(res.message || "Payment is not completed on SSLCommerz.", "error");
+      }
+      const updated = await getAdminPayments({
+        status: paymentStatusFilter,
+        search: paymentSearch,
+      });
+      setGatewayPayments(updated);
+      loadData(true);
+    } catch (err: any) {
+      showMessage(err?.message || "Reconcile request failed.", "error");
+    } finally {
+      setReconcilingPaymentId(null);
+    }
+  };
+
+  const handleSubmitAdjustCredits = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!adjustTarget) return;
+    const numericAmount = parseInt(adjustAmount, 10);
+    if (Number.isNaN(numericAmount) || numericAmount === 0) {
+      showMessage(
+        isBn ? "সঠিক ক্রেডিট পরিমাণ দিন (০ বাদে)।" : "Enter a valid non-zero credit amount.",
+        "error"
+      );
+      return;
+    }
+    if (adjustReason.trim().length < 3) {
+      showMessage(
+        isBn ? "কমপক্ষে ৩ অক্ষরের কারণ উল্লেখ করুন।" : "Please provide a short reason (min 3 characters).",
+        "error"
+      );
+      return;
+    }
+
+    setAdjusting(true);
+    try {
+      const targetId =
+        adjustScope === "enterprise" && adjustTarget.enterpriseId
+          ? adjustTarget.enterpriseId
+          : adjustTarget.id;
+      const res =
+        adjustScope === "enterprise" && adjustTarget.enterpriseId
+          ? await adjustAdminEnterpriseCredits(targetId, numericAmount, adjustReason.trim())
+          : await adjustAdminUserCredits(targetId, numericAmount, adjustReason.trim());
+
+      showMessage(
+        isBn
+          ? `ক্রেডিট আপডেট হয়েছে। নতুন ব্যালেন্স: ${res.new_balance.toLocaleString()}`
+          : `Credits updated cleanly. New balance: ${res.new_balance.toLocaleString()}`
+      );
+      setAdjustTarget(null);
+      setAdjustAmount("");
+      setAdjustReason("");
+      if (viewingUserId) {
+        handleViewUser(viewingUserId);
+      }
+      loadData(true);
+    } catch (err: any) {
+      showMessage(err?.message || "Failed to adjust credits.", "error");
+    } finally {
+      setAdjusting(false);
+    }
+  };
+
+  // [UPDATED] NEW: Fix withdrawal flow (2-step process)
+  const handleMarkWithdrawalPaid = async (id: string | number, trxId: string) => {
+    try {
+      const currentRow = withdrawalsList.find((item) => item.id === id);
+      if (!currentRow || currentRow.status === "PENDING") {
+        await approveAdminWithdrawal(id);
+      }
+      await markAdminWithdrawalPaid(id, trxId);
+      setWithdrawalsList((prev) => prev.map(w => w.id === id ? { ...w, status: "PAID" } : w));
+      showMessage(isBn ? "উইথড্রয়াল সফলভাবে পরিশোধিত হয়েছে।" : "Withdrawal approved and marked as paid.");
+      loadData(true);
+    } catch {
+      showMessage(isBn ? "উইথড্রয়াল প্রসেস করতে ব্যর্থ হয়েছে।" : "Failed to process withdrawal payout.", "error");
+    }
   };
 
   const handleApproveEnterprise = async (id: number) => {
@@ -502,7 +625,7 @@ export default function AdminPage() {
 
             {/* Stat Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              <StatCard label="Total Revenue" value={revBdt} sub="From bKash Top-ups" icon={Banknote} color="emerald" trend="up" prefix="৳" />
+              <StatCard label="Total Revenue" value={revBdt} sub="From SSLCommerz Top-ups" icon={Banknote} color="emerald" trend="up" prefix="৳" />
               <StatCard label="Pending Payouts" value={pendingPayouts} sub="Owed to Lawyers" icon={TrendingDown} color="rose" trend="down" prefix="৳" />
               <StatCard label="Net Position" value={netPosition} sub="Revenue minus Payouts" icon={TrendingUp} color="indigo" trend="up" prefix="৳" />
               <StatCard label="Total Users" value={totalUsers} sub="Registered accounts" icon={Users} color="blue" />
@@ -559,9 +682,19 @@ export default function AdminPage() {
                 <div key={i} className={`${item.bg} rounded-2xl p-4 border border-(--text-primary)/5`}>
                   <p className="text-[10px] text-(--text-muted) font-semibold uppercase tracking-wider mb-1">{item.label}</p>
                   <p className={`text-3xl font-mono font-black ${item.color}`}>{item.value}</p>
-                  <p className="text-[10px] text-(--text-muted) mt-1 font-medium">
-                    {item.value > 0 ? "⚠ Needs attention" : "✓ All clear"}
-                  </p>
+                  <div className="flex items-center gap-1 text-[10px] text-(--text-muted) mt-1 font-medium">
+                    {item.value > 0 ? (
+                      <>
+                        <AlertCircle className="w-3 h-3 text-amber-500 shrink-0" />
+                        <span>{isBn ? "মনোযোগ প্রয়োজন" : "Needs attention"}</span>
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>{isBn ? "সব সম্পন্ন" : "All clear"}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -572,35 +705,179 @@ export default function AdminPage() {
         {/* TAB: PAYMENTS                                                       */}
         {/* ════════════════════════════════════════════════════════════════════ */}
         {activeTab === "payments" && (
-          <div className="space-y-4 animate-in fade-in duration-300">
-            <SectionHeader icon={CreditCard} title={isBn ? "অপেক্ষমান bKash পেমেন্ট" : "Pending bKash Payments"} sub={isBn ? "ম্যানুয়াল ট্রানজেকশন যাচাই করুন" : "Verify manual transactions"} count={paymentsList.length} />
-            <div className="space-y-3">
-              {paymentsList.map((p) => (
-                <Card key={p.payment_id} className="p-5">
-                  <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-black text-xl text-(--text-primary)">৳{p.amount_bdt}</span>
-                        <Badge variant="info">{p.total_credits} Credits</Badge>
-                        <Badge variant="warning"><Clock className="w-2.5 h-2.5" /> Pending</Badge>
-                      </div>
-                      <div className="space-y-0.5">
-                        <p className="text-xs text-(--text-muted)">
-                          Ref: <span className="font-mono font-bold text-(--text-primary)">{p.reference_code}</span>
-                        </p>
-                        <p className="text-xs text-(--text-muted)">
-                          TrxID: <span className="font-mono font-bold text-emerald-600">{p.trx_id}</span>
-                          <span className="ml-2">from <span className="font-mono text-(--text-primary)">{p.sender_number}</span></span>
-                        </p>
-                      </div>
+          <div className="space-y-5 animate-in fade-in duration-300">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              <SectionHeader
+                icon={ShieldCheck}
+                title={isBn ? "SSLCommerz পেমেন্ট ও গেটওয়ে লেজার" : "SSLCommerz Payments & Gateway Ledger"}
+                sub={isBn ? "val_id, bank_tran_id, কার্ড ও রিকনসিলিয়েশন দেখুন" : "Inspect gateway telemetry (val_id, bank_tran_id, card_type) & reconcile"}
+                count={gatewayPayments.length}
+              />
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="relative w-full sm:w-60">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-(--text-muted)" />
+                  <input
+                    type="text"
+                    value={paymentSearch}
+                    onChange={(e) => setPaymentSearch(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === "Enter") {
+                        setGatewayPayments(await getAdminPayments({ status: paymentStatusFilter, search: paymentSearch }));
+                      }
+                    }}
+                    placeholder={isBn ? "Ref, val_id, ইমেইল খুঁজুন..." : "Search ref, val_id, email..."}
+                    className="w-full pl-9 pr-3 py-2 rounded-xl text-xs border border-(--text-primary)/10 bg-(--bg-card) text-(--text-primary) placeholder:text-(--text-muted) outline-none focus:border-(--text-primary)/30"
+                  />
+                </div>
+                <select
+                  value={paymentStatusFilter}
+                  onChange={async (e) => {
+                    const st = e.target.value;
+                    setPaymentStatusFilter(st);
+                    setGatewayPayments(await getAdminPayments({ status: st, search: paymentSearch }));
+                  }}
+                  className="px-3 py-2 rounded-xl text-xs border border-(--text-primary)/10 bg-(--bg-card) text-(--text-primary) outline-none cursor-pointer"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="APPROVED">Approved</option>
+                  <option value="PENDING">Pending</option>
+                  <option value="FAILED">Failed</option>
+                  <option value="CANCELLED">Cancelled</option>
+                  <option value="EXPIRED">Expired</option>
+                </select>
+                <ActionBtn
+                  variant={undefined}
+                  onClick={async () => {
+                    setGatewayPayments(await getAdminPayments({ status: paymentStatusFilter, search: paymentSearch }));
+                  }}
+                >
+                  <RefreshCw className="w-3.5 h-3.5" /> Filter
+                </ActionBtn>
+              </div>
+            </div>
+
+            {/* Legacy Manual Verification Queue (only if any pre-migration records remain) */}
+            {paymentsList.length > 0 && (
+              <Card className="p-4 border-amber-500/30 bg-amber-50/40 dark:bg-amber-950/15 space-y-3">
+                <p className="text-xs font-bold text-amber-800 dark:text-amber-300">
+                  {isBn ? "লিগ্যাসি ম্যানুয়াল যাচাই কিউ" : "Legacy Pending Verification Queue"} ({paymentsList.length})
+                </p>
+                {paymentsList.map((p) => (
+                  <div key={p.payment_id} className="flex flex-col sm:flex-row justify-between gap-3 p-3 rounded-xl bg-(--bg-card) border border-(--text-primary)/8">
+                    <div className="space-y-1 text-xs">
+                      <p className="font-bold text-(--text-primary)">
+                        ৳{p.amount_bdt} · {p.total_credits} cr · <span className="font-mono">{p.reference_code}</span>
+                      </p>
+                      <p className="text-(--text-muted) font-mono">
+                        TrxID: {p.trx_id} · From: {p.sender_number}
+                      </p>
                     </div>
                     <ActionBtn onClick={() => handleApprovePayment(p.payment_id)} variant="success">
-                      <CheckCheck className="w-3.5 h-3.5" /> Approve Payment
+                      <CheckCheck className="w-3.5 h-3.5" /> Approve Legacy Payment
                     </ActionBtn>
                   </div>
-                </Card>
-              ))}
-              {paymentsList.length === 0 && <EmptyState message={isBn ? "কোনো অপেক্ষমান পেমেন্ট নেই।" : "No pending payments."} />}
+                ))}
+              </Card>
+            )}
+
+            {/* Gateway Ledger List */}
+            <div className="space-y-3">
+              {gatewayPayments.map((p) => {
+                const st = (p.status || "").toUpperCase();
+                const badgeVariant =
+                  st === "APPROVED"
+                    ? "success"
+                    : st === "PENDING" || st === "PENDING_VERIFICATION"
+                    ? "warning"
+                    : st === "CANCELLED"
+                    ? "neutral"
+                    : "danger";
+                const canReconcile = p.method === "SSLCOMMERZ" && (st === "PENDING" || st === "FAILED" || st === "EXPIRED");
+
+                return (
+                  <Card key={p.payment_id} className="p-5">
+                    <div className="flex flex-col lg:flex-row justify-between gap-4">
+                      <div className="space-y-2.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-black text-lg text-(--text-primary)">৳{p.amount_bdt.toLocaleString()}</span>
+                          <Badge variant="info">+{p.total_credits.toLocaleString()} Credits</Badge>
+                          <Badge variant={badgeVariant}>{st}</Badge>
+                          <Badge variant="purple">{p.method}</Badge>
+                          {p.card_type && (
+                            <Badge variant="neutral">
+                              {p.card_type}{p.card_issuer ? ` · ${p.card_issuer}` : ""}
+                            </Badge>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-(--text-muted)">
+                          <span>
+                            Ref: <span className="font-mono font-bold text-(--text-primary)">{p.reference_code}</span>
+                          </span>
+                          <span>
+                            Payer:{" "}
+                            <span className="font-semibold text-(--text-primary)">
+                              {p.enterprise_name
+                                ? `${p.enterprise_name} (${p.user_name || "Admin"})`
+                                : p.user_name || p.user_email || `User #${p.user_id}`}
+                            </span>
+                          </span>
+                          {p.user_email && <span className="font-mono text-[11px]">{p.user_email}</span>}
+                          {p.sender_number && <span className="font-mono">Phone: {p.sender_number}</span>}
+                          {p.package_name && <span>Pack: <strong className="text-(--text-primary)">{p.package_name}</strong></span>}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t border-(--text-primary)/8 text-[11px]">
+                          <div className="p-2 rounded-lg bg-(--bg-surface)">
+                            <span className="block text-[9px] uppercase font-bold text-(--text-muted)">val_id</span>
+                            <span className="font-mono font-semibold text-(--text-primary) break-all">{p.val_id || "—"}</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-(--bg-surface)">
+                            <span className="block text-[9px] uppercase font-bold text-(--text-muted)">bank_tran_id</span>
+                            <span className="font-mono font-semibold text-(--text-primary) break-all">{p.bank_tran_id || p.trx_id || "—"}</span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-(--bg-surface)">
+                            <span className="block text-[9px] uppercase font-bold text-(--text-muted)">Store Net (BDT)</span>
+                            <span className="font-mono font-semibold text-emerald-600 dark:text-emerald-400">
+                              {p.store_amount_bdt != null ? `৳${p.store_amount_bdt.toLocaleString()}` : "—"}
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-(--bg-surface)">
+                            <span className="block text-[9px] uppercase font-bold text-(--text-muted)">Gateway Status</span>
+                            <span className="font-mono font-semibold text-(--text-primary)">
+                              {p.gateway_status || "—"}
+                            </span>
+                          </div>
+                        </div>
+
+                        {p.admin_note && (
+                          <p className="text-[11px] text-(--text-muted) italic">Note: {p.admin_note}</p>
+                        )}
+                      </div>
+
+                      {canReconcile && (
+                        <div className="flex items-start shrink-0">
+                          <ActionBtn
+                            onClick={() => handleReconcilePayment(p.payment_id)}
+                            disabled={reconcilingPaymentId === p.payment_id}
+                            variant={undefined}
+                          >
+                            {reconcilingPaymentId === p.payment_id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            )}
+                            Reconcile
+                          </ActionBtn>
+                        </div>
+                      )}
+                    </div>
+                  </Card>
+                );
+              })}
+              {gatewayPayments.length === 0 && (
+                <EmptyState message={isBn ? "কোনো পেমেন্ট রেকর্ড পাওয়া যায়নি।" : "No gateway payments match the current filter."} />
+              )}
             </div>
           </div>
         )}
@@ -652,7 +929,7 @@ export default function AdminPage() {
             <SectionHeader icon={Gavel} title={isBn ? "বার কাউন্সিল যাচাই কিউ" : "Bar Council Verification Queue"} sub={isBn ? "আইনজীবী প্রোফাইল পর্যালোচনা করুন" : "Review pending lawyer profiles"} count={lawyersList.length} />
             <div className="space-y-3">
               {lawyersList.map((lawyer) => (
-                <Card key={lawyer.id} className="p-5">
+                <Card key={lawyer.lawyer_id} className="p-5">
                   <div className="flex flex-col sm:flex-row justify-between gap-4">
                     <div className="flex items-start gap-3">
                       <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold text-sm shrink-0">
@@ -671,7 +948,7 @@ export default function AdminPage() {
                       <ActionBtn onClick={() => handleApproveLawyer(lawyer)} variant="success">
                         <UserCheck className="w-3.5 h-3.5" /> Approve
                       </ActionBtn>
-                      <ActionBtn onClick={() => { setRejectingLawyerId(lawyer.id); setRejectReason(""); }} variant="danger">
+                      <ActionBtn onClick={() => { setRejectingLawyerId(lawyer.lawyer_id); setRejectReason(""); }} variant="danger">
                         <XCircle className="w-3.5 h-3.5" /> Reject
                       </ActionBtn>
                     </div>
@@ -688,34 +965,58 @@ export default function AdminPage() {
         {/* ════════════════════════════════════════════════════════════════════ */}
         {activeTab === "withdrawals" && (
           <div className="space-y-4 animate-in fade-in duration-300">
-            <SectionHeader icon={Wallet} title={isBn ? "আইনজীবী পেআউট রিকোয়েস্ট" : "Lawyer Payout Requests"} sub={isBn ? "bKash পেআউট প্রসেস করুন" : "Process bKash payouts"} count={withdrawalsList.filter(w => w.status === "PENDING").length} />
+            <SectionHeader
+              icon={Wallet}
+              title={isBn ? "আইনজীবী পেআউট রিকোয়েস্ট" : "Lawyer Payout Requests"}
+              sub={isBn ? "bKash, Nagad, Rocket ও ব্যাংক ট্রান্সফার প্রসেস করুন" : "Process multi-channel payouts (bKash, Nagad, Rocket, Bank)"}
+              count={withdrawalsList.filter((w) => w.status === "PENDING" || w.status === "APPROVED").length}
+            />
             <div className="space-y-3">
-              {withdrawalsList.map((w) => (
-                <Card key={w.id} className="p-5">
-                  <div className="flex flex-col sm:flex-row justify-between gap-4">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono font-black text-xl text-(--text-primary)">৳{w.amount_bdt}</span>
-                        {w.status === "PENDING"
-                          ? <Badge variant="warning"><Clock className="w-2.5 h-2.5" /> Pending</Badge>
-                          : <Badge variant="success"><CheckCheck className="w-2.5 h-2.5" /> Paid</Badge>
-                        }
+              {withdrawalsList.map((w) => {
+                const isOpen = w.status === "PENDING" || w.status === "APPROVED";
+                const accountDisplay = w.account_number || w.bkash_number;
+                return (
+                  <Card key={w.id} className="p-5">
+                    <div className="flex flex-col sm:flex-row justify-between gap-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-black text-xl text-(--text-primary)">৳{w.amount_bdt.toLocaleString()}</span>
+                          <Badge variant="purple">{w.payout_method || "BKASH"}</Badge>
+                          {w.status === "PENDING" ? (
+                            <Badge variant="warning"><Clock className="w-2.5 h-2.5" /> Pending</Badge>
+                          ) : w.status === "APPROVED" ? (
+                            <Badge variant="info"><Clock className="w-2.5 h-2.5" /> Approved · Ready to Pay</Badge>
+                          ) : (
+                            <Badge variant="success"><CheckCheck className="w-2.5 h-2.5" /> Paid</Badge>
+                          )}
+                        </div>
+                        <div className="space-y-0.5 text-xs text-(--text-muted)">
+                          <p>
+                            Holder: <span className="font-semibold text-(--text-primary)">{w.account_holder_name}</span>
+                            {w.lawyer_name && <span> ({w.lawyer_name})</span>}
+                          </p>
+                          <p>
+                            {w.payout_method === "BANK" ? "Bank Account: " : `${w.payout_method || "bKash"} No: `}
+                            <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">{accountDisplay}</span>
+                            {w.payout_method === "BANK" && w.bank_name && (
+                              <span className="ml-2">
+                                · {w.bank_name}{w.branch_name ? ` (${w.branch_name})` : ""}
+                              </span>
+                            )}
+                          </p>
+                        </div>
                       </div>
-                      <p className="text-xs text-(--text-muted)">
-                        <span className="font-semibold text-(--text-primary)">{w.account_holder_name}</span>
-                        {" · bKash: "}<span className="font-mono text-emerald-600">{w.bkash_number}</span>
-                      </p>
+                      <div className="flex gap-2 shrink-0 items-start">
+                        {isOpen && (
+                          <ActionBtn onClick={() => { setPayingWithdrawalId(w.id); setPayoutTrxId(""); }} variant="success">
+                            <CheckCheck className="w-3.5 h-3.5" /> Mark Paid
+                          </ActionBtn>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex gap-2 shrink-0 items-start">
-                      {w.status === "PENDING" && (
-                        <ActionBtn onClick={() => { setPayingWithdrawalId(w.id); setPayoutTrxId(""); }} variant="success">
-                          <CheckCheck className="w-3.5 h-3.5" /> Mark Paid
-                        </ActionBtn>
-                      )}
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
               {withdrawalsList.length === 0 && <EmptyState message={isBn ? "কোনো পেআউট রিকোয়েস্ট নেই।" : "No pending withdrawals."} />}
             </div>
           </div>
@@ -778,8 +1079,17 @@ export default function AdminPage() {
                         </td>
                         <td className="px-5 py-4"><RoleBadge role={u.role} /></td>
                         <td className="px-5 py-4">
-                          <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{u.credit_balance}</span>
-                          <span className="text-[10px] text-(--text-muted) ml-1">cr</span>
+                          <div className="flex flex-col">
+                            <div className="flex items-center gap-1">
+                              <span className="font-mono font-bold text-amber-600 dark:text-amber-400">{u.credit_balance}</span>
+                              <span className="text-[10px] text-(--text-muted)">cr</span>
+                            </div>
+                            {u.enterprise_id && (
+                              <span className="text-[9px] text-(--text-muted) italic">
+                                {isBn ? "ব্যক্তিগত ওয়ালেট" : "Personal Wallet"}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-4">
                           <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold
@@ -792,12 +1102,31 @@ export default function AdminPage() {
                           </span>
                         </td>
                         <td className="px-5 py-4 text-right">
-                          <button
-                            onClick={() => handleViewUser(u.id)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-(--text-primary)/10 bg-(--bg-surface) hover:border-(--text-primary)/25 hover:bg-(--bg-card) text-(--text-primary) transition-all opacity-0 group-hover:opacity-100 cursor-pointer shadow-xs"
-                          >
-                            <Eye className="w-3 h-3" /> View
-                          </button>
+                          <div className="inline-flex items-center justify-end gap-1.5">
+                            <button
+                              onClick={() => {
+                                setAdjustScope("user");
+                                setAdjustAmount("");
+                                setAdjustReason("");
+                                setAdjustTarget({
+                                  kind: "user",
+                                  id: u.id,
+                                  label: u.full_name || u.email,
+                                  currentBalance: u.credit_balance,
+                                  enterpriseId: u.enterprise_id,
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-bold border border-amber-500/25 bg-amber-500/10 hover:bg-amber-500/20 text-amber-700 dark:text-amber-300 transition-all cursor-pointer"
+                            >
+                              <Coins className="w-3 h-3" /> Adjust
+                            </button>
+                            <button
+                              onClick={() => handleViewUser(u.id)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-bold border border-(--text-primary)/10 bg-(--bg-surface) hover:border-(--text-primary)/25 hover:bg-(--bg-card) text-(--text-primary) transition-all cursor-pointer shadow-xs"
+                            >
+                              <Eye className="w-3 h-3" /> View
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -866,6 +1195,29 @@ export default function AdminPage() {
                     </div>
                   </div>
 
+                  {/* Adjust Credits CTA */}
+                  <div className="flex justify-end">
+                    <ActionBtn
+                      variant={undefined}
+                      onClick={() => {
+                        setAdjustScope("user");
+                        setAdjustAmount("");
+                        setAdjustReason("");
+                        setAdjustTarget({
+                          kind: "user",
+                          id: userDetail.id,
+                          label: userDetail.full_name || userDetail.email,
+                          currentBalance: userDetail.credit_balance,
+                          enterpriseId: userDetail.enterprise_id,
+                          enterpriseName: userDetail.enterprise_details?.name || null,
+                          enterpriseBalance: userDetail.enterprise_details?.pool_balance ?? null,
+                        });
+                      }}
+                    >
+                      <Coins className="w-3.5 h-3.5" /> {isBn ? "ক্রেডিট সমন্বয় করুন" : "Adjust Credits"}
+                    </ActionBtn>
+                  </div>
+
                   {/* Stats Grid */}
                   <div className="grid grid-cols-3 gap-3">
                     <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/5 text-center">
@@ -905,13 +1257,28 @@ export default function AdminPage() {
 
                   {/* Enterprise Info */}
                   {userDetail.enterprise_id && (
-                    <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/60">
-                      <h5 className="text-[11px] font-bold text-purple-800 dark:text-purple-300 mb-2 flex items-center gap-1.5 uppercase tracking-wide">
+                    <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-200/60 dark:border-purple-800/60 space-y-2">
+                      <h5 className="text-[11px] font-bold text-purple-800 dark:text-purple-300 flex items-center gap-1.5 uppercase tracking-wide">
                         <Building2 className="w-3.5 h-3.5" /> Enterprise Association
                       </h5>
-                      <p className="text-xs text-(--text-muted)">
-                        Enterprise ID: <span className="font-mono font-bold text-(--text-primary)">#{userDetail.enterprise_id}</span>
-                      </p>
+                      <div className="grid grid-cols-2 gap-y-1.5 text-xs">
+                        <span className="text-(--text-muted)">Organization</span>
+                        <span className="font-bold text-(--text-primary)">
+                          {userDetail.enterprise_details?.name || `Enterprise #${userDetail.enterprise_id}`}
+                        </span>
+                        <span className="text-(--text-muted)">Company Pool Balance</span>
+                        <span className="font-mono font-bold text-emerald-600">
+                          {userDetail.enterprise_details?.pool_balance ?? "—"} credits
+                        </span>
+                        <span className="text-(--text-muted)">Assigned Quota</span>
+                        <span className="font-mono font-semibold text-(--text-primary)">
+                          {userDetail.member_credit_quota ?? 0} credits (Used: {userDetail.member_credit_used ?? 0})
+                        </span>
+                        <span className="text-(--text-muted)">Personal Wallet</span>
+                        <span className="font-mono text-amber-600 dark:text-amber-400">
+                          {userDetail.credit_balance} cr (Signup Bonus)
+                        </span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -951,7 +1318,7 @@ export default function AdminPage() {
                 variant="danger"
                 onClick={async () => {
                   await rejectLawyerByAdmin(rejectingLawyerId, rejectReason);
-                  setLawyersList(prev => prev.filter(l => l.id !== rejectingLawyerId));
+                  setLawyersList(prev => prev.filter(l => l.lawyer_id !== rejectingLawyerId));
                   setRejectingLawyerId(null);
                   showMessage("Lawyer application rejected.");
                 }}
@@ -964,47 +1331,196 @@ export default function AdminPage() {
       )}
 
       {/* ════════════════════════════════════════════════════════════════════════ */}
-      {/* MODAL: MARK WITHDRAWAL PAID                                             */}
+      {/* MODAL: ADJUST CREDITS                                                   */}
       {/* ════════════════════════════════════════════════════════════════════════ */}
-      {payingWithdrawalId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="w-full max-w-md bg-(--bg-card) rounded-2xl border border-(--text-primary)/10 p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
-                <Wallet className="w-4 h-4 text-emerald-600" />
+      {adjustTarget && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setAdjustTarget(null); }}
+        >
+          <form
+            onSubmit={handleSubmitAdjustCredits}
+            className="w-full max-w-md bg-(--bg-card) rounded-2xl border border-(--text-primary)/10 p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200"
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-950/40 flex items-center justify-center">
+                  <Coins className="w-4 h-4 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-(--text-primary)">
+                    {isBn ? "ক্রেডিট সমন্বয়" : "Adjust Credits"}
+                  </h3>
+                  <p className="text-[11px] text-(--text-muted)">{adjustTarget.label}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-(--text-primary)">Mark as Paid (bKash)</h3>
-                <p className="text-[10px] text-(--text-muted)">Enter the bKash transaction ID</p>
-              </div>
+              <button
+                type="button"
+                onClick={() => setAdjustTarget(null)}
+                className="p-1.5 rounded-lg hover:bg-(--text-primary)/10 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <input
-              type="text"
-              value={payoutTrxId}
-              onChange={(e) => setPayoutTrxId(e.target.value)}
-              placeholder="e.g. BK99281937XY"
-              className="w-full p-3 rounded-xl text-xs font-mono border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary) placeholder:text-(--text-muted) outline-none focus:border-emerald-300 transition-colors"
-            />
+
+            {adjustTarget.enterpriseId && adjustTarget.enterpriseBalance != null && (
+              <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-(--bg-surface)">
+                <button
+                  type="button"
+                  onClick={() => setAdjustScope("user")}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    adjustScope === "user"
+                      ? "bg-(--bg-card) text-(--text-primary) shadow-xs"
+                      : "text-(--text-muted)"
+                  }`}
+                >
+                  Personal ({adjustTarget.currentBalance})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdjustScope("enterprise")}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    adjustScope === "enterprise"
+                      ? "bg-(--bg-card) text-(--text-primary) shadow-xs"
+                      : "text-(--text-muted)"
+                  }`}
+                >
+                  Company Pool ({adjustTarget.enterpriseBalance})
+                </button>
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-1.5">
+              {[100, 500, 1000, -100, -500].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setAdjustAmount(String(preset))}
+                  className="px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-(--bg-surface) hover:bg-(--text-primary)/10 text-(--text-primary) cursor-pointer"
+                >
+                  {preset > 0 ? `+${preset}` : preset}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-(--text-muted) uppercase">
+                Credit Delta (+ add / - deduct)
+              </label>
+              <input
+                type="number"
+                value={adjustAmount}
+                onChange={(e) => setAdjustAmount(e.target.value)}
+                placeholder="e.g. 500 or -100"
+                className="w-full p-3 rounded-xl text-xs font-mono border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-amber-400"
+              />
+              {adjustAmount && !Number.isNaN(parseInt(adjustAmount, 10)) && (
+                <p className="text-[11px] text-(--text-muted)">
+                  Preview New Balance:{" "}
+                  <span className="font-mono font-bold text-(--text-primary)">
+                    {(
+                      (adjustScope === "enterprise" && adjustTarget.enterpriseBalance != null
+                        ? adjustTarget.enterpriseBalance
+                        : adjustTarget.currentBalance) + parseInt(adjustAmount, 10)
+                    ).toLocaleString()}
+                  </span>{" "}
+                  credits
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-[11px] font-bold text-(--text-muted) uppercase">
+                Audit Reason (required)
+              </label>
+              <textarea
+                rows={2}
+                value={adjustReason}
+                onChange={(e) => setAdjustReason(e.target.value)}
+                placeholder="e.g. SSLCommerz support adjustment / onboarding grant"
+                className="w-full p-3 rounded-xl text-xs border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary) outline-none focus:border-amber-400 resize-none"
+              />
+            </div>
+
             <div className="flex justify-end gap-2 pt-1">
-              <button onClick={() => setPayingWithdrawalId(null)} className="px-4 py-2 text-xs font-semibold text-(--text-muted) hover:text-(--text-primary) transition-colors cursor-pointer">
+              <button
+                type="button"
+                onClick={() => setAdjustTarget(null)}
+                className="px-4 py-2 text-xs font-semibold text-(--text-muted) hover:text-(--text-primary) cursor-pointer"
+              >
                 Cancel
               </button>
-              <ActionBtn
-                variant="success"
-                disabled={!payoutTrxId}
-                onClick={async () => {
-                  await markAdminWithdrawalPaid(payingWithdrawalId, payoutTrxId);
-                  setWithdrawalsList(prev => prev.map(w => w.id === payingWithdrawalId ? { ...w, status: "PAID" } : w));
-                  setPayingWithdrawalId(null);
-                  showMessage("Withdrawal marked as paid successfully.");
-                }}
+              <button
+                type="submit"
+                disabled={adjusting}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white transition-all cursor-pointer disabled:opacity-50"
               >
-                <CheckCheck className="w-3.5 h-3.5" /> Confirm Payment
-              </ActionBtn>
+                {adjusting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCheck className="w-3.5 h-3.5" />}
+                Save Adjustment
+              </button>
             </div>
-          </div>
+          </form>
         </div>
       )}
+
+      {/* ════════════════════════════════════════════════════════════════════════ */}
+      {/* MODAL: MARK WITHDRAWAL PAID                                             */}
+      {/* ════════════════════════════════════════════════════════════════════════ */}
+      {payingWithdrawalId && (() => {
+        const activeWithdrawal = withdrawalsList.find((item) => item.id === payingWithdrawalId);
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
+            <div className="w-full max-w-md bg-(--bg-card) rounded-2xl border border-(--text-primary)/10 p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-200">
+              <div className="flex items-center gap-3 mb-1">
+                <div className="w-9 h-9 rounded-xl bg-emerald-100 dark:bg-emerald-950/40 flex items-center justify-center">
+                  <Wallet className="w-4 h-4 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-(--text-primary)">
+                    Mark as Paid ({activeWithdrawal?.payout_method || "Payout"})
+                  </h3>
+                  <p className="text-[10px] text-(--text-muted)">
+                    Enter transfer TrxID / BEFTN / bank reference ID
+                  </p>
+                </div>
+              </div>
+              {activeWithdrawal && (
+                <div className="p-3 rounded-xl bg-(--bg-surface) text-xs space-y-0.5">
+                  <p className="font-bold text-(--text-primary)">
+                    ৳{activeWithdrawal.amount_bdt.toLocaleString()} → {activeWithdrawal.account_holder_name}
+                  </p>
+                  <p className="font-mono text-(--text-muted)">
+                    {activeWithdrawal.account_number || activeWithdrawal.bkash_number}
+                    {activeWithdrawal.bank_name ? ` (${activeWithdrawal.bank_name})` : ""}
+                  </p>
+                </div>
+              )}
+              <input
+                type="text"
+                value={payoutTrxId}
+                onChange={(e) => setPayoutTrxId(e.target.value)}
+                placeholder="e.g. BK99281937XY or BEFTN-887766"
+                className="w-full p-3 rounded-xl text-xs font-mono border border-(--text-primary)/10 bg-(--bg-surface) text-(--text-primary) placeholder:text-(--text-muted) outline-none focus:border-emerald-300 transition-colors"
+              />
+              <div className="flex justify-end gap-2 pt-1">
+                <button onClick={() => setPayingWithdrawalId(null)} className="px-4 py-2 text-xs font-semibold text-(--text-muted) hover:text-(--text-primary) transition-colors cursor-pointer">
+                  Cancel
+                </button>
+                <ActionBtn
+                  variant="success"
+                  disabled={!payoutTrxId}
+                  onClick={async () => {
+                    await handleMarkWithdrawalPaid(payingWithdrawalId, payoutTrxId);
+                    setPayingWithdrawalId(null);
+                  }}
+                >
+                  <CheckCheck className="w-3.5 h-3.5" /> Confirm Payment
+                </ActionBtn>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </AppShell>
   );

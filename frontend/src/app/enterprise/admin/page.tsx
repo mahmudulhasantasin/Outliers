@@ -5,6 +5,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
+import { useNotification } from "@/context/NotificationContext";
 import { useLanguage } from "@/context/LanguageContext";
 import {
   getCompanyDashboard,
@@ -140,6 +141,7 @@ export default function EnterpriseAdminPage() {
   const { user } = useAuth();
   const { language } = useLanguage();
   const isBn = language === "bn";
+  const { toast, prompt: showPrompt } = useNotification();
 
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
 
@@ -172,6 +174,18 @@ export default function EnterpriseAdminPage() {
   const [rejectTarget, setRejectTarget] = useState<PendingMember | null>(null);
   const [rejectReason, setRejectReason] = useState("");
 
+  const openApproveModal = (pm: PendingMember) => {
+    setApproveTarget(pm);
+    setApproveRole("MEMBER");
+    setApproveDept("");
+    setApproveQuota(Math.min(200, organization?.creditPoolRemaining ?? 0));
+  };
+
+  const openRejectModal = (pm: PendingMember) => {
+    setRejectTarget(pm);
+    setRejectReason("");
+  };
+
   const borderClass = "border-[var(--text-primary)]/10";
   const roleUpper = user ? String(user.role).toUpperCase() : "";
   const isAdmin = roleUpper === "ENTERPRISE_ADMIN" || roleUpper === "ADMIN";
@@ -185,6 +199,10 @@ export default function EnterpriseAdminPage() {
     }
     if (roleUpper === "LAWYER") {
       router.replace("/lawyer/pending");
+      return;
+    }
+    if (user?.enterpriseProfile?.verificationStatus === "pending") {
+      router.replace("/enterprise/pending");
       return;
     }
     if (!isAllowed) {
@@ -232,19 +250,32 @@ export default function EnterpriseAdminPage() {
 
       // 2. Members
       if (memsRes.status === "fulfilled" && Array.isArray(memsRes.value)) {
-        setMembers((memsRes.value as any[]).map(mapBackendMember));
+        setMembers((memsRes.value as any[]).map((m) => {
+          const isCurrentUserAdmin = m.email === user?.email || String(m.user_id || m.id) === String(user?.id);
+          const base = mapBackendMember(m);
+          if (isCurrentUserAdmin || String(m.company_role || "").toUpperCase() === "ADMIN") {
+            base.role = "admin";
+            base.status = "active";
+            if (!base.department || base.department === "—") {
+              base.department = isBn ? "এক্সিকিউটিভ অ্যাডমিন" : "Executive / Admin";
+            }
+          }
+          return base;
+        }));
       }
 
-      // 3. Pending Members
+      // 3. Pending Members (Excludes Enterprise Admin)
       if (pendingRes.status === "fulfilled" && Array.isArray(pendingRes.value)) {
-        const mappedPending = (pendingRes.value as any[]).map((m) => ({
-          user_id: m.user_id || m.id,
-          email: m.email,
-          full_name: m.full_name,
-          phone: m.phone,
-          requested_at: m.requested_at || m.joined_at || new Date().toISOString(),
-          is_verified: m.is_verified ?? false,
-        }));
+        const mappedPending = (pendingRes.value as any[])
+          .filter((m) => m.email !== user?.email && String(m.user_id || m.id) !== String(user?.id) && String(m.company_role || "").toUpperCase() !== "ADMIN")
+          .map((m) => ({
+            user_id: m.user_id || m.id,
+            email: m.email,
+            full_name: m.full_name,
+            phone: m.phone,
+            requested_at: m.requested_at || m.joined_at || new Date().toISOString(),
+            is_verified: m.is_verified ?? false,
+          }));
         setPendingMembers(mappedPending);
       }
 
@@ -283,25 +314,31 @@ export default function EnterpriseAdminPage() {
     const member = members.find((m) => m.id === memberId);
     if (!member) return;
     if (member.role === "admin") {
-      alert(isBn ? "অ্যাডমিন স্ট্যাটাস পরিবর্তন করা যাবে না।" : "Admin status cannot be modified.");
+      toast.warning(isBn ? "অ্যাডমিন স্ট্যাটাস পরিবর্তন করা যাবে না।" : "Admin status cannot be modified.");
       return;
     }
 
     try {
       if (member.status === "active") {
-        const reason = prompt(
-          isBn ? "সাময়িক স্থগিত করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর):" : "Enter reason for suspension (min 3 characters):"
-        );
-        if (!reason || reason.trim().length < 3) return;
-        await suspendMember(memberId, reason.trim());
+        const reason = await showPrompt({
+          title: isBn ? "সদস্য সাময়িক স্থগিতকরণ" : "Suspend Team Member",
+          message: isBn ? "সাময়িক স্থগিত করার কারণ লিখুন (কমপক্ষে ৩ অক্ষর):" : "Enter reason for suspension (min 3 characters):",
+          placeholder: isBn ? "স্থগিতের কারণ..." : "Reason for suspension...",
+          confirmText: isBn ? "স্থগিত করুন" : "Suspend",
+          minLength: 3,
+        });
+        if (!reason) return;
+        await suspendMember(memberId, reason);
+        toast.success(isBn ? "সদস্য সাময়িক স্থগিত করা হয়েছে।" : "Member suspended successfully.");
       } else if (member.status === "suspended") {
         await reactivateMember(memberId);
+        toast.success(isBn ? "সদস্য পুনরায় সক্রিয় করা হয়েছে।" : "Member reactivated successfully.");
       } else {
         return;
       }
       await refetchAll();
     } catch (e: any) {
-      alert(e?.message || (isBn ? "স্ট্যাটাস পরিবর্তন ব্যর্থ।" : "Failed to update status."));
+      toast.error(e?.message || (isBn ? "স্ট্যাটাস পরিবর্তন ব্যর্থ।" : "Failed to update status."));
     }
   };
 
@@ -317,7 +354,7 @@ export default function EnterpriseAdminPage() {
       await refetchAll();
       setEditingCreditMemberId(null);
     } catch (e: any) {
-      alert(e?.message || (isBn ? "কোটা পরিবর্তন ব্যর্থ।" : "Failed to adjust quota."));
+      toast.error(e?.message || (isBn ? "কোটা পরিবর্তন ব্যর্থ।" : "Failed to adjust quota."));
     }
   };
 
@@ -334,9 +371,10 @@ export default function EnterpriseAdminPage() {
       setApproveRole("MEMBER");
       setApproveDept("");
       setApproveQuota(200);
+      toast.success(isBn ? "সদস্য সফলভাবে অনুমোদিত হয়েছে!" : "Member approved successfully!");
       await refetchAll();
     } catch (e: any) {
-      alert(e?.message || (isBn ? "অনুমোদন ব্যর্থ।" : "Failed to approve."));
+      toast.error(e?.message || (isBn ? "অনুমোদন ব্যর্থ।" : "Failed to approve."));
     }
   };
 
@@ -347,9 +385,10 @@ export default function EnterpriseAdminPage() {
       await rejectMember(String(rejectTarget.user_id), rejectReason.trim());
       setRejectTarget(null);
       setRejectReason("");
+      toast.success(isBn ? "সদস্যের রিকোয়েস্ট প্রত্যাখ্যাত হয়েছে।" : "Membership request rejected.");
       await refetchAll();
     } catch (e: any) {
-      alert(e?.message || (isBn ? "প্রত্যাখ্যান ব্যর্থ।" : "Failed to reject."));
+      toast.error(e?.message || (isBn ? "প্রত্যাখ্যান ব্যর্থ।" : "Failed to reject."));
     }
   };
 
@@ -363,13 +402,13 @@ export default function EnterpriseAdminPage() {
       if (Array.isArray(extracted) && extracted.length > 0) {
         setPlaybookRules(extracted.map(mapBackendRuleToFrontend));
       }
-      alert(
+      toast.success(
         isBn
           ? `প্লেবুক সফলভাবে আপলোড হয়েছে! ${extracted?.length ?? 0} টি রুল পাওয়া গেছে।`
           : `Playbook uploaded! ${extracted?.length ?? 0} rules extracted.`
       );
     } catch (err: any) {
-      alert(err?.message || "Failed to upload playbook");
+      toast.error(err?.message || "Failed to upload playbook");
     } finally {
       setIsUploadingPlaybook(false);
       e.target.value = "";
@@ -706,13 +745,13 @@ export default function EnterpriseAdminPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={() => setApproveTarget(pm)}
+                          onClick={() => openApproveModal(pm)}
                           className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer"
                         >
                           {isBn ? "অনুমোদন" : "Approve"}
                         </button>
                         <button
-                          onClick={() => setRejectTarget(pm)}
+                          onClick={() => openRejectModal(pm)}
                           className="px-3 py-1.5 rounded-lg text-[11px] font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer"
                         >
                           {isBn ? "প্রত্যাখ্যান" : "Reject"}
@@ -803,7 +842,11 @@ export default function EnterpriseAdminPage() {
                           )}
                         </td>
                         <td className="p-4">
-                          {editingCreditMemberId === mem.id ? (
+                          {mem.status === "pending" ? (
+                            <span className="text-[11px] text-[var(--text-muted)] italic">
+                              {isBn ? "অনুমোদনে ধার্য" : "Set on approval"}
+                            </span>
+                          ) : editingCreditMemberId === mem.id ? (
                             <div className="flex items-center gap-1.5">
                               <input
                                 type="number"
@@ -827,9 +870,9 @@ export default function EnterpriseAdminPage() {
                           ) : (
                             <div className="flex items-center gap-1.5">
                               <span className="font-mono font-semibold text-[var(--text-primary)]">
-                                {mem.monthlyCreditCap}
+                                {mem.role === "admin" ? (isBn ? "পুল কন্ট্রোলার" : "Pool Admin") : mem.monthlyCreditCap}
                               </span>
-                              {mem.role !== "admin" && (
+                              {mem.role !== "admin" && mem.status === "active" && (
                                 <button
                                   onClick={() => {
                                     setEditingCreditMemberId(mem.id);
@@ -847,19 +890,54 @@ export default function EnterpriseAdminPage() {
                           {mem.creditsUsedThisMonth} / {mem.monthlyCreditCap}
                         </td>
                         <td className="p-4 text-right">
-                          {mem.role !== "admin" && (mem.status === "active" || mem.status === "suspended") && (
-                            <button
-                              onClick={() => handleToggleMemberStatus(mem.id)}
-                              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
-                                mem.status === "active"
-                                  ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
-                                  : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
-                              }`}
-                            >
-                              {mem.status === "active"
-                                ? isBn ? "স্থগিত" : "Suspend"
-                                : isBn ? "পুনরায় চালু" : "Activate"}
-                            </button>
+                          {mem.status === "pending" ? (
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => openApproveModal({
+                                  user_id: mem.id,
+                                  full_name: mem.name,
+                                  email: mem.email,
+                                  requested_at: mem.joinedAt,
+                                  is_verified: true,
+                                })}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-emerald-500 text-white hover:bg-emerald-600 cursor-pointer flex items-center gap-1 shadow-xs transition-colors"
+                                title={isBn ? "অনুমোদন করুন" : "Approve Member"}
+                              >
+                                <Check className="w-3.5 h-3.5" />
+                                <span>{isBn ? "অনুমোদন" : "Approve"}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => openRejectModal({
+                                  user_id: mem.id,
+                                  full_name: mem.name,
+                                  email: mem.email,
+                                  requested_at: mem.joinedAt,
+                                  is_verified: true,
+                                })}
+                                className="px-2.5 py-1 rounded-lg text-[11px] font-bold bg-rose-500 text-white hover:bg-rose-600 cursor-pointer flex items-center gap-1 shadow-xs transition-colors"
+                                title={isBn ? "প্রত্যাখ্যান করুন" : "Reject Member"}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                                <span>{isBn ? "প্রত্যাখ্যান" : "Reject"}</span>
+                              </button>
+                            </div>
+                          ) : (
+                            mem.role !== "admin" && (mem.status === "active" || mem.status === "suspended") && (
+                              <button
+                                onClick={() => handleToggleMemberStatus(mem.id)}
+                                className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-colors cursor-pointer ${
+                                  mem.status === "active"
+                                    ? "text-rose-600 dark:text-rose-400 hover:bg-rose-500/10"
+                                    : "text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10"
+                                }`}
+                              >
+                                {mem.status === "active"
+                                  ? isBn ? "স্থগিত" : "Suspend"
+                                  : isBn ? "পুনরায় চালু" : "Activate"}
+                              </button>
+                            )
                           )}
                         </td>
                       </tr>
@@ -1154,13 +1232,25 @@ export default function EnterpriseAdminPage() {
                   <div>
                     <label className="block font-semibold mb-1 text-[var(--text-primary)]">
                       {isBn ? "প্রাথমিক কোটা" : "Initial Quota"}
+                      <span className="ml-1 text-[10px] text-[var(--text-muted)] font-normal">
+                        ({isBn ? "সর্বোচ্চ পুল ক্রেডিট: " : "Pool balance: "}{organization?.creditPoolRemaining ?? 0})
+                      </span>
                     </label>
                     <input
                       type="number"
+                      min={0}
+                      max={organization?.creditPoolRemaining ?? 0}
                       value={approveQuota}
-                      onChange={(e) => setApproveQuota(Number(e.target.value))}
+                      onChange={(e) => setApproveQuota(Math.max(0, Math.min(Number(e.target.value), organization?.creditPoolRemaining ?? 0)))}
                       className="w-full px-3 py-2 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-[var(--text-primary)] font-mono"
                     />
+                    {(organization?.creditPoolRemaining ?? 0) === 0 && (
+                      <p className="mt-1 text-[10px] text-amber-600 dark:text-amber-400">
+                        {isBn
+                          ? "কোম্পানি পুলে ক্রেডিট শূন্য। সদস্যকে ০ কোটায় অনুমোদন দিয়ে পরবর্তীতে টপ-আপ করে ক্রেডিট বরাদ্দ দিতে পারবেন।"
+                          : "Company pool has 0 credits. You can approve with 0 quota and allocate credits later after top-up."}
+                      </p>
+                    )}
                   </div>
                 </div>
 

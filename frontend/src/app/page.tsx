@@ -1,11 +1,29 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+
+declare global {
+  interface Window {
+    google?: {
+      accounts?: {
+        id?: {
+          initialize: (config: any) => void;
+          renderButton: (parent: HTMLElement, options: any) => void;
+          prompt: (notification?: any) => void;
+        };
+      };
+    };
+  }
+}
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import Image from "next/image";
 import { useLanguage } from "@/context/LanguageContext";
-import { useAuth } from "@/context/AuthContext";
+import { useAuth, normalizeUserRole } from "@/context/AuthContext"; // [UPDATED] ADDED normalizeUserRole
 import { useTheme } from "@/context/ThemeContext";
+import api from "@/lib/api"; // [UPDATED] NEW
+import { saveTokenResponse } from "@/lib/auth"; // [UPDATED] NEW
+import { submitFeedback, subscribeNewsletter } from "@/lib/apiServices";
 import {
   Scale,
   ArrowUpRight,
@@ -17,9 +35,7 @@ import {
   Globe2,
   Star,
   Quote,
-  ChevronDown,
   User,
-  Scale as ScaleIcon,
   Building2,
   CheckCircle2,
   ChevronLeft,
@@ -29,11 +45,14 @@ import {
   Users,
   Sparkles,
   AlertTriangle,
-  Plus,
-  ChevronRight,
   Check,
   Shield,
+  ShieldCheck,
+  Landmark,
   Lock,
+  Loader2,
+  Clock,
+  Zap,
 } from "lucide-react";
 import GradientWaves from "@/components/effects/GradientWaves";
 import DitherVeil from "@/components/effects/DitherVeil";
@@ -49,6 +68,10 @@ export default function LandingAndAuthPage() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
   const { theme, toggleTheme } = useTheme();
+
+  // [UPDATED] Moved isBn up to the top so all handlers can use it
+  const isBn = language === "bn";
+
   const {
     isAuthenticated,
     isLoading,
@@ -58,7 +81,10 @@ export default function LandingAndAuthPage() {
     resendOtp,
     onboardLawyer,
     onboardEnterprise,
+    registerEnterpriseMember,
     user,
+    refreshUser, // [UPDATED] NEW - Needed for password reset
+    loginWithGoogle,
   } = useAuth();
 
   const [authError, setAuthError] = useState("");
@@ -67,10 +93,23 @@ export default function LandingAndAuthPage() {
 
   const [mounted, setMounted] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const googleSignInBtnRef = useRef<HTMLDivElement>(null);
+  const googleSignUpBtnRef = useRef<HTMLDivElement>(null);
+
   const [isSignUp, setIsSignUp] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTestimonial, setActiveTestimonial] = useState(0);
   const [slideDirection, setSlideDirection] = useState<"down" | "up">("down");
+
+  // [UPDATED] NEW: Forgot Password Flow State
+  const [forgotStep, setForgotStep] = useState<"none" | "email" | "otp">("none");
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotOtp, setForgotOtp] = useState("");
+  const [forgotNewPw, setForgotNewPw] = useState("");
+  const [forgotConfirmPw, setForgotConfirmPw] = useState("");
+  const [forgotError, setForgotError] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
 
   const handleTestimonialChange = (idx: number) => {
     if (idx === activeTestimonial) return;
@@ -110,6 +149,47 @@ export default function LandingAndAuthPage() {
   const [otpInput, setOtpInput] = useState("");
   const [otpError, setOtpError] = useState("");
 
+  // ── Form Validation States for Registration (enables button only when valid) ──
+  const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(regEmail.trim());
+  const isPasswordValid = regPassword.length >= 6 && regPassword === regConfirmPassword;
+
+  const isGeneralFormValid = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    dob &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
+  const isLawyerFormValid = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    dob &&
+    barCouncilNo.trim() &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
+  const isCompanyFormValid = Boolean(
+    companyName.trim() &&
+    registrationNo.trim() &&
+    tinNo.trim() &&
+    adminName.trim() &&
+    memberCount > 0 &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
+  const isMemberFormValid = Boolean(
+    firstName.trim() &&
+    lastName.trim() &&
+    dob &&
+    companyName.trim() &&
+    companyReferCode.trim() &&
+    isEmailValid &&
+    isPasswordValid
+  );
+
   // ── Login fields ──
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -117,6 +197,65 @@ export default function LandingAndAuthPage() {
   // ── Footer Newsletter State ──
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterSubscribed, setNewsletterSubscribed] = useState(false);
+  const [isSubscribingNewsletter, setIsSubscribingNewsletter] = useState(false);
+  const [newsletterErrorMsg, setNewsletterErrorMsg] = useState<string | null>(null);
+
+  // Feedback Form State
+  const [feedbackName, setFeedbackName] = useState("");
+  const [feedbackContact, setFeedbackContact] = useState("");
+  const [feedbackSuggestion, setFeedbackSuggestion] = useState("");
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false);
+  const [feedbackSuccessMsg, setFeedbackSuccessMsg] = useState<string | null>(null);
+  const [feedbackErrorMsg, setFeedbackErrorMsg] = useState<string | null>(null);
+
+  const handleFeedbackSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!feedbackName.trim() || !feedbackContact.trim() || !feedbackSuggestion.trim()) return;
+
+    setIsSubmittingFeedback(true);
+    setFeedbackErrorMsg(null);
+    setFeedbackSuccessMsg(null);
+
+    try {
+      await submitFeedback({
+        name: feedbackName.trim(),
+        contact: feedbackContact.trim(),
+        suggestion: feedbackSuggestion.trim(),
+      });
+      setFeedbackSuccessMsg(
+        isBn
+          ? "ধন্যবাদ! আপনার মূল্যবান পরামর্শ বা মতামত আমরা পেয়েছি।"
+          : "Thank you! Your suggestion or feedback has been received."
+      );
+      setFeedbackName("");
+      setFeedbackContact("");
+      setFeedbackSuggestion("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to submit feedback";
+      setFeedbackErrorMsg(msg);
+    } finally {
+      setIsSubmittingFeedback(false);
+    }
+  };
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail.trim()) return;
+
+    setIsSubscribingNewsletter(true);
+    setNewsletterErrorMsg(null);
+
+    try {
+      await subscribeNewsletter(newsletterEmail.trim());
+      setNewsletterSubscribed(true);
+      setNewsletterEmail("");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Subscription failed";
+      setNewsletterErrorMsg(msg);
+    } finally {
+      setIsSubscribingNewsletter(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -145,7 +284,117 @@ export default function LandingAndAuthPage() {
     setPasswordError("");
     setOtpInput("");
     setOtpError("");
+    // [UPDATED] Reset forgot flow
+    setForgotStep("none");
+    setForgotError("");
   };
+
+  const handleGoogleResponse = useCallback(
+    async (response: { credential?: string }) => {
+      if (!response?.credential) {
+        setAuthError(isBn ? "গুগল সাইন-ইন ব্যর্থ হয়েছে।" : "Google sign in failed.");
+        return;
+      }
+      setAuthLoading(true);
+      setGoogleLoading(true);
+      setAuthError("");
+      try {
+        const loggedInUser = await loginWithGoogle(response.credential);
+        closeModal();
+        const role = String(loggedInUser?.role).toUpperCase();
+        if (role === "ADMIN") router.push("/admin");
+        else if (role === "LAWYER") router.push("/lawyer/pending");
+        else if (role === "ENTERPRISE_ADMIN" || role === "ENTERPRISE") router.push("/enterprise/admin");
+        else if (role === "ENTERPRISE_MEMBER") router.push("/enterprise/member");
+        else router.push("/dashboard");
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : "Google authentication failed";
+        setAuthError(msg);
+      } finally {
+        setAuthLoading(false);
+        setGoogleLoading(false);
+      }
+    },
+    [isBn, loginWithGoogle, router]
+  );
+
+  const googleRenderedTabsRef = useRef<{ signin: boolean; signup: boolean }>({
+    signin: false,
+    signup: false,
+  });
+  const handleGoogleResponseRef = useRef(handleGoogleResponse);
+
+  useEffect(() => {
+    handleGoogleResponseRef.current = handleGoogleResponse;
+  });
+
+  useEffect(() => {
+    if (!mounted || !showAuthModal || forgotStep !== "none") return;
+
+    const currentTab = isSignUp ? "signup" : "signin";
+    const targetRef = isSignUp ? googleSignUpBtnRef.current : googleSignInBtnRef.current;
+
+    // If already rendered on this tab, never touch it again
+    if (googleRenderedTabsRef.current[currentTab] && targetRef && targetRef.children.length > 0) {
+      return;
+    }
+
+    const clientId =
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID ||
+      "643210480956-pijla0uupssfs0edcsep0f63gmlvu2pq.apps.googleusercontent.com";
+
+    const renderBtn = (): boolean => {
+      if (typeof window === "undefined" || !window.google?.accounts?.id) {
+        return false;
+      }
+
+      const el = isSignUp ? googleSignUpBtnRef.current : googleSignInBtnRef.current;
+      if (!el) {
+        return false;
+      }
+
+      // If already has Google button iframe, do NOT touch or re-create
+      if (el.children.length > 0) {
+        googleRenderedTabsRef.current[currentTab] = true;
+        return true;
+      }
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: (res: any) => handleGoogleResponseRef.current(res),
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        window.google.accounts.id.renderButton(el, {
+          type: "standard",
+          theme: theme === "dark" ? "filled_black" : "outline",
+          size: "large",
+          text: "continue_with",
+          shape: "pill",
+          logo_alignment: "left",
+          width: 340,
+        });
+        googleRenderedTabsRef.current[currentTab] = true;
+        return true;
+      } catch (e) {
+        console.error("Failed to render Google button:", e);
+        return false;
+      }
+    };
+
+    if (!renderBtn()) {
+      const timer = setInterval(() => {
+        if (renderBtn()) clearInterval(timer);
+      }, 100);
+      const timeout = setTimeout(() => clearInterval(timer), 4000);
+      return () => {
+        clearInterval(timer);
+        clearTimeout(timeout);
+      };
+    }
+  }, [mounted, showAuthModal, isSignUp, forgotStep]);
 
   const openLoginModal = (signUp = false) => {
     setIsSignUp(signUp);
@@ -154,6 +403,8 @@ export default function LandingAndAuthPage() {
     setPasswordError("");
     setOtpInput("");
     setOtpError("");
+    setForgotStep("none");
+    setForgotError("");
     setShowAuthModal(true);
   };
 
@@ -174,9 +425,75 @@ export default function LandingAndAuthPage() {
       else router.push("/dashboard");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Login failed. Please check your credentials.";
+
+      // [UPDATED] NEW: Route unverified users into the OTP flow
+      if (msg.toLowerCase().includes("not verified") || msg.toLowerCase().includes("verify")) {
+        setPendingOtpEmail(loginEmail);
+        setRegEmail(loginEmail);
+        setOtpInput("");
+        setOtpError("");
+        setIsSignUp(true);
+        setSelectedRole("general");
+        setRegStep("otp");
+        setAuthError("");
+        resendOtp(loginEmail).catch(() => { });
+        return;
+      }
+
       setAuthError(msg);
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  // [UPDATED] NEW: Forgot Password Handlers
+  const handleForgotSendOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+    setForgotLoading(true);
+    try {
+      await api.post("/api/auth/forgot-password", { email: forgotEmail.trim() });
+      setForgotStep("otp");
+      setForgotOtp("");
+      setForgotNewPw("");
+      setForgotConfirmPw("");
+    } catch (err: unknown) {
+      setForgotError(err instanceof Error ? err.message : "Could not send reset code.");
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setForgotError("");
+
+    if (forgotNewPw.length < 6) {
+      setForgotError(isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters.");
+      return;
+    }
+    if (forgotNewPw !== forgotConfirmPw) {
+      setForgotError(isBn ? "পাসওয়ার্ড দুটি মিলছে না।" : "Passwords do not match.");
+      return;
+    }
+
+    setForgotLoading(true);
+    try {
+      const data = await api.post<Record<string, unknown>>("/api/auth/reset-password", {
+        email: forgotEmail.trim(),
+        otp_code: forgotOtp.trim(),
+        new_password: forgotNewPw,
+      });
+
+      saveTokenResponse(data as any, normalizeUserRole(data.role as string));
+      await refreshUser();
+      closeModal();
+      setForgotStep("none");
+      router.push("/dashboard");
+    } catch (err: unknown) {
+      setForgotError(err instanceof Error ? err.message : "Password reset failed.");
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -204,23 +521,34 @@ export default function LandingAndAuthPage() {
     setAuthLoading(true);
     try {
       if (selectedRole === "enterprise" && entTab === "member") {
-        // Enterprise member registration
-        const res = await registerEmail({
+        if (!companyReferCode.trim()) {
+          setAuthError(language === "bn" ? "কোম্পানি রেফার কোড প্রদান করুন।" : "Company referral code is required.");
+          setAuthLoading(false);
+          return;
+        }
+        // Enterprise member registration with company referral code
+        const res = await registerEnterpriseMember({
           email: regEmail,
           password: regPassword,
           confirm_password: regConfirmPassword,
           full_name: `${firstName} ${lastName}`.trim() || "Member",
+          referral_code: companyReferCode.trim(),
           phone: undefined,
           date_of_birth: dob || undefined,
           gender,
         });
         setPendingOtpEmail(res.email);
       } else {
+        const resolvedFullName =
+          selectedRole === "enterprise" && entTab === "company"
+            ? adminName.trim() || "Enterprise Admin"
+            : `${firstName} ${lastName}`.trim() || "User";
+
         const res = await registerEmail({
           email: regEmail,
           password: regPassword,
           confirm_password: regConfirmPassword,
-          full_name: `${firstName} ${lastName}`.trim() || "User",
+          full_name: resolvedFullName,
           phone: undefined,
           date_of_birth: dob || undefined,
           gender,
@@ -235,8 +563,8 @@ export default function LandingAndAuthPage() {
         err instanceof Error
           ? err.message
           : language === "bn"
-          ? "নিবন্ধন ব্যর্থ হয়েছে। ইনপুটগুলো পুনরায় চেক করুন।"
-          : "Registration failed. Please check your inputs.";
+            ? "নিবন্ধন ব্যর্থ হয়েছে। ইনপুটগুলো পুনরায় চেক করুন।"
+            : "Registration failed. Please check your inputs.";
 
       if (
         msg.toLowerCase().includes("exists") ||
@@ -270,8 +598,8 @@ export default function LandingAndAuthPage() {
     if (!otpInput.trim() || otpInput.trim().length < 4) {
       setOtpError(
         language === "bn"
-          ? "সঠিক ওটিপি কোডটি লিখুন (যেমন: 123456)।"
-          : "Enter a valid OTP code (e.g., 123456)."
+          ? "সঠিক ৬-সংখ্যার ওটিপি কোডটি লিখুন।"
+          : "Enter a valid 6-digit OTP code."
       );
       return;
     }
@@ -288,29 +616,36 @@ export default function LandingAndAuthPage() {
             field_of_law: fieldOfLaw.trim(),
             specializations: [fieldOfLaw.trim()],
           });
+          closeModal();
+          router.push("/lawyer/pending");
+          return;
         } catch (onboardErr) {
           console.error("Lawyer onboard failed:", onboardErr);
+          const errText = onboardErr instanceof Error ? onboardErr.message : "Lawyer onboarding failed.";
+          setOtpError(errText);
+          setAuthLoading(false);
+          return;
         }
-        closeModal();
-        // LAWYERS GO TO LAWYER PORTAL (NOT COPILOT!)
-        router.push("/lawyer/pending");
-        return;
       } else if (selectedRole === "enterprise" && entTab === "company") {
         try {
           await onboardEnterprise({
-            company_name: companyName,
+            company_name: companyName.trim(),
             company_type: companyType,
-            registration_no: registrationNo,
-            tin_no: tinNo,
+            registration_no: registrationNo.trim(),
+            tin_no: tinNo.trim(),
             member_limit: memberCount,
-            billing_email: regEmail,
+            billing_email: regEmail.trim(),
           });
+          closeModal();
+          router.push("/enterprise/pending");
+          return;
         } catch (onboardErr) {
           console.error("Enterprise onboard failed:", onboardErr);
+          const errText = onboardErr instanceof Error ? onboardErr.message : "Enterprise registration failed.";
+          setOtpError(errText);
+          setAuthLoading(false);
+          return;
         }
-        closeModal();
-        router.push("/enterprise/admin");
-        return;
       } else if (selectedRole === "enterprise" && entTab === "member") {
         closeModal();
         router.push("/enterprise/member");
@@ -325,8 +660,8 @@ export default function LandingAndAuthPage() {
         err instanceof Error
           ? err.message
           : language === "bn"
-          ? "অবৈধ বা মেয়াদোত্তীর্ণ ওটিপি কোড।"
-          : "Invalid or expired OTP code.";
+            ? "অবৈধ বা মেয়াদোত্তীর্ণ ওটিপি কোড।"
+            : "Invalid or expired OTP code.";
       setOtpError(msg);
     } finally {
       setAuthLoading(false);
@@ -338,15 +673,11 @@ export default function LandingAndAuthPage() {
   const handleResendOtp = async () => {
     try {
       await resendOtp(pendingOtpEmail || regEmail);
-      setResendStatus(language === "bn" ? "নতুন ওটিপি কোড পাঠানো হয়েছে।" : "New OTP code requested.");
-      setOtpInput("123456");
+      setResendStatus(language === "bn" ? "নতুন ওটিপি কোড সফলভাবে পাঠানো হয়েছে।" : "New OTP code sent successfully.");
     } catch {
-      setResendStatus(language === "bn" ? "টেস্ট কোড 123456 ব্যবহার করুন।" : "Use test code 123456.");
-      setOtpInput("123456");
+      setResendStatus(language === "bn" ? "ওটিপি পুনরায় পাঠানো সম্ভব হয়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।" : "Failed to resend OTP. Please try again shortly.");
     }
   };
-
-  const isBn = language === "bn";
 
   const testimonials = [
     {
@@ -399,23 +730,23 @@ export default function LandingAndAuthPage() {
               : "rgba(231, 231, 221, 0.88)",
         }}
       >
-        <div className="max-w-7xl mx-auto px-6 lg:px-10 h-20 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-3.5 sm:px-6 lg:px-10 h-20 flex items-center justify-between gap-2">
           {/* Brand Logo */}
-          <a href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 flex items-center justify-center">
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 lg:gap-3.5 group shrink-0 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 flex items-center justify-center shrink-0">
               <Image
                 src="/logo.svg"
                 alt="Advotech Copilot"
-                width={40}
-                height={40}
-                className="w-10 h-10 object-contain dark:invert transition-transform group-hover:scale-105"
+                width={48}
+                height={48}
+                className="w-full h-full object-contain dark:invert transition-transform group-hover:scale-105"
                 priority
               />
             </div>
-            <span className="font-serif font-bold text-xl sm:text-2xl tracking-tight text-[var(--text-primary)]">
+            <span className="font-serif font-bold text-base sm:text-2xl lg:text-3xl tracking-tight text-[var(--text-primary)] whitespace-nowrap">
               Advotech Copilot<span className="text-indigo-600 dark:text-indigo-400">.</span>
             </span>
-          </a>
+          </Link>
 
           {/* Center Nav Links */}
           <nav className="hidden md:flex items-center gap-7 text-xs sm:text-[13px] font-medium tracking-wide uppercase text-[var(--text-muted)]">
@@ -426,32 +757,32 @@ export default function LandingAndAuthPage() {
             <a href="#features" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ফিচারসমূহ" : "Features"}</a>
             <a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "কার জন্য" : "Who Is It For"}</a>
             <a href="#reviews" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "রিভিউ" : "Reviews"}</a>
-            <a href="#consultation" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "আইনি পরামর্শ" : "Consultation"}</a>
+            <a href="#suggestion" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ও মতামত" : "Suggestion"}</a>
           </nav>
 
           {/* Right Buttons */}
-          <div className="flex items-center gap-2.5 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5 lg:gap-3 shrink-0">
             {/* Language Toggle */}
             <button
               type="button"
               onClick={() => setLanguage(isBn ? "en" : "bn")}
-              className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] flex items-center gap-1 cursor-pointer`}
+              className={`px-2 sm:px-2.5 py-1.5 rounded-xl text-[11px] sm:text-xs font-semibold transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] flex items-center gap-1 cursor-pointer`}
             >
               <Globe2 className="w-3.5 h-3.5 text-[var(--text-muted)]" />
-              <span>{isBn ? "EN" : "বাং"}</span>
+              <span>{isBn ? "EN" : "BN"}</span>
             </button>
 
             {/* Theme Toggle */}
             <button
               type="button"
               onClick={toggleTheme}
-              className={`p-2 rounded-xl text-xs font-medium transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer`}
+              className={`p-1.5 sm:p-2 rounded-xl text-xs font-medium transition-all shadow-sm border ${borderClass} hover:border-[var(--text-primary)]/30 bg-[var(--bg-card)] text-[var(--text-primary)] cursor-pointer`}
               aria-label="Toggle theme"
             >
               {theme === "dark" ? (
-                <Sun className="w-4 h-4 text-amber-400" />
+                <Sun className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-amber-400" />
               ) : (
-                <Moon className="w-4 h-4 text-[var(--text-muted)]" />
+                <Moon className="w-3.5 sm:w-4 h-3.5 sm:h-4 text-[var(--text-muted)]" />
               )}
             </button>
 
@@ -465,11 +796,11 @@ export default function LandingAndAuthPage() {
                     role === "ADMIN"
                       ? "/admin"
                       : role === "LAWYER"
-                      ? "/lawyer/pending"
-                      : "/dashboard"
+                        ? "/lawyer/pending"
+                        : "/dashboard"
                   );
                 }}
-                className="whitespace-nowrap shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                className="whitespace-nowrap shrink-0 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "ওয়ার্কস্পেস" : "Workspace"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -478,7 +809,7 @@ export default function LandingAndAuthPage() {
               <button
                 type="button"
                 onClick={() => openLoginModal(false)}
-                className="whitespace-nowrap shrink-0 px-3.5 sm:px-5 py-2 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                className="whitespace-nowrap shrink-0 px-3 sm:px-5 py-1.5 sm:py-2.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide uppercase transition-all shadow-sm active:scale-[0.98] hover:opacity-90 flex items-center gap-1 sm:gap-1.5 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
               >
                 <span>{isBn ? "লগইন" : "Sign In"}</span>
                 <ArrowUpRight className="w-3.5 h-3.5" />
@@ -495,7 +826,7 @@ export default function LandingAndAuthPage() {
 
         {/* ── SECTION 1: EDITORIAL LUXURY HERO (MATCHING REFERENCE DESIGN WITH VIDEO) ── */}
         <section className="relative min-h-[90vh] lg:min-h-[94vh] w-full max-w-7xl mx-auto px-6 lg:px-12 pt-6 sm:pt-10 pb-16 flex flex-col justify-between overflow-hidden">
-          
+
           {/* Subtle Ambient Studio Light Gradients */}
           <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-gradient-to-b from-amber-500/10 via-amber-700/5 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
           <div className="absolute bottom-10 left-10 w-[400px] h-[400px] bg-indigo-500/5 rounded-full blur-3xl pointer-events-none -z-10" />
@@ -505,8 +836,6 @@ export default function LandingAndAuthPage() {
 
             {/* ── Left Column: Editorial Headline & Actions (lg:col-span-6) ── */}
             <div className="lg:col-span-6 flex flex-col justify-center text-left z-20">
-              
-
 
               {/* Massive Bold Architectural Typography */}
               <h1 className="text-4xl sm:text-6xl lg:text-[72px] font-sans font-black tracking-tight leading-[1.04] uppercase text-[var(--text-primary)] mb-6">
@@ -526,22 +855,21 @@ export default function LandingAndAuthPage() {
               </h1>
 
               {/* Subtitle */}
-              <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-md leading-relaxed mb-8">
+              <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-md leading-relaxed mb-6 lg:mb-8">
                 {isBn
                   ? "আপনার অধিকার সুরক্ষা ও ভবিষ্যৎ চুক্তি নিরাপত্তায় নিবেদিত বাংলাদেশের প্রথম সংবিধিবদ্ধ এআই লিগ্যাল প্ল্যাটফর্ম।"
                   : "A Dedicated Legal & AI Platform Committed to Protecting Your Rights, Reviewing Contracts, and Securing Your Future."}
               </p>
 
-              {/* Action Buttons (Orange Primary + Modern Secondary) */}
-              <div className="flex items-center gap-4 mb-10">
-                <button
-                  type="button"
-                  onClick={() => openLoginModal(false)}
+              {/* Action Buttons (Desktop: in Left Column) */}
+              <div className="hidden lg:flex items-center gap-4 mb-10">
+                <a
+                  href="#contact"
                   className="px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-95 hover:opacity-95 flex items-center gap-2 cursor-pointer bg-[#f2591f] text-white hover:bg-[#e04f18]"
                 >
                   <span>{isBn ? "পরামর্শ নিন" : "Contact Us"}</span>
                   <ArrowUpRight className="w-4 h-4" />
-                </button>
+                </a>
 
                 <a
                   href="#features"
@@ -550,19 +878,14 @@ export default function LandingAndAuthPage() {
                   <span>{isBn ? "বিস্তারিত জানুন" : "Learn More"}</span>
                 </a>
               </div>
-
-
-
             </div>
 
             {/* ── Right Column: Video & Floating Glass Cards (lg:col-span-6) ── */}
-            <div className="lg:col-span-6 relative flex items-center justify-center min-h-[460px] sm:min-h-[560px] lg:min-h-[620px]">
-              
-
+            <div className="lg:col-span-6 relative flex flex-col items-center justify-center min-h-[460px] sm:min-h-[560px] lg:min-h-[620px]">
 
               {/* ── Central Character Container: Firefly with Interactive DitherVeil Effect ── */}
               <div className="relative w-full max-w-[420px] sm:max-w-[480px] lg:max-w-[540px] aspect-square flex items-center justify-center z-10">
-                
+
                 {/* Backlight halo glow */}
                 <div className="absolute inset-8 rounded-full bg-gradient-to-t from-amber-500/20 via-orange-400/10 to-transparent blur-2xl pointer-events-none" />
 
@@ -593,16 +916,26 @@ export default function LandingAndAuthPage() {
                 </div>
               </div>
 
+              {/* Action Buttons (Mobile: Below Statue) */}
+              <div className="flex lg:hidden items-center justify-center gap-3.5 sm:gap-4 mt-6 sm:mt-8 mb-4 w-full z-20">
+                <a
+                  href="#contact"
+                  className="px-6 sm:px-7 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all shadow-lg active:scale-95 hover:opacity-95 flex items-center gap-2 cursor-pointer bg-[#f2591f] text-white hover:bg-[#e04f18]"
+                >
+                  <span>{isBn ? "পরামর্শ নিন" : "Contact Us"}</span>
+                  <ArrowUpRight className="w-4 h-4" />
+                </a>
 
-
+                <a
+                  href="#features"
+                  className={`px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl text-xs sm:text-sm font-semibold tracking-wide transition-all border ${borderClass} hover:border-[var(--text-primary)]/40 flex items-center gap-2 cursor-pointer bg-[var(--bg-card)] text-[var(--text-primary)] shadow-xs`}
+                >
+                  <span>{isBn ? "বিস্তারিত জানুন" : "Learn More"}</span>
+                </a>
+              </div>
             </div>
           </div>
-
-
-
         </section>
-
-
 
         {/* ── SECTION 2 & 3: CURTAIN SCROLL — Section 2 pinned, Section 3 rolls over (Only for Desktop) ── */}
         <div className="relative w-full" style={{ zIndex: 1 }}>
@@ -611,282 +944,282 @@ export default function LandingAndAuthPage() {
             className="w-full relative lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden flex items-center justify-center bg-[var(--bg-primary)] py-12 lg:py-0"
             style={{ zIndex: 10 }}
           >
-            <section id="features" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+            <section id="features" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full scroll-mt-24">
               <FadeContent effect="mist" duration={1.2} threshold={0.15}>
                 <div className="text-center max-w-2xl mx-auto mb-8 sm:mb-10">
                   <span className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-2 block">
                     {isBn ? "প্রধান ফিচারসমূহ" : "Core Capabilities"}
                   </span>
                   <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight text-[var(--text-primary)] mb-2">
-                    {isBn ? "এডভোটেক কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Advotech Copilot & ContractMind"}
+                    {isBn ? "লিগ্যাল কোপাইলট ও কন্ট্রাক্টমাইন্ড" : "Legal Copilot & ContractMind"}
                   </h2>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed">
-                    {isBn
-                      ? "বাংলাদেশের সংবিধিবদ্ধ আইনের ভিত্তিতে নির্ভুল আইনি গবেষণা ও তাৎক্ষণিক চুক্তি অডিট।"
-                      : "Codified statutory precision with verifiable legal citations & automated risk audits."}
-                  </p>
                 </div>
               </FadeContent>
 
-          <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
-              {/* Feature 1 Card: Advotech Copilot */}
-              <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-indigo-500/40 transition-all duration-300 group`}>
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Scale className="w-7 h-7" />
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                      Feature 01
-                    </span>
-                  </div>
-
-                  <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
-                    Advotech Copilot
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
-                    {isBn
-                      ? "বাংলাদেশের সংবিধিবদ্ধ আইন সংহিতা (bdlaws), সুপ্রিম কোর্টের নজির ও ধারাভিত্তিক রেফারেন্সসহ সার্বক্ষণিক এআই আইনি পরামর্শক।"
-                      : "Intelligent legal advisory grounded in verified Bangladesh statutes and High Court Division precedents with zero hallucination guarantee."}
-                  </p>
-
-                  <div className="space-y-3.5 mb-8">
-                    {[
-                      isBn ? "সরাসরি bdlaws থেকে অনুচ্ছেদ ও ধারা ভেরিফিকেশন" : "Direct bdlaws statutory clause & section mapping",
-                      isBn ? "বাংলা ও ইংরেজি উভয় ভাষায় সাবলীল আইনি ব্যাখ্যা" : "Bilingual fluent legal reasoning (Bengali & English)",
-                      isBn ? "সুপ্রিম কোর্টের ল্যান্ডমার্ক রায় ও নজিরের সংযোগ" : "Citations to Supreme Court rulings and precedents",
-                      isBn ? "কেস স্টাডি বিশ্লেষণ ও লিগ্যাল নোটিউট ড্রাফটিং" : "Case study synthesis and instant legal notice drafting",
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 mt-0.5">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+              <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+                  {/* Feature 1 Card: Legal Copilot */}
+                  <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/legal-copilot.png"
+                          alt="Legal Copilot"
+                          width={56}
+                          height={56}
+                          className="w-12 h-12 sm:w-14 sm:h-14 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
                       </div>
-                    ))}
-                  </div>
-                </div>
 
-                <div className="pt-6 border-t border-[var(--text-primary)]/10">
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(false)}
-                    className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:gap-3 transition-all cursor-pointer"
-                  >
-                    <span>{isBn ? "এডভোটেক কোপাইলট ওপেন করুন" : "Launch Advotech Copilot"}</span>
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
+                      <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
+                        Legal Copilot
+                      </h3>
+                      <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
+                        {isBn
+                          ? "বাংলাদেশের সংবিধিবদ্ধ আইন সংহিতা (bdlaws), সুপ্রিম কোর্টের নজির ও ধারাভিত্তিক রেফারেন্সসহ সার্বক্ষণিক এআই আইনি পরামর্শক।"
+                          : "Intelligent legal advisory grounded in verified Bangladesh statutes and High Court Division precedents with zero hallucination guarantee."}
+                      </p>
 
-              {/* Feature 2 Card: ContractMind */}
-              <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-amber-500/40 transition-all duration-300 group`}>
-                <div>
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="w-14 h-14 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                      <Shield className="w-7 h-7" />
-                    </div>
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                      Feature 02
-                    </span>
-                  </div>
-
-                  <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
-                    ContractMind
-                  </h3>
-                  <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
-                    {isBn
-                      ? "স্বয়ংক্রিয় চুক্তি অডিট, ক্ষতিকর ধারা শনাক্তকরণ, রিস্ক স্কোরিং এবং এক ক্লিকে বিকল্প ধারা সংশোধনের ড্রাফট প্রস্তুতকারী সিস্টেম।"
-                      : "Autonomous contract risk auditing, unfair clause detection, statutory compliance scoring, and automated redline revisions."}
-                  </p>
-
-                  <div className="space-y-3.5 mb-8">
-                    {[
-                      isBn ? "কন্ট্রাক্ট অ্যাক্ট ১৮৭২ ও শ্রম আইন ২০০৬ এর অসামঞ্জস্যতা শনাক্তকরণ" : "Detection of conflicts with Contract Act 1872 & Labour Law 2006",
-                      isBn ? "০-১০০ স্কেলে তাৎক্ষণিক সামগ্রিক রিস্ক স্কোর ও রেড-ফ্ল্যাগ অ্যালার্ট" : "Instant 0-100 overall risk score with color-coded red flags",
-                      isBn ? "এক ক্লিকে বিকল্প ও ভারসাম্যপূর্ণ ক্লজ জেনারেশন (Redline Draft)" : "One-click balanced alternative clause recommendations",
-                      isBn ? "ক্লায়েন্ট সাইড PII অটো-রেডাকশন (ব্যক্তিগত তথ্য সম্পূর্ণ নিরাপদ)" : "Client-side PII auto-redaction before cloud transmission",
-                    ].map((item, idx) => (
-                      <div key={idx} className="flex items-start gap-3">
-                        <div className="w-5 h-5 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0 mt-0.5">
-                          <Check className="w-3 h-3" />
-                        </div>
-                        <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+                      <div className="space-y-3.5 mb-8">
+                        {[
+                          isBn ? "সরাসরি bdlaws থেকে অনুচ্ছেদ ও ধারা ভেরিফিকেশন" : "Direct bdlaws statutory clause & section mapping",
+                          isBn ? "বাংলা ও ইংরেজি উভয় ভাষায় সাবলীল আইনি ব্যাখ্যা" : "Bilingual fluent legal reasoning (Bengali & English)",
+                          isBn ? "সুপ্রিম কোর্টের ল্যান্ডমার্ক রায় ও নজিরের সংযোগ" : "Citations to Supreme Court rulings and precedents",
+                          isBn ? "কেস স্টাডি বিশ্লেষণ ও লিগ্যাল নোটিউট ড্রাফটিং" : "Case study synthesis and instant legal notice drafting",
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-3">
+                            <Check className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
+                            <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="pt-6 border-t border-[var(--text-primary)]/10">
+                      <button
+                        type="button"
+                        onClick={() => openLoginModal(false)}
+                        className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[var(--text-primary)] hover:opacity-80 hover:gap-3 transition-all cursor-pointer"
+                      >
+                        <span>{isBn ? "লিগ্যাল কোপাইলট ওপেন করুন" : "Launch Legal Copilot"}</span>
+                        <ArrowUpRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Feature 2 Card: ContractMind */}
+                  <div className={`rounded-3xl border ${borderClass} bg-[var(--bg-card)] p-8 sm:p-10 shadow-xl flex flex-col justify-between hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/contractmind.png"
+                          alt="ContractMind"
+                          width={48}
+                          height={48}
+                          className="w-11 h-11 sm:w-12 sm:h-12 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
+                      </div>
+
+                      <h3 className="text-2xl sm:text-3xl font-serif font-medium text-[var(--text-primary)] mb-3">
+                        ContractMind
+                      </h3>
+                      <p className="text-xs sm:text-sm text-[var(--text-muted)] leading-relaxed mb-6">
+                        {isBn
+                          ? "স্বয়ংক্রিয় চুক্তি অডিট, ক্ষতিকর ধারা শনাক্তকরণ, রিস্ক স্কোরিং এবং এক ক্লিকে বিকল্প ধারা সংশোধনের ড্রাফট প্রস্তুতকারী সিস্টেম।"
+                          : "Autonomous contract risk auditing, unfair clause detection, statutory compliance scoring, and automated redline revisions."}
+                      </p>
+
+                      <div className="space-y-3.5 mb-8">
+                        {[
+                          isBn ? "কন্ট্রাক্ট অ্যাক্ট ১৮৭২ ও শ্রম আইন ২০০৬ এর অসামঞ্জস্যতা শনাক্তকরণ" : "Detection of conflicts with Contract Act 1872 & Labour Law 2006",
+                          isBn ? "০-১০০ স্কেলে তাৎক্ষণিক সামগ্রিক রিস্ক স্কোর ও রেড-ফ্ল্যাগ অ্যালার্ট" : "Instant 0-100 overall risk score with color-coded red flags",
+                          isBn ? "এক ক্লিকে বিকল্প ও ভারসাম্যপূর্ণ ক্লজ জেনারেশন (Redline Draft)" : "One-click balanced alternative clause recommendations",
+                          isBn ? "ক্লায়েন্ট সাইড PII অটো-রেডাকশন (ব্যক্তিগত তথ্য সম্পূর্ণ নিরাপদ)" : "Client-side PII auto-redaction before cloud transmission",
+                        ].map((item, idx) => (
+                          <div key={idx} className="flex items-start gap-3">
+                            <Check className="w-4 h-4 text-[var(--text-muted)] shrink-0 mt-0.5" />
+                            <span className="text-xs sm:text-sm text-[var(--text-primary)] font-medium">{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="pt-6 border-t border-[var(--text-primary)]/10">
+                      <button
+                        type="button"
+                        onClick={() => openLoginModal(false)}
+                        className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-[var(--text-primary)] hover:opacity-80 hover:gap-3 transition-all cursor-pointer"
+                      >
+                        <span>{isBn ? "কন্ট্রাক্ট অডিট শুরু করুন" : "Start Contract Audit"}</span>
+                        <ArrowUpRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-
-                <div className="pt-6 border-t border-[var(--text-primary)]/10">
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(false)}
-                    className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-amber-600 dark:text-amber-400 hover:gap-3 transition-all cursor-pointer"
-                  >
-                    <span>{isBn ? "কন্ট্রাক্ট অডিট শুরু করুন" : "Start Contract Audit"}</span>
-                    <ArrowUpRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </FadeContent>
-        </section>
+              </FadeContent>
+            </section>
           </div>
 
           {/* Section 3: CURTAIN on desktop (lg:), natural seamless flow on mobile */}
           <section
             id="for-whom"
-            className="relative py-16 lg:py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15"
+            className="relative py-16 lg:py-24 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15 scroll-mt-24"
             style={{ zIndex: 20 }}
           >
-          <div className="max-w-6xl mx-auto">
-            <FadeContent effect="mist" duration={1.2} threshold={0.15}>
-              <div className="text-center max-w-3xl mx-auto mb-16">
-                <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 mb-2 block">
-                  {isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}
-                </span>
-                <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight mb-3">
-                  {isBn ? "সবার জন্য উপযুক্ত সমাধান" : "Tailored For Every Need"}
-                </h2>
-                <p className="text-xs sm:text-sm text-[var(--text-muted)] max-w-xl mx-auto leading-relaxed">
-                  {isBn
-                    ? "সাধারণ নাগরিক, আইনজীবী এবং এন্টারপ্রাইজের আইনি সুরক্ষায়।"
-                    : "Built for individuals, advocates, and growing enterprises."}
-                </p>
-              </div>
-            </FadeContent>
-
-            <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* Persona 1: General Users / SME / Freelancer */}
-                <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300`}>
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-6">
-                      <User className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-xl font-serif font-semibold mb-2">
-                      {isBn ? "সাধারণ ব্যবহারকারী ও ফ্রিল্যান্সার" : "Individuals & Freelancers"}
-                    </h3>
-                    <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
-                      {isBn
-                        ? "জটিল আইনি মারপ্যাঁচ না বুঝেই যেকোনো চুক্তি সই করার ঝুঁকি এড়ান। নিজের অধিকার রক্ষা করুন চোখের পলকে।"
-                        : "Demystify confusing contract jargon before signing. Protect your livelihood, salary terms, and IP rights effortlessly."}
-                    </p>
-
-                    <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span>{isBn ? "নিয়োগ চুক্তি ও অফার লেটার সহজ বাংলায় রিভিউ" : "Plain-English / Bengali employment contract audit"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span>{isBn ? "বাড়ি ভাড়া ও সার্ভিস এগ্রিমেন্টের ঝুঁকি শনাক্ত" : "Tenancy & freelancer service clause validation"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                        <span>{isBn ? "তাৎক্ষণিক আইনি অধিকার ও প্রতিকার জানার সুবিধা" : "Instant clarity on your statutory statutory rights"}</span>
-                      </li>
-                    </ul>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(true)}
-                    className="w-full py-2.5 rounded-xl text-xs font-semibold border border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 transition-colors cursor-pointer"
-                  >
-                    {isBn ? "ব্যক্তিগত অ্যাকাউন্ট শুরু করুন" : "Start as Individual"}
-                  </button>
+            <div className="max-w-6xl mx-auto">
+              <FadeContent effect="mist" duration={1.2} threshold={0.15}>
+                <div className="text-center max-w-3xl mx-auto mb-16">
+                  <span className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] mb-2 block">
+                    {isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}
+                  </span>
+                  <h2 className="text-2xl sm:text-3xl md:text-4xl font-serif font-medium tracking-tight mb-3">
+                    {isBn ? "সবার জন্য উপযুক্ত সমাধান" : "Tailored For Every Need"}
+                  </h2>
                 </div>
+              </FadeContent>
 
-                {/* Persona 2: Lawyers & Advocates */}
-                <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border-2 border-amber-500/40 shadow-xl flex flex-col justify-between hover:-translate-y-1 transition-all duration-300 relative`}>
-                  <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-amber-500 text-black">
-                    {isBn ? "পেশাদার ওয়ার্কস্পেস" : "Advocate Portal"}
-                  </div>
+              <FadeContent effect="focus" duration={1} threshold={0.15} stagger={0.15}>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  {/* Persona 1: General Users / SME / Freelancer */}
+                  <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/general-user.png"
+                          alt={isBn ? "সাধারণ ব্যবহারকারী" : "Individuals"}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                      <h3 className="text-xl font-serif font-semibold mb-2">
+                        {isBn ? "সাধারণ ব্যবহারকারী" : "Individuals"}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
+                        {isBn
+                          ? "জটিল আইনি মারপ্যাঁচ না বুঝেই যেকোনো চুক্তি সই করার ঝুঁকি এড়ান। নিজের অধিকার রক্ষা করুন চোখের পলকে।"
+                          : "Demystify confusing contract jargon before signing. Protect your livelihood, salary terms, and IP rights effortlessly."}
+                      </p>
 
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-6">
-                      <Gavel className="w-6 h-6" />
+                      <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "নিয়োগ চুক্তি ও অফার লেটার সহজ বাংলায় রিভিউ" : "Plain-English / Bengali employment contract audit"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "বাড়ি ভাড়া ও সার্ভিস এগ্রিমেন্টের ঝুঁকি শনাক্ত" : "Tenancy & freelancer service clause validation"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "তাৎক্ষণিক আইনি অধিকার ও প্রতিকার জানার সুবিধা" : "Instant clarity on your statutory statutory rights"}</span>
+                        </li>
+                      </ul>
                     </div>
-                    <h3 className="text-xl font-serif font-semibold mb-2">
-                      {isBn ? "আইনজীবী ও অ্যাডভোকেট" : "Lawyers & Advocates"}
-                    </h3>
-                    <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
-                      {isBn
-                        ? "ঘণ্টার পর ঘণ্টা ম্যানুয়াল কেস রিসার্চ এবং ক্লজ ড্রাফটিং এর সময় বাঁচান। শতভাগ সংবিধিবদ্ধ নির্ভরযোগ্যতায় পরামর্শ দিন।"
-                        : "Accelerate case research, citation discovery, and contract review with verified Supreme Court precedents and statute references."}
-                    </p>
 
-                    <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        <span>{isBn ? "বার কাউন্সিল তালিকাভুক্ত অ্যাডভোকেট স্পেস" : "Bar Council verified credential management"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        <span>{isBn ? "৫০ পাতার চুক্তি চোখের পলকে অডিট ও রেডলাইন" : "Audit 50+ page commercial contracts in seconds"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                        <span>{isBn ? "সুপ্রিম কোর্ট ও bdlaws ক্রস-রেফারেন্সিং" : "Automated statutory cross-referencing"}</span>
-                      </li>
-                    </ul>
+                    <button
+                      type="button"
+                      onClick={() => openLoginModal(true)}
+                      className={`w-full py-2.5 rounded-xl text-xs font-semibold border ${borderClass} text-[var(--text-primary)] hover:border-[var(--text-primary)]/40 hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer`}
+                    >
+                      {isBn ? "ব্যক্তিগত অ্যাকাউন্ট শুরু করুন" : "Start as Individual"}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(true)}
-                    className="w-full py-2.5 rounded-xl text-xs font-semibold bg-amber-500 text-black hover:opacity-90 transition-opacity font-bold cursor-pointer"
-                  >
-                    {isBn ? "আইনজীবী হিসেবে যুক্ত হোন" : "Join as Advocate"}
-                  </button>
-                </div>
-
-                {/* Persona 3: Enterprise & Companies */}
-                <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 transition-all duration-300`}>
-                  <div>
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-6">
-                      <Building2 className="w-6 h-6" />
+                  {/* Persona 2: Lawyers & Advocates */}
+                  <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 hover:border-[var(--text-primary)]/30 transition-all duration-300 relative group`}>
+                    <div className="absolute -top-3.5 right-6 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-[var(--text-primary)] text-[var(--bg-primary)]">
+                      {isBn ? "পেশাদার ওয়ার্কস্পেস" : "Advocate Portal"}
                     </div>
-                    <h3 className="text-xl font-serif font-semibold mb-2">
-                      {isBn ? "কোম্পানি ও এন্টারপ্রাইজ" : "Enterprise & Legal Teams"}
-                    </h3>
-                    <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
-                      {isBn
-                        ? "মাল্টি-মেম্বার টিম কোলাবরেশন, ভেন্ডর চুক্তি যাচাই এবং সার্বভৌম গোপনীয়তার সাথে কর্পোরেট কমপ্লায়েন্স নিয়ন্ত্রণ করুন।"
-                        : "Centralize corporate contract risk, manage internal legal counsel access, and enforce institutional compliance standards."}
-                    </p>
 
-                    <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        <span>{isBn ? "অ্যাডমিন প্যানেল ও টিম মেম্বার রেফারেল কোড" : "Central admin dashboard with referral code onboarding"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        <span>{isBn ? "ভেন্ডর ও পার্টনারশিপ চুক্তির কমপ্লায়েন্স অডিট" : "Vendor, NDA, and partnership risk scoring"}</span>
-                      </li>
-                      <li className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
-                        <span>{isBn ? "সার্বভৌম ডেটা প্রাইভেসি ও এনক্রিপশন" : "Sovereign client-side PII encryption"}</span>
-                      </li>
-                    </ul>
+                    <div>
+                      <div className="mb-6 flex items-center justify-start">
+                        <Image
+                          src="/lawyer.png"
+                          alt={isBn ? "আইনজীবী ও অ্যাডভোকেট" : "Lawyers & Advocates"}
+                          width={40}
+                          height={40}
+                          className="w-10 h-10 object-contain dark:invert transition-transform group-hover:scale-105"
+                        />
+                      </div>
+                      <h3 className="text-xl font-serif font-semibold mb-2">
+                        {isBn ? "আইনজীবী ও অ্যাডভোকেট" : "Lawyers & Advocates"}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
+                        {isBn
+                          ? "ঘণ্টার পর ঘণ্টা ম্যানুয়াল কেস রিসার্চ এবং ক্লজ ড্রাফটিং এর সময় বাঁচান। শতভাগ সংবিধিবদ্ধ নির্ভরযোগ্যতায় পরামর্শ দিন।"
+                          : "Accelerate case research, citation discovery, and contract review with verified Supreme Court precedents and statute references."}
+                      </p>
+
+                      <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "বার কাউন্সিল তালিকাভুক্ত অ্যাডভোকেট স্পেস" : "Bar Council verified credential management"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "৫০ পাতার চুক্তি চোখের পলকে অডিট ও রেডলাইন" : "Audit 50+ page commercial contracts in seconds"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "সুপ্রিম কোর্ট ও bdlaws ক্রস-রেফারেন্সিং" : "Automated statutory cross-referencing"}</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openLoginModal(true)}
+                      className="w-full py-2.5 rounded-xl text-xs font-semibold bg-[var(--text-primary)] text-[var(--bg-primary)] hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer shadow-sm"
+                    >
+                      {isBn ? "আইনজীবী হিসেবে যুক্ত হোন" : "Join as Advocate"}
+                    </button>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => openLoginModal(true)}
-                    className="w-full py-2.5 rounded-xl text-xs font-semibold border border-purple-500/30 text-purple-600 dark:text-purple-400 hover:bg-purple-500/10 transition-colors cursor-pointer"
-                  >
-                    {isBn ? "এন্টারপ্রাইজ রেজিস্ট্রেশন" : "Register Enterprise"}
-                  </button>
+                  {/* Persona 3: Enterprise & Companies */}
+                  <div className={`p-8 rounded-3xl bg-[var(--bg-card)] border ${borderClass} shadow-md flex flex-col justify-between hover:-translate-y-1 hover:border-[var(--text-primary)]/30 transition-all duration-300 group`}>
+                    <div>
+                      <div className="mb-6 text-[var(--text-primary)] flex items-center justify-start">
+                        <Landmark className="w-9 h-9 transition-transform group-hover:scale-105" strokeWidth={1.75} />
+                      </div>
+                      <h3 className="text-xl font-serif font-semibold mb-2">
+                        {isBn ? "কোম্পানি ও এন্টারপ্রাইজ" : "Enterprise & Legal Teams"}
+                      </h3>
+                      <p className="text-xs text-[var(--text-muted)] mb-6 leading-relaxed">
+                        {isBn
+                          ? "মাল্টি-মেম্বার টিম কোলাবরেশন, ভেন্ডর চুক্তি যাচাই এবং সার্বভৌম গোপনীয়তার সাথে কর্পোরেট কমপ্লায়েন্স নিয়ন্ত্রণ করুন।"
+                          : "Centralize corporate contract risk, manage internal legal counsel access, and enforce institutional compliance standards."}
+                      </p>
+
+                      <ul className="space-y-3 text-xs text-[var(--text-muted)] mb-6">
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "অ্যাডমিন প্যানেল ও টিম মেম্বার রেফারেল কোড" : "Central admin dashboard with referral code onboarding"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "ভেন্ডর ও পার্টনারশিপ চুক্তির কমপ্লায়েন্স অডিট" : "Vendor, NDA, and partnership risk scoring"}</span>
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[var(--text-muted)]" />
+                          <span>{isBn ? "সার্বভৌম ডেটা প্রাইভেসি ও এনক্রিপশন" : "Sovereign client-side PII encryption"}</span>
+                        </li>
+                      </ul>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => openLoginModal(true)}
+                      className={`w-full py-2.5 rounded-xl text-xs font-semibold border ${borderClass} text-[var(--text-primary)] hover:border-[var(--text-primary)]/40 hover:bg-[var(--text-primary)]/5 transition-all cursor-pointer`}
+                    >
+                      {isBn ? "এন্টারপ্রাইজ রেজিস্ট্রেশন" : "Register Enterprise"}
+                    </button>
+                  </div>
                 </div>
-              </div>
-            </FadeContent>
-          </div>
-        </section>
-      </div>
+              </FadeContent>
+            </div>
+          </section>
+        </div>
 
         {/* ── SECTION 4: STATS & TRUST BAR ── */}
         <section className="py-16 px-6 lg:px-10 max-w-6xl mx-auto w-full">
@@ -921,7 +1254,7 @@ export default function LandingAndAuthPage() {
             className="w-full relative lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden flex items-center justify-center bg-[var(--bg-primary)] py-12 lg:py-0"
             style={{ zIndex: 10 }}
           >
-            <section id="reviews" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full">
+            <section id="reviews" className="py-8 px-6 lg:px-10 max-w-6xl mx-auto w-full scroll-mt-24">
               <FadeContent effect="mist" duration={1.2} threshold={0.15}>
                 <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 sm:mb-10 gap-4">
                   <div>
@@ -944,11 +1277,10 @@ export default function LandingAndAuthPage() {
                         key={idx}
                         type="button"
                         onClick={() => handleTestimonialChange(idx)}
-                        className={`group flex flex-col lg:flex-row items-center lg:items-center text-center lg:text-left gap-2 lg:gap-4 p-2.5 sm:p-3 lg:p-4.5 rounded-2xl transition-all duration-300 cursor-pointer border border-transparent relative ${
-                          activeTestimonial === idx
+                        className={`group flex flex-col lg:flex-row items-center lg:items-center text-center lg:text-left gap-2 lg:gap-4 p-2.5 sm:p-3 lg:p-4.5 rounded-2xl transition-all duration-300 cursor-pointer border border-transparent relative ${activeTestimonial === idx
                             ? "bg-[var(--bg-card)] shadow-md shadow-black/5 lg:translate-x-2"
                             : "bg-[var(--bg-card)]/40 hover:bg-[var(--bg-card)] opacity-60 hover:opacity-100"
-                        }`}
+                          }`}
                       >
                         {/* Active indicator: bottom bar on mobile, left bar on desktop */}
                         {activeTestimonial === idx && (
@@ -959,19 +1291,17 @@ export default function LandingAndAuthPage() {
                         )}
 
                         {/* Avatar */}
-                        <div className={`w-11 h-11 sm:w-12 sm:h-12 lg:w-13 lg:h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${
-                          activeTestimonial === idx
+                        <div className={`w-11 h-11 sm:w-12 sm:h-12 lg:w-13 lg:h-13 rounded-xl overflow-hidden shrink-0 relative border ${borderClass} transition-all duration-300 ${activeTestimonial === idx
                             ? "scale-105 shadow-sm ring-2 ring-amber-500/30"
                             : "grayscale-[30%] group-hover:grayscale-0"
-                        }`}>
+                          }`}>
                           <Image src={t.avatar} alt={t.name} fill className="object-cover" />
                         </div>
-                        
+
                         {/* Name & Role */}
                         <div className="w-full min-w-0">
-                          <div className={`font-semibold text-[11px] sm:text-xs lg:text-sm truncate transition-colors ${
-                            activeTestimonial === idx ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
-                          }`}>
+                          <div className={`font-semibold text-[11px] sm:text-xs lg:text-sm truncate transition-colors ${activeTestimonial === idx ? "text-[var(--text-primary)]" : "text-[var(--text-muted)] group-hover:text-[var(--text-primary)]"
+                            }`}>
                             {t.name}
                           </div>
                           <div className="text-[9px] sm:text-[10px] lg:text-xs text-[var(--text-muted)] truncate mt-0.5">
@@ -993,11 +1323,10 @@ export default function LandingAndAuthPage() {
                     {/* Vertical ticker animated content container */}
                     <div
                       key={activeTestimonial}
-                      className={`relative z-10 flex flex-col justify-between h-full ${
-                        slideDirection === "down"
+                      className={`relative z-10 flex flex-col justify-between h-full ${slideDirection === "down"
                           ? "animate-[rollDownIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
                           : "animate-[rollUpIn_0.42s_cubic-bezier(0.16,1,0.3,1)]"
-                      }`}
+                        }`}
                     >
                       <div className="overflow-hidden">
                         <Quote className="w-9 h-9 text-amber-500/50 mb-4 transition-transform duration-300" />
@@ -1027,8 +1356,8 @@ export default function LandingAndAuthPage() {
 
           {/* Section 6: CURTAIN on desktop (lg:), natural seamless flow on mobile */}
           <section
-            id="consultation"
-            className="relative pt-16 lg:pt-20 pb-20 lg:pb-36 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15"
+            id="suggestion"
+            className="relative pt-16 lg:pt-20 pb-20 lg:pb-36 px-6 lg:px-10 bg-[var(--bg-surface)] text-[var(--text-primary)] rounded-t-none lg:rounded-t-[48px] shadow-none lg:shadow-[0_-30px_70px_rgba(0,0,0,0.22)] border-t-0 lg:border-t lg:border-[var(--text-primary)]/15 scroll-mt-24"
             style={{ zIndex: 20 }}
           >
             <div className="max-w-6xl mx-auto">
@@ -1048,7 +1377,20 @@ export default function LandingAndAuthPage() {
                         : "Help us improve our platform. Send us your valuable suggestions, feedback, or ideas below."}
                     </p>
 
-                    <form onSubmit={(e) => { e.preventDefault(); openLoginModal(false); }} className="space-y-4">
+                    <form onSubmit={handleFeedbackSubmit} className="space-y-4">
+                      {feedbackSuccessMsg && (
+                        <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400 flex items-center gap-2 animate-fadeIn">
+                          <CheckCircle2 className="w-4 h-4 shrink-0" />
+                          <span>{feedbackSuccessMsg}</span>
+                        </div>
+                      )}
+                      {feedbackErrorMsg && (
+                        <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-600 dark:text-rose-400 flex items-center gap-2 animate-fadeIn">
+                          <AlertTriangle className="w-4 h-4 shrink-0" />
+                          <span>{feedbackErrorMsg}</span>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
                           <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
@@ -1057,6 +1399,9 @@ export default function LandingAndAuthPage() {
                           <input
                             type="text"
                             required
+                            value={feedbackName}
+                            onChange={(e) => setFeedbackName(e.target.value)}
+                            disabled={isSubmittingFeedback}
                             placeholder={isBn ? "আপনার নাম লিখুন" : "Enter your name"}
                             className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                           />
@@ -1068,6 +1413,9 @@ export default function LandingAndAuthPage() {
                           <input
                             type="text"
                             required
+                            value={feedbackContact}
+                            onChange={(e) => setFeedbackContact(e.target.value)}
+                            disabled={isSubmittingFeedback}
                             placeholder={isBn ? "017XXXXXXXX বা email@domain.com" : "contact@domain.com or phone"}
                             className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                           />
@@ -1081,6 +1429,9 @@ export default function LandingAndAuthPage() {
                         <textarea
                           rows={4}
                           required
+                          value={feedbackSuggestion}
+                          onChange={(e) => setFeedbackSuggestion(e.target.value)}
+                          disabled={isSubmittingFeedback}
                           placeholder={isBn ? "আপনার মূল্যবান পরামর্শ বা মতামত লিখুন..." : "Write your suggestion or feedback here..."}
                           className={`w-full px-4 py-3 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-[var(--bg-card)] text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`}
                         />
@@ -1089,15 +1440,21 @@ export default function LandingAndAuthPage() {
                       <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <button
                           type="submit"
-                          className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-md active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]"
+                          disabled={isSubmittingFeedback}
+                          className="w-full sm:w-auto px-7 py-3.5 rounded-xl text-xs sm:text-sm font-semibold uppercase tracking-wider transition-all shadow-md active:scale-95 hover:opacity-90 flex items-center justify-center gap-2 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] disabled:opacity-60"
                         >
-                          <span>{isBn ? "পরামর্শ পাঠান" : "Send Suggestion"}</span>
-                          <ArrowUpRight className="w-4 h-4" />
+                          {isSubmittingFeedback ? (
+                            <>
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <span>{isBn ? "পাঠানো হচ্ছে..." : "Sending..."}</span>
+                            </>
+                          ) : (
+                            <>
+                              <span>{isBn ? "পরামর্শ পাঠান" : "Send Suggestion"}</span>
+                              <ArrowUpRight className="w-4 h-4" />
+                            </>
+                          )}
                         </button>
-                        <span className="text-[11px] text-[var(--text-muted)] flex items-center gap-1.5">
-                          <Shield className="w-3.5 h-3.5 text-emerald-500" />
-                          <span>{isBn ? "আপনার তথ্য সম্পূর্ণ সুরক্ষিত ও গোপনীয়" : "Encrypted & 100% Confidential"}</span>
-                        </span>
                       </div>
                     </form>
                   </div>
@@ -1138,8 +1495,8 @@ export default function LandingAndAuthPage() {
                       />
                     </div>
 
-                    <div className={`p-4 rounded-2xl bg-[var(--bg-card)] border ${borderClass} flex items-center gap-3.5 shadow-xs`}>
-                      <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                    <div className="p-4 rounded-2xl bg-[var(--bg-card)] flex items-center gap-3.5">
+                      <div className="w-10 h-10 flex items-center justify-center shrink-0 text-[var(--text-primary)]">
                         <Phone className="w-5 h-5" />
                       </div>
                       <div className="min-w-0">
@@ -1160,7 +1517,7 @@ export default function LandingAndAuthPage() {
           <div className="max-w-7xl mx-auto px-6 lg:px-10">
             {/* Desktop 3-part layout / Mobile stacked layout */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-              
+
               {/* Left Column Group: 2 Sub-Columns */}
               <div className="order-2 lg:order-1 lg:col-span-4 grid grid-cols-2 gap-6 pt-6 lg:pt-14 pb-4">
                 {/* Col 1: Platform & Capabilities */}
@@ -1195,7 +1552,7 @@ export default function LandingAndAuthPage() {
               {/* Center Elevated Tabbed Hanging Card (Website's native card theme) */}
               <div className="order-1 lg:order-2 lg:col-span-4 flex justify-center -translate-y-8 sm:-translate-y-12 z-30">
                 <div className="relative w-full max-w-md bg-[var(--bg-card)] text-[var(--text-primary)] rounded-b-[28px] sm:rounded-b-[36px] p-6 sm:p-8 shadow-[0_20px_50px_rgba(0,0,0,0.12)] dark:shadow-[0_25px_60px_rgba(0,0,0,0.6)] border-x border-b border-[var(--text-primary)]/15 text-center">
-                  
+
                   {/* Left 3D Fold Ribbon Flap */}
                   <div className="absolute top-0 -left-4 sm:-left-5 w-4 sm:w-5 h-4 sm:h-5 overflow-hidden pointer-events-none">
                     <svg viewBox="0 0 20 20" className="w-full h-full fill-[var(--text-primary)]/20">
@@ -1241,12 +1598,7 @@ export default function LandingAndAuthPage() {
 
                   {/* Clean Newsletter Input Group */}
                   <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      if (newsletterEmail.trim()) {
-                        setNewsletterSubscribed(true);
-                      }
-                    }}
+                    onSubmit={handleNewsletterSubmit}
                     className="w-full max-w-xs mx-auto"
                   >
                     <div className="flex flex-col sm:flex-row items-stretch rounded-xl sm:rounded-2xl overflow-hidden shadow-xs border border-[var(--text-primary)]/15 bg-[var(--bg-surface)]">
@@ -1255,21 +1607,35 @@ export default function LandingAndAuthPage() {
                         required
                         value={newsletterEmail}
                         onChange={(e) => setNewsletterEmail(e.target.value)}
-                        placeholder={isBn ? "আপনার ইমেইল বা ফোন" : "Email Address"}
+                        disabled={isSubscribingNewsletter}
+                        placeholder={isBn ? "আপনার ইমেইল ঠিকানা" : "Email Address"}
                         className="w-full px-3.5 py-2.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] bg-transparent outline-none font-medium"
                       />
                       <button
                         type="submit"
-                        className="px-5 py-2.5 bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 active:scale-95 text-xs font-semibold tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1.5 shadow-xs"
+                        disabled={isSubscribingNewsletter}
+                        className="px-5 py-2.5 bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 active:scale-95 text-xs font-semibold tracking-wider transition-all cursor-pointer shrink-0 flex items-center justify-center gap-1.5 shadow-xs disabled:opacity-60"
                       >
-                        <span>
-                          {newsletterSubscribed
-                            ? (isBn ? "যুক্ত হয়েছেন" : "Subscribed")
-                            : (isBn ? "সাবস্ক্রাইব" : "Subscribe")}
-                        </span>
-                        {newsletterSubscribed && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                        {isSubscribingNewsletter ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <>
+                            <span>
+                              {newsletterSubscribed
+                                ? (isBn ? "যুক্ত হয়েছেন" : "Subscribed")
+                                : (isBn ? "সাবস্ক্রাইব" : "Subscribe")}
+                            </span>
+                            {newsletterSubscribed && <Check className="w-3.5 h-3.5 text-emerald-500" />}
+                          </>
+                        )}
                       </button>
                     </div>
+
+                    {newsletterErrorMsg && (
+                      <p className="mt-2 text-[11px] text-rose-500 font-medium text-center">
+                        {newsletterErrorMsg}
+                      </p>
+                    )}
 
                     {newsletterSubscribed && (
                       <div className="mt-2.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400 flex items-center justify-center gap-1.5 animate-fadeIn">
@@ -1292,7 +1658,7 @@ export default function LandingAndAuthPage() {
                     <li><a href="#" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "হোম পেজ" : "Home"}</a></li>
                     <li><a href="#for-whom" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ব্যবহারকারী ভূমিকা" : "Who Is It For"}</a></li>
                     <li><a href="#reviews" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "ক্লায়েন্ট রিভিউ" : "Client Reviews"}</a></li>
-                    <li><a href="#consultation" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ফর্ম" : "Consultation Form"}</a></li>
+                    <li><a href="#suggestion" className="hover:text-[var(--text-primary)] transition-colors">{isBn ? "পরামর্শ ফর্ম" : "Suggestion Form"}</a></li>
                     <li>
                       <button
                         type="button"
@@ -1306,11 +1672,11 @@ export default function LandingAndAuthPage() {
                 </div>
 
                 {/* Col 4: Direct Support & Contact */}
-                <div>
+                <div id="contact" className="scroll-mt-24">
                   <div className="text-xs font-bold uppercase tracking-wider mb-4 text-[var(--text-primary)]">
                     {isBn ? "সাপোর্ট ও যোগাযোগ" : "Support & Contact"}
                   </div>
-                  
+
                   <div className="space-y-2.5 text-xs text-[var(--text-muted)]">
                     {/* WhatsApp */}
                     <a
@@ -1351,7 +1717,7 @@ export default function LandingAndAuthPage() {
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
                     <span className="text-[10px] text-[var(--text-muted)] font-medium">
-                      {isBn ? "২৪/৭ অনলাইন এআই অ্যাসিস্ট্যান্স সক্রিয়" : "24/7 AI Assistance Active"}
+                      {isBn ? "২৪/৭ অনলাইন এআই অ্যাসিস্ট্যান্স সক্রিয়" : "24/7 AI Assistance Active"}
                     </span>
                   </div>
                 </div>
@@ -1410,17 +1776,17 @@ export default function LandingAndAuthPage() {
                   mouseInteraction parallaxStrength={0.5} grain grainIntensity={0.05}
                 />
               </div>
-              <div className="relative z-10 flex items-center gap-2.5">
-                <div className="w-8 h-8 flex items-center justify-center">
+              <div className="relative z-10 flex items-center gap-3.5">
+                <div className="w-11 h-11 flex items-center justify-center">
                   <Image
                     src="/logo.svg"
                     alt="Advotech Copilot"
-                    width={32}
-                    height={32}
-                    className="w-8 h-8 object-contain dark:invert"
+                    width={44}
+                    height={44}
+                    className="w-11 h-11 object-contain dark:invert"
                   />
                 </div>
-                <span className="font-semibold text-base tracking-tight text-[var(--text-primary)]">Advotech Copilot</span>
+                <span className="font-bold text-xl sm:text-[22px] tracking-tight text-[var(--text-primary)]">Advotech Copilot</span>
               </div>
 
               {/* Subtitle, Heading, Description & Feature Cards: Hidden on mobile, shown on desktop (md:) */}
@@ -1434,41 +1800,7 @@ export default function LandingAndAuthPage() {
                 <p className="text-xs leading-relaxed text-[var(--text-muted)] mb-6">
                   {isBn ? "বাংলাদেশের সংবিধিবদ্ধ আইন, শ্রম আইন ও চুক্তি আইনের নির্ভরযোগ্য যাচাইকরণ।" : "Verify legal risks against Bangladesh statutes. Zero hallucination guaranteed."}
                 </p>
-                <div className="flex flex-col gap-3 mt-4">
-                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
-                    <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">
-                        {isBn ? "বাংলাদেশ সংবিধিবদ্ধ আইন সংহিতা" : "Codified BD Statutes"}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                        {isBn ? "শ্রম আইন ২০০৬ ও চুক্তি আইন ১৮৭২ এর ওপর ভিত্তি করে প্রস্তুত।" : "Zero statutory hallucination under Bangladesh Labour & Contract Acts."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
-                    <Gavel className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">
-                        {isBn ? "আইনজীবী ভেরিফিকেশন নেটওয়ার্ক" : "Advocate Verification Network"}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                        {isBn ? "বাংলাদেশ বার কাউন্সিল তালিকাভুক্ত আইনজীবীদের দ্বারা আইনগত অনুমোদন।" : "Bar Council enrolled advocates for statutory review and digital signoff."}
-                      </p>
-                    </div>
-                  </div>
-                  <div className={`p-3 rounded-xl border ${borderClass} bg-[var(--bg-card)]/50 flex items-start gap-2.5`}>
-                    <Lock className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-semibold text-[var(--text-primary)]">
-                        {isBn ? "এন্টারপ্রাইজ নিরাপত্তা ও PII গোপনীয়তা" : "Enterprise Privacy & Security"}
-                      </p>
-                      <p className="text-[11px] text-[var(--text-muted)] mt-0.5 leading-relaxed">
-                        {isBn ? "সংবেদনশীল তথ্য ও ব্যক্তিগত উপাত্তের ক্লায়েন্ট-সাইড মাস্কিং।" : "Automated client-side sensitive PII masking with bank-grade encryption."}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+
               </div>
             </div>
 
@@ -1476,505 +1808,792 @@ export default function LandingAndAuthPage() {
             <div className="flex-1 flex flex-col justify-start px-6 sm:px-8 md:px-10 py-8 overflow-y-auto max-h-[80vh] md:max-h-none">
               <div className="w-full max-w-[400px] mx-auto">
 
-                {/* ── Segmented Tab Switcher (Sign In vs Register) ── */}
-                <div className="flex rounded-xl bg-[var(--bg-surface)] p-1 mb-5 border border-[var(--text-primary)]/10">
-                  <button
-                    type="button"
-                    onClick={() => { setIsSignUp(false); setAuthError(""); }}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${!isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                  >
-                    {isBn ? "লগইন (Sign In)" : "Sign In"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setIsSignUp(true); setRegStep("role"); setAuthError(""); }}
-                    className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
-                  >
-                    {isBn ? "নতুন নিবন্ধন (Sign Up)" : "Register (Sign Up)"}
-                  </button>
-                </div>
-
-                {/* ── SIGN IN ── */}
-                {!isSignUp && (
+                {/* ══════════════════════════════════════════════════════ */}
+                {/* [UPDATED] FORGOT PASSWORD FLOW (overrides login/signup views) */}
+                {/* ══════════════════════════════════════════════════════ */}
+                {forgotStep !== "none" && (
                   <>
+                    <button
+                      type="button"
+                      onClick={() => { setForgotStep("none"); setForgotError(""); }}
+                      className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer"
+                    >
+                      <ChevronLeft className="w-3.5 h-3.5" />
+                      {isBn ? "লগইনে ফিরে যান" : "Back to sign in"}
+                    </button>
+
                     <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
-                      {isBn ? "স্বাগতম ফিরে আসার জন্য" : "Welcome back"}
+                      {forgotStep === "email"
+                        ? (isBn ? "পাসওয়ার্ড রিসেট করুন" : "Reset your password")
+                        : (isBn ? "নতুন পাসওয়ার্ড সেট করুন" : "Set a new password")}
                     </h2>
-                    <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
-                      {isBn ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট ও আইনি কনসাল্টেশনে প্রবেশ করুন।" : "Sign in to access your audit workspace, legal memos, and verified citations."}
+                    <p className="text-xs text-[var(--text-muted)] mb-5">
+                      {forgotStep === "email"
+                        ? (isBn ? "আপনার নিবন্ধিত ইমেইল দিন। আমরা একটি ৬-সংখ্যার কোড পাঠাবো।" : "Enter your registered email. We'll send you a 6-digit code.")
+                        : (isBn ? `কোডটি পাঠানো হয়েছে: ${forgotEmail}` : `Code sent to: ${forgotEmail}`)}
                     </p>
-                    <form onSubmit={handleLoginSubmit} className="space-y-3.5">
-                      <div>
-                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email address"}</label>
-                        <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder={isBn ? "আপনার ইমেইল" : "your@email.com"} className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`} />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"}</label>
-                        <div className="relative">
-                          <input type={showPassword ? "text" : "password"} required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••••••" className={`w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`} />
-                          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
+
+                    {forgotStep === "email" && (
+                      <form onSubmit={handleForgotSendOtp} className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "ইমেইল" : "Email"}
+                          </label>
+                          <input
+                            type="email"
+                            required
+                            value={forgotEmail}
+                            onChange={(e) => setForgotEmail(e.target.value)}
+                            placeholder="your@email.com"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`}
+                          />
                         </div>
-                      </div>
-                      {authError && !isSignUp && (
-                        <p className="text-xs text-red-500 mt-1 px-1">{authError}</p>
-                      )}
-                      <div className="pt-1">
-                        <button type="submit" disabled={authLoading} className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] disabled:opacity-60">
-                          {authLoading ? (isBn ? "অপেক্ষা করুন..." : "Signing in...") : (isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace")}
+                        {forgotError && <p className="text-xs text-rose-500">{forgotError}</p>}
+                        <button
+                          type="submit"
+                          disabled={forgotLoading}
+                          className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                        >
+                          {forgotLoading ? (isBn ? "পাঠানো হচ্ছে..." : "Sending...") : (isBn ? "কোড পাঠান" : "Send reset code")}
                         </button>
-                      </div>
-                    </form>
-                    <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
-                      <span>{isBn ? "অ্যাকাউন্ট নেই? " : "Don't have an account? "}</span>
-                      <button type="button" onClick={() => { setIsSignUp(true); setRegStep("role"); }} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
-                        {isBn ? "নিবন্ধন করুন" : "Register"}
-                      </button>
-                    </div>
+                      </form>
+                    )}
+
+                    {forgotStep === "otp" && (
+                      <form onSubmit={handleResetPassword} className="space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "৬-সংখ্যার কোড" : "6-digit code"}
+                          </label>
+                          <input
+                            type="text"
+                            maxLength={6}
+                            required
+                            value={forgotOtp}
+                            onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ""))}
+                            placeholder="••••••"
+                            className={`w-full text-center text-xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "নতুন পাসওয়ার্ড" : "New password"}
+                          </label>
+                          <input
+                            type="password"
+                            required
+                            value={forgotNewPw}
+                            onChange={(e) => setForgotNewPw(e.target.value)}
+                            placeholder="••••••••"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`}
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">
+                            {isBn ? "পাসওয়ার্ড নিশ্চিত করুন" : "Confirm new password"}
+                          </label>
+                          <input
+                            type="password"
+                            required
+                            value={forgotConfirmPw}
+                            onChange={(e) => setForgotConfirmPw(e.target.value)}
+                            placeholder="••••••••"
+                            className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`}
+                          />
+                        </div>
+                        {forgotError && <p className="text-xs text-rose-500">{forgotError}</p>}
+                        <button
+                          type="submit"
+                          disabled={forgotLoading || forgotOtp.length < 6}
+                          className="w-full py-3 px-4 rounded-xl text-sm font-semibold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 disabled:opacity-60 cursor-pointer"
+                        >
+                          {forgotLoading ? (isBn ? "রিসেট হচ্ছে..." : "Resetting...") : (isBn ? "পাসওয়ার্ড রিসেট করুন" : "Reset password")}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setForgotError("");
+                            try { await api.post("/api/auth/forgot-password", { email: forgotEmail.trim() }); }
+                            catch { /* ignore */ }
+                          }}
+                          className="w-full text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors cursor-pointer"
+                        >
+                          {isBn ? "কোড পাননি? পুনরায় পাঠান" : "Didn't get the code? Resend"}
+                        </button>
+                      </form>
+                    )}
                   </>
                 )}
 
-                {/* ── SIGN UP ── */}
-                {isSignUp && (
+                {/* ══════════════════════════════════════════════════════ */}
+                {/* LOGIN / SIGNUP FLOW (hidden while in forgot flow)   */}
+                {/* ══════════════════════════════════════════════════════ */}
+                {forgotStep === "none" && (
                   <>
-                    {/* STEP 1: Role Selection */}
-                    {regStep === "role" && (
+                    {/* ── Segmented Tab Switcher (Sign In vs Register) ── */}
+                    <div className="flex rounded-xl bg-[var(--bg-surface)] p-1 mb-5 border border-[var(--text-primary)]/10">
+                      <button
+                        type="button"
+                        onClick={() => { setIsSignUp(false); setAuthError(""); }}
+                        className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${!isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                      >
+                        {isBn ? "লগইন (Sign In)" : "Sign In"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setIsSignUp(true); setRegStep("role"); setAuthError(""); }}
+                        className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer ${isSignUp ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm font-bold" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}
+                      >
+                        {isBn ? "নতুন নিবন্ধন" : "Register"}
+                      </button>
+                    </div>
+
+                    {/* ── SIGN IN ── */}
+                    {!isSignUp && (
                       <>
                         <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
-                          {isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create your account"}
+                          {isBn ? "স্বাগতম ফিরে আসার জন্য" : "Welcome back"}
                         </h2>
-                        <p className="text-xs sm:text-[13px] leading-relaxed mb-5 text-[var(--text-muted)]">
-                          {isBn ? "আপনার ব্যবহারকারী ধরন বেছে নিন।" : "Choose your account type to get started."}
+                        <p className="text-xs sm:text-[13px] leading-relaxed mb-4 text-[var(--text-muted)]">
+                          {isBn ? "আপনার সংরক্ষিত চুক্তি, অডিট রিপোর্ট ও আইনি কনসাল্টেশনে প্রবেশ করুন।" : "Sign in to access your audit workspace, legal memos, and verified citations."}
                         </p>
-                        <div className="flex flex-col gap-3">
-                          {/* General */}
-                          <button type="button" onClick={() => { setSelectedRole("general"); setRegStep("form"); }}
-                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
-                            <div className="flex items-center gap-3.5">
-                              <User className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm text-[var(--text-primary)]">{isBn ? "সাধারণ ব্যবহারকারী" : "General User"}</div>
-                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "SME, ফ্রিল্যান্সার, HR — চুক্তি ও আইনি প্রশ্নের জন্য" : "SME, Freelancer, HR — contracts & legal queries"}</div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+
+                        {/* Google One-Click Continue */}
+                        <div className="w-full flex flex-col items-center justify-center mb-3">
+                          <div className="relative w-full max-w-[340px] h-[44px] rounded-full select-none">
+                            {/* Layer 1: Native Pixel-Perfect Visual Button (100% stable, zero flicker) */}
+                            <div className="w-full h-[44px] flex items-center justify-center gap-3 px-5 rounded-full border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/[0.05] active:scale-[0.99] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-sm bg-[var(--bg-card)] pointer-events-none">
+                              <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                              </svg>
+                              <span>{isBn ? "Google দিয়ে চালিয়ে যান" : "Continue with Google"}</span>
                             </div>
-                          </button>
-                          {/* Lawyer */}
-                          <button type="button" onClick={() => { setSelectedRole("lawyer"); setRegStep("form"); }}
-                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
-                            <div className="flex items-center gap-3.5">
-                              <Scale className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm text-[var(--text-primary)]">
-                                  {isBn ? "আইনজীবী / অ্যাডভোকেট" : "Lawyer / Advocate"}
-                                </div>
-                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "বার কাউন্সিল ভেরিফিকেশনসহ পেশাদার ওয়ার্কস্পেস" : "Professional workspace with Bar Council verification"}</div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
-                            </div>
-                          </button>
-                          {/* Enterprise */}
-                          <button type="button" onClick={() => { setSelectedRole("enterprise"); setRegStep("form"); }}
-                            className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
-                            <div className="flex items-center gap-3.5">
-                              <Building2 className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
-                              <div className="flex-1 min-w-0">
-                                <div className="font-semibold text-sm text-[var(--text-primary)]">
-                                  {isBn ? "কোম্পানি / এন্টারপ্রাইজ" : "Company / Enterprise"}
-                                </div>
-                                <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "কর্পোরেট প্রতিষ্ঠান ও টিম রেফারাল ওয়ার্কস্পেস" : "Corporate entities & team referral workspace"}</div>
-                              </div>
-                              <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
-                            </div>
-                          </button>
+
+                            {/* Layer 2: Google Official GSI Button (Transparent on top, receives native clicks) */}
+                            <div
+                              ref={googleSignInBtnRef}
+                              className="absolute inset-0 w-full h-full z-10 opacity-[0.001] cursor-pointer rounded-full flex items-center justify-center overflow-hidden [&>div]:!w-full [&>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full"
+                            />
+                          </div>
                         </div>
+
+                        <div className="relative flex items-center mb-4">
+                          <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
+                          <span className="flex-shrink mx-3 text-xs text-[var(--text-muted)] font-medium">
+                            {isBn ? "অথবা ইমেইল দিয়ে লগইন করুন" : "or continue with email"}
+                          </span>
+                          <div className="flex-grow border-t border-[var(--text-primary)]/10"></div>
+                        </div>
+
+                        <form onSubmit={handleLoginSubmit} className="space-y-3.5">
+                          <div>
+                            <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email address"}</label>
+                            <input type="email" required value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} placeholder={isBn ? "আপনার ইমেইল" : "your@email.com"} className={`w-full px-3.5 py-2.5 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-muted)]`} />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"}</label>
+                            <div className="relative">
+                              <input type={showPassword ? "text" : "password"} required value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="••••••••••••" className={`w-full px-3.5 py-2.5 pr-10 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-[var(--text-primary)]/40 bg-transparent text-[var(--text-primary)]`} />
+                              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+                          {authError && !isSignUp && (
+                            <p className="text-xs text-red-500 mt-1 px-1">{authError}</p>
+                          )}
+                          <div className="pt-1 space-y-2">
+                            <button type="submit" disabled={authLoading} className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] disabled:opacity-60">
+                              {authLoading ? (isBn ? "অপেক্ষা করুন..." : "Signing in...") : (isBn ? "লগইন করুন ও অ্যাপে প্রবেশ করুন" : "Sign in to workspace")}
+                            </button>
+
+                            {/* [UPDATED] NEW: Forgot password link */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setForgotStep("email");
+                                setForgotEmail(loginEmail);
+                                setForgotError("");
+                              }}
+                              className="w-full text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:underline transition-colors cursor-pointer"
+                            >
+                              {isBn ? "পাসওয়ার্ড ভুলে গেছেন?" : "Forgot password?"}
+                            </button>
+                          </div>
+                        </form>
                         <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
-                          <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
-                          <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
-                            {isBn ? "লগইন করুন" : "Sign in"}
+                          <span>{isBn ? "অ্যাকাউন্ট নেই? " : "Don't have an account? "}</span>
+                          <button type="button" onClick={() => { setIsSignUp(true); setRegStep("role"); }} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                            {isBn ? "নিবন্ধন করুন" : "Register"}
                           </button>
                         </div>
                       </>
                     )}
 
-                    {/* STEP 2: Registration Form */}
-                    {regStep === "form" && selectedRole && (
+                    {/* ── SIGN UP ── */}
+                    {isSignUp && (
                       <>
-                        <button type="button" onClick={() => setRegStep("role")}
-                          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                          {isBn ? "ফিরে যান" : "Back to role selection"}
-                        </button>
-                        <div className="flex items-center gap-2 mb-4">
-                          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedRole === "general" ? "bg-blue-100 dark:bg-blue-900/40" : selectedRole === "lawyer" ? "bg-amber-100 dark:bg-amber-900/40" : "bg-purple-100 dark:bg-purple-900/40"}`}>
-                            {selectedRole === "general" ? <User className="w-4 h-4 text-blue-600 dark:text-blue-400" /> : selectedRole === "lawyer" ? <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" /> : <Building2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
-                          </div>
-                          <span className="text-sm font-semibold text-[var(--text-primary)]">
-                            {selectedRole === "general" ? (isBn ? "সাধারণ ব্যবহারকারী নিবন্ধন" : "General User Registration") : selectedRole === "lawyer" ? (isBn ? "আইনজীবী নিবন্ধন আবেদন" : "Lawyer Registration") : (isBn ? "কোম্পানি ও টিম নিবন্ধন" : "Enterprise Registration")}
-                          </span>
-                        </div>
+                        {/* STEP 1: Role Selection */}
+                        {regStep === "role" && (
+                          <>
+                            <h2 className="text-2xl sm:text-3xl font-semibold tracking-tight mb-1 text-[var(--text-primary)]">
+                              {isBn ? "নতুন অ্যাকাউন্ট খুলুন" : "Create your account"}
+                            </h2>
+                            <p className="text-xs sm:text-[13px] leading-relaxed mb-4 text-[var(--text-muted)]">
+                              {isBn ? "আপনার ব্যবহারকারী ধরন বেছে নিন।" : "Choose your account type to get started."}
+                            </p>
 
-                        {authError && (
-                          <div className="p-3 mb-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-400 font-medium">
-                            {authError}
-                          </div>
-                        )}
+                            {/* Google One-Click Register */}
+                            <div className="w-full flex flex-col items-center justify-center mb-3">
+                              <div className="relative w-full max-w-[340px] h-[44px] rounded-full select-none">
+                                {/* Layer 1: Native Pixel-Perfect Visual Button (100% stable, zero flicker) */}
+                                <div className="w-full h-[44px] flex items-center justify-center gap-3 px-5 rounded-full border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/[0.05] active:scale-[0.99] transition-all font-medium text-xs sm:text-sm text-[var(--text-primary)] shadow-sm bg-[var(--bg-card)] pointer-events-none">
+                                  <svg className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" viewBox="0 0 24 24">
+                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                                  </svg>
+                                  <span>{isBn ? "Google দিয়ে সাইন আপ করুন" : "Sign up with Google"}</span>
+                                </div>
 
-                        {/* ── GENERAL FORM ── */}
-                        {selectedRole === "general" && (
-                          <form onSubmit={handleStartFormSubmit} className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Tariqul" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                {/* Layer 2: Google Official GSI Button (Transparent on top, receives native clicks) */}
+                                <div
+                                  ref={googleSignUpBtnRef}
+                                  className="absolute inset-0 w-full h-full z-10 opacity-[0.001] cursor-pointer rounded-full flex items-center justify-center overflow-hidden [&>div]:!w-full [&>div]:!h-full [&_iframe]:!w-full [&_iframe]:!h-full"
+                                />
                               </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Islam" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
-                                <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
-                                <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                  <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
-                                  <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
-                                  <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
-                              <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="your@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
-                            <div className="pt-1">
-                              <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                {isBn ? "সাইন আপ (ইমেইল ওটিপি যাচাই)" : "Sign up (Verify via Email OTP)"}
-                              </button>
-                            </div>
-                          </form>
-                        )}
-
-                        {/* ── LAWYER FORM ── */}
-                        {selectedRole === "lawyer" && (
-                          <form onSubmit={handleStartFormSubmit} className="space-y-3">
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Shireen" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Akhter" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
-                                <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
-                                <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                  <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
-                                  <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
-                                  <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
-                              <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="advocate@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                            </div>
-                            <div className="grid grid-cols-2 gap-3">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-3 pt-1">
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "বার কাউন্সিল নম্বর" : "Ber council num"} <span className="text-red-500">*</span></label>
-                                <input type="text" required value={barCouncilNo} onChange={(e) => setBarCouncilNo(e.target.value)} placeholder="BC-48291/2019" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "আইন শাখা" : "Field of law"} <span className="text-red-500">*</span></label>
-                                <select value={fieldOfLaw} onChange={(e) => setFieldOfLaw(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                  <option value="Corporate & Commercial Law">{isBn ? "কর্পোরেট ও বাণিজ্যিক" : "Corporate & Commercial"}</option>
-                                  <option value="Labour & Employment Law">{isBn ? "শ্রম ও চাকরি আইন" : "Labour & Employment"}</option>
-                                  <option value="Property & Land Law">{isBn ? "সম্পত্তি ও ভূমি আইন" : "Property & Land"}</option>
-                                  <option value="Civil & Contract Litigation">{isBn ? "দেওয়ানি ও চুক্তি" : "Civil & Contract"}</option>
-                                  <option value="ICT & FinTech Law">{isBn ? "আইসিটি ও ফিনটেক" : "ICT & FinTech"}</option>
-                                </select>
-                              </div>
-                            </div>
-                            <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-700/40">
-                              <span className="text-amber-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                              <p className="text-[11px] text-amber-700 dark:text-amber-400 leading-relaxed">
-                                {isBn
-                                  ? "আবেদনের পর সিস্টেম অ্যাডমিন (System Admin) দ্বারা আপনার বার কাউন্সিল সনদ যাচাই করা হবে।"
-                                  : "Verification by System Admin — your credentials will be manually verified by System Admin."}
+                              <p className="text-[11px] text-[var(--text-muted)] mt-1.5 text-center flex items-center justify-center gap-1">
                               </p>
                             </div>
-                            {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
-                            <div className="pt-1">
-                              <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                {isBn ? "আইনজীবী হিসেবে আবেদন (Request as lawyer)" : "Request as lawyer (Verify via OTP)"}
+
+                            {authError && isSignUp && regStep === "role" && (
+                              <p className="text-xs text-red-500 mb-2 px-1 text-center">{authError}</p>
+                            )}
+
+                            <div className="flex flex-col gap-3">
+                              {/* General */}
+                              <button type="button" onClick={() => { setSelectedRole("general"); setRegStep("form"); }}
+                                className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                                <div className="flex items-center gap-3.5">
+                                  <User className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-[var(--text-primary)]">{isBn ? "সাধারণ ব্যবহারকারী" : "General User"}</div>
+                                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "SME, ফ্রিল্যান্সার, HR — চুক্তি ও আইনি প্রশ্নের জন্য" : "SME, Freelancer, HR — contracts & legal queries"}</div>
+                                  </div>
+                                  <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+                                </div>
+                              </button>
+                              {/* Lawyer */}
+                              <button type="button" onClick={() => { setSelectedRole("lawyer"); setRegStep("form"); }}
+                                className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                                <div className="flex items-center gap-3.5">
+                                  <Scale className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-[var(--text-primary)]">
+                                      {isBn ? "আইনজীবী / অ্যাডভোকেট" : "Lawyer / Advocate"}
+                                    </div>
+                                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "বার কাউন্সিল ভেরিফিকেশনসহ পেশাদার ওয়ার্কস্পেস" : "Professional workspace with Bar Council verification"}</div>
+                                  </div>
+                                  <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+                                </div>
+                              </button>
+                              {/* Enterprise */}
+                              <button type="button" onClick={() => { setSelectedRole("enterprise"); setRegStep("form"); }}
+                                className="group w-full p-4 rounded-2xl text-left transition-all cursor-pointer bg-[var(--text-primary)]/[0.035] hover:bg-[var(--text-primary)]/[0.065]">
+                                <div className="flex items-center gap-3.5">
+                                  <Building2 className="w-5 h-5 text-[var(--text-primary)] opacity-75 group-hover:opacity-100 group-hover:scale-110 shrink-0 transition-all" />
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-semibold text-sm text-[var(--text-primary)]">
+                                      {isBn ? "কোম্পানি / এন্টারপ্রাইজ" : "Company / Enterprise"}
+                                    </div>
+                                    <div className="text-xs text-[var(--text-muted)] mt-0.5">{isBn ? "কর্পোরেট প্রতিষ্ঠান ও টিম রেফারাল ওয়ার্কস্পেস" : "Corporate entities & team referral workspace"}</div>
+                                  </div>
+                                  <ArrowUpRight className="w-4 h-4 text-[var(--text-muted)] group-hover:text-[var(--text-primary)] shrink-0 transition-colors" />
+                                </div>
                               </button>
                             </div>
-                          </form>
+                            <div className="mt-5 text-center text-xs text-[var(--text-muted)]">
+                              <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
+                              <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                                {isBn ? "লগইন করুন" : "Sign in"}
+                              </button>
+                            </div>
+                          </>
                         )}
 
-                        {/* ── ENTERPRISE FORM ── */}
-                        {selectedRole === "enterprise" && (
-                          <div className="space-y-3">
-                            <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-surface)] mb-2">
-                              <button type="button" onClick={() => setEntTab("company")}
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "company" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
-                                {isBn ? "কোম্পানি রেজিস্ট্রেশন" : "Company / Enterprise"}
-                              </button>
-                              <button type="button" onClick={() => setEntTab("member")}
-                                className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "member" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
-                                {isBn ? "টিম মেম্বার জয়েন" : "Join as Member"}
-                              </button>
+                        {/* STEP 2: Registration Form */}
+                        {regStep === "form" && selectedRole && (
+                          <>
+                            <button type="button" onClick={() => setRegStep("role")}
+                              className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              {isBn ? "ফিরে যান" : "Back to role selection"}
+                            </button>
+                            <div className="flex items-center gap-2 mb-4">
+                              <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${selectedRole === "general" ? "bg-blue-100 dark:bg-blue-900/40" : selectedRole === "lawyer" ? "bg-amber-100 dark:bg-amber-900/40" : "bg-purple-100 dark:bg-purple-900/40"}`}>
+                                {selectedRole === "general" ? <User className="w-4 h-4 text-blue-600 dark:text-blue-400" /> : selectedRole === "lawyer" ? <Gavel className="w-4 h-4 text-amber-600 dark:text-amber-400" /> : <Building2 className="w-4 h-4 text-purple-600 dark:text-purple-400" />}
+                              </div>
+                              <span className="text-sm font-semibold text-[var(--text-primary)]">
+                                {selectedRole === "general" ? (isBn ? "সাধারণ ব্যবহারকারী নিবন্ধন" : "General User Registration") : selectedRole === "lawyer" ? (isBn ? "আইনজীবী নিবন্ধন আবেদন" : "Lawyer Registration") : (isBn ? "কোম্পানি ও টিম নিবন্ধন" : "Enterprise Registration")}
+                              </span>
                             </div>
 
-                            {entTab === "company" ? (
-                              <form onSubmit={handleStartFormSubmit} className="space-y-3">
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির ধরন" : "Company type"} <span className="text-red-500">*</span></label>
-                                    <select value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
-                                      <option value="Private Limited">{isBn ? "প্রাইভেট লিমিটেড" : "Private Limited"}</option>
-                                      <option value="Public Limited">{isBn ? "পাবলিক লিমিটেড" : "Public Limited"}</option>
-                                      <option value="Partnership">{isBn ? "অংশীদারি কারবার" : "Partnership"}</option>
-                                      <option value="Proprietorship">{isBn ? "একমালিকানা" : "Proprietorship"}</option>
-                                    </select>
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "রেজিস্ট্রেশন নং" : "Registrasion no."} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} placeholder="C-148920/2021" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "TIN নম্বর" : "Tin no."} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={tinNo} onChange={(e) => setTinNo(e.target.value)} placeholder="582910482912" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিনের নাম" : "Name of Admin"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Rahim Chowdhury" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিম মেম্বার সংখ্যা" : "Member count"} <span className="text-red-500">*</span></label>
-                                    <input type="number" min={1} required value={memberCount} onChange={(e) => setMemberCount(Number(e.target.value))} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিন ইমেইল" : "Admin Email"} <span className="text-red-500">*</span></label>
-                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="admin@apexholdings.bd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                </div>
-                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
-                                  <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
-                                    {isBn
-                                      ? "সিস্টেম অ্যাডমিন অনুমোদনের পর মেম্বার অ্যাপ্রুভালের জন্য রেফারেল কোড পাবেন। অ্যাডমিন যেকোনো মেম্বার রিমুভ করতে পারবেন।"
-                                      : "Verification by System Admin — after verified, a refer num will be issued for member approvals."}
-                                  </p>
-                                </div>
-                                {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
-                                <div className="pt-1">
-                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন (Request for registration)" : "Request for registration (Verify OTP)"}
-                                  </button>
-                                </div>
-                              </form>
-                            ) : (
+                            {authError && (
+                              <div className="p-3 mb-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-xs text-rose-600 dark:text-rose-400 font-medium">
+                                {authError}
+                              </div>
+                            )}
+
+                            {/* ── GENERAL FORM ── */}
+                            {selectedRole === "general" && (
                               <form onSubmit={handleStartFormSubmit} className="space-y-3">
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Member" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Tariqul" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Name" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Islam" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
-                                    <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
-                                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
                                       <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
                                       <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
                                       <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
                                     </select>
                                   </div>
                                 </div>
-                                <div className="grid grid-cols-2 gap-3">
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
-                                  </div>
-                                  <div>
-                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানি রেফার কোড" : "Company Refer code"} <span className="text-red-500">*</span></label>
-                                    <input type="text" required value={companyReferCode} onChange={(e) => setCompanyReferCode(e.target.value)} placeholder="APX-8821" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
-                                  </div>
-                                </div>
                                 <div>
-                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "মেম্বার ইমেইল" : "Email"} <span className="text-red-500">*</span></label>
-                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="member@company.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
+                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="your@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                 </div>
                                 <div className="grid grid-cols-2 gap-3">
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                   <div>
                                     <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
-                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-blue-400/60 bg-transparent text-[var(--text-primary)]`} />
                                   </div>
                                 </div>
-                                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-purple-50 dark:bg-purple-950/30 border border-purple-200/60 dark:border-purple-700/40">
-                                  <span className="text-purple-500 text-sm leading-none mt-0.5 shrink-0">🟡</span>
-                                  <p className="text-[11px] text-purple-700 dark:text-purple-300 leading-relaxed">
-                                    {isBn
-                                      ? "কোম্পানি অ্যাডমিন (Company Admin) আপনার মেম্বারশিপ আবেদন যাচাই ও অনুমোদন করবেন।"
-                                      : "Verification by Company Admin — company admin will review and approve your membership."}
-                                  </p>
-                                </div>
+                                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                  {isBn
+                                    ? "ওটিপি যাচাইয়ের পর একাউন্ট সক্রিয় হবে।"
+                                    : "Account will be activated after OTP verification."}
+                                </p>
                                 {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                {regPassword && regPassword.length < 6 && (
+                                  <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                )}
+                                {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                  <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                )}
                                 <div className="pt-1">
-                                  <button type="submit" className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)]">
-                                    {isBn ? "কোম্পানিতে যুক্ত হতে আবেদন (Request for to add company)" : "Request to add company (Verify OTP)"}
+                                  <button
+                                    type="submit"
+                                    disabled={!isGeneralFormValid || authLoading}
+                                    className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                  >
+                                    {authLoading ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      isBn ? "নিবন্ধন সম্পন্ন করুন" : "Create Account"
+                                    )}
                                   </button>
                                 </div>
                               </form>
                             )}
-                          </div>
-                        )}
 
-                        <div className="mt-4 text-center text-xs text-[var(--text-muted)]">
-                          <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
-                          <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
-                            {isBn ? "লগইন করুন" : "Sign in"}
-                          </button>
-                        </div>
-                      </>
-                    )}
-
-                    {/* STEP 3: OTP on Mail */}
-                    {regStep === "otp" && (
-                      <div className="py-2">
-                        <button type="button" onClick={() => setRegStep("form")}
-                          className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                          {isBn ? "ফর্মে ফিরে যান" : "Back to form"}
-                        </button>
-                        <div className="text-center mb-6">
-                          <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-3 shadow-inner">
-                            <Mail className="w-6 h-6 animate-pulse" />
-                          </div>
-                          <h3 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-1">
-                            {isBn ? "ইমেইল ওটিপি যাচাই (OTP on Mail)" : "Verify Email (OTP on Mail)"}
-                          </h3>
-                          <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto mb-3">
-                            {isBn ? (
-                              <>আমরা <b>{regEmail || "আপনার ইমেইলে"}</b> একটি ৬-সংখ্যার ওটিপি কোড পাঠিয়েছি।</>
-                            ) : (
-                              <>We sent a 6-digit verification OTP code to <b>{regEmail || "your email"}</b>.</>
+                            {/* ── LAWYER FORM ── */}
+                            {selectedRole === "lawyer" && (
+                              <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Shireen" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Akhter" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
+                                    <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
+                                    <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                      <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
+                                      <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
+                                      <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ইমেইল অ্যাড্রেস" : "Email"} <span className="text-red-500">*</span></label>
+                                  <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="advocate@email.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                    <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                  </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 pt-1">
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "বার কাউন্সিল সনদ নম্বর" : "Bar Council Enrollment No."} <span className="text-red-500">*</span></label>
+                                    <input type="text" required value={barCouncilNo} onChange={(e) => setBarCouncilNo(e.target.value)} placeholder="BC-48291/2019" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                  </div>
+                                  <div>
+                                    <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "আইন শাখা" : "Field of law"} <span className="text-red-500">*</span></label>
+                                    <select value={fieldOfLaw} onChange={(e) => setFieldOfLaw(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-amber-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                      <option value="Corporate & Commercial Law">{isBn ? "কর্পোরেট ও বাণিজ্যিক" : "Corporate & Commercial"}</option>
+                                      <option value="Labour & Employment Law">{isBn ? "শ্রম ও চাকরি আইন" : "Labour & Employment"}</option>
+                                      <option value="Property & Land Law">{isBn ? "সম্পত্তি ও ভূমি আইন" : "Property & Land"}</option>
+                                      <option value="Civil & Contract Litigation">{isBn ? "দেওয়ানি ও চুক্তি" : "Civil & Contract"}</option>
+                                      <option value="ICT & FinTech Law">{isBn ? "আইসিটি ও ফিনটেক" : "ICT & FinTech"}</option>
+                                    </select>
+                                  </div>
+                                </div>
+                                <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                  {isBn
+                                    ? "ওটিপি যাচাইয়ের পর বার কাউন্সিল সনদ অ্যাডমিন কর্তৃক অনুমোদিত হবে।"
+                                    : "Credentials will be reviewed by admin after OTP verification."}
+                                </p>
+                                {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                {regPassword && regPassword.length < 6 && (
+                                  <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                )}
+                                {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                  <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                )}
+                                <div className="pt-1">
+                                  <button
+                                    type="submit"
+                                    disabled={!isLawyerFormValid || authLoading}
+                                    className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                  >
+                                    {authLoading ? (
+                                      <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : (
+                                      isBn ? "আইনজীবী আবেদন জমা দিন" : "Submit Lawyer Application"
+                                    )}
+                                  </button>
+                                </div>
+                              </form>
                             )}
-                          </p>
-                          <div className="p-2.5 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto">
-                            {isBn
-                              ? "💡 লাইভ সার্ভারের ইমেইল ডেলিভারি যদি বিলম্বিত হয়, আপনি সরাসরি টেস্ট কোড (123456) বা ইনস্ট্যান্ট পাস দিয়ে এক ক্লিকে প্রবেশ করতে পারেন।"
-                              : "💡 If email delivery is delayed from the live server, you can use Test Code (123456) or Instant Pass for immediate access."}
-                          </div>
-                        </div>
 
-                        <div className="space-y-4 max-w-xs mx-auto">
-                          <div>
-                            <label className="block text-xs font-semibold mb-1 text-center text-[var(--text-primary)]">
-                              {isBn ? "৬-সংখ্যার ওটিপি কোড লিখুন" : "Enter 6-digit OTP Code"}
-                            </label>
-                            <input
-                              type="text"
-                              maxLength={6}
-                              value={otpInput}
-                              onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
-                              placeholder="123456"
-                              className={`w-full text-center text-2xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none transition-colors ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
-                            />
-                            {otpError && (
-                              <p className="text-[11px] text-rose-500 text-center mt-1.5">{otpError}</p>
+                            {/* ── ENTERPRISE FORM ── */}
+                            {selectedRole === "enterprise" && (
+                              <div className="space-y-3">
+                                <div className="flex gap-2 p-1 rounded-xl bg-[var(--bg-surface)] mb-2">
+                                  <button type="button" onClick={() => setEntTab("company")}
+                                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "company" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
+                                    {isBn ? "কোম্পানি রেজিস্ট্রেশন" : "Company / Enterprise"}
+                                  </button>
+                                  <button type="button" onClick={() => setEntTab("member")}
+                                    className={`flex-1 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${entTab === "member" ? "bg-[var(--bg-card)] text-[var(--text-primary)] shadow-sm" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"}`}>
+                                    {isBn ? "টিম মেম্বার জয়েন" : "Join as Member"}
+                                  </button>
+                                </div>
+
+                                {entTab === "company" ? (
+                                  <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির ধরন" : "Company type"} <span className="text-red-500">*</span></label>
+                                        <select value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                          <option value="Private Limited">{isBn ? "প্রাইভেট লিমিটেড" : "Private Limited"}</option>
+                                          <option value="Public Limited">{isBn ? "পাবলিক লিমিটেড" : "Public Limited"}</option>
+                                          <option value="Partnership">{isBn ? "অংশীদারি কারবার" : "Partnership"}</option>
+                                          <option value="Proprietorship">{isBn ? "একমালিকানা" : "Proprietorship"}</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "রেজিস্ট্রেশন নম্বর" : "Registration No."} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={registrationNo} onChange={(e) => setRegistrationNo(e.target.value)} placeholder="C-148920/2021" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিআইএন (TIN) নম্বর" : "TIN No."} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={tinNo} onChange={(e) => setTinNo(e.target.value)} placeholder="582910482912" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিনের নাম" : "Name of Admin"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={adminName} onChange={(e) => setAdminName(e.target.value)} placeholder="Rahim Chowdhury" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "টিম মেম্বার সংখ্যা" : "Team Members Limit"} <span className="text-red-500">*</span></label>
+                                        <input type="number" min={1} required value={memberCount} onChange={(e) => setMemberCount(Number(e.target.value))} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "অ্যাডমিন ইমেইল" : "Admin Email"} <span className="text-red-500">*</span></label>
+                                      <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="admin@apexholdings.bd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                    </div>
+                                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                      {isBn
+                                        ? "অ্যাডমিন অনুমোদনের পর কোম্পানি ওয়ার্কস্পেস সক্রিয় হবে।"
+                                        : "Corporate workspace will unlock after admin approval."}
+                                    </p>
+                                    {regPassword && regPassword.length < 6 && (
+                                      <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                    )}
+                                    {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                      <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                    )}
+                                    {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                    <div className="pt-1">
+                                      <button
+                                        type="submit"
+                                        disabled={!isCompanyFormValid || authLoading}
+                                        className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                      >
+                                        {authLoading ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          isBn ? "কোম্পানি রেজিস্ট্রেশন আবেদন" : "Register Enterprise"
+                                        )}
+                                      </button>
+                                    </div>
+                                  </form>
+                                ) : (
+                                  <form onSubmit={handleStartFormSubmit} className="space-y-3">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "ফার্স্ট নেম" : "First name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="Member" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লাস্ট নেম" : "Last name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Name" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "জন্ম তারিখ" : "Date of birth"} <span className="text-red-500">*</span></label>
+                                        <input type="date" required value={dob} onChange={(e) => setDob(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "লিঙ্গ" : "Gender"} <span className="text-red-500">*</span></label>
+                                        <select value={gender} onChange={(e) => setGender(e.target.value)} className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-[var(--bg-card)] text-[var(--text-primary)]`}>
+                                          <option value="male">{isBn ? "পুরুষ (Male)" : "Male"}</option>
+                                          <option value="female">{isBn ? "নারী (Female)" : "Female"}</option>
+                                          <option value="other">{isBn ? "অন্যান্য (Other)" : "Other"}</option>
+                                        </select>
+                                      </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানির নাম" : "Company name"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Apex Holdings Ltd" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কোম্পানি রেফারেল কোড" : "Company Referral Code"} <span className="text-red-500">*</span></label>
+                                        <input type="text" required value={companyReferCode} onChange={(e) => setCompanyReferCode(e.target.value)} placeholder="APX-8821" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)] font-mono`} />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "মেম্বার ইমেইল" : "Email"} <span className="text-red-500">*</span></label>
+                                      <input type="email" required value={regEmail} onChange={(e) => setRegEmail(e.target.value)} placeholder="member@company.com" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "পাসওয়ার্ড" : "Password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regPassword} onChange={(e) => { setRegPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                      <div>
+                                        <label className="block text-xs font-semibold mb-1 text-[var(--text-primary)]">{isBn ? "কনফার্ম পাসওয়ার্ড" : "Confirm password"} <span className="text-red-500">*</span></label>
+                                        <input type="password" required value={regConfirmPassword} onChange={(e) => { setRegConfirmPassword(e.target.value); setPasswordError(""); }} placeholder="••••••••" className={`w-full px-3 py-2 rounded-xl text-sm border outline-none transition-colors ${borderClass} focus:border-purple-400/60 bg-transparent text-[var(--text-primary)]`} />
+                                      </div>
+                                    </div>
+                                    <p className="text-[11px] text-[var(--text-muted)] leading-relaxed">
+                                      {isBn
+                                        ? "ওটিপি যাচাইয়ের পর কোম্পানি অ্যাডমিন অনুমোদন করবেন।"
+                                        : "Membership will be reviewed by company admin after OTP verification."}
+                                    </p>
+                                    {regPassword && regPassword.length < 6 && (
+                                      <p className="text-[11px] text-amber-500">{isBn ? "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।" : "Password must be at least 6 characters."}</p>
+                                    )}
+                                    {regConfirmPassword && regPassword !== regConfirmPassword && (
+                                      <p className="text-[11px] text-rose-500">{isBn ? "পাসওয়ার্ড এবং নিশ্চিত পাসওয়ার্ড মিলছে না।" : "Passwords do not match."}</p>
+                                    )}
+                                    {passwordError && <p className="text-[11px] text-rose-500">{passwordError}</p>}
+                                    <div className="pt-1">
+                                      <button
+                                        type="submit"
+                                        disabled={!isMemberFormValid || authLoading}
+                                        className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] flex items-center justify-center gap-2"
+                                      >
+                                        {authLoading ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : (
+                                          isBn ? "কোম্পানি টিমে যুক্ত হন" : "Join Company Team"
+                                        )}
+                                      </button>
+                                    </div>
+                                  </form>
+                                )}
+                              </div>
                             )}
-                          </div>
 
-                          <button
-                            type="button"
-                            onClick={handleVerifyOtpAndComplete}
-                            className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2"
-                          >
-                            {isBn ? "যাচাই করুন ও অ্যাকাউন্ট সম্পন্ন করুন ✓" : "Verify & Complete Registration ✓"}
-                          </button>
-
-                          <div className="text-center text-xs text-[var(--text-muted)] pt-1 space-y-1">
-                            <div>
-                              <span>{isBn ? "কোড পাননি? " : "Didn't receive code? "}</span>
-                              <button
-                                type="button"
-                                onClick={handleResendOtp}
-                                className="font-semibold text-[var(--text-primary)] hover:underline ml-1 cursor-pointer"
-                              >
-                                {isBn ? "পুনরায় কোড পাঠান" : "Resend OTP"}
+                            <div className="mt-4 text-center text-xs text-[var(--text-muted)]">
+                              <span>{isBn ? "ইতিমধ্যে অ্যাকাউন্ট আছে? " : "Already have an account? "}</span>
+                              <button type="button" onClick={() => setIsSignUp(false)} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
+                                {isBn ? "লগইন করুন" : "Sign in"}
                               </button>
                             </div>
-                            {resendStatus && (
-                              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{resendStatus}</p>
-                            )}
+                          </>
+                        )}
+
+                        {/* STEP 3: OTP on Mail */}
+                        {regStep === "otp" && (
+                          <div className="py-2">
+                            <button type="button" onClick={() => setRegStep("form")}
+                              className="flex items-center gap-1.5 text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors mb-4 cursor-pointer">
+                              <ChevronLeft className="w-3.5 h-3.5" />
+                              {isBn ? "ফর্মে ফিরে যান" : "Back to form"}
+                            </button>
+                            <div className="text-center mb-6">
+                              <div className="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 mb-3 shadow-inner">
+                                <Mail className="w-6 h-6 animate-pulse" />
+                              </div>
+                              <h3 className="text-xl font-bold font-serif text-[var(--text-primary)] mb-1">
+                                {isBn ? "ইমেইল ওটিপি যাচাই করুন" : "Verify Email OTP"}
+                              </h3>
+                              <p className="text-xs text-[var(--text-muted)] max-w-xs mx-auto mb-3">
+                                {isBn ? (
+                                  <>আমরা <b>{regEmail || "আপনার ইমেইলে"}</b> একটি ৬-সংখ্যার ওটিপি কোড পাঠিয়েছি।</>
+                                ) : (
+                                  <>We sent a 6-digit verification OTP code to <b>{regEmail || "your email"}</b>.</>
+                                )}
+                              </p>
+                              <div className="p-3 rounded-xl bg-blue-50/80 dark:bg-blue-950/40 border border-blue-200/60 dark:border-blue-800/50 text-[11px] text-blue-700 dark:text-blue-300 leading-relaxed max-w-xs mx-auto text-center">
+                                {selectedRole === "lawyer" ? (
+                                  <p>
+                                    {isBn
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার পর আপনার সনদপত্রটি সিস্টেম অ্যাডমিন পর্যালোচনায় জমা হবে।"
+                                      : "Verifying your email OTP will submit your credentials for System Admin review."}
+                                  </p>
+                                ) : selectedRole === "enterprise" && entTab === "company" ? (
+                                  <p>
+                                    {isBn
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার পর আপনার কোম্পানিটি সিস্টেম অ্যাডমিন পর্যালোচনায় জমা হবে।"
+                                      : "Verifying your email OTP will register your enterprise awaiting System Admin review."}
+                                  </p>
+                                ) : selectedRole === "enterprise" && entTab === "member" ? (
+                                  <p>
+                                    {isBn
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার পর আবেদনটি কোম্পানি অ্যাডমিনের কোটা অনুমোদনের অপেক্ষায় থাকবে।"
+                                      : "Verifying your email OTP will submit your request to your Company Admin for quota approval."}
+                                  </p>
+                                ) : (
+                                  <p>
+                                    {isBn
+                                      ? "ওটিপি যাচাই সম্পন্ন হওয়ার সাথে সাথে ১০০ ফ্রি ক্রেডিট নিয়ে সরাসরি ওয়ার্কস্পেসে প্রবেশ করতে পারবেন।"
+                                      : "Verifying your email OTP will instantly activate your account with 100 free credits."}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="space-y-4 max-w-xs mx-auto">
+                              <div>
+                                <label className="block text-xs font-semibold mb-1 text-center text-[var(--text-primary)]">
+                                  {isBn ? "৬-সংখ্যার ওটিপি কোড লিখুন" : "Enter 6-digit OTP Code"}
+                                </label>
+                                <input
+                                  type="text"
+                                  maxLength={6}
+                                  value={otpInput}
+                                  onChange={(e) => { setOtpInput(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
+                                  placeholder="••••••"
+                                  className={`w-full text-center text-2xl font-mono tracking-[0.35em] py-3 rounded-xl border-2 outline-none transition-colors ${borderClass} focus:border-blue-500 bg-transparent text-[var(--text-primary)]`}
+                                />
+                                {otpError && (
+                                  <p className="text-[11px] text-rose-500 text-center mt-1.5">{otpError}</p>
+                                )}
+                              </div>
+
+                              <button
+                                type="button"
+                                disabled={authLoading || otpInput.trim().length !== 6}
+                                onClick={handleVerifyOtpAndComplete}
+                                className="w-full py-3 px-4 rounded-xl text-sm font-semibold transition-all shadow-md active:scale-[0.99] hover:opacity-90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed bg-[var(--accent-solid)] text-[var(--accent-contrast)] mt-2 flex items-center justify-center gap-2"
+                              >
+                                {authLoading ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <>
+                                    <Check className="w-4 h-4 shrink-0 stroke-2" />
+                                    <span>
+                                      {selectedRole === "lawyer"
+                                        ? (isBn ? "যাচাই সম্পন্ন ও আবেদন জমা দিন" : "Verify & Submit Lawyer Application")
+                                        : selectedRole === "enterprise" && entTab === "company"
+                                          ? (isBn ? "যাচাই সম্পন্ন ও কোম্পানি নিবন্ধন সম্পন্ন করুন" : "Verify & Complete Registration")
+                                          : selectedRole === "enterprise" && entTab === "member"
+                                            ? (isBn ? "যাচাই সম্পন্ন ও মেম্বারশিপ আবেদন জমা দিন" : "Verify & Submit Membership Request")
+                                            : (isBn ? "যাচাই সম্পন্ন ও প্রবেশ করুন" : "Verify & Complete Registration")}
+                                    </span>
+                                  </>
+                                )}
+                              </button>
+
+                              <div className="text-center text-xs text-[var(--text-muted)] pt-1 space-y-1">
+                                <div>
+                                  <span>{isBn ? "কোড পাননি? " : "Didn't receive code? "}</span>
+                                  <button
+                                    type="button"
+                                    onClick={handleResendOtp}
+                                    className="font-semibold text-[var(--text-primary)] hover:underline ml-1 cursor-pointer"
+                                  >
+                                    {isBn ? "পুনরায় কোড পাঠান" : "Resend OTP"}
+                                  </button>
+                                </div>
+                                {resendStatus && (
+                                  <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">{resendStatus}</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        )}
+                      </>
                     )}
                   </>
                 )}
