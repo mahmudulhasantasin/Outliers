@@ -1168,7 +1168,7 @@ export default function CopilotPage() {
     <AppShell mainClassName="pb-2! md:pb-3!">
       <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
         {/* ─── Top Bar (Fixed outside scroller so bubbles never collide underneath) ─── */}
-        <header className="shrink-0 flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-(--text-primary)/8">
+        <header className="shrink-0 flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3">
           <div className="flex items-center gap-2 min-w-0">
             {/* Session Turn Quota Badge */}
             {activeSessionId && (
@@ -1181,58 +1181,6 @@ export default function CopilotPage() {
           </div>
 
           <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-            {/* Live Credit Balance Pill */}
-            <Link
-              href={canTopUpCredits ? "/pricing" : "/profile"}
-              title={
-                canTopUpCredits
-                  ? isBn
-                    ? "ক্রেডিট টপ-আপ ও প্যাকেজ দেখুন"
-                    : "Top up credits & packages"
-                  : isBn
-                  ? "প্রোফাইল ও ক্রেডিট দেখুন"
-                  : "View profile & credits"
-              }
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                liveCredits <= 2
-                  ? "bg-amber-500/12 border-amber-500/35 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
-                  : "bg-(--bg-card) border-(--text-primary)/12 text-(--text-primary) hover:border-(--text-primary)/25"
-              }`}
-            >
-              <Coins className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>{liveCredits.toLocaleString()}</span>
-              <span className="hidden sm:inline text-(--text-muted) font-medium">
-                {isBn ? "ক্রেডিট" : "credits"}
-              </span>
-            </Link>
-
-            {/* Sovereign PII Masking Toggle */}
-            <button
-              type="button"
-              onClick={() => setPiiMaskEnabled((v) => !v)}
-              title={
-                piiMaskEnabled
-                  ? isBn
-                    ? "PII সুরক্ষা চালু আছে (ফোন/NID গোপন থাকবে)"
-                    : "Client PII Masking ON (phone/NID redacted)"
-                  : isBn
-                  ? "PII সুরক্ষা বন্ধ"
-                  : "Client PII Masking OFF"
-              }
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-                piiMaskEnabled
-                  ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
-                  : "bg-(--bg-card) border-(--text-primary)/12 text-(--text-muted)"
-              }`}
-            >
-              {piiMaskEnabled ? (
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-              ) : (
-                <Shield className="w-3.5 h-3.5 shrink-0" />
-              )}
-              <span className="hidden md:inline">PII</span>
-            </button>
-
             {/* New Chat Button */}
             <button
               type="button"
