@@ -1169,52 +1169,18 @@ export default function CopilotPage() {
       <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0">
         {/* ─── Top Bar (Fixed outside scroller so bubbles never collide underneath) ─── */}
         <header className="shrink-0 flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-(--text-primary)/8">
-          <div className="flex items-center gap-2 flex-wrap min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="w-7 h-7 rounded-lg bg-(--bg-card) border border-(--text-primary)/12 flex items-center justify-center shadow-2xs">
-                <Scale className="w-4 h-4 text-(--text-primary)" />
-              </span>
-              <span className="font-serif font-bold text-sm sm:text-base tracking-tight text-(--text-primary)">
-                {isBn ? "কোপাইলট" : "Copilot"}
-              </span>
-            </div>
-
-            {/* Active Mode Badge */}
-            <span
-              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${
-                activeMode === "LAWYER_RESEARCH"
-                  ? "bg-indigo-500/10 border-indigo-500/25 text-indigo-700 dark:text-indigo-300"
-                  : activeMode === "USER_CONTRACT"
-                  ? "bg-amber-500/10 border-amber-500/25 text-amber-700 dark:text-amber-300"
-                  : "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
-              }`}
-            >
-              {activeMode === "LAWYER_RESEARCH"
-                ? isBn
-                  ? "আইনজীবী রিসার্চ"
-                  : "Lawyer Research"
-                : activeMode === "USER_CONTRACT"
-                ? isBn
-                  ? "চুক্তি অডিট"
-                  : "Contract Scope"
-                : isBn
-                ? "বাংলাদেশ আইন AI"
-                : "BD Law AI"}
-            </span>
-
+          <div className="flex items-center gap-2 min-w-0">
             {/* Session Turn Quota Badge */}
             {activeSessionId && (
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-card) border border-(--text-primary)/10 text-(--text-muted)">
-                {turnLimit === -1
-                  ? isBn
-                    ? "আনলিমিটেড"
-                    : "Unlimited"
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-card) border border-(--text-primary)/10 text-(--text-muted)">
+                {turnLimit === -1 || turnLimit >= 10000
+                  ? `${turnCount} ${isBn ? "বার্তা" : "turns"}`
                   : `${turnCount}/${turnLimit} ${isBn ? "টার্ন" : "turns"}`}
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
             {/* Live Credit Balance Pill */}
             <Link
               href={canTopUpCredits ? "/pricing" : "/profile"}
@@ -1614,7 +1580,7 @@ export default function CopilotPage() {
         </div>
 
         {/* ─── Bottom PromptBar / Stop / Turn Limit Footer ─── */}
-        <footer className="shrink-0 pt-1">
+        <footer className="shrink-0 pt-1 w-full max-w-4xl mx-auto">
           {turnLimitReached ? (
             <div className="p-3.5 rounded-2xl bg-(--bg-card) border border-(--text-primary)/12 flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
               <div className="text-xs sm:text-sm text-(--text-primary)/85">
@@ -1632,9 +1598,9 @@ export default function CopilotPage() {
               </button>
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-1.5 flex flex-col items-center">
               {isBusy && (
-                <div className="flex items-center justify-center sm:justify-end">
+                <div className="w-full flex items-center justify-center sm:justify-end">
                   <button
                     type="button"
                     onClick={handleStopGeneration}
@@ -1648,21 +1614,15 @@ export default function CopilotPage() {
 
               <PromptBar
                 busy={isBusy}
+                width={896}
                 onSend={(text) => handleSendPrompt(text)}
                 onStop={handleStopGeneration}
-                onDictate={() =>
-                  toast.info(
-                    isBn
-                      ? "ভয়েস ডিকটেশন বর্তমানে ব্রাউজারের কীবোর্ড মাইক্রোফোন দিয়ে ব্যবহার করা যাবে।"
-                      : "Use your device keyboard microphone or type your legal question directly."
-                  )
-                }
                 placeholder={
                   isBn
                     ? "বাংলাদেশের যেকোনো আইন বা চুক্তি সম্পর্কে লিখুন... (/audit, /memo, /redline)"
                     : "Ask any question about Bangladesh law... (type / for /audit, /memo, /redline)"
                 }
-                className="w-full"
+                className="mx-auto"
               />
             </div>
           )}
@@ -1872,11 +1832,11 @@ export default function CopilotPage() {
       {/* ─── History Slide-Over Drawer (Search, Rename, Date Groups, Mobile-Visible Delete) ─── */}
       {isDrawerOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/45 backdrop-blur-xs flex justify-end"
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end items-start sm:items-center p-3 pt-16 sm:p-6"
           onClick={() => setIsDrawerOpen(false)}
         >
           <aside
-            className="w-full max-w-sm h-full bg-(--bg-card) border-l border-(--text-primary)/12 shadow-2xl flex flex-col"
+            className="w-[min(92vw,380px)] max-h-[75dvh] sm:max-h-[82vh] bg-(--bg-card) border border-(--text-primary)/12 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Drawer Header */}
@@ -2009,7 +1969,9 @@ export default function CopilotPage() {
                                   <span>·</span>
                                   <span>
                                     {sess.message_count ?? 0}/
-                                    {sess.message_limit === -1 ? "∞" : sess.message_limit ?? 5}
+                                    {sess.message_limit === -1 || (sess.message_limit ?? 0) >= 10000
+                                      ? "∞"
+                                      : sess.message_limit ?? 5}
                                   </span>
                                 </div>
                               </button>
