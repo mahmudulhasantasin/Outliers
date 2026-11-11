@@ -342,6 +342,8 @@ export interface ChatHistoryMessage {
   citations?: CitedSection[] | null;
   cited_cases?: CitedCase[] | null;
   suggested_next_steps?: string[] | null;
+  suggested_follow_ups?: string[] | null;
+  needs_clarification?: boolean;
   created_at?: string;
 }
 
@@ -376,12 +378,25 @@ export interface DetailedChatResponse {
   cited_sections?: CitedSection[];
   cited_cases?: CitedCase[];
   suggested_next_steps?: string[];
+  suggested_follow_ups?: string[];
+  needs_clarification?: boolean;
 }
 
 export interface ChatQueryRequest {
   session_id: string | number;
   query: string;
   contract_id?: string | number | null;
+  signal?: AbortSignal;
+}
+
+export interface StatuteLookupResult {
+  found: boolean;
+  act: string;
+  section: string;
+  title: string;
+  verbatim_text: string;
+  bdlaws_url: string;
+  status: string;
 }
 
 export interface ChatQueryResponse {
@@ -418,7 +433,7 @@ export async function listChatSessions(): Promise<ChatSession[]> {
       status: s.status || "active",
       message_count: typeof s.message_count === "number" ? s.message_count : 0,
       message_limit: typeof s.message_limit === "number" ? s.message_limit : 5,
-      created_at: s.created_at,
+      created_at: s.created_at || s.updated_at,
       updated_at: s.updated_at || s.created_at,
     };
   });
@@ -467,6 +482,9 @@ export async function getChatSessionHistory(
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
         cited_cases: m.cited_cases || null,
+        suggested_next_steps: Array.isArray(m.suggested_next_steps) ? m.suggested_next_steps : null,
+        suggested_follow_ups: Array.isArray(m.suggested_follow_ups) ? m.suggested_follow_ups : null,
+        needs_clarification: Boolean(m.needs_clarification),
         created_at: m.created_at,
       })),
     };
@@ -482,6 +500,9 @@ export async function getChatSessionHistory(
         content: m.content || "",
         citations: m.citations || m.cited_sections || null,
         cited_cases: m.cited_cases || null,
+        suggested_next_steps: Array.isArray(m.suggested_next_steps) ? m.suggested_next_steps : null,
+        suggested_follow_ups: Array.isArray(m.suggested_follow_ups) ? m.suggested_follow_ups : null,
+        needs_clarification: Boolean(m.needs_clarification),
         created_at: m.created_at,
       })),
     };
@@ -505,8 +526,35 @@ export async function sendChatQuery(req: ChatQueryRequest): Promise<ChatQueryRes
   if (req.contract_id != null) {
     payload.contract_id = typeof req.contract_id === "string" ? parseInt(req.contract_id, 10) || req.contract_id : req.contract_id;
   }
-  const data = await api.post<ChatQueryResponse>("/api/chat/query", payload);
+  const data = await api.post<ChatQueryResponse>("/api/chat/query", payload, undefined, req.signal);
   return data;
+}
+
+/** Rename a chat session (PATCH /api/chat/sessions/{session_id}) */
+export async function renameChatSession(
+  sessionId: string | number,
+  title: string
+): Promise<{ session_id: string | number; title: string }> {
+  const sid = typeof sessionId === "string" ? parseInt(sessionId, 10) || sessionId : sessionId;
+  return api.patch<{ session_id: string | number; title: string }>(
+    `/api/chat/sessions/${sid}`,
+    { title }
+  );
+}
+
+/** Lookup full verbatim statute text from Live RAG vector store (GET /api/chat/statute-lookup, 0 credits) */
+export async function lookupStatuteSection(
+  section: string,
+  act?: string,
+  signal?: AbortSignal
+): Promise<StatuteLookupResult> {
+  const params = new URLSearchParams({ section });
+  if (act) params.set("act", act);
+  return api.get<StatuteLookupResult>(
+    `/api/chat/statute-lookup?${params.toString()}`,
+    undefined,
+    signal
+  );
 }
 
 /** Close a chat session (POST /api/chat/sessions/{session_id}/close) */
