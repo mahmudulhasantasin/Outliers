@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
-import React, { Suspense, useCallback, useEffect, useState } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/context/AuthContext";
@@ -125,9 +125,10 @@ function StatusBadge({ status, isBn }: { status: string; isBn: boolean }) {
 function PricingContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { user, refreshUser, updateUser } = useAuth();
+  const { user, isLoading: authLoading, refreshUser, updateUser } = useAuth();
   const { language } = useLanguage();
   const isBn = language === "bn";
+  const userId = user?.id ?? null;
 
   const userRole = String(user?.role || "").toUpperCase();
   const entStatus = String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase();
@@ -165,10 +166,14 @@ function PricingContent() {
   const [gatewayConfig, setGatewayConfig] = useState<PaymentGatewayConfig | null>(null);
 
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [initiatingPkgId, setInitiatingPkgId] = useState<string | number | null>(null);
   const [verifyingId, setVerifyingId] = useState<string | number | null>(null);
   const [cancellingId, setCancellingId] = useState<string | number | null>(null);
   const [historyFilter, setHistoryFilter] = useState<string>("ALL");
+
+  const hasLoadedRef = useRef(false);
+  const handledCallbackRef = useRef<string | null>(null);
 
   const [banner, setBanner] = useState<{
     type: "success" | "error" | "info";
@@ -182,71 +187,96 @@ function PricingContent() {
   const [phoneInput, setPhoneInput] = useState("");
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    try {
-      const [cfg, pkgs, myPays, paySum] = await Promise.all([
-        getPaymentGatewayConfig(),
-        user ? listPackages().catch(() => []) : Promise.resolve([]),
-        user ? listMyPayments(undefined, 50, 0).catch(() => []) : Promise.resolve([]),
-        user ? getPaymentSummary().catch(() => null) : Promise.resolve(null),
-      ]);
-      setGatewayConfig(cfg);
-      setPackages(pkgs);
-      setPayments(myPays);
-      setSummary(paySum);
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
+  const loadData = useCallback(
+    async (silent = false) => {
+      if (!silent && !hasLoadedRef.current) {
+        setLoading(true);
+      } else {
+        setIsRefreshing(true);
+      }
+      try {
+        const [cfg, pkgs, myPays, paySum] = await Promise.all([
+          getPaymentGatewayConfig(),
+          userId ? listPackages().catch(() => []) : Promise.resolve([]),
+          userId ? listMyPayments(undefined, 50, 0).catch(() => []) : Promise.resolve([]),
+          userId ? getPaymentSummary().catch(() => null) : Promise.resolve(null),
+        ]);
+        setGatewayConfig(cfg);
+        setPackages(pkgs);
+        setPayments(myPays);
+        setSummary(paySum);
+        hasLoadedRef.current = true;
+      } finally {
+        setLoading(false);
+        setIsRefreshing(false);
+      }
+    },
+    [userId]
+  );
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (authLoading) return;
+    loadData(hasLoadedRef.current);
+  }, [authLoading, loadData]);
 
-  // Handle SSLCommerz return callback query parameters (?payment=success|failed|cancelled&ref=...&credits=...)
+  // Handle SSLCommerz return callback query parameters once per callback payload
+  const paymentResult = searchParams.get("payment") || "";
+  const callbackRefParam = searchParams.get("ref") || "";
+  const callbackCreditsParam = searchParams.get("credits") || "";
+  const callbackReasonParam = searchParams.get("reason") || "";
+
   useEffect(() => {
-    const paymentResult = searchParams.get("payment");
-    if (!paymentResult) return;
+    if (!paymentResult || authLoading) return;
 
-    const ref = searchParams.get("ref") || "";
-    const credits = searchParams.get("credits") || "";
-    const reason = searchParams.get("reason") || "";
+    const callbackKey = `${paymentResult}|${callbackRefParam}|${callbackCreditsParam}|${callbackReasonParam}`;
+    if (handledCallbackRef.current === callbackKey) return;
+    handledCallbackRef.current = callbackKey;
 
     if (paymentResult === "success") {
       setBanner({
         type: "success",
         title: isBn ? "পেমেন্ট সফল হয়েছে!" : "Payment Successful!",
         message: isBn
-          ? `SSLCommerz গেটওয়ে থেকে পেমেন্ট যাচাই সম্পন্ন হয়েছে (${ref || "যাচাইকৃত"})। আপনার অ্যাকাউন্টে ${credits || ""} ক্রেডিট যুক্ত হয়েছে।`
-          : `Payment verified via SSLCommerz (${ref || "Confirmed"}). ${
-              credits ? `${credits} credits have been added to your wallet.` : "Credits added."
+          ? `SSLCommerz গেটওয়ে থেকে পেমেন্ট যাচাই সম্পন্ন হয়েছে (${callbackRefParam || "যাচাইকৃত"})। আপনার অ্যাকাউন্টে ${callbackCreditsParam || ""} ক্রেডিট যুক্ত হয়েছে।`
+          : `Payment verified via SSLCommerz (${callbackRefParam || "Confirmed"}). ${
+              callbackCreditsParam
+                ? `${callbackCreditsParam} credits have been added to your wallet.`
+                : "Credits added."
             }`,
       });
       refreshUser?.();
-      loadData();
+      loadData(true);
     } else if (paymentResult === "failed") {
       setBanner({
         type: "error",
         title: isBn ? "পেমেন্ট সম্পন্ন হয়নি" : "Payment Could Not Be Completed",
         message: isBn
-          ? `রেফারেন্স ${ref || "—"} পেমেন্ট ব্যর্থ হয়েছে (${reason || "gateway_failed"})। টাকা কেটে থাকলে নিচের তালিকা থেকে 'Verify Status' বাটনে ক্লিক করুন।`
-          : `Payment ${ref ? `(${ref})` : ""} was not completed (${
-              reason || "gateway_failed"
+          ? `রেফারেন্স ${callbackRefParam || "—"} পেমেন্ট ব্যর্থ হয়েছে (${callbackReasonParam || "gateway_failed"})। টাকা কেটে থাকলে নিচের তালিকা থেকে 'Verify Status' বাটনে ক্লিক করুন।`
+          : `Payment ${callbackRefParam ? `(${callbackRefParam})` : ""} was not completed (${
+              callbackReasonParam || "gateway_failed"
             }). If funds were debited, click "Verify Status" on the order below.`,
       });
-      loadData();
+      loadData(true);
     } else if (paymentResult === "cancelled") {
       setBanner({
         type: "info",
         title: isBn ? "পেমেন্ট বাতিল করা হয়েছে" : "Checkout Cancelled",
         message: isBn
-          ? `আপনি SSLCommerz পেমেন্ট প্রক্রিয়া বাতিল করেছেন (${ref || "—"})। কোনো চার্জ কাটা হয়নি।`
-          : `You cancelled the SSLCommerz checkout session (${ref || "—"}). No charge was applied.`,
+          ? `আপনি SSLCommerz পেমেন্ট প্রক্রিয়া বাতিল করেছেন (${callbackRefParam || "—"})। কোনো চার্জ কাটা হয়নি।`
+          : `You cancelled the SSLCommerz checkout session (${callbackRefParam || "—"}). No charge was applied.`,
       });
-      loadData();
+      loadData(true);
     }
-  }, [searchParams, isBn, refreshUser, loadData]);
+  }, [
+    authLoading,
+    paymentResult,
+    callbackRefParam,
+    callbackCreditsParam,
+    callbackReasonParam,
+    isBn,
+    refreshUser,
+    loadData,
+  ]);
 
   const copyText = (text: string, key: string) => {
     if (!text) return;
@@ -361,7 +391,7 @@ function PricingContent() {
           message: res.message,
         });
       }
-      await loadData();
+      await loadData(true);
     } catch (err: any) {
       setBanner({
         type: "error",
@@ -377,7 +407,7 @@ function PricingContent() {
     setCancellingId(paymentId);
     try {
       await cancelPayment(paymentId);
-      await loadData();
+      await loadData(true);
     } catch (err: any) {
       setBanner({
         type: "error",
@@ -553,7 +583,7 @@ function PricingContent() {
               onClick={() => {
                 setBanner(null);
                 if (searchParams.get("payment")) {
-                  router.replace("/pricing");
+                  router.replace("/pricing", { scroll: false });
                 }
               }}
               className="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-[var(--text-muted)]"
@@ -565,7 +595,7 @@ function PricingContent() {
         )}
 
         {/* Credit Packages Grid */}
-        {loading ? (
+        {(authLoading || loading) && packages.length === 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="minimal-card p-7 h-72 animate-pulse opacity-60" />
@@ -729,10 +759,11 @@ function PricingContent() {
                 </p>
               </div>
               <button
-                onClick={loadData}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl minimal-surface text-xs font-semibold text-[var(--text-primary)] hover:opacity-80 transition self-start cursor-pointer"
+                onClick={() => loadData(true)}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl minimal-surface text-xs font-semibold text-[var(--text-primary)] hover:opacity-80 transition self-start cursor-pointer disabled:opacity-50"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
                 {isBn ? "রিফ্রেশ" : "Refresh"}
               </button>
             </div>
