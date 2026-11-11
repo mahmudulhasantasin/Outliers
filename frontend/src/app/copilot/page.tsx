@@ -41,6 +41,7 @@ import {
   History,
   Loader2,
   MessageSquarePlus,
+  MoreVertical,
   PanelLeftClose,
   PanelLeftOpen,
   Pencil,
@@ -500,6 +501,7 @@ export default function CopilotPage() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
+  const [menuOpenSessionId, setMenuOpenSessionId] = useState<string | number | null>(null);
   const [renamingSessionId, setRenamingSessionId] = useState<string | number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renamingBusy, setRenamingBusy] = useState(false);
@@ -1786,11 +1788,16 @@ export default function CopilotPage() {
           onClick={() => {
             setIsDrawerOpen(false);
             setIsSearchExpanded(false);
+            setMenuOpenSessionId(null);
+            setConfirmDeleteId(null);
           }}
         >
           <aside
             className="w-[min(88vw,320px)] h-full bg-(--bg-card) border-r border-(--text-primary)/10 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-250 ease-out font-sans"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpenSessionId(null);
+            }}
           >
             {/* Top Bar: Brand Logo & Title on Left, Search & Close on Right */}
             <div className="shrink-0 px-4 pt-5 pb-3">
@@ -1902,11 +1909,12 @@ export default function CopilotPage() {
                       const isRenaming = String(renamingSessionId) === String(sess.session_id);
                       const isConfirmingDel =
                         String(confirmDeleteId) === String(sess.session_id);
+                      const isMenuOpen = String(menuOpenSessionId) === String(sess.session_id);
 
                       return (
                         <div
                           key={String(sess.session_id)}
-                          className={`rounded-xl px-3 py-2.5 transition-colors ${
+                          className={`group relative rounded-xl px-3 py-2.5 transition-colors ${
                             isActive
                               ? "bg-black/5 dark:bg-white/10"
                               : "hover:bg-(--text-primary)/5"
@@ -1973,56 +1981,86 @@ export default function CopilotPage() {
                                 </div>
                               </button>
 
-                              {/* Always-visible Rename & Delete Controls */}
-                              <div className="flex items-center gap-0.5 shrink-0">
-                                {isConfirmingDel ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      disabled={String(deletingId) === String(sess.session_id)}
-                                      onClick={() => handleDeleteSession(sess.session_id)}
-                                      className="px-2 py-0.5 rounded-md bg-rose-600 text-white text-[11px] font-medium hover:bg-rose-700 cursor-pointer"
-                                    >
-                                      {String(deletingId) === String(sess.session_id)
-                                        ? "..."
-                                        : isBn
-                                        ? "মুছুন"
-                                        : "Delete"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setConfirmDeleteId(null)}
-                                      className="px-2 py-0.5 rounded-md hover:bg-(--text-primary)/10 text-[11px] text-(--text-muted) cursor-pointer"
-                                    >
-                                      {isBn ? "না" : "No"}
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setConfirmDeleteId(null);
-                                        setRenamingSessionId(sess.session_id);
-                                        setRenameDraft(sess.title || "");
-                                      }}
-                                      className="p-1 rounded-md text-(--text-muted)/70 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-colors cursor-pointer"
-                                      title={isBn ? "নাম পরিবর্তন করুন" : "Rename"}
-                                    >
-                                      <Pencil className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setRenamingSessionId(null);
-                                        setConfirmDeleteId(sess.session_id);
-                                      }}
-                                      className="p-1 rounded-md text-(--text-muted)/70 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                      title={isBn ? "মুছে ফেলুন" : "Delete"}
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </>
+                              {/* Hover 3-dot trigger & Dropdown Menu */}
+                              <div className="relative shrink-0 flex items-center">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDeleteId(null);
+                                    setMenuOpenSessionId(isMenuOpen ? null : sess.session_id);
+                                  }}
+                                  title={isBn ? "অপশন" : "Options"}
+                                  className={`w-7 h-7 rounded-full flex items-center justify-center text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer ${
+                                    isMenuOpen
+                                      ? "opacity-100 bg-(--text-primary)/10 text-(--text-primary)"
+                                      : "opacity-0 group-hover:opacity-100"
+                                  }`}
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Dropdown Popover */}
+                                {isMenuOpen && (
+                                  <div
+                                    className="absolute right-0 top-8 z-30 w-36 rounded-xl bg-(--bg-card) border border-(--text-primary)/10 shadow-xl py-1.5 animate-in fade-in zoom-in-95 duration-100"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {isConfirmingDel ? (
+                                      <div className="px-2.5 py-1.5 space-y-1.5">
+                                        <p className="text-[11px] text-(--text-muted)">
+                                          {isBn ? "মুছে ফেলতে চান?" : "Delete chat?"}
+                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            type="button"
+                                            disabled={String(deletingId) === String(sess.session_id)}
+                                            onClick={() => {
+                                              handleDeleteSession(sess.session_id);
+                                              setMenuOpenSessionId(null);
+                                            }}
+                                            className="flex-1 py-1 rounded-md bg-rose-600 text-white text-[11px] font-medium hover:bg-rose-700 cursor-pointer text-center"
+                                          >
+                                            {String(deletingId) === String(sess.session_id)
+                                              ? "..."
+                                              : isBn
+                                              ? "হ্যাঁ"
+                                              : "Yes"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setConfirmDeleteId(null)}
+                                            className="flex-1 py-1 rounded-md hover:bg-(--text-primary)/10 text-[11px] text-(--text-muted) cursor-pointer text-center"
+                                          >
+                                            {isBn ? "না" : "No"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setMenuOpenSessionId(null);
+                                            setRenamingSessionId(sess.session_id);
+                                            setRenameDraft(sess.title || "");
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left text-xs text-(--text-primary) hover:bg-(--text-primary)/6 flex items-center gap-2 cursor-pointer transition-colors"
+                                        >
+                                          <Pencil className="w-3.5 h-3.5 text-(--text-muted)" />
+                                          <span>{isBn ? "নাম পরিবর্তন" : "Rename"}</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setConfirmDeleteId(sess.session_id)}
+                                          className="w-full px-3 py-1.5 text-left text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 cursor-pointer transition-colors"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                          <span>{isBn ? "মুছে ফেলুন" : "Delete"}</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
