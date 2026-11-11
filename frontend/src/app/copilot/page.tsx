@@ -1180,9 +1180,9 @@ export default function CopilotPage() {
             type="button"
             onClick={() => setIsDrawerOpen(true)}
             title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer group"
           >
-            <PanelLeftOpen className="w-4 h-4 transition-transform group-hover:scale-105" />
+            <PanelLeftOpen className="w-5 h-5 transition-transform group-hover:scale-105" />
           </button>
 
           {/* New Chat Button */}
@@ -1190,9 +1190,9 @@ export default function CopilotPage() {
             type="button"
             onClick={handleNewChat}
             title={isBn ? "নতুন চ্যাট" : "New Chat"}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-sm group"
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer group"
           >
-            <SquarePen className="w-4 h-4 transition-transform group-hover:scale-105" />
+            <SquarePen className="w-5 h-5 transition-transform group-hover:scale-105" />
           </button>
         </div>
       )}
@@ -1206,17 +1206,17 @@ export default function CopilotPage() {
               type="button"
               onClick={() => setIsDrawerOpen(true)}
               title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) transition-all cursor-pointer shadow-xs"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer"
             >
-              <PanelLeftOpen className="w-3.5 h-3.5" />
+              <PanelLeftOpen className="w-4 h-4" />
             </button>
             <button
               type="button"
               onClick={handleNewChat}
               title={isBn ? "নতুন চ্যাট" : "New Chat"}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/10 text-(--text-primary)/85 hover:text-(--text-primary) transition-all cursor-pointer shadow-xs"
+              className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer"
             >
-              <SquarePen className="w-3.5 h-3.5" />
+              <SquarePen className="w-4 h-4" />
             </button>
           </div>
 
