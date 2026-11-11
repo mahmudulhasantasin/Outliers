@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
@@ -40,6 +41,7 @@ import {
   History,
   Loader2,
   MessageSquarePlus,
+  PanelLeftClose,
   PanelLeftOpen,
   Pencil,
   Plus,
@@ -496,6 +498,7 @@ export default function CopilotPage() {
 
   // History Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
   const [renamingSessionId, setRenamingSessionId] = useState<string | number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
@@ -1776,61 +1779,108 @@ export default function CopilotPage() {
         </div>
       )}
 
-      {/* ─── History Slide-Over Drawer (Left-Side Full Height Slide-In) ─── */}
+      {/* ─── History Slide-Over Drawer (Gemini Layout: Brand Logo, Search & Close on Top, New Chat Full Width, then History) ─── */}
       {isDrawerOpen && (
         <div
           className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-start items-stretch animate-in fade-in duration-200"
-          onClick={() => setIsDrawerOpen(false)}
+          onClick={() => {
+            setIsDrawerOpen(false);
+            setIsSearchExpanded(false);
+          }}
         >
           <aside
-            className="w-[min(88vw,340px)] h-full bg-(--bg-card) border-r border-(--text-primary)/10 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-250 ease-out font-sans"
+            className="w-[min(88vw,320px)] h-full bg-(--bg-card) border-r border-(--text-primary)/10 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-250 ease-out font-sans"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drawer Header */}
-            <div className="shrink-0 p-4 pb-3 space-y-3">
+            {/* Top Bar: Brand Logo & Title on Left, Search & Close on Right */}
+            <div className="shrink-0 px-4 pt-5 pb-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <History className="w-4 h-4 text-(--text-primary)" />
-                  <h2 className="font-semibold text-sm text-(--text-primary)">
-                    {isBn ? "চ্যাট হিস্ট্রি" : "Consultation History"}
-                  </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-surface) text-(--text-muted)">
-                    {sessions.length}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="p-1.5 rounded-full hover:bg-(--text-primary)/8 text-(--text-muted) cursor-pointer"
+                <Link
+                  href="/"
+                  className="flex items-center gap-2.5 text-(--text-primary) hover:opacity-85 transition-opacity"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                  <Image
+                    src="/logo.svg"
+                    alt="Advotech"
+                    width={26}
+                    height={26}
+                    className="w-6 h-6 object-contain dark:invert"
+                  />
+                  <span className="font-semibold text-[17px] tracking-tight">Advotech</span>
+                </Link>
 
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-(--text-muted) absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                  placeholder={isBn ? "আলোচনা খুঁজুন..." : "Search consultations..."}
-                  className="w-full pl-8 pr-8 py-2 rounded-xl bg-(--bg-surface) border-0 text-xs text-(--text-primary) placeholder:text-(--text-muted) focus:outline-none focus:ring-1 focus:ring-(--text-primary)/20"
-                />
-                {historySearch && (
+                <div className="flex items-center gap-1">
+                  {/* Search Toggle Button */}
                   <button
                     type="button"
-                    onClick={() => setHistorySearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-primary) cursor-pointer"
+                    onClick={() => setIsSearchExpanded((prev) => !prev)}
+                    title={isBn ? "খুঁজুন" : "Search"}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                      isSearchExpanded || historySearch
+                        ? "bg-(--text-primary)/10 text-(--text-primary)"
+                        : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8"
+                    }`}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Search className="w-4 h-4" />
                   </button>
-                )}
+
+                  {/* Close / Collapse Sidebar Icon */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      setIsSearchExpanded(false);
+                    }}
+                    title={isBn ? "সাইডবার বন্ধ করুন" : "Close sidebar"}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-colors cursor-pointer"
+                  >
+                    <PanelLeftClose className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsible Search Input */}
+              {(isSearchExpanded || historySearch) && (
+                <div className="relative mt-3 animate-in fade-in duration-150">
+                  <Search className="w-3.5 h-3.5 text-(--text-muted) absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    placeholder={isBn ? "আলোচনা খুঁজুন..." : "Search consultations..."}
+                    autoFocus
+                    className="w-full pl-8 pr-8 py-2 rounded-full bg-(--bg-surface) border-0 text-xs text-(--text-primary) placeholder:text-(--text-muted) focus:outline-none focus:ring-1 focus:ring-(--text-primary)/20"
+                  />
+                  {historySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setHistorySearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-primary) cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Gemini-style Full-width Pill "New chat" Button */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleNewChat();
+                    setIsDrawerOpen(false);
+                  }}
+                  className="w-full h-11 px-4 rounded-full bg-(--bg-surface) hover:bg-(--text-primary)/8 text-(--text-primary) text-[13.5px] font-medium flex items-center gap-3 transition-colors cursor-pointer select-none"
+                >
+                  <SquarePen className="w-4 h-4 text-(--text-primary)/80" />
+                  <span>{isBn ? "নতুন চ্যাট" : "New chat"}</span>
+                </button>
               </div>
             </div>
 
-            {/* Grouped Sessions List */}
-            <div className="flex-1 overflow-y-auto px-3 py-2 space-y-4">
+            {/* Grouped Sessions List (Pushed down with natural breathing room) */}
+            <div className="flex-1 overflow-y-auto px-3 pt-2 pb-4 space-y-4">
               {groupedSessions.length === 0 ? (
                 <div className="py-12 text-center text-xs text-(--text-muted)">
                   {historySearch
