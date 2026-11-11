@@ -40,6 +40,7 @@ import {
   History,
   Loader2,
   MessageSquarePlus,
+  PanelLeftOpen,
   Pencil,
   Plus,
   RotateCcw,
@@ -48,6 +49,7 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
+  SquarePen,
   Trash2,
   X,
 } from "lucide-react";
@@ -1166,10 +1168,33 @@ export default function CopilotPage() {
   return (
     <AppShell mainClassName="pb-2! md:pb-3!">
       <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
-        {/* ─── Top Bar (Fixed outside scroller so bubbles never collide underneath) ─── */}
-        <header className="shrink-0 flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3">
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Session Turn Quota Badge */}
+        {/* ─── Top Bar: Left Vertical Actions (Previous Chat & New Chat) ─── */}
+        <header className="shrink-0 flex items-start justify-between gap-2 pb-1.5 sm:pb-2">
+          {/* Left Side: Vertical Shifted Actions (Previous Chat & New Chat) */}
+          <div className="flex flex-col gap-2 shrink-0 z-20">
+            {/* Previous Chat / History Drawer Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/12 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-xs group"
+            >
+              <PanelLeftOpen className="w-4 h-4 transition-transform group-hover:scale-105" />
+            </button>
+
+            {/* New Chat Button */}
+            <button
+              type="button"
+              onClick={handleNewChat}
+              title={isBn ? "নতুন চ্যাট" : "New Chat"}
+              className="w-9 h-9 rounded-full flex items-center justify-center bg-(--bg-card) border border-(--text-primary)/12 text-(--text-primary)/85 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer shadow-xs group"
+            >
+              <SquarePen className="w-4 h-4 transition-transform group-hover:scale-105" />
+            </button>
+          </div>
+
+          {/* Right Side: Session Turn Quota Badge */}
+          <div className="flex items-center gap-2 ml-auto pt-1">
             {activeSessionId && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-card) border border-(--text-primary)/10 text-(--text-muted)">
                 {turnLimit === -1 || turnLimit >= 10000
@@ -1177,37 +1202,6 @@ export default function CopilotPage() {
                   : `${turnCount}/${turnLimit} ${isBn ? "টার্ন" : "turns"}`}
               </span>
             )}
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-            {/* New Chat Button */}
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium bg-(--bg-card) border border-(--text-primary)/12 text-(--text-primary) hover:border-(--text-primary)/25 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                {isBn ? "নতুন চ্যাট" : "New Chat"}
-              </span>
-            </button>
-
-            {/* History Drawer Toggle */}
-            <button
-              type="button"
-              onClick={() => setIsDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                {isBn ? "হিস্ট্রি" : "History"}
-              </span>
-              {sessions.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 dark:bg-black/15">
-                  {sessions.length}
-                </span>
-              )}
-            </button>
           </div>
         </header>
 
