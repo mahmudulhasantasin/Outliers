@@ -1280,8 +1280,8 @@ export default function CopilotPage() {
               <div className="min-h-full flex flex-col items-center justify-center py-6 px-2 text-center">
                 <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-(--text-primary)">
                   {isBn
-                    ? "এডভোটেক আইনি কোপাইলট"
-                    : "Advotech Legal Copilot"}
+                    ? "আইনি কোপাইলট"
+                    : "Legal Copilot"}
                 </h1>
                 <p className="text-xs sm:text-sm text-(--text-muted) max-w-lg mx-auto font-normal leading-relaxed mb-8">
                   {isBn
