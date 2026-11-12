@@ -39,7 +39,6 @@ import {
   Lock,
   Phone,
   RefreshCw,
-  ShieldCheck,
   Sparkles,
   X,
   XCircle,
@@ -185,6 +184,11 @@ function PricingContent() {
   const [cancellingId, setCancellingId] = useState<string | number | null>(null);
   const [historyFilter, setHistoryFilter] = useState<string>("ALL");
   const [showAllHistory, setShowAllHistory] = useState(false);
+  const [expandedMobilePkgId, setExpandedMobilePkgId] = useState<string | number | null>(null);
+
+  const toggleMobilePkg = (id: string | number) => {
+    setExpandedMobilePkgId((prev) => (prev === id ? null : id));
+  };
 
   const hasLoadedRef = useRef(false);
   const handledCallbackRef = useRef<string | null>(null);
@@ -531,15 +535,6 @@ function PricingContent() {
   const visiblePayments = showAllHistory ? filteredPayments : filteredPayments.slice(0, 3);
   const hasMorePayments = filteredPayments.length > 3;
 
-  const channels = gatewayConfig?.supported_channels || [
-    "VISA",
-    "MasterCard",
-    "bKash",
-    "Nagad",
-    "Rocket",
-    "NetBanking",
-  ];
-
   if (!authLoading && user && (isPendingEnterpriseAdmin || isPendingLawyer || isPendingMember)) {
     return (
       <AppShell>
@@ -563,19 +558,6 @@ function PricingContent() {
         {/* Hero Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>
-                {isBn
-                  ? "SSLCommerz ভেরিফাইড অনলাইন পেমেন্ট গেটওয়ে"
-                  : "SSLCommerz Verified Payment Gateway"}
-              </span>
-              {gatewayConfig?.is_sandbox && (
-                <span className="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-800 dark:text-amber-300 text-[10px] font-bold uppercase">
-                  Sandbox
-                </span>
-              )}
-            </div>
             <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-[var(--text-primary)]">
               {isBn
                 ? "ক্রেডিট প্যাকেজ ও বিলিং"
@@ -617,26 +599,6 @@ function PricingContent() {
               </div>
             </div>
           )}
-        </div>
-
-        {/* Supported Channels Bar */}
-        <div className="minimal-surface px-5 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
-            <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-            <span>
-              {isBn ? "সাপোর্টেড পেমেন্ট মাধ্যম:" : "Accepted Channels via SSLCommerz:"}
-            </span>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            {channels.map((ch) => (
-              <span
-                key={ch}
-                className="px-2.5 py-1 rounded-lg bg-[var(--bg-card)] text-[11px] font-semibold text-[var(--text-primary)] shadow-xs"
-              >
-                {ch}
-              </span>
-            ))}
-          </div>
         </div>
 
         {/* Gateway Missing Credentials Notice */}
@@ -776,21 +738,60 @@ function PricingContent() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
             {packages.map((pkg) => {
               const isPop = Boolean(pkg.is_popular || pkg.badge_text);
               const isLoadingThis = initiatingPkgId === pkg.id;
               const perCredit =
                 pkg.total_credits > 0 ? (pkg.price_bdt / pkg.total_credits).toFixed(2) : "—";
+              const isExpanded = expandedMobilePkgId === pkg.id;
 
               return (
                 <div
                   key={pkg.id}
-                  className={`minimal-card p-6 sm:p-7 flex flex-col justify-between transition-transform duration-200 hover:-translate-y-0.5 ${
+                  className={`minimal-card p-4 md:p-7 flex flex-col justify-between transition-all duration-200 hover:-translate-y-0.5 ${
                     isPop ? "ring-2 ring-emerald-500/50" : ""
                   }`}
                 >
-                  <div className="space-y-4">
+                  {/* Mobile Compact Header (Mobile only) */}
+                  <div
+                    onClick={() => toggleMobilePkg(pkg.id)}
+                    className="flex items-center justify-between gap-3 cursor-pointer md:hidden select-none"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="text-base font-bold text-[var(--text-primary)]">
+                          {pkg.name}
+                        </h3>
+                        {pkg.badge_text && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 shrink-0">
+                            <Sparkles className="w-2.5 h-2.5" />
+                            {pkg.badge_text}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-baseline gap-1.5 mt-0.5">
+                        <span className="text-lg font-extrabold text-[var(--text-primary)]">
+                          ৳{pkg.price_bdt.toLocaleString()}
+                        </span>
+                        <span className="text-[11px] font-medium text-[var(--text-muted)]">BDT</span>
+                        <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 ml-1">
+                          +{pkg.total_credits.toLocaleString()} {isBn ? "ক্রেডিট" : "Credits"}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="w-8 h-8 rounded-full bg-[var(--text-primary)]/5 flex items-center justify-center text-[var(--text-muted)] shrink-0">
+                      <ChevronDown
+                        className={`w-4 h-4 transition-transform duration-200 ${
+                          isExpanded ? "rotate-180 text-[var(--text-primary)]" : ""
+                        }`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Desktop Header (Desktop only) */}
+                  <div className="hidden md:block space-y-4">
                     <div className="flex items-start justify-between gap-2">
                       <div>
                         <h3 className="text-lg font-bold text-[var(--text-primary)]">
@@ -820,8 +821,27 @@ function PricingContent() {
                         {isBn ? "মোট ক্রেডিট" : "Total Credits"} (৳{perCredit}/credit)
                       </p>
                     </div>
+                  </div>
 
-                    <ul className="space-y-2 pt-2 text-xs text-[var(--text-muted)]">
+                  {/* Expandable Details on Mobile / Always visible on Desktop */}
+                  <div
+                    className={`${
+                      isExpanded
+                        ? "block pt-4 mt-3 border-t border-black/5 dark:border-white/5 md:mt-0 md:pt-0 md:border-0"
+                        : "hidden"
+                    } md:flex md:flex-col md:justify-between flex-1`}
+                  >
+                    {/* On mobile expanded: show description and per-credit rate */}
+                    <div className="md:hidden mb-2">
+                      <p className="text-xs text-[var(--text-muted)] leading-relaxed mb-2">
+                        {pkg.description}
+                      </p>
+                      <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">
+                        ৳{perCredit} / {isBn ? "প্রতি ক্রেডিট" : "credit"}
+                      </p>
+                    </div>
+
+                    <ul className="space-y-2 pt-2 md:pt-4 text-xs text-[var(--text-muted)]">
                       {pkg.base_credits != null && (
                         <li className="flex items-center gap-2">
                           <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -853,36 +873,36 @@ function PricingContent() {
                         </span>
                       </li>
                     </ul>
-                  </div>
 
-                  <button
-                    onClick={() => handleSelectPackage(pkg)}
-                    disabled={isLoadingThis || isEnterpriseMember}
-                    className={`mt-6 w-full py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
-                      isPop
-                        ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-                        : "bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90"
-                    }`}
-                  >
-                    {isLoadingThis ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {isBn ? "গেটওয়ে খোলা হচ্ছে..." : "Opening SSLCommerz..."}
-                      </>
-                    ) : isEnterpriseMember ? (
-                      isBn ? (
-                        "অ্যাডমিন অনুমোদিত টপ-আপ"
+                    <button
+                      onClick={() => handleSelectPackage(pkg)}
+                      disabled={isLoadingThis || isEnterpriseMember}
+                      className={`mt-5 md:mt-6 w-full py-3 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                        isPop
+                          ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                          : "bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90"
+                      }`}
+                    >
+                      {isLoadingThis ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          {isBn ? "গেটওয়ে খোলা হচ্ছে..." : "Opening SSLCommerz..."}
+                        </>
+                      ) : isEnterpriseMember ? (
+                        isBn ? (
+                          "অ্যাডমিন অনুমোদিত টপ-আপ"
+                        ) : (
+                          "Enterprise Admin Only"
+                        )
                       ) : (
-                        "Enterprise Admin Only"
-                      )
-                    ) : (
-                      <>
-                        <CreditCard className="w-4 h-4" />
-                        {isBn ? "SSLCommerz দিয়ে পে করুন" : "Pay with SSLCommerz"}
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
+                        <>
+                          <CreditCard className="w-4 h-4" />
+                          {isBn ? "SSLCommerz দিয়ে পে করুন" : "Pay with SSLCommerz"}
+                          <ArrowRight className="w-4 h-4" />
+                        </>
+                      )}
+                    </button>
+                  </div>
                 </div>
               );
             })}

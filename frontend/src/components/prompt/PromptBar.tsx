@@ -10,7 +10,6 @@ import React, {
   type CSSProperties,
   type KeyboardEvent
 } from 'react';
-import { animate, useMotionValue, useMotionValueEvent, useReducedMotion } from 'framer-motion';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Mic01Icon } from '@hugeicons/core-free-icons';
 
@@ -43,16 +42,6 @@ export interface PromptBarProps {
 type Token = { kind: 'slash'; query: string; start: number };
 type Latest = Pick<PromptBarProps, 'onSend' | 'onStop' | 'onDictate'>;
 
-interface SendGlyphProps {
-  busy: boolean;
-  morphDuration: number;
-  squash: number;
-  tilt: number;
-}
-
-const ARROW_UP = [12, 4.5, 18.5, 11, 14.25, 11, 14.25, 19.5, 9.75, 19.5, 9.75, 11, 5.5, 11];
-const SQUARE = [12, 6, 18, 6, 18, 12, 18, 18, 6, 18, 6, 12, 6, 6];
-const EASE_IN_OUT: [number, number, number, number] = [0.77, 0, 0.175, 1];
 const LINE = 22;
 
 const DEFAULT_COMMANDS: PromptBarCommand[] = [
@@ -76,46 +65,31 @@ const parseToken = (draft: string): Token | null => {
   return { kind: 'slash', query: m[3].toLowerCase(), start: m.index + m[1].length };
 };
 
-function SendGlyph({ busy, morphDuration, squash, tilt }: SendGlyphProps) {
-  const reduce = useReducedMotion();
-  const svgRef = useRef<SVGSVGElement>(null);
-  const pathRef = useRef<SVGPathElement>(null);
-  const dir = useRef(busy ? 1 : -1);
-  const t = useMotionValue(busy ? 1 : 0);
-
-  useEffect(() => {
-    const target = busy ? 1 : 0;
-    dir.current = busy ? 1 : -1;
-    if (t.get() === target) return undefined;
-    const controls = animate(
-      t,
-      target,
-      reduce ? { duration: 0 } : { duration: morphDuration / 1000, ease: EASE_IN_OUT }
-    );
-    return () => controls.stop();
-  }, [busy, morphDuration, reduce, t]);
-
-  useMotionValueEvent(t, 'change', v => {
-    pathRef.current?.setAttribute('d', pathAt(ARROW_UP, SQUARE, v));
-    const goo = reduce ? 0 : Math.sin(v * Math.PI);
-    const sx = 1 - squash * goo;
-    if (svgRef.current) {
-      svgRef.current.style.transform = goo ? `rotate(${dir.current * tilt * goo}deg) scale(${sx}, ${1 / sx})` : '';
-    }
-  });
-
-  return (
+/** Paper-plane send icon (busy: rounded stop square), inherits currentColor. */
+function SendGlyph({ busy }: { busy: boolean }) {
+  return busy ? (
     <svg
-      ref={svgRef}
-      className="block h-4 w-4 origin-center"
+      className="block h-6 w-6 sm:h-7 sm:w-7 animate-in fade-in duration-150"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      fill="currentColor"
+    >
+      <rect x="6.5" y="6.5" width="11" height="11" rx="2.5" />
+    </svg>
+  ) : (
+    <svg
+      className="block h-6.5 w-6.5 sm:h-7 sm:w-7 animate-in fade-in duration-150"
       viewBox="0 0 24 24"
       aria-hidden="true"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth="2"
+      strokeWidth="0.8"
       strokeLinejoin="round"
     >
-      <path ref={pathRef} d={pathAt(ARROW_UP, SQUARE, t.get())} />
+      {/* Left wing */}
+      <path d="M19 4.1 4.1 10.4l6.4 3.2Z" />
+      {/* Right wing */}
+      <path d="M20.3 5.3 11.2 14.2l2.7 6.1Z" />
     </svg>
   );
 }
@@ -146,9 +120,6 @@ const PromptBar: React.FC<PromptBarProps> = ({
   width = 640,
   radius = 20,
   maxRows = 5,
-  morphDuration = 240,
-  squash = 0.12,
-  tilt = 8,
   pressScale = 0.96,
   className = ''
 }) => {
@@ -364,9 +335,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
           }}
         />
 
-        {/* ২. ভেতরের মূল বডি (Inner Content) - Flex Row, Compact Layout */}
+        {/* ২. ভেতরের মূল বডি (Inner Content) - Flex Row, Centered Layout */}
         <div
-          className="relative isolate flex cursor-text items-end gap-2 py-2 pl-3 pr-1.5 sm:pl-4 sm:pr-2 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
+          className="relative isolate flex cursor-text items-center gap-2 py-1.5 sm:py-2 pl-3 pr-1.5 sm:pl-4 sm:pr-2 [background:var(--pb-bg)] shadow-[0_4px_16px_rgba(79,70,229,0.03)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.2)] dark:border dark:border-white/10 border-0"
           style={{ borderRadius: 'var(--pb-radius)' }}
           role="presentation"
           onPointerDown={e => {
@@ -376,7 +347,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
         >
           <textarea
             ref={inputRef}
-            className="prompt-bar-input block w-full resize-none border-0 bg-transparent py-1.5 text-[16px] sm:text-[15px] leading-5.5 outline-none font-sans flex-1"
+            className="prompt-bar-input block w-full resize-none border-0 bg-transparent py-1 sm:py-1.5 text-[16px] sm:text-[15px] leading-5 sm:leading-5.5 outline-none font-sans flex-1 self-center"
             style={{
               color: "var(--text-primary)",
               caretColor: "var(--text-primary)"
@@ -395,7 +366,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             onKeyDown={onKeyDown}
           />
 
-          <div className="flex items-center gap-1.5 shrink-0 pb-0.5">
+          <div className="flex items-center gap-1.5 shrink-0 self-center">
             {onDictate ? (
               <button
                 type="button"
@@ -421,8 +392,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
             {/* Send Button */}
             <button
               type="button"
-              className="relative inline-grid h-9 w-9 flex-none cursor-pointer place-items-center rounded-xl border-0 disabled:opacity-30 transition-colors shadow-sm outline-none hover:opacity-90"
-              style={{ backgroundColor: "var(--accent-solid)", color: "var(--accent-contrast)" }}
+              className="relative inline-grid h-10 w-10 sm:h-11 sm:w-11 flex-none cursor-pointer place-items-center rounded-full border-0 bg-transparent disabled:opacity-30 transition-all outline-none hover:opacity-85 hover:scale-105 active:scale-95 disabled:hover:opacity-30 disabled:hover:scale-100 drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.18)] dark:drop-shadow-[0_1.5px_4px_rgba(0,0,0,0.45)] disabled:drop-shadow-none"
+              style={{ color: "var(--accent-solid)" }}
               disabled={!armed}
               aria-label={busy ? 'Stop' : 'Send'}
               onMouseDown={e => e.preventDefault()}
@@ -431,7 +402,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
                 else send();
               }}
             >
-              <SendGlyph busy={busy} morphDuration={morphDuration} squash={squash} tilt={tilt} />
+              <SendGlyph busy={busy} />
             </button>
           </div>
         </div>

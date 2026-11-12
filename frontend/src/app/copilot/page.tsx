@@ -511,6 +511,53 @@ export default function CopilotPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | number | null>(null);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
 
+  // Mobile viewport detection (compact prompt bar placeholder)
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobileViewport(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Long-press (mobile) handler for chat history items -> opens the 3-dot menu
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const startLongPress = useCallback(
+    (e: React.PointerEvent, sessionId: string | number) => {
+      if (e.pointerType !== "touch") return;
+      cancelLongPress();
+      longPressFiredRef.current = false;
+      longPressTimerRef.current = setTimeout(() => {
+        longPressFiredRef.current = true;
+        setConfirmDeleteId(null);
+        setMenuOpenSessionId(sessionId);
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          navigator.vibrate?.(10);
+        }
+      }, 500);
+    },
+    [cancelLongPress]
+  );
+
+  /** Suppress the click that follows a long-press so it doesn't also open the chat. */
+  const wasLongPress = useCallback(() => {
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return true;
+    }
+    return false;
+  }, []);
+
   // Statute Popup Modal State + Client Memory Cache
   const [statuteModal, setStatuteModal] = useState<StatuteModalState | null>(null);
   const [copiedStatute, setCopiedStatute] = useState(false);
@@ -1110,26 +1157,26 @@ export default function CopilotPage() {
     if (isLawyer) {
       return isBn
         ? [
-            "দণ্ডবিধি ১৮৬০-এর ধারা ৩০২ বনাম ৩০৪ এর শাস্তি ও জামিন প্রক্রিয়া বিশ্লেষণ করুন",
-            "সুনির্দিষ্ট প্রতিকার আইন, ১৮৭৭-এর ধারা ৪২ ও ৫৪ অনুযায়ী ঘোষণা ও নিষেধাজ্ঞার শর্ত",
-            "ফৌজদারি কার্যবিধি ধারা ৪৯৭ ও ৪৯৮ অনুযায়ী আগাম জামিনের আইনি ভিত্তি ও নজির",
+            "দণ্ডবিধি ৩০২ বনাম ৩০৪: শাস্তি ও জামিন প্রক্রিয়া",
+            "সুনির্দিষ্ট প্রতিকার আইন: ধারা ৪২ ও ৫৪ বিশ্লেষণ",
+            "ফৌজদারি কার্যবিধি ৪৯৮: আগাম জামিনের আইনি ভিত্তি",
           ]
         : [
-            "Compare Section 302 vs Section 304 of Penal Code, 1860 with bail posture",
-            "Elements for declaratory & injunction suits under Sections 42 & 54 Specific Relief Act",
-            "Anticipatory bail principles under Section 498 CrPC with HCD jurisprudence",
+            "Section 302 vs 304 Penal Code with bail posture",
+            "Declaratory & injunction suits (SR Act 42 & 54)",
+            "Anticipatory bail principles under CrPC 498",
           ];
     }
     return isBn
       ? [
-          "চাকরির চুক্তিতে অযৌক্তিক নন-কম্পিট (Non-compete) ধারা কি বৈধ?",
-          "বিনা নোটিশে চাকরিচ্যুত করলে বাংলাদেশ শ্রম আইনে কী প্রতিকার পাওয়া যায়?",
-          "বাড়ি বা দোকান ভাড়া চুক্তি করার আগে কোন বিষয়গুলো যাচাই করতে হবে?",
+          "চাকরির চুক্তিতে নন-কম্পিট ধারা কি বৈধ?",
+          "বিনা নোটিশে বরখাস্তের আইনি প্রতিকার কী?",
+          "ভাড়া চুক্তির প্রধান আইনি সতর্কতা",
         ]
       : [
-          "Is a strict post-employment non-compete clause valid in Bangladesh?",
-          "What are my rights under the Bangladesh Labour Act if terminated without notice?",
-          "Key legal checks before signing a commercial lease or rental agreement",
+          "Are non-compete clauses valid in Bangladesh?",
+          "Remedies for termination without notice under Labour Act",
+          "Key legal checks before signing a rental agreement",
         ];
   }, [activeContractContext, isLawyer, isBn]);
 
@@ -1174,7 +1221,7 @@ export default function CopilotPage() {
   }
 
   return (
-    <AppShell mainClassName="pb-2! md:pb-3!" hideDock={isDrawerOpen}>
+    <AppShell mainClassName="pb-24! md:pb-3!" hideDock={isDrawerOpen}>
       {/* ─── Desktop: Left Vertical Actions (Aligned directly with vertical dock: left-4, width 60px) ─── */}
       {!isDrawerOpen && (
         <div className="hidden md:flex fixed left-4 top-5 z-40 flex-col items-center gap-2.5 w-[60px] select-none">
@@ -1200,28 +1247,29 @@ export default function CopilotPage() {
         </div>
       )}
 
-      <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
-        {/* ─── Top Bar: Mobile actions & turn quota ─── */}
-        <header className="shrink-0 flex items-center justify-between gap-2 pb-1.5 sm:pb-2">
-          {/* Mobile Only: Previous Chat & New Chat */}
-          <div className="md:hidden flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setIsDrawerOpen(true)}
-              title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer"
-            >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={handleNewChat}
-              title={isBn ? "নতুন চ্যাট" : "New Chat"}
-              className="w-8 h-8 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer"
-            >
-              <SquarePen className="w-4 h-4" />
-            </button>
-          </div>
+      <div className="h-[calc(100dvh-10.5rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
+        {/* ─── Mobile Only: Sticky Floating Actions (History & New Chat) ─── */}
+        <div className="md:hidden fixed top-4 left-4 z-40 flex items-center gap-1 p-1 rounded-full bg-(--bg-card) border border-(--text-primary)/10 shadow-lg">
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer active:scale-95"
+          >
+            <PanelLeftOpen className="w-4.5 h-4.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleNewChat}
+            title={isBn ? "নতুন চ্যাট" : "New Chat"}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer active:scale-95"
+          >
+            <SquarePen className="w-4.5 h-4.5" />
+          </button>
+        </div>
+
+        {/* ─── Top Bar: Turn quota ─── */}
+        <header className="shrink-0 flex items-center justify-end gap-2 pb-1.5 sm:pb-2">
 
           {/* Right Side: Session Turn Quota Badge */}
           <div className="flex items-center gap-2 ml-auto">
@@ -1280,32 +1328,42 @@ export default function CopilotPage() {
               </div>
             ) : messages.length === 0 ? (
               /* Clean Empty Onboarding State with Starter Chips */
-              <div className="min-h-full flex flex-col items-center justify-center py-6 px-2 text-center">
-                <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight mb-2 text-(--text-primary)">
+              <div className="min-h-full flex flex-col items-center justify-center py-4 px-2 text-center">
+                <div className="mb-3 sm:mb-4">
+                  <Image
+                    src="/logo.svg"
+                    alt="Advotech Logo"
+                    width={48}
+                    height={48}
+                    className="w-10 h-10 sm:w-12 sm:h-12 object-contain dark:invert"
+                    priority
+                  />
+                </div>
+                <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight mb-1.5 text-(--text-primary)">
                   {isBn
                     ? "আইনি কোপাইলট"
                     : "Legal Copilot"}
                 </h1>
-                <p className="text-xs sm:text-sm text-(--text-muted) max-w-lg mx-auto font-normal leading-relaxed mb-8">
+                <p className="text-xs sm:text-sm text-(--text-muted) max-w-md mx-auto font-normal leading-relaxed mb-4">
                   {isBn
-                    ? "বাংলাদেশের সংবিধান, দণ্ডবিধি, চুক্তি আইন, শ্রম আইন ও আদালতের নজির থেকে যাচাইকৃত উত্তর পান।"
-                    : "Ask any legal question grounded in Bangladesh statutes, bdlaws gazette texts, and Supreme Court precedents."}
+                    ? "বাংলাদেশি আইন ও আদালতের নজির থেকে নির্ভরযোগ্য আইনি উত্তর পান।"
+                    : "Ask any legal question grounded in Bangladesh laws and precedents."}
                 </p>
 
-                <div className="w-full max-w-3xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-left">
+                <div className="w-full max-w-2xl flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-left">
                   {starterPrompts.map((prompt, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => handleSendPrompt(prompt)}
-                      className="group p-4 rounded-2xl bg-(--bg-card) border border-(--text-primary)/10 hover:border-(--text-primary)/30 hover:shadow-xs transition-all text-left cursor-pointer flex flex-col justify-between gap-3"
+                      className="group p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-(--bg-card) border border-(--text-primary)/10 hover:border-(--text-primary)/30 hover:shadow-xs transition-all text-left cursor-pointer flex items-center sm:flex-col sm:items-start justify-between gap-2.5 sm:gap-2.5"
                     >
-                      <span className="text-xs sm:text-sm font-normal text-(--text-primary)/90 group-hover:text-(--text-primary) leading-relaxed">
+                      <span className="text-xs sm:text-sm font-normal text-(--text-primary)/90 group-hover:text-(--text-primary) leading-snug">
                         {prompt}
                       </span>
-                      <span className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
+                      <span className="text-[11px] sm:text-xs font-semibold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1 shrink-0">
                         <span>{isBn ? "জিজ্ঞাসা করুন" : "Ask now"}</span>
-                        <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                        <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </button>
                   ))}
@@ -1573,7 +1631,11 @@ export default function CopilotPage() {
                 onSend={(text) => handleSendPrompt(text)}
                 onStop={handleStopGeneration}
                 placeholder={
-                  isBn
+                  isMobileViewport
+                    ? isBn
+                      ? "আইনি প্রশ্ন লিখুন..."
+                      : "Ask about Bangladesh law..."
+                    : isBn
                     ? "আইনি প্রশ্ন বা ধারা লিখুন... (/audit, /memo, /redline)"
                     : "Ask a question about Bangladesh law... (type / for commands)"
                 }
@@ -1917,7 +1979,16 @@ export default function CopilotPage() {
                       return (
                         <div
                           key={String(sess.session_id)}
-                          className={`group relative rounded-xl px-3 py-2.5 transition-colors ${
+                          onPointerDown={(e) => startLongPress(e, sess.session_id)}
+                          onPointerUp={cancelLongPress}
+                          onPointerLeave={cancelLongPress}
+                          onPointerCancel={cancelLongPress}
+                          onContextMenu={(e) => {
+                            if (longPressTimerRef.current || longPressFiredRef.current) {
+                              e.preventDefault();
+                            }
+                          }}
+                          className={`group relative rounded-xl px-3 py-2.5 transition-colors select-none [-webkit-touch-callout:none] ${
                             isActive
                               ? "bg-black/5 dark:bg-white/10"
                               : "hover:bg-(--text-primary)/5"
@@ -1960,7 +2031,10 @@ export default function CopilotPage() {
                             <div className="flex items-start justify-between gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleSelectSession(sess)}
+                                onClick={() => {
+                                  if (wasLongPress()) return;
+                                  handleSelectSession(sess);
+                                }}
                                 className="flex-1 min-w-0 text-left cursor-pointer"
                               >
                                 <div className="text-xs font-medium text-(--text-primary) truncate leading-snug">
