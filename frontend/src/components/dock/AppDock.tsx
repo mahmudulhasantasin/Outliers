@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React from "react";
 import { usePathname, useRouter } from "next/navigation";
 import VerticalDock, { VerticalDockItemData } from "./VerticalDock";
 import { useLanguage } from "@/context/LanguageContext";
@@ -16,8 +16,6 @@ import {
   Building2,
   Coins,
   ShieldAlert,
-  Menu,
-  X,
 } from "lucide-react";
 
 export default function AppDock() {
@@ -25,8 +23,6 @@ export default function AppDock() {
   const pathname = usePathname();
   const { language } = useLanguage();
   const { user } = useAuth();
-
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const isBn = language === "bn";
   const role = user?.role ?? "general";
@@ -92,6 +88,12 @@ export default function AppDock() {
       onClick: () => router.push("/lawyer/archive"),
     },
     {
+      icon: <Coins className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "প্যাকেজ ও বিলিং" : "Pricing & Packages",
+      isActive: pathname === "/pricing",
+      onClick: () => router.push("/pricing"),
+    },
+    {
       icon: <Settings className="w-5 h-5" />,
       label: isBn ? "সেটিংস" : "Settings",
       isActive: pathname === "/settings",
@@ -130,6 +132,12 @@ export default function AppDock() {
       label: isBn ? "সংরক্ষিত আর্কাইভ" : "Archive & Memos",
       isActive: pathname === "/archive",
       onClick: () => router.push("/archive"),
+    },
+    {
+      icon: <Coins className="w-5 h-5 stroke-[2.4]" />,
+      label: isBn ? "প্যাকেজ ও বিলিং" : "Pricing & Packages",
+      isActive: pathname === "/pricing",
+      onClick: () => router.push("/pricing"),
     },
     {
       icon: <Settings className="w-5 h-5" />,
@@ -317,60 +325,46 @@ export default function AppDock() {
       ? enterpriseMemberItems
       : generalItems;
 
+  // ── Mobile Bottom Dock layout: all items equal, full-width bar ──
+  const renderDockItem = (item: VerticalDockItemData, index: number) => (
+    <button
+      key={`${item.label}-${index}`}
+      type="button"
+      onClick={item.onClick}
+      aria-label={typeof item.label === "string" ? item.label : undefined}
+      title={typeof item.label === "string" ? item.label : undefined}
+      className="flex-1 h-full flex flex-col items-center justify-center gap-1 cursor-pointer transition-colors active:bg-(--text-primary)/8"
+    >
+      <span
+        className={
+          item.isActive
+            ? "text-indigo-600 dark:text-indigo-400"
+            : "text-(--text-muted)"
+        }
+      >
+        {item.icon}
+      </span>
+      <span
+        className={`w-1 h-1 rounded-full transition-opacity ${
+          item.isActive
+            ? "bg-indigo-600 dark:bg-indigo-400 opacity-100"
+            : "bg-(--text-muted) opacity-0"
+        }`}
+      />
+    </button>
+  );
+
   return (
     <>
-      {/* [UPDATED] Mobile Top Hamburger Button */}
-      <div className="md:hidden fixed top-4 left-4 z-100">
-        <button
-          onClick={() => setIsMobileOpen(true)}
-          className="p-2.5 rounded-xl bg-(--bg-card) border border-(--text-primary)/10 shadow-lg text-(--text-primary) hover:bg-(--bg-surface) transition-colors cursor-pointer"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+      {/* [UPDATED] Mobile Floating Bottom Dock (Android-style) */}
+      <div
+        className="md:hidden fixed inset-x-0 bottom-0 z-100 pointer-events-none"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 10px)" }}
+      >
+        <nav className="pointer-events-auto relative flex items-stretch h-16 mx-3 px-2 rounded-[2rem] bg-(--bg-card) border border-(--text-primary)/10 shadow-2xl shadow-black/15">
+          {items.map(renderDockItem)}
+        </nav>
       </div>
-
-      {/* [UPDATED] Mobile Fullscreen Drawer Menu */}
-      {isMobileOpen && (
-        <div className="md:hidden fixed inset-0 z-100 flex bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          {/* Drawer Sidebar */}
-          <div className="w-72 h-full bg-(--bg-card) p-5 flex flex-col shadow-2xl animate-in slide-in-from-left duration-300">
-            <div className="flex items-center justify-between mb-6">
-              <span className="font-bold text-lg text-(--text-primary)">
-                {isBn ? "মেনু" : "Menu"}
-              </span>
-              <button
-                onClick={() => setIsMobileOpen(false)}
-                className="p-1.5 rounded-lg text-(--text-muted) hover:bg-(--text-primary)/5 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-2 overflow-y-auto">
-              {items.map((item, index) => (
-                <button
-                  key={index} // [UPDATED] FIX: Changed from item.label to index to resolve TS error
-                  onClick={() => {
-                    item.onClick();
-                    setIsMobileOpen(false);
-                  }}
-                  className={`flex items-center gap-3 p-3 rounded-xl transition-all text-left ${
-                    item.isActive
-                      ? "bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-300 font-semibold"
-                      : "text-(--text-primary) hover:bg-(--bg-surface)"
-                  }`}
-                >
-                  <span className="shrink-0">{item.icon}</span>
-                  <span className="text-sm truncate">{item.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Backdrop click to close */}
-          <div className="flex-1" onClick={() => setIsMobileOpen(false)} />
-        </div>
-      )}
 
       {/* [UPDATED] Desktop Floating Dock */}
       <div className="hidden md:block">

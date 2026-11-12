@@ -1,7 +1,9 @@
 "use client";
 
+// Legal Copilot workspace view
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import PromptBar from "@/components/prompt/PromptBar";
@@ -40,6 +42,9 @@ import {
   History,
   Loader2,
   MessageSquarePlus,
+  MoreVertical,
+  PanelLeftClose,
+  PanelLeftOpen,
   Pencil,
   Plus,
   RotateCcw,
@@ -48,7 +53,7 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
-  Square,
+  SquarePen,
   Trash2,
   X,
 } from "lucide-react";
@@ -471,6 +476,8 @@ export default function CopilotPage() {
 
   const canTopUpCredits =
     normalizedRole === "general" ||
+    (normalizedRole === "lawyer" &&
+      String(user?.lawyerProfile?.verificationStatus || "").toLowerCase() === "verified") ||
     (isEnterpriseAdmin &&
       String(user?.enterpriseProfile?.verificationStatus || "").toLowerCase() === "verified");
 
@@ -495,12 +502,61 @@ export default function CopilotPage() {
 
   // History Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(false);
   const [historySearch, setHistorySearch] = useState("");
+  const [menuOpenSessionId, setMenuOpenSessionId] = useState<string | number | null>(null);
   const [renamingSessionId, setRenamingSessionId] = useState<string | number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [renamingBusy, setRenamingBusy] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | number | null>(null);
   const [deletingId, setDeletingId] = useState<string | number | null>(null);
+
+  // Mobile viewport detection (compact prompt bar placeholder)
+  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobileViewport(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  // Long-press (mobile) handler for chat history items -> opens the 3-dot menu
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressFiredRef = useRef(false);
+
+  const cancelLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  }, []);
+
+  const startLongPress = useCallback(
+    (e: React.PointerEvent, sessionId: string | number) => {
+      if (e.pointerType !== "touch") return;
+      cancelLongPress();
+      longPressFiredRef.current = false;
+      longPressTimerRef.current = setTimeout(() => {
+        longPressFiredRef.current = true;
+        setConfirmDeleteId(null);
+        setMenuOpenSessionId(sessionId);
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          navigator.vibrate?.(10);
+        }
+      }, 500);
+    },
+    [cancelLongPress]
+  );
+
+  /** Suppress the click that follows a long-press so it doesn't also open the chat. */
+  const wasLongPress = useCallback(() => {
+    if (longPressFiredRef.current) {
+      longPressFiredRef.current = false;
+      return true;
+    }
+    return false;
+  }, []);
 
   // Statute Popup Modal State + Client Memory Cache
   const [statuteModal, setStatuteModal] = useState<StatuteModalState | null>(null);
@@ -1101,26 +1157,26 @@ export default function CopilotPage() {
     if (isLawyer) {
       return isBn
         ? [
-            "দণ্ডবিধি ১৮৬০-এর ধারা ৩০২ বনাম ৩০৪ এর শাস্তি ও জামিন প্রক্রিয়া বিশ্লেষণ করুন",
-            "সুনির্দিষ্ট প্রতিকার আইন, ১৮৭৭-এর ধারা ৪২ ও ৫৪ অনুযায়ী ঘোষণা ও নিষেধাজ্ঞার শর্ত",
-            "ফৌজদারি কার্যবিধি ধারা ৪৯৭ ও ৪৯৮ অনুযায়ী আগাম জামিনের আইনি ভিত্তি ও নজির",
+            "দণ্ডবিধি ৩০২ বনাম ৩০৪: শাস্তি ও জামিন প্রক্রিয়া",
+            "সুনির্দিষ্ট প্রতিকার আইন: ধারা ৪২ ও ৫৪ বিশ্লেষণ",
+            "ফৌজদারি কার্যবিধি ৪৯৮: আগাম জামিনের আইনি ভিত্তি",
           ]
         : [
-            "Compare Section 302 vs Section 304 of Penal Code, 1860 with bail posture",
-            "Elements for declaratory & injunction suits under Sections 42 & 54 Specific Relief Act",
-            "Anticipatory bail principles under Section 498 CrPC with HCD jurisprudence",
+            "Section 302 vs 304 Penal Code with bail posture",
+            "Declaratory & injunction suits (SR Act 42 & 54)",
+            "Anticipatory bail principles under CrPC 498",
           ];
     }
     return isBn
       ? [
-          "চাকরির চুক্তিতে অযৌক্তিক নন-কম্পিট (Non-compete) ধারা কি বৈধ?",
-          "বিনা নোটিশে চাকরিচ্যুত করলে বাংলাদেশ শ্রম আইনে কী প্রতিকার পাওয়া যায়?",
-          "বাড়ি বা দোকান ভাড়া চুক্তি করার আগে কোন বিষয়গুলো যাচাই করতে হবে?",
+          "চাকরির চুক্তিতে নন-কম্পিট ধারা কি বৈধ?",
+          "বিনা নোটিশে বরখাস্তের আইনি প্রতিকার কী?",
+          "ভাড়া চুক্তির প্রধান আইনি সতর্কতা",
         ]
       : [
-          "Is a strict post-employment non-compete clause valid in Bangladesh?",
-          "What are my rights under the Bangladesh Labour Act if terminated without notice?",
-          "Key legal checks before signing a commercial lease or rental agreement",
+          "Are non-compete clauses valid in Bangladesh?",
+          "Remedies for termination without notice under Labour Act",
+          "Key legal checks before signing a rental agreement",
         ];
   }, [activeContractContext, isLawyer, isBn]);
 
@@ -1144,7 +1200,7 @@ export default function CopilotPage() {
           <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4">
             <Scale className="w-6 h-6" />
           </div>
-          <h1 className="text-xl font-serif font-bold text-(--text-primary) mb-2">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-(--text-primary) mb-2">
             {isBn ? "এডভোটেক কোপাইলট ব্যবহার করতে সাইন ইন করুন" : "Sign in to access Advotech Copilot"}
           </h1>
           <p className="text-sm text-(--text-muted) mb-5">
@@ -1165,12 +1221,58 @@ export default function CopilotPage() {
   }
 
   return (
-    <AppShell mainClassName="pb-2! md:pb-3!">
-      <div className="h-[calc(100dvh-4.75rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0">
-        {/* ─── Top Bar (Fixed outside scroller so bubbles never collide underneath) ─── */}
-        <header className="shrink-0 flex flex-wrap items-center justify-between gap-2 pb-2.5 sm:pb-3 border-b border-(--text-primary)/8">
-          <div className="flex items-center gap-2 min-w-0">
-            {/* Session Turn Quota Badge */}
+    <AppShell mainClassName="pb-24! md:pb-3!" hideDock={isDrawerOpen}>
+      {/* ─── Desktop: Left Vertical Actions (Aligned directly with vertical dock: left-4, width 60px) ─── */}
+      {!isDrawerOpen && (
+        <div className="hidden md:flex fixed left-4 top-5 z-40 flex-col items-center gap-2.5 w-[60px] select-none">
+          {/* Previous Chat / History Drawer Toggle */}
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer group"
+          >
+            <PanelLeftOpen className="w-5 h-5 transition-transform group-hover:scale-105" />
+          </button>
+
+          {/* New Chat Button */}
+          <button
+            type="button"
+            onClick={handleNewChat}
+            title={isBn ? "নতুন চ্যাট" : "New Chat"}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer group"
+          >
+            <SquarePen className="w-5 h-5 transition-transform group-hover:scale-105" />
+          </button>
+        </div>
+      )}
+
+      <div className="h-[calc(100dvh-10.5rem)] md:h-[calc(100vh-2.75rem)] max-w-5xl mx-auto flex flex-col min-h-0 font-sans">
+        {/* ─── Mobile Only: Sticky Floating Actions (History & New Chat) ─── */}
+        <div className="md:hidden fixed top-4 left-4 z-40 flex items-center gap-1 p-1 rounded-full bg-(--bg-card) border border-(--text-primary)/10 shadow-lg">
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            title={isBn ? "পূর্ববর্তী চ্যাট / হিস্ট্রি" : "Previous Chats / History"}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer active:scale-95"
+          >
+            <PanelLeftOpen className="w-4.5 h-4.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleNewChat}
+            title={isBn ? "নতুন চ্যাট" : "New Chat"}
+            className="w-9 h-9 rounded-full flex items-center justify-center bg-transparent border-0 text-(--text-primary)/80 hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer active:scale-95"
+          >
+            <SquarePen className="w-4.5 h-4.5" />
+          </button>
+        </div>
+
+        {/* ─── Top Bar: Turn quota ─── */}
+        <header className="shrink-0 flex items-center justify-end gap-2 pb-1.5 sm:pb-2">
+
+          {/* Right Side: Session Turn Quota Badge */}
+          <div className="flex items-center gap-2 ml-auto">
             {activeSessionId && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-card) border border-(--text-primary)/10 text-(--text-muted)">
                 {turnLimit === -1 || turnLimit >= 10000
@@ -1178,89 +1280,6 @@ export default function CopilotPage() {
                   : `${turnCount}/${turnLimit} ${isBn ? "টার্ন" : "turns"}`}
               </span>
             )}
-          </div>
-
-          <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
-            {/* Live Credit Balance Pill */}
-            <Link
-              href={canTopUpCredits ? "/pricing" : "/profile"}
-              title={
-                canTopUpCredits
-                  ? isBn
-                    ? "ক্রেডিট টপ-আপ ও প্যাকেজ দেখুন"
-                    : "Top up credits & packages"
-                  : isBn
-                  ? "প্রোফাইল ও ক্রেডিট দেখুন"
-                  : "View profile & credits"
-              }
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-semibold border transition-colors ${
-                liveCredits <= 2
-                  ? "bg-amber-500/12 border-amber-500/35 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
-                  : "bg-(--bg-card) border-(--text-primary)/12 text-(--text-primary) hover:border-(--text-primary)/25"
-              }`}
-            >
-              <Coins className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
-              <span>{liveCredits.toLocaleString()}</span>
-              <span className="hidden sm:inline text-(--text-muted) font-medium">
-                {isBn ? "ক্রেডিট" : "credits"}
-              </span>
-            </Link>
-
-            {/* Sovereign PII Masking Toggle */}
-            <button
-              type="button"
-              onClick={() => setPiiMaskEnabled((v) => !v)}
-              title={
-                piiMaskEnabled
-                  ? isBn
-                    ? "PII সুরক্ষা চালু আছে (ফোন/NID গোপন থাকবে)"
-                    : "Client PII Masking ON (phone/NID redacted)"
-                  : isBn
-                  ? "PII সুরক্ষা বন্ধ"
-                  : "Client PII Masking OFF"
-              }
-              className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-                piiMaskEnabled
-                  ? "bg-emerald-500/10 border-emerald-500/25 text-emerald-700 dark:text-emerald-300"
-                  : "bg-(--bg-card) border-(--text-primary)/12 text-(--text-muted)"
-              }`}
-            >
-              {piiMaskEnabled ? (
-                <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-              ) : (
-                <Shield className="w-3.5 h-3.5 shrink-0" />
-              )}
-              <span className="hidden md:inline">PII</span>
-            </button>
-
-            {/* New Chat Button */}
-            <button
-              type="button"
-              onClick={handleNewChat}
-              className="inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium bg-(--bg-card) border border-(--text-primary)/12 text-(--text-primary) hover:border-(--text-primary)/25 transition-colors cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                {isBn ? "নতুন চ্যাট" : "New Chat"}
-              </span>
-            </button>
-
-            {/* History Drawer Toggle */}
-            <button
-              type="button"
-              onClick={() => setIsDrawerOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900 hover:opacity-90 transition-opacity cursor-pointer"
-            >
-              <History className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">
-                {isBn ? "হিস্ট্রি" : "History"}
-              </span>
-              {sessions.length > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-white/20 dark:bg-black/15">
-                  {sessions.length}
-                </span>
-              )}
-            </button>
           </div>
         </header>
 
@@ -1309,32 +1328,42 @@ export default function CopilotPage() {
               </div>
             ) : messages.length === 0 ? (
               /* Clean Empty Onboarding State with Starter Chips */
-              <div className="min-h-full flex flex-col items-center justify-center py-6 px-2 text-center">
-                <h1 className="text-xl sm:text-2xl font-serif font-bold text-(--text-primary) mb-1.5">
+              <div className="min-h-full flex flex-col items-center justify-center py-4 px-2 text-center">
+                <div className="mb-3 sm:mb-4">
+                  <Image
+                    src="/logo.svg"
+                    alt="Advotech Logo"
+                    width={48}
+                    height={48}
+                    className="w-10 h-10 sm:w-12 sm:h-12 object-contain dark:invert"
+                    priority
+                  />
+                </div>
+                <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight mb-1.5 text-(--text-primary)">
                   {isBn
-                    ? "এডভোটেক আইনি কোপাইলট"
-                    : "Advotech Legal Copilot"}
+                    ? "আইনি কোপাইলট"
+                    : "Legal Copilot"}
                 </h1>
-                <p className="text-sm text-(--text-muted) max-w-lg mb-6 leading-relaxed">
+                <p className="text-xs sm:text-sm text-(--text-muted) max-w-md mx-auto font-normal leading-relaxed mb-4">
                   {isBn
-                    ? "বাংলাদেশের সংবিধান, দণ্ডবিধি, চুক্তি আইন, শ্রম আইন ও আদালতের নজির থেকে যাচাইকৃত উত্তর পান।"
-                    : "Ask any legal question grounded in Bangladesh statutes, bdlaws gazette texts, and Supreme Court precedents."}
+                    ? "বাংলাদেশি আইন ও আদালতের নজির থেকে নির্ভরযোগ্য আইনি উত্তর পান।"
+                    : "Ask any legal question grounded in Bangladesh laws and precedents."}
                 </p>
 
-                <div className="w-full max-w-2xl grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 text-left">
+                <div className="w-full max-w-2xl flex flex-col sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-2 text-left">
                   {starterPrompts.map((prompt, idx) => (
                     <button
                       key={idx}
                       type="button"
                       onClick={() => handleSendPrompt(prompt)}
-                      className="group p-3.5 rounded-2xl bg-(--bg-card) border border-(--text-primary)/10 hover:border-indigo-500/40 hover:shadow-xs transition-all text-left cursor-pointer flex flex-col justify-between gap-2"
+                      className="group p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl bg-(--bg-card) border border-(--text-primary)/10 hover:border-(--text-primary)/30 hover:shadow-xs transition-all text-left cursor-pointer flex items-center sm:flex-col sm:items-start justify-between gap-2.5 sm:gap-2.5"
                     >
-                      <span className="text-[13.5px] leading-relaxed font-medium text-(--text-primary)/90 group-hover:text-(--text-primary)">
+                      <span className="text-xs sm:text-sm font-normal text-(--text-primary)/90 group-hover:text-(--text-primary) leading-snug">
                         {prompt}
                       </span>
-                      <span className="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1">
+                      <span className="text-[11px] sm:text-xs font-semibold text-indigo-600 dark:text-indigo-400 inline-flex items-center gap-1 shrink-0">
                         <span>{isBn ? "জিজ্ঞাসা করুন" : "Ask now"}</span>
-                        <ChevronRight className="w-3 h-3" />
+                        <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </span>
                     </button>
                   ))}
@@ -1596,26 +1625,17 @@ export default function CopilotPage() {
             </div>
           ) : (
             <div className="space-y-1.5 flex flex-col items-center">
-              {isBusy && (
-                <div className="w-full flex items-center justify-center sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={handleStopGeneration}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/10 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-[11.5px] font-semibold hover:bg-rose-500/20 transition-colors cursor-pointer"
-                  >
-                    <Square className="w-3 h-3 fill-current" />
-                    <span>{isBn ? "থামান" : "Stop generating"}</span>
-                  </button>
-                </div>
-              )}
-
               <PromptBar
                 busy={isBusy}
                 width={660}
                 onSend={(text) => handleSendPrompt(text)}
                 onStop={handleStopGeneration}
                 placeholder={
-                  isBn
+                  isMobileViewport
+                    ? isBn
+                      ? "আইনি প্রশ্ন লিখুন..."
+                      : "Ask about Bangladesh law..."
+                    : isBn
                     ? "আইনি প্রশ্ন বা ধারা লিখুন... (/audit, /memo, /redline)"
                     : "Ask a question about Bangladesh law... (type / for commands)"
                 }
@@ -1662,7 +1682,7 @@ export default function CopilotPage() {
                   </span>
                 </div>
 
-                <h2 className="text-base sm:text-lg font-serif font-bold text-(--text-primary) leading-snug wrap-break-word">
+                <h2 className="text-base sm:text-lg font-semibold text-(--text-primary) leading-snug wrap-break-word">
                   {statuteModal.data?.title &&
                   statuteModal.data.title !== "Statutory Provision"
                     ? statuteModal.data.title
@@ -1765,11 +1785,11 @@ export default function CopilotPage() {
                     <div className="h-3 w-4/6 rounded bg-(--text-primary)/6 animate-pulse" />
                   </div>
                 ) : statuteModal.data?.verbatim_text ? (
-                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-[15px] leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-serif">
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-sm leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-sans">
                     {statuteModal.data.verbatim_text}
                   </div>
                 ) : statuteModal.fallbackProvision?.fullTextEn ? (
-                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-[15px] leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-serif">
+                  <div className="p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 text-sm leading-[1.8] text-(--text-primary)/95 whitespace-pre-wrap font-sans">
                     {isBn
                       ? statuteModal.fallbackProvision.fullTextBn
                       : statuteModal.fallbackProvision.fullTextEn}
@@ -1826,61 +1846,113 @@ export default function CopilotPage() {
         </div>
       )}
 
-      {/* ─── History Slide-Over Drawer (Search, Rename, Date Groups, Mobile-Visible Delete) ─── */}
+      {/* ─── History Slide-Over Drawer (Gemini Layout: Brand Logo, Search & Close on Top, New Chat Full Width, then History) ─── */}
       {isDrawerOpen && (
         <div
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end items-start sm:items-center p-3 pt-16 sm:p-6"
-          onClick={() => setIsDrawerOpen(false)}
+          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-start items-stretch animate-in fade-in duration-200"
+          onClick={() => {
+            setIsDrawerOpen(false);
+            setIsSearchExpanded(false);
+            setMenuOpenSessionId(null);
+            setConfirmDeleteId(null);
+          }}
         >
           <aside
-            className="w-[min(92vw,380px)] max-h-[75dvh] sm:max-h-[82vh] bg-(--bg-card) border border-(--text-primary)/12 rounded-3xl shadow-2xl flex flex-col overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
+            className="w-[min(88vw,320px)] h-full bg-(--bg-card) border-r border-(--text-primary)/10 shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-left duration-250 ease-out font-sans"
+            onClick={(e) => {
+              e.stopPropagation();
+              setMenuOpenSessionId(null);
+            }}
           >
-            {/* Drawer Header */}
-            <div className="shrink-0 p-4 border-b border-(--text-primary)/10 space-y-3">
+            {/* Top Bar: Brand Logo & Title on Left, Search & Close on Right */}
+            <div className="shrink-0 px-4 pt-5 pb-3">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2">
-                  <History className="w-4 h-4 text-(--text-primary)" />
-                  <h2 className="font-serif font-bold text-base text-(--text-primary)">
-                    {isBn ? "চ্যাট হিস্ট্রি" : "Consultation History"}
-                  </h2>
-                  <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-(--bg-surface) text-(--text-muted)">
-                    {sessions.length}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setIsDrawerOpen(false)}
-                  className="p-1.5 rounded-full hover:bg-(--text-primary)/8 text-(--text-muted) cursor-pointer"
+                <Link
+                  href="/"
+                  className="flex items-center gap-2.5 text-(--text-primary) hover:opacity-85 transition-opacity"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
+                  <Image
+                    src="/logo.svg"
+                    alt="Advotech"
+                    width={26}
+                    height={26}
+                    className="w-6 h-6 object-contain dark:invert"
+                  />
+                  <span className="font-semibold text-[17px] tracking-tight">Advotech</span>
+                </Link>
 
-              {/* Search Input */}
-              <div className="relative">
-                <Search className="w-3.5 h-3.5 text-(--text-muted) absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                <input
-                  type="text"
-                  value={historySearch}
-                  onChange={(e) => setHistorySearch(e.target.value)}
-                  placeholder={isBn ? "আলোচনা খুঁজুন..." : "Search consultations..."}
-                  className="w-full pl-8 pr-8 py-2 rounded-xl bg-(--bg-surface) border border-(--text-primary)/12 text-xs text-(--text-primary) placeholder:text-(--text-muted) focus:outline-none focus:border-indigo-500/50"
-                />
-                {historySearch && (
+                <div className="flex items-center gap-1">
+                  {/* Search Toggle Button */}
                   <button
                     type="button"
-                    onClick={() => setHistorySearch("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-primary) cursor-pointer"
+                    onClick={() => setIsSearchExpanded((prev) => !prev)}
+                    title={isBn ? "খুঁজুন" : "Search"}
+                    className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors cursor-pointer ${
+                      isSearchExpanded || historySearch
+                        ? "bg-(--text-primary)/10 text-(--text-primary)"
+                        : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8"
+                    }`}
                   >
-                    <X className="w-3.5 h-3.5" />
+                    <Search className="w-4 h-4" />
                   </button>
-                )}
+
+                  {/* Close / Collapse Sidebar Icon */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      setIsSearchExpanded(false);
+                    }}
+                    title={isBn ? "সাইডবার বন্ধ করুন" : "Close sidebar"}
+                    className="w-9 h-9 rounded-full flex items-center justify-center text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-colors cursor-pointer"
+                  >
+                    <PanelLeftClose className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Collapsible Search Input */}
+              {(isSearchExpanded || historySearch) && (
+                <div className="relative mt-3 animate-in fade-in duration-150">
+                  <Search className="w-3.5 h-3.5 text-(--text-muted) absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    value={historySearch}
+                    onChange={(e) => setHistorySearch(e.target.value)}
+                    placeholder={isBn ? "আলোচনা খুঁজুন..." : "Search consultations..."}
+                    autoFocus
+                    className="w-full pl-8 pr-8 py-2 rounded-full bg-(--bg-surface) border-0 text-xs text-(--text-primary) placeholder:text-(--text-muted) focus:outline-none focus:ring-1 focus:ring-(--text-primary)/20"
+                  />
+                  {historySearch && (
+                    <button
+                      type="button"
+                      onClick={() => setHistorySearch("")}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-(--text-muted) hover:text-(--text-primary) cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Gemini-style Full-width Pill "New chat" Button */}
+              <div className="mt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleNewChat();
+                    setIsDrawerOpen(false);
+                  }}
+                  className="w-full h-11 px-4 rounded-full bg-(--bg-surface) hover:bg-(--text-primary)/8 text-(--text-primary) text-[13.5px] font-medium flex items-center gap-3 transition-colors cursor-pointer select-none"
+                >
+                  <SquarePen className="w-4 h-4 text-(--text-primary)/80" />
+                  <span>{isBn ? "নতুন চ্যাট" : "New chat"}</span>
+                </button>
               </div>
             </div>
 
-            {/* Grouped Sessions List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-4">
+            {/* Grouped Sessions List (Pushed down with natural breathing room) */}
+            <div className="flex-1 overflow-y-auto px-3 pt-2 pb-4 space-y-4">
               {groupedSessions.length === 0 ? (
                 <div className="py-12 text-center text-xs text-(--text-muted)">
                   {historySearch
@@ -1893,8 +1965,8 @@ export default function CopilotPage() {
                 </div>
               ) : (
                 groupedSessions.map((group) => (
-                  <div key={group.label} className="space-y-1.5">
-                    <div className="px-2 text-[10.5px] font-bold uppercase tracking-wider text-(--text-muted)">
+                  <div key={group.label} className="space-y-1">
+                    <div className="px-2.5 py-1 text-[11px] font-semibold text-(--text-muted)">
                       {group.label}
                     </div>
                     {group.items.map((sess) => {
@@ -1902,14 +1974,24 @@ export default function CopilotPage() {
                       const isRenaming = String(renamingSessionId) === String(sess.session_id);
                       const isConfirmingDel =
                         String(confirmDeleteId) === String(sess.session_id);
+                      const isMenuOpen = String(menuOpenSessionId) === String(sess.session_id);
 
                       return (
                         <div
                           key={String(sess.session_id)}
-                          className={`rounded-xl border px-3 py-2.5 transition-colors ${
+                          onPointerDown={(e) => startLongPress(e, sess.session_id)}
+                          onPointerUp={cancelLongPress}
+                          onPointerLeave={cancelLongPress}
+                          onPointerCancel={cancelLongPress}
+                          onContextMenu={(e) => {
+                            if (longPressTimerRef.current || longPressFiredRef.current) {
+                              e.preventDefault();
+                            }
+                          }}
+                          className={`group relative rounded-xl px-3 py-2.5 transition-colors select-none [-webkit-touch-callout:none] ${
                             isActive
-                              ? "bg-indigo-500/10 border-indigo-500/35"
-                              : "bg-(--bg-surface)/70 border-(--text-primary)/8 hover:border-(--text-primary)/20"
+                              ? "bg-black/5 dark:bg-white/10"
+                              : "hover:bg-(--text-primary)/5"
                           }`}
                         >
                           {isRenaming ? (
@@ -1923,13 +2005,13 @@ export default function CopilotPage() {
                                   if (e.key === "Escape") setRenamingSessionId(null);
                                 }}
                                 autoFocus
-                                className="flex-1 min-w-0 px-2 py-1 rounded-lg bg-(--bg-card) border border-indigo-500/40 text-xs text-(--text-primary) focus:outline-none"
+                                className="flex-1 min-w-0 px-2.5 py-1 rounded-lg bg-(--bg-card) border border-(--text-primary)/20 text-xs text-(--text-primary) focus:outline-none"
                               />
                               <button
                                 type="button"
                                 disabled={renamingBusy}
                                 onClick={() => handleSaveRename(sess.session_id)}
-                                className="p-1.5 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 cursor-pointer shrink-0"
+                                className="p-1.5 rounded-lg bg-(--text-primary) text-(--bg-primary) cursor-pointer shrink-0"
                               >
                                 {renamingBusy ? (
                                   <Loader2 className="w-3 h-3 animate-spin" />
@@ -1949,13 +2031,16 @@ export default function CopilotPage() {
                             <div className="flex items-start justify-between gap-2">
                               <button
                                 type="button"
-                                onClick={() => handleSelectSession(sess)}
+                                onClick={() => {
+                                  if (wasLongPress()) return;
+                                  handleSelectSession(sess);
+                                }}
                                 className="flex-1 min-w-0 text-left cursor-pointer"
                               >
-                                <div className="text-xs font-semibold text-(--text-primary) truncate">
+                                <div className="text-xs font-medium text-(--text-primary) truncate leading-snug">
                                   {sess.title || (isBn ? "আইনি পরামর্শ" : "Legal Consultation")}
                                 </div>
-                                <div className="mt-1 flex items-center gap-2 text-[10.5px] text-(--text-muted)">
+                                <div className="mt-0.5 flex items-center gap-1.5 text-[11px] text-(--text-muted)">
                                   <span>
                                     {sess.mode === "LAWYER_RESEARCH"
                                       ? "Research"
@@ -1973,56 +2058,86 @@ export default function CopilotPage() {
                                 </div>
                               </button>
 
-                              {/* Always-visible Rename & Delete Controls (works cleanly on mobile touch) */}
-                              <div className="flex items-center gap-1 shrink-0">
-                                {isConfirmingDel ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      disabled={String(deletingId) === String(sess.session_id)}
-                                      onClick={() => handleDeleteSession(sess.session_id)}
-                                      className="px-2 py-1 rounded-lg bg-rose-600 text-white text-[10.5px] font-semibold hover:bg-rose-700 cursor-pointer"
-                                    >
-                                      {String(deletingId) === String(sess.session_id)
-                                        ? "..."
-                                        : isBn
-                                        ? "মুছুন"
-                                        : "Delete"}
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => setConfirmDeleteId(null)}
-                                      className="px-2 py-1 rounded-lg bg-(--bg-card) border border-(--text-primary)/12 text-[10.5px] text-(--text-muted) cursor-pointer"
-                                    >
-                                      {isBn ? "না" : "No"}
-                                    </button>
-                                  </>
-                                ) : (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setConfirmDeleteId(null);
-                                        setRenamingSessionId(sess.session_id);
-                                        setRenameDraft(sess.title || "");
-                                      }}
-                                      className="p-1.5 rounded-lg text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-colors cursor-pointer"
-                                      title={isBn ? "নাম পরিবর্তন করুন" : "Rename"}
-                                    >
-                                      <Pencil className="w-3.5 h-3.5" />
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setRenamingSessionId(null);
-                                        setConfirmDeleteId(sess.session_id);
-                                      }}
-                                      className="p-1.5 rounded-lg text-(--text-muted) hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
-                                      title={isBn ? "মুছে ফেলুন" : "Delete"}
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                    </button>
-                                  </>
+                              {/* Hover 3-dot trigger & Dropdown Menu */}
+                              <div className="relative shrink-0 flex items-center">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setConfirmDeleteId(null);
+                                    setMenuOpenSessionId(isMenuOpen ? null : sess.session_id);
+                                  }}
+                                  title={isBn ? "অপশন" : "Options"}
+                                  className={`w-7 h-7 rounded-full flex items-center justify-center text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/8 transition-all cursor-pointer ${
+                                    isMenuOpen
+                                      ? "opacity-100 bg-(--text-primary)/10 text-(--text-primary)"
+                                      : "opacity-0 group-hover:opacity-100"
+                                  }`}
+                                >
+                                  <MoreVertical className="w-3.5 h-3.5" />
+                                </button>
+
+                                {/* Dropdown Popover */}
+                                {isMenuOpen && (
+                                  <div
+                                    className="absolute right-0 top-8 z-30 w-36 rounded-xl bg-(--bg-card) border border-(--text-primary)/10 shadow-xl py-1.5 animate-in fade-in zoom-in-95 duration-100"
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    {isConfirmingDel ? (
+                                      <div className="px-2.5 py-1.5 space-y-1.5">
+                                        <p className="text-[11px] text-(--text-muted)">
+                                          {isBn ? "মুছে ফেলতে চান?" : "Delete chat?"}
+                                        </p>
+                                        <div className="flex items-center gap-1.5">
+                                          <button
+                                            type="button"
+                                            disabled={String(deletingId) === String(sess.session_id)}
+                                            onClick={() => {
+                                              handleDeleteSession(sess.session_id);
+                                              setMenuOpenSessionId(null);
+                                            }}
+                                            className="flex-1 py-1 rounded-md bg-rose-600 text-white text-[11px] font-medium hover:bg-rose-700 cursor-pointer text-center"
+                                          >
+                                            {String(deletingId) === String(sess.session_id)
+                                              ? "..."
+                                              : isBn
+                                              ? "হ্যাঁ"
+                                              : "Yes"}
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => setConfirmDeleteId(null)}
+                                            className="flex-1 py-1 rounded-md hover:bg-(--text-primary)/10 text-[11px] text-(--text-muted) cursor-pointer text-center"
+                                          >
+                                            {isBn ? "না" : "No"}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setMenuOpenSessionId(null);
+                                            setRenamingSessionId(sess.session_id);
+                                            setRenameDraft(sess.title || "");
+                                          }}
+                                          className="w-full px-3 py-1.5 text-left text-xs text-(--text-primary) hover:bg-(--text-primary)/6 flex items-center gap-2 cursor-pointer transition-colors"
+                                        >
+                                          <Pencil className="w-3.5 h-3.5 text-(--text-muted)" />
+                                          <span>{isBn ? "নাম পরিবর্তন" : "Rename"}</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => setConfirmDeleteId(sess.session_id)}
+                                          className="w-full px-3 py-1.5 text-left text-xs text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 flex items-center gap-2 cursor-pointer transition-colors"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                          <span>{isBn ? "মুছে ফেলুন" : "Delete"}</span>
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
                                 )}
                               </div>
                             </div>
@@ -2032,6 +2147,80 @@ export default function CopilotPage() {
                     })}
                   </div>
                 ))
+              )}
+            </div>
+
+            {/* Bottom Profile Footer (Gemini-style: Avatar, Name, Role badge, Go Icon) */}
+            <div className="shrink-0 p-3 border-t border-(--text-primary)/8 bg-(--bg-card)">
+              {user ? (
+                <Link
+                  href="/profile"
+                  className="flex items-center justify-between gap-2.5 p-2 rounded-2xl hover:bg-(--text-primary)/6 transition-colors group cursor-pointer"
+                  title={isBn ? "প্রোফাইলে যান" : "Go to Profile"}
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* User Avatar */}
+                    <div className="w-9 h-9 rounded-full bg-(--text-primary)/10 text-(--text-primary) font-semibold text-xs flex items-center justify-center shrink-0 overflow-hidden">
+                      {user.profile_photo_url || user.avatarUrl ? (
+                        <Image
+                          src={user.profile_photo_url || user.avatarUrl || ""}
+                          alt={user.name || "User"}
+                          width={36}
+                          height={36}
+                          className="w-full h-full object-cover"
+                          unoptimized
+                        />
+                      ) : (
+                        <span>
+                          {(user.name || "User")
+                            .split(" ")
+                            .map((p) => p[0])
+                            .slice(0, 2)
+                            .join("")
+                            .toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Name & Role */}
+                    <div className="min-w-0 flex flex-col">
+                      <span className="text-xs font-semibold text-(--text-primary) truncate leading-snug">
+                        {user.name || (isBn ? "ব্যবহারকারী" : "User")}
+                      </span>
+                      <span className="text-[11px] text-(--text-muted) capitalize leading-snug">
+                        {isLawyer
+                          ? isBn
+                            ? "আইনজীবী (Lawyer)"
+                            : "Lawyer"
+                          : isEnterpriseAdmin || isEnterpriseMember
+                          ? "Enterprise"
+                          : isBn
+                          ? "সাধারণ (General)"
+                          : "General"}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Go / Arrow Icon */}
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center text-(--text-muted) group-hover:text-(--text-primary) group-hover:bg-(--text-primary)/8 transition-all shrink-0">
+                    <ChevronRight className="w-4 h-4" />
+                  </div>
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="flex items-center justify-between gap-2 p-2 rounded-2xl hover:bg-(--text-primary)/6 transition-colors group cursor-pointer"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-full bg-(--text-primary)/10 flex items-center justify-center text-(--text-primary)">
+                      <SquarePen className="w-4 h-4" />
+                    </div>
+                    <span className="text-xs font-semibold text-(--text-primary)">
+                      {isBn ? "সাইন ইন করুন" : "Sign In"}
+                    </span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-(--text-muted) group-hover:text-(--text-primary)" />
+                </Link>
               )}
             </div>
           </aside>

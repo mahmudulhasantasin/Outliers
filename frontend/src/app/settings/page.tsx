@@ -272,8 +272,8 @@ export default function SettingsPage() {
   const pwdStrength = getPasswordStrength(newPw);
 
   const Section = ({ title, badge, children }: { title: string; badge?: string; children: React.ReactNode }) => (
-    <div className="space-y-4 p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs">
-      <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "color-mix(in srgb, var(--text-primary) 8%, transparent)" }}>
+    <div className="space-y-4 p-5 sm:p-6 rounded-3xl bg-(--bg-card) shadow-xs">
+      <div className="flex items-center justify-between pb-1">
         <h3 className="text-xs uppercase tracking-wider font-semibold text-(--text-muted)">{title}</h3>
         {badge && <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-(--text-primary)/5 text-(--text-muted)">{badge}</span>}
       </div>
@@ -300,7 +300,7 @@ export default function SettingsPage() {
         </div>
 
         {/* PROFILE CARD */}
-        <div className="p-6 rounded-3xl border border-(--text-primary)/10 bg-(--bg-card) shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+        <div className="p-5 sm:p-6 rounded-3xl bg-(--bg-card) shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-5">
           <div className="flex items-center gap-4 min-w-0">
             <div className="relative shrink-0">
               <div className="w-16 h-16 rounded-full bg-linear-to-br from-neutral-200 to-neutral-300 dark:from-neutral-800 dark:to-neutral-900 border-2 border-(--bg-primary) shadow-sm flex items-center justify-center text-xl font-bold font-serif text-(--text-primary) overflow-hidden relative">
@@ -336,7 +336,7 @@ export default function SettingsPage() {
               </div>
               <p className="text-xs text-(--text-muted) truncate mt-0.5">{user?.email || "user@example.com"}</p>
               <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-(--accent-solid)/10 text-(--accent-solid) border border-(--accent-solid)/20">
+                <span className="inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-(--accent-solid)/10 text-(--accent-solid)">
                   {String(user?.role).toUpperCase() === "LAWYER" ? (isBn ? "নিবন্ধিত আইনজীবী" : "Lawyer") : String(user?.role).toUpperCase() === "ADMIN" ? (isBn ? "সিস্টেম অ্যাডমিন" : "System Admin") : isEnterprise ? (isBn ? "এন্টারপ্রাইজ ব্যবহারকারী" : "Enterprise") : (isBn ? "সাধারণ ব্যবহারকারী" : "General User")}
                 </span>
                 {photoSuccess && (
@@ -689,7 +689,7 @@ export default function SettingsPage() {
         {/* [UPDATED] FIX: Credits & Billing Hub Update */}
         <Section title={isBn ? "ক্রেডিট ও পেমেন্ট ম্যানেজমেন্ট" : "Credits & Billing Hub"}>
           <div className="space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-(--bg-surface)">
               <div>
                 <p className="text-xs text-(--text-muted) mb-1 font-medium">{balanceLabel}</p>
                 <div className="flex items-baseline gap-2">
@@ -712,11 +712,11 @@ export default function SettingsPage() {
             {/* History show only for non-members (since members don't top up) */}
             {paymentSummary && paymentSummary.total_topup_bdt > 0 && !isEnterpriseMember && (
               <div className="grid grid-cols-2 gap-3 text-xs">
-                <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/5">
+                <div className="p-3 rounded-xl bg-(--bg-surface)">
                   <span className="text-(--text-muted) block mb-0.5">{isBn ? "মোট টপ-আপ" : "Total Top-up"}</span>
                   <span className="font-mono font-bold text-(--text-primary)">৳{paymentSummary.total_topup_bdt} BDT</span>
                 </div>
-                <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/5">
+                <div className="p-3 rounded-xl bg-(--bg-surface)">
                   <span className="text-(--text-muted) block mb-0.5">{isBn ? "অনুমোদিত পেমেন্ট" : "Approved Orders"}</span>
                   <span className="font-mono font-bold text-(--text-primary)">{paymentSummary.approved} Completed</span>
                 </div>
@@ -727,7 +727,7 @@ export default function SettingsPage() {
 
         <Section title={isBn ? "গোপনীয়তা ও ডেটা সুরক্ষা (PII Protection)" : "Privacy & Data Protection"}>
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-4 py-2">
+            <div className="flex items-center justify-between gap-4 py-1">
               <div className="min-w-0 pr-4">
                 <p className="text-sm font-semibold text-(--text-primary)">
                   {isBn ? "ক্লায়েন্ট-সাইড PII মাস্কিং" : "Client-side PII Masking"}
@@ -743,20 +743,22 @@ export default function SettingsPage() {
                 <span>{isBn ? "সর্বদা সক্রিয়" : "Always Active"}</span>
               </span>
             </div>
-            <div className="p-3.5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/5 flex items-start gap-3">
+            <div className="p-3.5 rounded-2xl bg-(--bg-surface) flex items-start gap-3">
               <Shield className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
               <p className="text-xs text-(--text-muted) leading-relaxed">{isBn ? "তথ্য ও যোগাযোগ প্রযুক্তি আইন ২০০৬ এবং সাইবার নিরাপত্তা বিধিমালার অধীনে আপনার কোনো সংবেদনশীল চুক্তিপত্র পাবলিক মডেলে প্রশিক্ষণ (train) করা হয় না।" : "Under the Information and Communication Technology Act 2006, all legal audits are strictly confidential and never used to train public models."}</p>
             </div>
           </div>
         </Section>
 
-        <div className="mt-12 p-6 rounded-3xl border border-rose-500/20 bg-rose-500/5 space-y-4">
+        <div className="mt-8 p-6 rounded-3xl bg-rose-500/5 space-y-3">
           <div className="flex items-center gap-2 text-rose-600 dark:text-rose-400">
-            <AlertTriangle className="w-5 h-5" />
-            <h3 className="text-sm font-bold uppercase tracking-wider">{isBn ? "ডেঞ্জার জোন" : "Danger Zone"}</h3>
+            <AlertTriangle className="w-4 h-4" />
+            <h3 className="text-xs font-bold uppercase tracking-wider">{isBn ? "ডেঞ্জার জোন" : "Danger Zone"}</h3>
           </div>
-          <p className="text-xs text-rose-800/70 dark:text-rose-200/70">{isBn ? "আপনার অ্যাকাউন্ট ডিলিট করলে আপনার সমস্ত সংরক্ষিত চুক্তি, অডিট মেমো এবং চ্যাট হিস্ট্রি স্থায়ীভাবে মুছে যাবে।" : "Deleting your account will permanently remove all archived contract memos, credit balance, and consultation history."}</p>
-          <button type="button" onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }} className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 text-white hover:bg-rose-700 transition-colors cursor-pointer">{isBn ? "অ্যাকাউন্ট ডিলিট করুন" : "Delete Account"}</button>
+          <p className="text-xs text-rose-800/70 dark:text-rose-200/70 leading-relaxed">{isBn ? "আপনার অ্যাকাউন্ট ডিলিট করলে আপনার সমস্ত সংরক্ষিত চুক্তি, অডিট মেমো এবং চ্যাট হিস্ট্রি স্থায়ীভাবে মুছে যাবে।" : "Deleting your account will permanently remove all archived contract memos, credit balance, and consultation history."}</p>
+          <div className="pt-1">
+            <button type="button" onClick={() => { setShowDeleteModal(true); setDeleteConfirmText(""); setDeleteError(""); }} className="px-4 py-2 rounded-xl text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-colors cursor-pointer">{isBn ? "অ্যাকাউন্ট ডিলিট করুন" : "Delete Account"}</button>
+          </div>
         </div>
       </div>
 
