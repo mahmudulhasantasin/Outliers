@@ -388,46 +388,46 @@ export default function ContractMindPage() {
             )}
 
             {/* Party Perspective Selector */}
-            <div className="w-full max-w-xl mb-4 p-2.5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2.5">
-              <span className="text-xs font-semibold text-(--text-primary) px-1 flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-indigo-500" />
+            <div className="w-full max-w-xl mb-4 p-1.5 sm:p-2.5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-2.5">
+              <span className="hidden sm:flex text-xs font-semibold text-(--text-primary) px-1 items-center gap-1.5 shrink-0">
+                <Shield className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                 <span>{isBn ? "কার স্বার্থে অডিট হবে:" : "Audit Perspective:"}</span>
               </span>
-              <div className="flex items-center gap-1.5 w-full sm:w-auto">
+              <div className="flex items-center gap-1 sm:gap-1.5 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setAuditedFor("CLIENT")}
-                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 sm:flex-none px-2 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                     auditedFor === "CLIENT"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
-                  <Shield className="w-3.5 h-3.5 text-indigo-500" />
-                  <span>{isBn ? "ক্লায়েন্ট / ক্রেতা" : "Protect Client"}</span>
+                  <Shield className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+                  <span>{isBn ? (<>ক্লায়েন্ট<span className="hidden sm:inline"> / ক্রেতা</span></>) : "Protect Client"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuditedFor("VENDOR")}
-                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 sm:flex-none px-2 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                     auditedFor === "VENDOR"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
-                  <Briefcase className="w-3.5 h-3.5 text-amber-500" />
-                  <span>{isBn ? "সার্ভিস প্রোভাইডার" : "Protect Vendor"}</span>
+                  <Briefcase className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                  <span>{isBn ? (<><span className="hidden sm:inline">সার্ভিস </span>ভেন্ডর</>) : "Protect Vendor"}</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuditedFor("NEUTRAL")}
-                  className={`flex-1 sm:flex-none px-3.5 py-1.5 rounded-xl text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                  className={`flex-1 sm:flex-none px-2 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                     auditedFor === "NEUTRAL"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
-                  <Scale className="w-3.5 h-3.5 text-sky-500" />
+                  <Scale className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                   <span>{isBn ? "নিরপেক্ষ" : "Neutral"}</span>
                 </button>
               </div>
