@@ -17,6 +17,10 @@ import {
   reactivateMember,
   adjustMemberQuota,
   uploadPlaybook,
+  listPlaybooks,
+  activatePlaybook,
+  deletePlaybook,
+  Playbook,
   getCompanyAuditLogs,
   getSharedContracts,
 } from "@/lib/apiServices";
@@ -24,7 +28,7 @@ import {
   Building2, Users, BookOpen, FolderLock, Coins, ShieldAlert,
   ShieldCheck, UserPlus, Lock, Copy, Check, AlertCircle,
   FileText, Search, ArrowUpRight, TrendingUp, CheckCircle2, X,
-  Upload, Loader2, RefreshCw,
+  Upload, Loader2, RefreshCw, Download, Eye, Trash2, Filter, Layers,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -153,6 +157,10 @@ export default function EnterpriseAdminPage() {
   const [playbookRules, setPlaybookRules] = useState<PlaybookRule[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
   const [sharedContracts, setSharedContracts] = useState<SharedContractItem[]>([]);
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
+  const [activePlaybook, setActivePlaybook] = useState<Playbook | null>(null);
+  const [playbookSearch, setPlaybookSearch] = useState<string>("");
+  const [showPlaybookHistory, setShowPlaybookHistory] = useState<boolean>(false);
 
   // Load state
   const [isLoadingBackend, setIsLoadingBackend] = useState(true);
@@ -215,12 +223,13 @@ export default function EnterpriseAdminPage() {
     setIsLoadingBackend(true);
     setLoadError(null);
     try {
-      const [dashRes, memsRes, pendingRes, logsRes, sharedRes] = await Promise.allSettled([
+      const [dashRes, memsRes, pendingRes, logsRes, sharedRes, playbooksRes] = await Promise.allSettled([
         getCompanyDashboard(),
         listMembers(),
         listPendingMembers(),
         getCompanyAuditLogs(),
         getSharedContracts(),
+        listPlaybooks(),
       ]);
 
       // 1. Dashboard
@@ -287,6 +296,19 @@ export default function EnterpriseAdminPage() {
       // 5. Shared Contracts
       if (sharedRes.status === "fulfilled" && Array.isArray(sharedRes.value)) {
         setSharedContracts(sharedRes.value);
+      }
+
+      // 6. Playbooks (Active Compliance Policy)
+      if (playbooksRes.status === "fulfilled" && Array.isArray(playbooksRes.value)) {
+        const pbs = playbooksRes.value;
+        setPlaybooks(pbs);
+        const activePb = pbs.find((p) => p.is_active) || (pbs.length > 0 ? pbs[0] : null);
+        setActivePlaybook(activePb);
+        if (activePb && Array.isArray(activePb.rules) && activePb.rules.length > 0) {
+          setPlaybookRules(activePb.rules.map(mapBackendRuleToFrontend));
+        } else if (pbs.length === 0) {
+          setPlaybookRules([]);
+        }
       }
 
     } catch (err) {
@@ -407,12 +429,98 @@ export default function EnterpriseAdminPage() {
           ? `প্লেবুক সফলভাবে আপলোড হয়েছে! ${extracted?.length ?? 0} টি রুল পাওয়া গেছে।`
           : `Playbook uploaded! ${extracted?.length ?? 0} rules extracted.`
       );
+      await refetchAll();
     } catch (err: any) {
       toast.error(err?.message || "Failed to upload playbook");
     } finally {
       setIsUploadingPlaybook(false);
       e.target.value = "";
     }
+  };
+
+  const handleActivatePlaybook = async (pbId: string | number) => {
+    try {
+      await activatePlaybook(String(pbId));
+      toast.success(isBn ? "প্লেবুক সক্রিয় করা হয়েছে।" : "Playbook activated successfully.");
+      await refetchAll();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to activate playbook");
+    }
+  };
+
+  const handleDeletePlaybook = async (pbId: string | number) => {
+    if (!confirm(isBn ? "আপনি কি নিশ্চিতভাবে এই প্লেবুকটি মুছে ফেলতে চান?" : "Are you sure you want to delete this playbook?")) return;
+    try {
+      await deletePlaybook(String(pbId));
+      toast.success(isBn ? "প্লেবুক মুছে ফেলা হয়েছে।" : "Playbook deleted successfully.");
+      await refetchAll();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to delete playbook");
+    }
+  };
+
+  const handleDownloadPlaybookJson = () => {
+    if (!activePlaybook && playbookRules.length === 0) return;
+    const title = activePlaybook?.title || "Company Playbook";
+    const data = {
+      title,
+      enterprise: organization?.name,
+      status: activePlaybook?.is_active ? "ACTIVE" : "INACTIVE",
+      total_rules: playbookRules.length,
+      exported_at: new Date().toISOString(),
+      rules: playbookRules.map((r, i) => ({
+        rule_id: r.id,
+        number: i + 1,
+        category: r.clauseTypeEn,
+        statute_reference: r.statutoryReference,
+        rule_description: r.companyRequirementEn,
+        strictness: r.strictness,
+        suggested_redline: r.standardClauseTemplate,
+        is_active: r.isActive,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_")}_rules.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadPlaybookMarkdown = () => {
+    if (!activePlaybook && playbookRules.length === 0) return;
+    const title = activePlaybook?.title || "Company Playbook";
+    let md = `# ${organization?.name || "Corporate"} Compliance Playbook\n\n`;
+    md += `> **Policy Title:** ${title}\n`;
+    md += `> **Status:** ACTIVE & ENFORCED IN AI AUDITS\n`;
+    md += `> **Total Rules:** ${playbookRules.length} Rules Enforced\n`;
+    md += `> **Jurisdiction:** Laws of Bangladesh & Corporate Procurement Standards\n`;
+    md += `> **Generated On:** ${new Date().toLocaleDateString()}\n\n`;
+    md += `---\n\n`;
+    md += `## Statutory & Internal Commercial Rules\n\n`;
+
+    playbookRules.forEach((r, idx) => {
+      md += `### ${idx + 1}. [${r.clauseTypeEn.toUpperCase()}] ${r.companyRequirementEn}\n\n`;
+      md += `- **Rule ID:** \`${r.id}\`\n`;
+      md += `- **Strictness:** **${r.strictness.toUpperCase()}**\n`;
+      if (r.statutoryReference) {
+        md += `- **Legal Ground / Statute:** ${r.statutoryReference}\n`;
+      }
+      if (r.standardClauseTemplate) {
+        md += `\n**Mandatory Sovereign Redline Clause:**\n`;
+        md += `> "${r.standardClauseTemplate}"\n\n`;
+      }
+      md += `\n`;
+    });
+
+    const blob = new Blob([md], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${title.replace(/\s+/g, "_")}_Policy.md`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const filteredMembers = members.filter(
@@ -962,96 +1070,278 @@ export default function EnterpriseAdminPage() {
         {/* ── PLAYBOOK TAB ── */}
         {activeTab === "playbook" && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            <div className={`p-6 rounded-3xl border ${borderClass} bg-[var(--bg-card)] flex flex-col md:flex-row md:items-center justify-between gap-5`}>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <BookOpen className="w-4 h-4 text-emerald-500" />
-                  <h3 className="text-base font-serif font-bold text-[var(--text-primary)]">
-                    {isBn ? "কোম্পানি প্লেবুক" : "Company Playbook"}
+            {/* Active Playbook Hero Card */}
+            <div className={`p-6 sm:p-8 rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-xs space-y-5`}>
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-5">
+                <div className="space-y-2 flex-1">
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25">
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      {playbookRules.length > 0
+                        ? (isBn ? "কোম্পানি প্লেবুক সক্রিয় ও প্রয়োগরত" : "Active & Enforced in All Audits")
+                        : (isBn ? "কোনো প্লেবুক সক্রিয় নেই" : "No Active Playbook")}
+                    </span>
+
+                    {activePlaybook?.created_at && (
+                      <span className="font-mono text-xs text-[var(--text-muted)] px-2.5 py-0.5 rounded-md bg-[var(--bg-surface)] border border-[var(--text-primary)]/10 font-medium">
+                        {isBn ? "আপলোড:" : "Uploaded:"} {new Date(activePlaybook.created_at).toLocaleDateString()}
+                      </span>
+                    )}
+
+                    {playbooks.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => setShowPlaybookHistory(!showPlaybookHistory)}
+                        className="text-xs font-semibold text-[var(--accent-solid)] hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Layers className="w-3.5 h-3.5" />
+                        <span>{isBn ? `সকল ভার্সন (${playbooks.length})` : `All Versions (${playbooks.length})`}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  <h3 className="text-xl sm:text-2xl font-serif font-bold text-[var(--text-primary)] tracking-tight">
+                    {activePlaybook?.title || (isBn ? "কর্পোরেট কমপ্লায়েন্স প্লেবুক" : "Corporate Compliance Playbook")}
                   </h3>
-                </div>
-                <p className="text-xs text-[var(--text-muted)] max-w-2xl leading-relaxed">
-                  {isBn
-                    ? "প্লেবুক ফাইল আপলোড করলে AI স্বয়ংক্রিয়ভাবে রুল এক্সট্রাক্ট করবে।"
-                    : "Upload a playbook file to auto-extract compliance rules via AI."}
-                </p>
-              </div>
 
-              <div className="flex items-center gap-3 shrink-0 flex-wrap">
-                <label className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-colors cursor-pointer flex items-center gap-2 shadow-sm">
-                  {isUploadingPlaybook ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Upload className="w-4 h-4" />
+                  <p className="text-xs text-[var(--text-muted)] max-w-2xl leading-relaxed">
+                    {isBn
+                      ? `টিমের যেকোনো সদস্য চুক্তিপত্র অডিট করার সময় বাংলাদেশ আইনের পাশাপাশি এই প্লেবুকের ${playbookRules.length}টি সংবিধিবদ্ধ নীতি স্বয়ংক্রিয়ভাবে বলবৎ হবে।`
+                      : `Whenever team members upload agreements, Advotech Copilot automatically balances Bangladesh Law against these ${playbookRules.length} corporate procurement rules.`}
+                  </p>
+                </div>
+
+                {/* Actions Toolbar */}
+                <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
+                  {playbookRules.length > 0 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={handleDownloadPlaybookMarkdown}
+                        className="px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 text-[var(--text-primary)] flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                        title={isBn ? "মার্কডাউন পলিসি হিসেবে ডাউনলোড করুন" : "Download as formatted policy doc"}
+                      >
+                        <Download className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span>{isBn ? "পলিসি (.md)" : "Policy (.md)"}</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={handleDownloadPlaybookJson}
+                        className="px-3.5 py-2.5 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--text-primary)]/5 text-[var(--text-primary)] flex items-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
+                        title={isBn ? "র রুলস JSON ডাটা ডাউনলোড করুন" : "Download raw rules JSON"}
+                      >
+                        <Download className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" />
+                        <span>{isBn ? "রুলস JSON" : "Rules JSON"}</span>
+                      </button>
+                    </>
                   )}
-                  <span>
-                    {isUploadingPlaybook
-                      ? isBn ? "আপলোড হচ্ছে..." : "Uploading..."
-                      : isBn ? "প্লেবুক ফাইল আপলোড" : "Upload Playbook"}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".pdf,.docx,.txt"
-                    className="hidden"
-                    onChange={handlePlaybookUpload}
-                    disabled={isUploadingPlaybook}
-                  />
-                </label>
-              </div>
-            </div>
 
-            <div className="grid grid-cols-1 gap-4">
-              {playbookRules.length === 0 && (
-                <div className="p-8 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-card)] text-center text-xs text-[var(--text-muted)]">
-                  {isBn
-                    ? "কোনো রুল নেই। একটি প্লেবুক ফাইল আপলোড করুন।"
-                    : "No rules yet. Upload a playbook file to extract rules."}
+                  <label className="px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-colors cursor-pointer flex items-center gap-2 shadow-sm">
+                    {isUploadingPlaybook ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="w-3.5 h-3.5" />
+                    )}
+                    <span>
+                      {isUploadingPlaybook
+                        ? (isBn ? "আপলোড হচ্ছে..." : "Uploading...")
+                        : (isBn ? "প্লেবুক আপলোড / আপডেট" : "Upload / Update Playbook")}
+                    </span>
+                    <input
+                      type="file"
+                      accept=".pdf,.docx,.txt"
+                      className="hidden"
+                      onChange={handlePlaybookUpload}
+                      disabled={isUploadingPlaybook}
+                    />
+                  </label>
                 </div>
-              )}
-              {playbookRules.map((rule, idx) => (
-                <div
-                  key={rule.id}
-                  className={`p-5 rounded-2xl border ${borderClass} bg-[var(--bg-card)] transition-all ${
-                    !rule.isActive ? "opacity-60 bg-[var(--bg-surface)]" : ""
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
-                    <div className="space-y-2 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 font-bold">
-                          #{idx + 1}
-                        </span>
-                        <h4 className="text-sm font-bold text-[var(--text-primary)]">
-                          {isBn ? rule.clauseTypeBn : rule.clauseTypeEn}
-                        </h4>
-                        <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 font-mono">
-                          {rule.statute} {rule.statutoryReference ? `(${rule.statutoryReference})` : ""}
-                        </span>
-                        <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md ${
-                          rule.strictness === "mandatory"
-                            ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
-                            : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
-                        }`}>
-                          {rule.strictness}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[var(--text-primary)]/90 leading-relaxed">
-                        {isBn ? rule.companyRequirementBn : rule.companyRequirementEn}
-                      </p>
-                      {rule.standardClauseTemplate && (
-                        <div className="p-3 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
-                          <p className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] mb-1">
-                            {isBn ? "স্ট্যান্ডার্ড ক্লজ টেমপ্লেট:" : "Standard Clause:"}
-                          </p>
-                          <p className="text-xs font-mono text-[var(--text-muted)] leading-relaxed italic">
-                            "{rule.standardClauseTemplate}"
+              </div>
+
+              {/* Version History Drawer (if multiple playbooks uploaded) */}
+              {showPlaybookHistory && playbooks.length > 0 && (
+                <div className="pt-4 border-t border-[var(--text-primary)]/10 space-y-3 animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5 text-[var(--accent-solid)]" />
+                      <span>{isBn ? "আপলোডকৃত প্লেবুক হিস্টোরি" : "Uploaded Playbook Versions"}</span>
+                    </h4>
+                    <button
+                      type="button"
+                      onClick={() => setShowPlaybookHistory(false)}
+                      className="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    >
+                      {isBn ? "বন্ধ করুন" : "Close"}
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-[var(--text-primary)]/5 rounded-2xl border border-[var(--text-primary)]/10 bg-[var(--bg-surface)] overflow-hidden">
+                    {playbooks.map((pb) => (
+                      <div key={pb.id} className="p-3.5 flex items-center justify-between gap-3 text-xs">
+                        <div className="space-y-0.5 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-[var(--text-primary)] truncate">{pb.title}</span>
+                            {pb.is_active && (
+                              <span className="text-[10px] px-2 py-0.2 rounded-full font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                                ACTIVE
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-[var(--text-muted)]">
+                            {pb.rule_count} {isBn ? "টি রুল" : "rules"} · {new Date(pb.created_at).toLocaleDateString()}
                           </p>
                         </div>
-                      )}
-                    </div>
+
+                        <div className="flex items-center gap-2 shrink-0">
+                          {!pb.is_active && (
+                            <button
+                              type="button"
+                              onClick={() => handleActivatePlaybook(pb.id)}
+                              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-[var(--text-primary)]/10 hover:bg-[var(--text-primary)]/15 text-[var(--text-primary)] transition-colors cursor-pointer"
+                            >
+                              {isBn ? "সক্রিয় করুন" : "Set Active"}
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleDeletePlaybook(pb.id)}
+                            className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title={isBn ? "মুছে ফেলুন" : "Delete"}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              )}
+            </div>
+
+            {/* Rules Search & Stats Bar */}
+            {playbookRules.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-[var(--text-primary)] flex items-center gap-2">
+                    <BookOpen className="w-4 h-4 text-emerald-500" />
+                    <span>{isBn ? "সংরক্ষিত কমপ্লায়েন্স রুলস" : "Enforced Compliance Rules"}</span>
+                  </h4>
+                  <span className="font-mono text-xs px-2 py-0.5 rounded-md bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 font-bold">
+                    {playbookRules.length}
+                  </span>
+                </div>
+
+                <div className="relative min-w-[240px]">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                  <input
+                    type="text"
+                    value={playbookSearch}
+                    onChange={(e) => setPlaybookSearch(e.target.value)}
+                    placeholder={isBn ? "রুল বা ক্যাটাগরি সার্চ করুন..." : "Filter rules by category or keyword..."}
+                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-[var(--text-primary)]/15 bg-[var(--bg-surface)] text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-solid)]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Rules Cards List */}
+            <div className="grid grid-cols-1 gap-4">
+              {playbookRules.length === 0 && (
+                <div className="p-12 rounded-3xl border border-dashed border-[var(--text-primary)]/20 bg-[var(--bg-card)] text-center space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-[var(--text-primary)]/5 flex items-center justify-center mx-auto text-[var(--text-muted)]">
+                    <BookOpen className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-1">
+                    <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                      {isBn ? "কোনো প্লেবুক রুল সংরক্ষিত নেই" : "No Playbook Rules Found"}
+                    </h4>
+                    <p className="text-xs text-[var(--text-muted)] max-w-md mx-auto leading-relaxed">
+                      {isBn
+                        ? "আপনার কোম্পানির স্ট্যান্ডার্ড প্রকিউরমেন্ট গাইডলাইন, ডেটা সিকিউরিটি বা পেমেন্ট শর্তাবলীর ডকুমেন্ট (.pdf বা .docx) আপলোড করুন। AI স্বয়ংক্রিয়ভাবে রুলগুলো সাজিয়ে নেবে।"
+                        : "Upload your corporate policy doc (.pdf, .docx) to auto-extract and enforce procurement guidelines across all team member audits."}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-[var(--accent-solid)] text-[var(--accent-contrast)] hover:opacity-90 transition-colors cursor-pointer shadow-sm">
+                      <Upload className="w-4 h-4" />
+                      <span>{isBn ? "ফাইল নির্বাচন করুন" : "Browse Playbook Document"}</span>
+                      <input
+                        type="file"
+                        accept=".pdf,.docx,.txt"
+                        className="hidden"
+                        onChange={handlePlaybookUpload}
+                        disabled={isUploadingPlaybook}
+                      />
+                    </label>
+                  </div>
+                </div>
+              )}
+
+              {playbookRules
+                .filter((r) => {
+                  if (!playbookSearch.trim()) return true;
+                  const q = playbookSearch.toLowerCase();
+                  return (
+                    r.clauseTypeEn.toLowerCase().includes(q) ||
+                    r.clauseTypeBn.toLowerCase().includes(q) ||
+                    r.companyRequirementEn.toLowerCase().includes(q) ||
+                    r.statute.toLowerCase().includes(q) ||
+                    r.id.toLowerCase().includes(q)
+                  );
+                })
+                .map((rule, idx) => (
+                  <div
+                    key={rule.id}
+                    className={`p-5 rounded-2xl border ${borderClass} bg-[var(--bg-card)] hover:border-[var(--text-primary)]/20 transition-all ${
+                      !rule.isActive ? "opacity-60 bg-[var(--bg-surface)]" : ""
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+                      <div className="space-y-2.5 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-surface)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 font-bold">
+                            #{idx + 1}
+                          </span>
+                          <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 font-bold">
+                            {rule.id}
+                          </span>
+                          <h4 className="text-sm font-bold text-[var(--text-primary)]">
+                            {isBn ? rule.clauseTypeBn : rule.clauseTypeEn}
+                          </h4>
+                          {rule.statute && (
+                            <span className="text-[11px] font-semibold text-amber-600 dark:text-amber-400 font-mono">
+                              {rule.statute} {rule.statutoryReference && rule.statutoryReference !== rule.statute ? `(${rule.statutoryReference})` : ""}
+                            </span>
+                          )}
+                          <span className={`text-[10px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md ${
+                            rule.strictness === "mandatory"
+                              ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                              : "bg-blue-100 dark:bg-blue-950/60 text-blue-700 dark:text-blue-300"
+                          }`}>
+                            {rule.strictness}
+                          </span>
+                        </div>
+
+                        <p className="text-xs text-[var(--text-primary)]/90 leading-relaxed font-sans">
+                          {isBn ? rule.companyRequirementBn : rule.companyRequirementEn}
+                        </p>
+
+                        {rule.standardClauseTemplate && (
+                          <div className="p-3.5 rounded-xl bg-[var(--bg-surface)] border border-[var(--text-primary)]/10">
+                            <p className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-muted)] mb-1 flex items-center gap-1.5">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
+                              <span>{isBn ? "বাধ্যতামূলক স্ট্যান্ডার্ড রেডলাইন টেমপ্লেট:" : "Mandated Standard Redline Template:"}</span>
+                            </p>
+                            <p className="text-xs font-mono text-[var(--text-muted)] leading-relaxed italic">
+                              "{rule.standardClauseTemplate}"
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
             </div>
           </div>
         )}

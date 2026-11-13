@@ -919,11 +919,12 @@ export interface PendingMember {
 }
 
 export interface Playbook {
-  id: string;
+  id: string | number;
   title: string;
-  version: string;
+  version?: string;
   is_active: boolean;
   rule_count: number;
+  rules?: any[];
   created_at: string;
 }
 
@@ -1008,8 +1009,9 @@ export async function listPlaybooks(): Promise<Playbook[]> {
       id: item.id,
       title: item.title,
       version: item.version ?? "1.0",
-      is_active: item.is_active,
-      rule_count: item.rules_count ?? item.rule_count ?? 0,
+      is_active: Boolean(item.is_active),
+      rule_count: item.rules_count ?? item.rule_count ?? (Array.isArray(item.rules) ? item.rules.length : 0),
+      rules: item.rules || item.rules_json || [],
       created_at: item.created_at,
     }));
   } catch {
