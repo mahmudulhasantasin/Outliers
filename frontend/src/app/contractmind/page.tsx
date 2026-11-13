@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
 import { SAMPLE_CONTRACTS, SampleContract } from "@/data/sampleContracts";
@@ -553,9 +554,14 @@ export default function ContractMindPage() {
                   return (
                     <div className="w-full max-w-lg mx-auto py-2 flex flex-col items-center text-center animate-in fade-in duration-300">
                       {/* Institutional Monochrome Live Indicator */}
-                      <div className="w-12 h-12 rounded-2xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md mb-4 relative">
-                        <Scale className="w-5 h-5 animate-pulse" />
-                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-black" />
+                      <div className="mb-4 flex items-center justify-center">
+                        <Image
+                          src="/contractmind.png"
+                          alt="ContractMind"
+                          width={48}
+                          height={48}
+                          className="w-12 h-12 object-contain dark:invert transition-transform animate-pulse"
+                        />
                       </div>
 
                       {/* Monospace Stopwatch Timer Pill */}
@@ -817,4 +823,5 @@ export default function ContractMindPage() {
     </AppShell>
   );
 }
+
 
