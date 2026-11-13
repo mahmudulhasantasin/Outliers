@@ -362,7 +362,7 @@ export default function ContractMindPage() {
 
   return (
     <AppShell>
-      <div className="w-full min-h-screen pb-32 font-sans" style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
+      <div className="w-full min-h-screen pb-32 font-sans print:pb-0 print:min-h-0 print:bg-white" style={{ backgroundColor: "var(--bg-primary)", color: "var(--text-primary)" }}>
         
         <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg" className="hidden" onChange={handleFileUpload} />
 
@@ -484,7 +484,7 @@ export default function ContractMindPage() {
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 print:pt-0 print:px-0 print:max-w-none">
+          <div className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 print:pt-0 print:px-0 print:max-w-none print:bg-white print-clean-paper">
             <div className="hidden print:block pb-6 mb-8 border-b-2 border-neutral-900">
               <div className="flex justify-between items-baseline mb-2 text-xs font-mono uppercase tracking-widest text-neutral-800">
                 <span className="font-bold">CONFIDENTIAL ATTORNEY-CLIENT AUDIT MEMORANDUM</span>
