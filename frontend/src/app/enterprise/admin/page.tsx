@@ -123,17 +123,20 @@ function mapBackendMember(m: any): EnterpriseMember {
 
 function mapBackendRuleToFrontend(r: any): PlaybookRule {
   const sev = String(r.severity || "").toLowerCase();
+  const rawStrictness = r.strictness ? String(r.strictness).toLowerCase() : "";
+  const isMandatory = rawStrictness === "mandatory" || sev === "critical" || sev === "high";
+
   return {
     id: String(r.rule_id || `rule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`),
     clauseTypeEn: r.category || "General",
     clauseTypeBn: r.category || "General",
-    statute: r.violated_law || "Bangladesh Law",
-    statutoryReference: r.violated_law || "",
+    statute: r.statute || r.violated_law || "Bangladesh Law",
+    statutoryReference: r.statutoryReference || r.violated_law || "",
     companyRequirementEn: r.rule_description || "",
     companyRequirementBn: r.rule_description || "",
     standardClauseTemplate: r.suggested_redline || "",
-    strictness: sev === "critical" || sev === "high" ? "mandatory" : "advisory",
-    isActive: true,
+    strictness: isMandatory ? "mandatory" : "advisory",
+    isActive: r.is_active !== false,
   };
 }
 

@@ -1029,6 +1029,25 @@ export async function activatePlaybook(playbookId: string): Promise<void> {
   await api.post(`/api/company/playbooks/${playbookId}/activate`);
 }
 
+/** Get a single playbook by ID */
+export async function getPlaybook(playbookId: string | number): Promise<Playbook> {
+  const item = await api.get<any>(`/api/company/playbooks/${playbookId}`);
+  return {
+    id: item.id,
+    title: item.title,
+    version: item.version ?? "1.0",
+    is_active: Boolean(item.is_active),
+    rule_count: item.rules_count ?? item.rule_count ?? (Array.isArray(item.rules) ? item.rules.length : 0),
+    rules: item.rules || item.rules_json || [],
+    created_at: item.created_at,
+  };
+}
+
+/** Update rules for an existing company playbook */
+export async function updatePlaybookRules(playbookId: string | number, rules: any[]): Promise<any> {
+  return api.put(`/api/company/playbooks/${playbookId}/rules`, { rules });
+}
+
 /** Get quota summary */
 export async function getQuotaSummary(): Promise<{
   pool_balance: number;
