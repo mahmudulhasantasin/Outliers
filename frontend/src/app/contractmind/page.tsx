@@ -388,40 +388,58 @@ export default function ContractMindPage() {
             )}
 
             {/* Party Perspective Selector */}
-            <div className="w-full max-w-xl mb-4 p-1.5 sm:p-2.5 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-sm flex flex-row items-center justify-between gap-2">
-              <span className="flex text-[11px] sm:text-xs font-semibold text-(--text-primary) px-1 items-center gap-1.5 shrink-0 whitespace-nowrap">
+            <div className="w-full max-w-xl mb-4 p-1 sm:p-2 rounded-2xl bg-(--bg-surface) border border-(--text-primary)/10 shadow-sm flex items-center justify-between sm:gap-2">
+              <span className="hidden sm:flex text-xs font-semibold text-(--text-primary) px-2 items-center gap-1.5 shrink-0 whitespace-nowrap">
                 <Shield className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
                 <span>{isBn ? "অডিট পার্সপেক্টিভ:" : "Audit Perspective:"}</span>
               </span>
-              <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
+              <div className="grid grid-cols-3 w-full sm:w-auto sm:flex items-center gap-1 sm:gap-1.5">
                 <button
                   type="button"
                   onClick={() => setAuditedFor("CLIENT")}
-                  className={`flex-1 sm:flex-none px-2 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
+                  className={`w-full sm:w-auto px-1.5 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                     auditedFor === "CLIENT"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
                   <Shield className="w-3.5 h-3.5 shrink-0" />
-                  <span className="whitespace-nowrap">{isBn ? (<>ক্লায়েন্ট<span className="hidden sm:inline"> / ক্রেতা</span></>) : "Protect Client"}</span>
+                  <span className="whitespace-nowrap">
+                    {isBn ? (
+                      <>ক্লায়েন্ট<span className="hidden sm:inline"> / ক্রেতা</span></>
+                    ) : (
+                      <>
+                        <span className="sm:hidden">Client</span>
+                        <span className="hidden sm:inline">Protect Client</span>
+                      </>
+                    )}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuditedFor("VENDOR")}
-                  className={`flex-1 sm:flex-none px-2 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
+                  className={`w-full sm:w-auto px-1.5 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                     auditedFor === "VENDOR"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
                   }`}
                 >
                   <Briefcase className="w-3.5 h-3.5 shrink-0" />
-                  <span className="whitespace-nowrap">{isBn ? (<><span className="hidden sm:inline">সার্ভিস </span>ভেন্ডর</>) : "Protect Vendor"}</span>
+                  <span className="whitespace-nowrap">
+                    {isBn ? (
+                      <><span className="hidden sm:inline">সার্ভিস </span>ভেন্ডর</>
+                    ) : (
+                      <>
+                        <span className="sm:hidden">Vendor</span>
+                        <span className="hidden sm:inline">Protect Vendor</span>
+                      </>
+                    )}
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setAuditedFor("NEUTRAL")}
-                  className={`flex-1 sm:flex-none px-2 sm:px-3.5 py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
+                  className={`w-full sm:w-auto px-1.5 sm:px-3.5 py-2 sm:py-1.5 rounded-xl text-[11px] sm:text-xs whitespace-nowrap transition-all cursor-pointer flex items-center justify-center gap-1 sm:gap-1.5 ${
                     auditedFor === "NEUTRAL"
                       ? "bg-black dark:bg-white text-white dark:text-black shadow-sm font-bold"
                       : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/5 font-medium"
