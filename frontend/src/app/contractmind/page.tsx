@@ -109,55 +109,55 @@ export default function ContractMindPage() {
   const getAuditStage = (sec: number, isBnLang: boolean, perspective: string) => {
     const persLabel =
       perspective === "VENDOR"
-        ? isBnLang ? "ভেন্ডর" : "Vendor"
+        ? isBnLang ? "ভেন্ডর পার্সপেক্টিভ" : "Vendor Perspective"
         : perspective === "NEUTRAL"
-        ? isBnLang ? "নিরপেক্ষ" : "Neutral"
-        : isBnLang ? "ক্লায়েন্ট" : "Client";
+        ? isBnLang ? "নিরপেক্ষ পার্সপেক্টিভ" : "Neutral Perspective"
+        : isBnLang ? "ক্লায়েন্ট পার্সপেক্টিভ" : "Client Perspective";
 
     if (sec < 4) {
       return {
         step: 1,
-        title: isBnLang ? "ডকুমেন্ট পার্সিং ও ওসিআর এক্সট্রাকশন" : "Document Parsing & OCR Extraction",
+        title: isBnLang ? "ডকুমেন্ট পার্সিং ও ওসিআর এক্সট্রাকশন" : "Document Parsing & Structural OCR",
         desc: isBnLang
-          ? "চুক্তিপত্রের পাতার টেক্সট ও ফরম্যাটিং ক্লাউড স্যান্ডবক্সে এক্সট্রাক্ট করা হচ্ছে..."
-          : "Extracting contract text & clauses in secure cloud sandbox...",
-        pct: Math.min(25, 8 + sec * 4),
+          ? "চুক্তিপত্রের পাতার টেক্সট ও ক্লজসমূহ নিরাপদ স্যান্ডবক্সে এক্সট্রাক্ট করা হচ্ছে..."
+          : "Extracting contract text & clause architecture in secure sandbox...",
+        pct: Math.min(22, 10 + sec * 3.5),
       };
     } else if (sec < 9) {
       return {
         step: 2,
-        title: isBnLang ? "ক্লজ বিভাজন ও সেগমেন্টেশন" : "Clause Segmentation & Structuring",
+        title: isBnLang ? "ক্লজ বিভাজন ও সেগমেন্টেশন" : "Clause Segmentation & Classification",
         desc: isBnLang
-          ? "প্রতিটি ধারা ও শর্ত সংবিধিবদ্ধ আইনি ক্যাটাগরিতে বিভক্ত করা হচ্ছে..."
-          : "Structuring distinct clauses against standard contract domains...",
-        pct: Math.min(50, 25 + (sec - 4) * 5),
+          ? "প্রতিটি ধারা ও উপধারা সংবিধিবদ্ধ চুক্তি কাঠামোর অধীনে বিন্যস্ত হচ্ছে..."
+          : "Classifying distinct clauses into standard statutory contractual domains...",
+        pct: Math.min(48, 25 + (sec - 4) * 4.6),
       };
     } else if (sec < 16) {
       return {
         step: 3,
         title: isBnLang ? "বাংলাদেশ আইনের সাথে স্ট্যাটিউটরি ক্রস-চেক" : "Cross-Checking Bangladesh Statutes",
         desc: isBnLang
-          ? "The Contract Act 1872, শ্রম আইন ২০০৬ ও সাইবার সিকিউরিটি আইনের রেফারেন্স যাচাই..."
-          : "Benchmarking terms against Contract Act 1872, Labour Act & Cyber Security Act...",
-        pct: Math.min(75, 50 + (sec - 9) * 3.5),
+          ? "The Contract Act 1872, শ্রম আইন ও সাইবার নিরাপত্তা আইনের ৩,৫২৫টি ধারার সাথে মিলকরণ..."
+          : "Benchmarking terms against 3,525 verified acts via bdlaws statutory index...",
+        pct: Math.min(74, 50 + (sec - 9) * 3.4),
       };
     } else if (sec < 25) {
       return {
         step: 4,
         title: isBnLang ? "রিস্ক স্কোরিং ও প্রিডেটরি ক্লজ অ্যানালাইসিস" : "Risk Scoring & Predatory Clause Audit",
         desc: isBnLang
-          ? `${persLabel} দৃষ্টিকোণ থেকে দায়বদ্ধতা, একতরফা জরিমানা ও বেআইনি শর্তের ঝুঁকি মূল্যায়ন...`
-          : `Evaluating liability caps, punitive penalties & void terms from ${persLabel} perspective...`,
+          ? `${persLabel} থেকে দায়বদ্ধতার সীমা, একতরফা জরিমানা ও ভয়েড শর্তের মূল্যায়ন...`
+          : `Evaluating liability caps, penalty terms, and void covenants from ${persLabel}...`,
         pct: Math.min(90, 75 + (sec - 16) * 1.7),
       };
     } else {
       return {
         step: 5,
-        title: isBnLang ? "রেডলাইন প্রস্তুত ও অডিট মেমোরান্ডাম চূড়ান্তকরণ" : "Synthesizing Redlines & Audit Memo",
+        title: isBnLang ? "রেডলাইন ড্রাফট ও অডিট মেমোরান্ডাম চূড়ান্তকরণ" : "Synthesizing Redlines & Audit Memo",
         desc: isBnLang
-          ? "আইনগত সুরক্ষিত রেডলাইন ড্রাফট ও চূড়ান্ত স্ট্যাটিউটরি অডিট রিপোর্ট জেনারেট হচ্ছে..."
-          : "Synthesizing compliant redline drafts & compiling audit memorandum...",
-        pct: Math.min(96, 90 + (sec - 25) * 0.5),
+          ? "আইনগত সুরক্ষিত রেডলাইন বিকল্প ড্রাফট ও চূড়ান্ত অডিট মেমোরান্ডাম তৈরি হচ্ছে..."
+          : "Compiling compliant redline alternatives & finalizing executive memorandum...",
+        pct: Math.min(97, 90 + (sec - 25) * 0.4),
       };
     }
   };
@@ -535,40 +535,48 @@ export default function ContractMindPage() {
               onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
               onClick={() => !isAnalyzing && fileInputRef.current?.click()}
-              className={`w-full transition-all duration-200 rounded-3xl p-6 sm:p-16 flex flex-col items-center justify-center group shadow-sm mb-6 bg-(--bg-surface) ${isAnalyzing ? "cursor-wait opacity-80" : "cursor-pointer"}`}
+              className={`w-full transition-all duration-200 rounded-3xl p-6 sm:p-14 flex flex-col items-center justify-center group shadow-sm mb-6 bg-(--bg-surface) border border-(--text-primary)/10 ${isAnalyzing ? "cursor-wait" : "cursor-pointer hover:border-(--text-primary)/20"}`}
             >
-              <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4 bg-(--bg-card) text-(--text-primary)">
-                <Upload className="w-6 h-6 stroke-2" />
-              </div>
+              {!isAnalyzing && (
+                <div className="w-14 h-14 rounded-2xl shadow-sm flex items-center justify-center group-hover:scale-105 transition-transform mb-4 bg-(--bg-card) text-(--text-primary) border border-(--text-primary)/10">
+                  <Upload className="w-6 h-6 stroke-2" />
+                </div>
+              )}
 
               {isAnalyzing ? (
                 (() => {
                   const currentStage = getAuditStage(elapsedSeconds, isBn, auditedFor);
                   const stageLabels = isBn
                     ? ["ওসিআর ও পার্সিং", "ক্লজ বিভাজন", "আইন যাচাই", "রিস্ক অডিট", "রেডলাইন ড্রাফট"]
-                    : ["OCR & Parsing", "Segmentation", "Statutes", "Risk Audit", "Redlines"];
+                    : ["OCR & Parse", "Segment", "Statutes", "Risk Audit", "Redlines"];
 
                   return (
-                    <div className="w-full max-w-lg mx-auto py-2 sm:py-4 px-2 flex flex-col items-center text-center animate-in fade-in duration-300">
-                      {/* Live Stopwatch Timer Pill */}
-                      <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/10 border border-(--text-primary)/10 text-xs font-mono font-semibold text-(--text-primary) shadow-2xs mb-4">
-                        <Clock className="w-3.5 h-3.5 text-indigo-500 animate-pulse" />
-                        <span>{formatElapsed(elapsedSeconds)}</span>
-                        <span className="text-[10px] text-(--text-muted) font-sans font-normal border-l border-(--text-primary)/10 pl-2">
-                          {isBn ? "আনুমানিক: ~২০-৩০ সেকেন্ড" : "Est: ~20-30s"}
+                    <div className="w-full max-w-lg mx-auto py-2 flex flex-col items-center text-center animate-in fade-in duration-300">
+                      {/* Institutional Monochrome Live Indicator */}
+                      <div className="w-12 h-12 rounded-2xl bg-black dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md mb-4 relative">
+                        <Scale className="w-5 h-5 animate-pulse" />
+                        <span className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white dark:border-black" />
+                      </div>
+
+                      {/* Monospace Stopwatch Timer Pill */}
+                      <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-neutral-900/5 dark:bg-white/10 border border-neutral-900/10 dark:border-white/15 text-xs font-mono text-neutral-900 dark:text-neutral-100 mb-3 shadow-2xs">
+                        <Clock className="w-3.5 h-3.5 opacity-70 animate-pulse" />
+                        <span className="font-bold tracking-wider">{formatElapsed(elapsedSeconds)}</span>
+                        <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-sans border-l border-neutral-300 dark:border-neutral-700 pl-2">
+                          {isBn ? "আনুমানিক সময়: ~২০-২৫ সেকেন্ড" : "Estimated: ~20-25s"}
                         </span>
                       </div>
 
-                      {/* File Name & Perspective Badge */}
-                      <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
+                      {/* File Name & Perspective Chips (Monochrome / Muted) */}
+                      <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
                         {uploadFileName && (
-                          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-[11px] font-medium bg-(--text-primary)/5 border border-(--text-primary)/10 text-(--text-muted) max-w-[240px] truncate">
-                            <FileText className="w-3 h-3 text-indigo-500 shrink-0" />
+                          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-mono text-neutral-700 dark:text-neutral-300 bg-neutral-900/5 dark:bg-white/5 border border-neutral-900/10 dark:border-white/10 max-w-[240px] truncate">
+                            <FileText className="w-3 h-3 opacity-60 shrink-0" />
                             <span className="truncate">{uploadFileName}</span>
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[11px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-500/20">
-                          <ShieldCheck className="w-3 h-3 shrink-0" />
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-medium text-neutral-900 dark:text-neutral-100 bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/15">
+                          <ShieldCheck className="w-3 h-3 opacity-70 shrink-0" />
                           <span>
                             {auditedFor === "VENDOR"
                               ? isBn ? "ভেন্ডর পার্সপেক্টিভ" : "Vendor Perspective"
@@ -579,29 +587,31 @@ export default function ContractMindPage() {
                         </span>
                       </div>
 
-                      {/* Current Stage Title */}
-                      <h4 className="text-sm sm:text-base font-bold text-(--text-primary) tracking-tight mb-1 flex items-center justify-center gap-2">
-                        <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-mono shrink-0 font-bold">
-                          {currentStage.step}
-                        </span>
-                        <span>{currentStage.title}</span>
+                      {/* Stage Phase Eyebrow */}
+                      <div className="text-[10px] font-mono uppercase tracking-widest text-neutral-500 dark:text-neutral-400 mb-1">
+                        {isBn ? `পর্যায় ০${currentStage.step} / ০৫` : `PHASE 0${currentStage.step} OF 05`}
+                      </div>
+
+                      {/* Current Stage Title (High-End Typography) */}
+                      <h4 className="text-base sm:text-lg font-semibold text-neutral-900 dark:text-neutral-100 tracking-tight mb-1.5">
+                        {currentStage.title}
                       </h4>
 
                       {/* Dynamic Updating Description */}
-                      <p className="text-xs text-(--text-muted) max-w-md mx-auto leading-relaxed mb-4 min-h-[32px] flex items-center justify-center">
+                      <p className="text-xs text-neutral-600 dark:text-neutral-400 max-w-md mx-auto leading-relaxed mb-5 min-h-[34px] flex items-center justify-center font-normal">
                         {currentStage.desc}
                       </p>
 
-                      {/* Progress Bar */}
-                      <div className="w-full max-w-sm h-2 bg-(--text-primary)/10 rounded-full overflow-hidden mb-4 relative">
+                      {/* Precision Hairline Progress Bar (Solid Monochrome) */}
+                      <div className="w-full max-w-sm h-1.5 bg-neutral-200 dark:bg-neutral-800 rounded-full overflow-hidden mb-5">
                         <div
-                          className="h-full bg-linear-to-r from-indigo-500 via-purple-500 to-emerald-500 rounded-full transition-all duration-700 ease-out"
+                          className="h-full bg-black dark:bg-white rounded-full transition-all duration-700 ease-out"
                           style={{ width: `${currentStage.pct}%` }}
                         />
                       </div>
 
-                      {/* Mini 5-Step Pipeline Breadcrumb */}
-                      <div className="grid grid-cols-5 gap-1.5 w-full max-w-sm">
+                      {/* Linear Minimal Pipeline Step Track */}
+                      <div className="grid grid-cols-5 gap-1.5 w-full max-w-sm mb-4">
                         {stageLabels.map((lbl, idx) => {
                           const stepNum = idx + 1;
                           const isDone = currentStage.step > stepNum;
@@ -609,21 +619,21 @@ export default function ContractMindPage() {
                           return (
                             <div key={idx} className="flex flex-col items-center gap-1">
                               <div
-                                className={`w-full h-1 rounded-full transition-all duration-300 ${
+                                className={`w-full h-1 rounded-full transition-colors duration-300 ${
                                   isDone
-                                    ? "bg-emerald-500"
+                                    ? "bg-black dark:bg-white"
                                     : isCurrent
-                                    ? "bg-indigo-600 animate-pulse"
-                                    : "bg-(--text-primary)/10"
+                                    ? "bg-black/80 dark:bg-white/80 animate-pulse"
+                                    : "bg-neutral-300 dark:bg-neutral-700"
                                 }`}
                               />
                               <span
-                                className={`text-[9px] font-medium leading-tight truncate max-w-full hidden sm:inline ${
+                                className={`text-[9px] font-mono uppercase tracking-wider truncate max-w-full hidden sm:inline ${
                                   isDone
-                                    ? "text-emerald-600 dark:text-emerald-400 font-semibold"
+                                    ? "text-neutral-900 dark:text-neutral-100 font-semibold"
                                     : isCurrent
-                                    ? "text-indigo-600 dark:text-indigo-400 font-bold"
-                                    : "text-(--text-muted)/60"
+                                    ? "text-black dark:text-white font-bold"
+                                    : "text-neutral-400 dark:text-neutral-500"
                                 }`}
                               >
                                 {lbl}
@@ -631,6 +641,11 @@ export default function ContractMindPage() {
                             </div>
                           );
                         })}
+                      </div>
+
+                      {/* Legal Veracity Tag */}
+                      <div className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono tracking-wider pt-2 border-t border-neutral-200 dark:border-neutral-800 w-full max-w-xs">
+                        {isBn ? "বাংলাদেশ আইন গেজেট (bdlaws) দ্বারা যাচাইকৃত" : "BENCHMARKED AGAINST BDLAWS STATUTORY CODEX"}
                       </div>
                     </div>
                   );
