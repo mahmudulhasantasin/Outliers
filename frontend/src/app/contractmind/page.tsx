@@ -814,7 +814,7 @@ export default function ContractMindPage() {
                 <span>Verified against bdlaws (Government of Bangladesh)</span>
               </div>
               <p className="text-[10px] text-neutral-400 leading-normal">
-                Notice: This legal audit report is computer-generated based on statutory rules under the Bangladesh Labour Act 2006, The Contract Act 1872, and relevant codified legislation. For formal legal representation or litigation proceedings, consultation with a Supreme Court Advocate is recommended.
+                Notice: This legal audit report is computer-generated based on statutory rules under the codified laws of Bangladesh (including The Contract Act 1872, Transfer of Property Act 1882, Specific Relief Act 1877, Registration Act 1908, and relevant legislation). For formal legal representation or litigation proceedings, consultation with a Supreme Court Advocate is recommended.
               </p>
             </div>
           </div>
