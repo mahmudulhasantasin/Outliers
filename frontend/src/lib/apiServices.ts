@@ -3,6 +3,7 @@
  * Import these in page components instead of using dummy data.
  */
 import api from "@/lib/api";
+import { TokenResponse } from "@/lib/auth";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -1843,3 +1844,12 @@ export async function subscribeNewsletter(email: string): Promise<NewsletterResp
 
 
 
+
+
+/** 
+ * Fast-access demo authentication for hackathon evaluation (POST /api/auth/demo-login)
+ * Auto-provisions and returns a valid JWT token for the requested role.
+ */
+export async function loginDemo(role: string): Promise<TokenResponse> {
+  return api.post<TokenResponse>("/api/auth/demo-login", { role });
+}

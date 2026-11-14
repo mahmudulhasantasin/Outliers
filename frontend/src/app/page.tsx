@@ -85,7 +85,36 @@ export default function LandingAndAuthPage() {
     user,
     refreshUser, // [UPDATED] NEW - Needed for password reset
     loginWithGoogle,
+    loginAsDemoRole,
   } = useAuth();
+
+  const [demoLoadingRole, setDemoLoadingRole] = useState<string | null>(null);
+
+  const handleQuickDemoLogin = async (role: "general" | "lawyer" | "enterprise_admin" | "admin") => {
+    setAuthError("");
+    setDemoLoadingRole(role);
+    try {
+      const u = await loginAsDemoRole(role);
+      closeModal();
+      const userRole = String(u.role).toUpperCase();
+      if (userRole === "LAWYER") {
+        router.push("/lawyer/pending");
+      } else if (userRole === "ADMIN") {
+        router.push("/admin");
+      } else if (userRole === "ENTERPRISE_ADMIN") {
+        router.push("/enterprise/admin");
+      } else if (userRole === "ENTERPRISE_MEMBER") {
+        router.push("/enterprise/member");
+      } else {
+        router.push("/dashboard");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to sign in with demo profile";
+      setAuthError(msg);
+    } finally {
+      setDemoLoadingRole(null);
+    }
+  };
 
   const [authError, setAuthError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
@@ -2029,6 +2058,137 @@ export default function LandingAndAuthPage() {
                           <button type="button" onClick={() => { setIsSignUp(true); setRegStep("role"); }} className="font-semibold underline underline-offset-4 hover:opacity-80 transition-opacity ml-1 cursor-pointer text-[var(--text-primary)]">
                             {isBn ? "নিবন্ধন করুন" : "Register"}
                           </button>
+                        </div>
+
+                        {/* ── Judge / Evaluator 1-Click Fast Access ── */}
+                        <div className="mt-5 pt-4 border-t border-[var(--text-primary)]/10">
+                          <div className="flex items-center justify-between mb-2.5">
+                            <span className="text-[11px] font-semibold tracking-wider uppercase text-[var(--text-muted)] flex items-center gap-1.5">
+                              <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+                              {isBn ? "মূল্যায়নকারী ১-ক্লিক ডেমো প্রবেশ" : "Judge / Evaluation 1-Click Access"}
+                            </span>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-medium">
+                              No OTP / Instant
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2">
+                            {/* 1. General SME / Freelancer */}
+                            <button
+                              type="button"
+                              disabled={demoLoadingRole !== null}
+                              onClick={() => handleQuickDemoLogin("general")}
+                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-blue-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="p-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                  <User className="w-3.5 h-3.5" />
+                                </span>
+                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                                  {isBn ? "নাগরিক / SME" : "Citizen / SME"}
+                                </span>
+                              </div>
+                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                                Tariqul Islam
+                              </div>
+                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                                500 Credits • Full Copilot
+                              </div>
+                              {demoLoadingRole === "general" && (
+                                <div className="mt-1 flex items-center gap-1 text-[10px] text-blue-600 font-medium">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
+                                </div>
+                              )}
+                            </button>
+
+                            {/* 2. Advocate / Lawyer */}
+                            <button
+                              type="button"
+                              disabled={demoLoadingRole !== null}
+                              onClick={() => handleQuickDemoLogin("lawyer")}
+                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-amber-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="p-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                  <Gavel className="w-3.5 h-3.5" />
+                                </span>
+                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                                  {isBn ? "আইনজীবী" : "Advocate"}
+                                </span>
+                              </div>
+                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                                Advocate Shireen
+                              </div>
+                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                                Supreme Court • Queue & Seal
+                              </div>
+                              {demoLoadingRole === "lawyer" && (
+                                <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-600 font-medium">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
+                                </div>
+                              )}
+                            </button>
+
+                            {/* 3. Enterprise Admin */}
+                            <button
+                              type="button"
+                              disabled={demoLoadingRole !== null}
+                              onClick={() => handleQuickDemoLogin("enterprise_admin")}
+                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-purple-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="p-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                                  <Building2 className="w-3.5 h-3.5" />
+                                </span>
+                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
+                                  {isBn ? "এন্টারপ্রাইজ" : "Enterprise"}
+                                </span>
+                              </div>
+                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                                Rahim Chowdhury
+                              </div>
+                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                                Apex Holdings • Playbooks
+                              </div>
+                              {demoLoadingRole === "enterprise_admin" && (
+                                <div className="mt-1 flex items-center gap-1 text-[10px] text-purple-600 font-medium">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
+                                </div>
+                              )}
+                            </button>
+
+                            {/* 4. Super Admin */}
+                            <button
+                              type="button"
+                              disabled={demoLoadingRole !== null}
+                              onClick={() => handleQuickDemoLogin("admin")}
+                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-emerald-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
+                            >
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="p-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                  <Shield className="w-3.5 h-3.5" />
+                                </span>
+                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                                  {isBn ? "অ্যাডমিন" : "SuperAdmin"}
+                                </span>
+                              </div>
+                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
+                                System Admin
+                              </div>
+                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
+                                Verifications & Audit Controls
+                              </div>
+                              {demoLoadingRole === "admin" && (
+                                <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
+                                </div>
+                              )}
+                            </button>
+                          </div>
                         </div>
                       </>
                     )}

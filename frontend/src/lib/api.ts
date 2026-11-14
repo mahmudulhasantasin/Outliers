@@ -106,10 +106,19 @@ async function request<T>(
     }
   }
 
-  // [UPDATED] FIX: Only clear auth if 401 occurs on a protected route (NOT login/register).
-  if (res.status === 401 && !path.includes("/api/auth/login") && !path.includes("/api/auth/register")) {
-    clearAuth();
-    throw new ApiError(401, "Session expired or unauthorized. Please log in.");
+  // [UPDATED] FIX: Only clear auth if 401 occurs on a protected route (NOT login/register/demo-login).
+  if (
+    res.status === 401 &&
+    !path.includes("/api/auth/login") &&
+    !path.includes("/api/auth/register") &&
+    !path.includes("/api/auth/demo-login")
+  ) {
+    const isLocalDemo = typeof window !== "undefined" && Boolean(localStorage.getItem("app_auth_v2"));
+    if (!isLocalDemo) {
+      clearAuth();
+      throw new ApiError(401, "Session expired or unauthorized. Please log in.");
+    }
+    throw new ApiError(401, "Demo mode: Backend authentication pending.");
   }
 
   if (!res.ok) {
