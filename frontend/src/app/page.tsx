@@ -43,7 +43,6 @@ import {
   Gavel,
   Mail,
   Users,
-  Sparkles,
   AlertTriangle,
   Check,
   Shield,
@@ -54,6 +53,14 @@ import {
   Clock,
   Zap,
 } from "lucide-react";
+
+// [UPDATED] Judge 1-click demo profiles (round speed-dial) — icons/images mirror the landing page personas
+const demoRoles = [
+  { key: "general", img: "/general-user.png", name: "Tariqul Islam", role: { en: "Citizen / SME", bn: "নাগরিক / SME" }, desc: "500 Credits • Full Copilot" },
+  { key: "lawyer", img: "/lawyer.png", name: "Advocate Shireen", role: { en: "Advocate", bn: "আইনজীবী" }, desc: "Supreme Court • Queue & Seal" },
+  { key: "enterprise_admin", icon: Landmark, name: "Rahim Chowdhury", role: { en: "Enterprise", bn: "এন্টারপ্রাইজ" }, desc: "Apex Holdings • Playbooks" },
+  { key: "admin", icon: ShieldCheck, name: "System Admin", role: { en: "SuperAdmin", bn: "অ্যাডমিন" }, desc: "Verifications & Audit Controls" },
+] as const;
 import GradientWaves from "@/components/effects/GradientWaves";
 import DitherVeil from "@/components/effects/DitherVeil";
 import FadeContent from "@/components/effects/FadeContent";
@@ -89,6 +96,7 @@ export default function LandingAndAuthPage() {
   } = useAuth();
 
   const [demoLoadingRole, setDemoLoadingRole] = useState<string | null>(null);
+  const [demoMenuOpen, setDemoMenuOpen] = useState(false);
 
   const handleQuickDemoLogin = async (role: "general" | "lawyer" | "enterprise_admin" | "admin") => {
     setAuthError("");
@@ -2062,133 +2070,82 @@ export default function LandingAndAuthPage() {
 
                         {/* ── Judge / Evaluator 1-Click Fast Access ── */}
                         <div className="mt-5 pt-4 border-t border-[var(--text-primary)]/10">
-                          <div className="flex items-center justify-between mb-2.5">
-                            <span className="text-[11px] font-semibold tracking-wider uppercase text-[var(--text-muted)] flex items-center gap-1.5">
-                              <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-                              {isBn ? "মূল্যায়নকারী ১-ক্লিক ডেমো প্রবেশ" : "Judge / Evaluation 1-Click Access"}
-                            </span>
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-mono font-medium">
-                              No OTP / Instant
-                            </span>
-                          </div>
+                          {!demoMenuOpen ? (
+                            <div className="flex flex-col items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setDemoMenuOpen(true)}
+                                aria-expanded={false}
+                                aria-label={isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
+                                className="relative w-12 h-12 rounded-full border border-[var(--text-primary)]/25 bg-[var(--bg-card)] shadow-sm flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer"
+                              >
+                                <span className="absolute inset-0 rounded-full border border-[var(--text-primary)]/15 animate-ping" style={{ animationDuration: "2.5s" }} />
+                                <Zap className="relative w-5 h-5 fill-current" />
+                              </button>
+                              <span className="text-center leading-tight">
+                                <span className="block text-[12px] font-semibold text-[var(--text-primary)]">
+                                  {isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
+                                </span>
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="relative w-72 h-52 mx-auto my-1">
+                              {/* Main round button at the center — same style as the closed state, click toggles */}
+                              <button
+                                type="button"
+                                onClick={() => setDemoMenuOpen(false)}
+                                aria-expanded={true}
+                                aria-label={isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
+                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-[var(--text-primary)]/25 bg-[var(--bg-card)] shadow-sm flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer z-10"
+                              >
+                                <Zap className="w-5 h-5 fill-current" />
+                              </button>
 
-                          <div className="grid grid-cols-2 gap-2">
-                            {/* 1. General SME / Freelancer */}
-                            <button
-                              type="button"
-                              disabled={demoLoadingRole !== null}
-                              onClick={() => handleQuickDemoLogin("general")}
-                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-blue-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="p-1 rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                                  <User className="w-3.5 h-3.5" />
-                                </span>
-                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                                  {isBn ? "নাগরিক / SME" : "Citizen / SME"}
-                                </span>
-                              </div>
-                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                                Tariqul Islam
-                              </div>
-                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                                500 Credits • Full Copilot
-                              </div>
-                              {demoLoadingRole === "general" && (
-                                <div className="mt-1 flex items-center gap-1 text-[10px] text-blue-600 font-medium">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
-                                </div>
-                              )}
-                            </button>
-
-                            {/* 2. Advocate / Lawyer */}
-                            <button
-                              type="button"
-                              disabled={demoLoadingRole !== null}
-                              onClick={() => handleQuickDemoLogin("lawyer")}
-                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-amber-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="p-1 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                  <Gavel className="w-3.5 h-3.5" />
-                                </span>
-                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                                  {isBn ? "আইনজীবী" : "Advocate"}
-                                </span>
-                              </div>
-                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
-                                Advocate Shireen
-                              </div>
-                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                                Supreme Court • Queue & Seal
-                              </div>
-                              {demoLoadingRole === "lawyer" && (
-                                <div className="mt-1 flex items-center gap-1 text-[10px] text-amber-600 font-medium">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
-                                </div>
-                              )}
-                            </button>
-
-                            {/* 3. Enterprise Admin */}
-                            <button
-                              type="button"
-                              disabled={demoLoadingRole !== null}
-                              onClick={() => handleQuickDemoLogin("enterprise_admin")}
-                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-purple-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="p-1 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                                  <Building2 className="w-3.5 h-3.5" />
-                                </span>
-                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400">
-                                  {isBn ? "এন্টারপ্রাইজ" : "Enterprise"}
-                                </span>
-                              </div>
-                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
-                                Rahim Chowdhury
-                              </div>
-                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                                Apex Holdings • Playbooks
-                              </div>
-                              {demoLoadingRole === "enterprise_admin" && (
-                                <div className="mt-1 flex items-center gap-1 text-[10px] text-purple-600 font-medium">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
-                                </div>
-                              )}
-                            </button>
-
-                            {/* 4. Super Admin */}
-                            <button
-                              type="button"
-                              disabled={demoLoadingRole !== null}
-                              onClick={() => handleQuickDemoLogin("admin")}
-                              className="p-2.5 rounded-xl border border-[var(--text-primary)]/10 hover:border-emerald-500/40 bg-[var(--bg-surface)] hover:bg-[var(--text-primary)]/[0.03] text-left transition-all group cursor-pointer disabled:opacity-50"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="p-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                  <Shield className="w-3.5 h-3.5" />
-                                </span>
-                                <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                                  {isBn ? "অ্যাডমিন" : "SuperAdmin"}
-                                </span>
-                              </div>
-                              <div className="text-xs font-semibold text-[var(--text-primary)] truncate group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors">
-                                System Admin
-                              </div>
-                              <div className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">
-                                Verifications & Audit Controls
-                              </div>
-                              {demoLoadingRole === "admin" && (
-                                <div className="mt-1 flex items-center gap-1 text-[10px] text-emerald-600 font-medium">
-                                  <Loader2 className="w-3 h-3 animate-spin" />
-                                  <span>{isBn ? "প্রবেশ হচ্ছে..." : "Entering..."}</span>
-                                </div>
-                              )}
-                            </button>
-                          </div>
+                              {/* Role circles orbiting around the center */}
+                              {demoRoles.map((role, i) => {
+                                const offsets = [
+                                  { x: -86, y: -56 }, // top-left
+                                  { x: 86, y: -56 },  // top-right
+                                  { x: -86, y: 56 },  // bottom-left
+                                  { x: 86, y: 56 },   // bottom-right
+                                ];
+                                const o = offsets[i];
+                                return (
+                                  <div
+                                    key={role.key}
+                                    className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1"
+                                    style={{ transform: `translate(calc(-50% + ${o.x}px), calc(-50% + ${o.y}px))` }}
+                                  >
+                                    <button
+                                      type="button"
+                                      disabled={demoLoadingRole !== null}
+                                      onClick={() => handleQuickDemoLogin(role.key)}
+                                      aria-label={`${role.name} — ${isBn ? "ডেমো প্রবেশ" : "demo login"}`}
+                                      className="w-10 h-10 rounded-full border border-[var(--text-primary)]/15 bg-[var(--bg-card)] flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                                    >
+                                      {demoLoadingRole === role.key ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                      ) : "img" in role ? (
+                                        <Image src={role.img} alt={role.name} width={20} height={20} className="w-5 h-5 object-contain dark:invert" />
+                                      ) : (
+                                        <role.icon className="w-4 h-4" strokeWidth={1.75} />
+                                      )}
+                                    </button>
+                                    <span className="flex flex-col items-center gap-0.5">
+                                      <span className="text-[8px] font-medium text-[var(--text-primary)] whitespace-nowrap leading-none">
+                                        {demoLoadingRole === role.key
+                                          ? isBn ? "প্রবেশ..." : "Entering..."
+                                          : role.name}
+                                      </span>
+                                      <span className="text-[7px] text-[var(--text-muted)] whitespace-nowrap leading-none">
+                                        {isBn ? role.role.bn : role.role.en}
+                                      </span>
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       </>
                     )}
