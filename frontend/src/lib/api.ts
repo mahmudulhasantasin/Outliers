@@ -22,6 +22,8 @@ interface ApiOptions {
   isFormData?: boolean;
   /** Optional external AbortSignal for user cancellation */
   signal?: AbortSignal;
+  /** Custom timeout in milliseconds (default: 180s for contract audits/uploads, 90s for standard requests) */
+  timeoutMs?: number;
 }
 
 export class ApiError extends Error {
@@ -74,7 +76,16 @@ async function request<T>(
       signal.addEventListener("abort", handleExternalAbort, { once: true });
     }
   }
-  const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+  // Contract audits, document ingestion, and playbook parsing require extra headroom (up to 180s / 3 min)
+  // to tolerate upstream LLM retries and fallback switches (e.g. Gemini 503 -> Z.ai / Groq).
+  const isHeavyOperation =
+    path.includes("/contracts/upload") ||
+    path.includes("/contracts/") ||
+    path.includes("/playbook") ||
+    isFormData;
+  const effectiveTimeout = options.timeoutMs ?? (isHeavyOperation ? 180000 : 90000);
+  const timeoutId = setTimeout(() => controller.abort(), effectiveTimeout);
 
   try {
     res = await fetch(fullUrl, {
@@ -94,8 +105,9 @@ async function request<T>(
       if (abortedByCaller || signal?.aborted) {
         throw new ApiError(499, "Request stopped by user.");
       }
-      console.error(`[API Timeout] ${method} ${fullUrl} exceeded 90s`);
-      throw new ApiError(408, "Request timed out after 90s. AI model might be busy.");
+      const timeoutSec = Math.round(effectiveTimeout / 1000);
+      console.error(`[API Timeout] ${method} ${fullUrl} exceeded ${timeoutSec}s`);
+      throw new ApiError(408, `Request timed out after ${timeoutSec}s. AI model might be busy.`);
     }
     console.error(`[API Network Error] ${method} ${fullUrl}:`, netErr);
     throw new ApiError(0, "Network connection error. Please verify backend connectivity.");
@@ -198,11 +210,13 @@ export const api = {
   delete: <T>(path: string, extraHeaders?: Record<string, string>, signal?: AbortSignal) =>
     request<T>(path, { method: "DELETE", headers: extraHeaders, signal }),
 
-  upload: <T>(path: string, formData: FormData) =>
+  upload: <T>(path: string, formData: FormData, signal?: AbortSignal, timeoutMs?: number) =>
     request<T>(path, {
       method: "POST",
       body: formData,
       isFormData: true,
+      signal,
+      timeoutMs: timeoutMs ?? 180000,
     }),
 
   downloadBlob: async (path: string): Promise<Blob> => {

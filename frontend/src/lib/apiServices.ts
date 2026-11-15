@@ -230,7 +230,7 @@ export async function uploadContract(
   formData.append("title", fileTitle);
   formData.append("file", file);
   formData.append("audited_for", auditedFor);
-  return api.upload<ContractAuditResult>("/api/contracts/upload", formData);
+  return api.upload<ContractAuditResult>("/api/contracts/upload", formData, undefined, 180000);
 }
 
 /** Get user's contract audit history (GET /api/contracts/history) */
