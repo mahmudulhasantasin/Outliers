@@ -1356,8 +1356,12 @@ export default function CopilotPage() {
                 </p>
                 <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight mb-1.5 text-(--text-primary)">
                   {isBn
-                    ? "আইনি গবেষণা"
-                    : "Legal Research"}
+                    ? isLawyer
+                      ? "আইনি গবেষণা"
+                      : "আইনি কোপাইলট"
+                    : isLawyer
+                      ? "Legal Research"
+                      : "Legal Copilot"}
                 </h1>
                 <p className="text-xs sm:text-sm text-(--text-muted) max-w-md mx-auto font-normal leading-relaxed mb-4">
                   {isBn ? (
