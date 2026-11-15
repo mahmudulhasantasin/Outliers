@@ -1339,21 +1339,19 @@ export default function CopilotPage() {
                     priority
                   />
                 </div>
-                <p className="mb-2 inline-flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) not-italic">
-                  <span className="h-px w-6 bg-(--text-primary)/20" aria-hidden />
-                  {isBn
-                    ? activeContractContext
-                      ? "চুক্তি পর্যালোচনা মোড"
-                      : isLawyer
-                        ? "আইনজীবীদের জন্য প্রস্তুত"
-                        : "দৈনন্দিন আইনি সহায়ক"
-                    : activeContractContext
-                      ? "Contract review mode"
-                      : isLawyer
-                        ? "Built for practising lawyers"
-                        : "Everyday legal guidance"}
-                  <span className="h-px w-6 bg-(--text-primary)/20" aria-hidden />
-                </p>
+                {(activeContractContext || isLawyer) && (
+                  <p className="mb-2 inline-flex items-center gap-2.5 font-mono text-[10px] uppercase tracking-widest text-(--text-muted) not-italic">
+                    <span className="h-px w-6 bg-(--text-primary)/20" aria-hidden />
+                    {isBn
+                      ? activeContractContext
+                        ? "চুক্তি পর্যালোচনা মোড"
+                        : "আইনজীবীদের জন্য প্রস্তুত"
+                      : activeContractContext
+                        ? "Contract review mode"
+                        : "Built for practising lawyers"}
+                    <span className="h-px w-6 bg-(--text-primary)/20" aria-hidden />
+                  </p>
+                )}
                 <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight mb-1.5 text-(--text-primary)">
                   {isBn
                     ? isLawyer
