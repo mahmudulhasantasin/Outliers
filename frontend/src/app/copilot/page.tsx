@@ -1356,22 +1356,22 @@ export default function CopilotPage() {
                 </p>
                 <h1 className="text-2xl sm:text-4xl font-semibold tracking-tight mb-1.5 text-(--text-primary)">
                   {isBn
-                    ? "আইনি কোপাইলট"
-                    : "Legal Copilot"}
+                    ? "আইনি গবেষণা"
+                    : "Legal Research"}
                 </h1>
                 <p className="text-xs sm:text-sm text-(--text-muted) max-w-md mx-auto font-normal leading-relaxed mb-4">
                   {isBn ? (
                     activeContractContext ? (
                       "এই চুক্তির ধারা-ভিত্তিক ঝুঁকি, বৈধতা ও সংশোধন পরামর্শ নিন।"
                     ) : isLawyer ? (
-                      "নজির গবেষণা, যুক্তি খসড়া ও শুনানি প্রস্তুতি — বাংলাদেশের আইন ও ধারার সঠিক উদ্ধৃতিসহ।"
+                      "নজির অনুসন্ধান, যুক্তি খসড়া ও শুনানি প্রস্তুতি — বাংলাদেশের আইন ও ধারার সঠিক উদ্ধৃতিসহ।"
                     ) : (
                       "বাংলাদেশি আইন ও আদালতের নজির থেকে নির্ভরযোগ্য আইনি উত্তর পান।"
                     )
                   ) : activeContractContext ? (
                     "Clause-level risk, enforceability, and redline guidance for this contract under Bangladesh law."
                   ) : isLawyer ? (
-                    "Research precedent, draft arguments, and prep hearings — with statute-precise citations from Bangladesh law."
+                    "Precedent research, argument drafting, and hearing prep — with statute-precise citations from Bangladesh law."
                   ) : (
                     "Ask any legal question grounded in Bangladesh laws and precedents."
                   )}
