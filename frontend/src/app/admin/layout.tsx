@@ -7,7 +7,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import AdminShell, { AdminNavItem } from "@/components/admin/AdminShell";
 import { AdminDataProvider, useAdminData } from "./admin-data";
 import {
-  LayoutDashboard, CreditCard, Gavel, Building, CircleDollarSign, Users,
+  LayoutDashboard, CreditCard, Gavel, Building, CircleDollarSign, Users, FileText,
 } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -30,6 +30,7 @@ function ShellContent({ children }: { children: React.ReactNode }) {
     { href: "/admin/enterprises", icon: Building, labelEn: "Enterprises", labelBn: "এন্টারপ্রাইজ", count: enterprisesList.length },
     { href: "/admin/payouts", icon: CircleDollarSign, labelEn: "Payouts", labelBn: "পে-আউট", count: withdrawalsList.length },
     { href: "/admin/users", icon: Users, labelEn: "All Users", labelBn: "সব ইউজার" },
+    { href: "/admin/docs", icon: FileText, labelEn: "Live Docs", labelBn: "লাইভ ডক্স" },
   ];
 
   return (
