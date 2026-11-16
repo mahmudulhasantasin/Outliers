@@ -17,6 +17,9 @@ import {
   History,
   Rocket,
   FileEdit,
+  ChevronUp,
+  ChevronDown,
+  GripVertical,
 } from "lucide-react";
 import {
   AdminCard,
@@ -149,10 +152,23 @@ export default function AdminDocsPage() {
 
   const getAuthToken = (): string | null => {
     try {
+      // 1. Real token from standard login (TOKEN_KEY in auth.ts)
+      const realToken = localStorage.getItem("contractmind_token");
+      if (realToken) return realToken;
+
+      // 2. Demo session token
       const stored = localStorage.getItem("app_auth_v2");
-      if (!stored) return null;
-      const parsed = JSON.parse(stored);
-      return parsed.token || parsed.access_token || null;
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        const t = parsed.token || parsed.access_token || null;
+        if (t) return t;
+      }
+
+      // 3. Standalone docs token
+      const docsToken = localStorage.getItem("docs_admin_token");
+      if (docsToken) return docsToken;
+
+      return null;
     } catch {
       return null;
     }
@@ -171,7 +187,7 @@ export default function AdminDocsPage() {
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
-  const loadStudio = async () => {
+  const loadStudio = async (preferCurrentWork = false) => {
     try {
       const [contentRes, draftRes, versionsRes] = await Promise.all([
         fetch(`${API_BASE}/api/docs/content`, { headers: authedHeaders(false) }),
@@ -179,22 +195,60 @@ export default function AdminDocsPage() {
         fetch(`${API_BASE}/api/docs/versions`, { headers: authedHeaders(false) }),
       ]);
 
+      let liveData: WorkContent = {
+        pitch_deck: {},
+        tech_docs: {},
+        roadmap: {},
+        changelog: [],
+      };
       if (contentRes.ok) {
         const data = await contentRes.json();
-        setWork({
-          pitch_deck: data.pitch_deck ?? {},
+        const pDeck = data.pitch_deck ?? {};
+        if (!pDeck.company || pDeck.company.includes("ContractMind")) {
+          pDeck.company = "Advotech Copilot";
+        }
+        liveData = {
+          pitch_deck: pDeck,
           tech_docs: data.tech_docs ?? {},
           roadmap: data.roadmap ?? {},
           changelog: data.changelog ?? [],
-        });
+        };
       }
+
+      let draftContent: WorkContent | null = null;
       if (draftRes.ok) {
         const d = await draftRes.json();
-        setDraftInfo(d?.draft?.saved_at ? d.draft : null);
+        const draft = d?.draft;
+        if (draft && draft.saved_at) {
+          const dPitch = draft.pitch_deck
+            ? { ...liveData.pitch_deck, ...draft.pitch_deck }
+            : liveData.pitch_deck;
+          if (!dPitch.company || dPitch.company.includes("ContractMind")) {
+            dPitch.company = "Advotech Copilot";
+          }
+          setDraftInfo(draft);
+          draftContent = {
+            pitch_deck: dPitch,
+            tech_docs: draft.tech_docs
+              ? { ...liveData.tech_docs, ...draft.tech_docs }
+              : liveData.tech_docs,
+            roadmap: draft.roadmap
+              ? { ...liveData.roadmap, ...draft.roadmap }
+              : liveData.roadmap,
+            changelog: draft.changelog ?? liveData.changelog,
+          };
+        } else {
+          setDraftInfo(null);
+        }
       }
+
       if (versionsRes.ok) {
         const v = await versionsRes.json();
         if (Array.isArray(v)) setVersions(v);
+      }
+
+      if (!preferCurrentWork) {
+        setWork(draftContent ?? liveData);
       }
     } catch (err) {
       console.error("Failed to load content studio data:", err);
@@ -295,6 +349,10 @@ export default function AdminDocsPage() {
   const handleSaveDraft = async () => {
     const payload = buildDraftPayload();
     if (!payload) return;
+    if (!getAuthToken()) {
+      showToast("Admin session missing. Please sign in as Admin first.", "error");
+      return;
+    }
     setStudioBusy("draft");
     try {
       const res = await fetch(`${API_BASE}/api/docs/draft`, {
@@ -303,10 +361,13 @@ export default function AdminDocsPage() {
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        showToast("Draft saved — not live until you publish.");
-        await loadStudio();
+        const d = await res.json().catch(() => ({}));
+        showToast("Draft saved! (Note: Draft is private. Click 'Publish Live' to push to /docs)");
+        setDraftInfo({ saved_at: d.saved_at || new Date().toISOString() });
+        await loadStudio(true);
       } else {
-        showToast("Failed to save draft", "error");
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || "Failed to save draft", "error");
       }
     } catch {
       showToast("Network error saving draft", "error");
@@ -318,6 +379,10 @@ export default function AdminDocsPage() {
   const handlePublish = async () => {
     const payload = buildDraftPayload();
     if (!payload) return;
+    if (!getAuthToken()) {
+      showToast("Admin session missing. Please sign in as Admin first.", "error");
+      return;
+    }
     setStudioBusy("publish");
     try {
       // keep the draft in sync with what is published, then publish
@@ -326,7 +391,10 @@ export default function AdminDocsPage() {
         headers: authedHeaders(),
         body: JSON.stringify(payload),
       });
-      if (!draftRes.ok) throw new Error("draft save failed");
+      if (!draftRes.ok) {
+        const draftErr = await draftRes.json().catch(() => ({}));
+        throw new Error(draftErr.detail || "Draft save failed before publish");
+      }
 
       const res = await fetch(`${API_BASE}/api/docs/publish`, {
         method: "POST",
@@ -334,14 +402,14 @@ export default function AdminDocsPage() {
       });
       if (res.ok) {
         const d = await res.json();
-        showToast(`Published! ${d.versions ?? "?"} versions recorded.`);
-        await loadStudio();
+        showToast(`Published to /docs! ${d.versions ?? "?"} versions recorded.`);
+        await loadStudio(false);
       } else {
         const err = await res.json().catch(() => ({}));
         showToast(err.detail || "Failed to publish", "error");
       }
-    } catch {
-      showToast("Network error publishing", "error");
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : "Network error publishing", "error");
     } finally {
       setStudioBusy("idle");
     }
@@ -355,10 +423,11 @@ export default function AdminDocsPage() {
         headers: authedHeaders(false),
       });
       if (res.ok) {
-        showToast("Draft discarded — live content untouched.");
-        await loadStudio();
+        showToast("Draft discarded — reset to live content.");
+        await loadStudio(false);
       } else {
-        showToast("Failed to discard draft", "error");
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || "Failed to discard draft", "error");
       }
     } catch {
       showToast("Network error discarding draft", "error");
@@ -416,6 +485,27 @@ export default function AdminDocsPage() {
           }
         : prev
     );
+
+  const currentPitchOrder = useMemo(() => {
+    const stored = work?.pitch_deck?.section_order;
+    const defaultKeys = PITCH_KEYS.map((k) => k.key as string);
+    if (!stored || !Array.isArray(stored) || stored.length === 0) return defaultKeys;
+    const valid = stored.filter((k) => defaultKeys.includes(k));
+    const missing = defaultKeys.filter((k) => !valid.includes(k));
+    return [...valid, ...missing];
+  }, [work?.pitch_deck?.section_order]);
+
+  const moveSection = (key: string, direction: "up" | "down") => {
+    const order = [...currentPitchOrder];
+    const index = order.indexOf(key);
+    if (index === -1) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= order.length) return;
+    const temp = order[index];
+    order[index] = order[targetIndex];
+    order[targetIndex] = temp;
+    setPitchField("section_order", order);
+  };
 
   /* ─────────── team CRUD (unchanged behaviour) ─────────── */
 
@@ -760,6 +850,38 @@ export default function AdminDocsPage() {
           </div>
         </div>
 
+        {/* Informative banner explaining draft vs live */}
+        {draftInfo?.saved_at && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <span>
+                <strong>Unpublished Draft Active:</strong> You have an active draft saved on{" "}
+                {new Date(draftInfo.saved_at).toLocaleTimeString()}. These changes are <strong>saved privately</strong> and are <em>not live on /docs yet</em>. Click <strong>Publish Live</strong> to make them visible on the public /docs page.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <AdminButton
+                variant="solid"
+                onClick={handlePublish}
+                disabled={studioBusy !== "idle"}
+                className="gap-1.5 text-xs py-1.5 px-3"
+              >
+                <Rocket className="w-3.5 h-3.5" />
+                <span>{studioBusy === "publish" ? "Publishing…" : "Publish Live Now"}</span>
+              </AdminButton>
+              <AdminButton
+                variant="outline"
+                onClick={handleDiscardDraft}
+                className="text-xs py-1.5 px-3"
+              >
+                <X className="w-3.5 h-3.5" />
+                <span>Discard</span>
+              </AdminButton>
+            </div>
+          </div>
+        )}
+
         {!work ? (
           <div className="py-8 text-center text-xs text-(--text-muted)">
             {loading ? "Loading content…" : "Content unavailable — check admin token / backend."}
@@ -793,34 +915,134 @@ export default function AdminDocsPage() {
               </div>
             </div>
 
-            {/* Pitch sections */}
+            {/* Pitch sections & section reordering */}
             <div className="space-y-4 pt-2">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-(--text-muted)">
-                Pitch Sections (headline + points, one per line)
-              </p>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-(--text-muted)">
+                  Pitch Sections &amp; Display Order
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setPitchField("section_order", PITCH_KEYS.map((k) => k.key as string))}
+                  className="text-[11px] font-semibold text-blue-600 hover:underline"
+                >
+                  Reset order to default
+                </button>
+              </div>
+
+              {/* Drag/Drop & Click Reorder Bar */}
+              <div className="p-3.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 space-y-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-(--text-muted)">
+                  <GripVertical className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Drag chips or use arrow buttons to reorder sections on /docs:</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {currentPitchOrder.map((key, i) => {
+                    const item = PITCH_KEYS.find((k) => k.key === key);
+                    if (!item) return null;
+                    return (
+                      <div
+                        key={key}
+                        draggable
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/plain", key);
+                        }}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const movedKey = e.dataTransfer.getData("text/plain");
+                          if (!movedKey || movedKey === key) return;
+                          const order = [...currentPitchOrder];
+                          const from = order.indexOf(movedKey);
+                          const to = order.indexOf(key);
+                          if (from !== -1 && to !== -1) {
+                            order.splice(to, 0, order.splice(from, 1)[0]);
+                            setPitchField("section_order", order);
+                          }
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-(--bg-card) border border-(--text-primary)/15 cursor-grab active:cursor-grabbing hover:border-blue-500/50 transition-all select-none"
+                      >
+                        <span className="font-mono text-[10px] opacity-60">{String(i + 1).padStart(2, "0")}</span>
+                        <span>{item.label}</span>
+                        <div className="flex items-center gap-0.5 ml-1">
+                          <button
+                            type="button"
+                            disabled={i === 0}
+                            onClick={() => moveSection(key, "up")}
+                            className="p-0.5 hover:text-blue-500 disabled:opacity-20 cursor-pointer"
+                            title="Move section up"
+                          >
+                            <ChevronUp className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={i === currentPitchOrder.length - 1}
+                            onClick={() => moveSection(key, "down")}
+                            className="p-0.5 hover:text-blue-500 disabled:opacity-20 cursor-pointer"
+                            title="Move section down"
+                          >
+                            <ChevronDown className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Section Editors rendered in custom order */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                {PITCH_KEYS.map(({ key, label }) => {
+                {currentPitchOrder.map((key, i) => {
+                  const item = PITCH_KEYS.find((k) => k.key === key);
+                  if (!item) return null;
                   const sec = (work.pitch_deck as Record<string, unknown>)[key] as
                     | PitchSection
                     | undefined;
                   return (
                     <div
-                      key={key as string}
+                      key={key}
                       className="p-4 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 space-y-2"
                     >
-                      <p className="text-xs font-bold text-(--text-primary)">{label}</p>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-(--text-primary)/10 text-(--text-primary)">
+                            {String(i + 1).padStart(2, "0")}
+                          </span>
+                          <span className="text-xs font-bold text-(--text-primary)">{item.label}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            disabled={i === 0}
+                            onClick={() => moveSection(key, "up")}
+                            className="p-1 rounded hover:bg-(--text-primary)/10 text-(--text-muted) hover:text-(--text-primary) disabled:opacity-20 cursor-pointer"
+                            title="Move section up"
+                          >
+                            <ChevronUp className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={i === currentPitchOrder.length - 1}
+                            onClick={() => moveSection(key, "down")}
+                            className="p-1 rounded hover:bg-(--text-primary)/10 text-(--text-muted) hover:text-(--text-primary) disabled:opacity-20 cursor-pointer"
+                            title="Move section down"
+                          >
+                            <ChevronDown className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
                       <input
                         className={inputCls}
                         placeholder="Headline"
                         value={sec?.headline ?? ""}
-                        onChange={(e) => setSection(key as string, "headline", e.target.value)}
+                        onChange={(e) => setSection(key, "headline", e.target.value)}
                       />
                       <textarea
                         rows={4}
                         className={`${inputCls} font-mono text-[11px]`}
                         placeholder={"One point per line"}
                         value={(sec?.points ?? []).join("\n")}
-                        onChange={(e) => setSection(key as string, "points", e.target.value)}
+                        onChange={(e) => setSection(key, "points", e.target.value)}
                       />
                     </div>
                   );
