@@ -3,11 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  FileText,
   Shield,
-  Eye,
-  Calendar,
-  Clock,
   CheckCircle2,
   AlertCircle,
   Plus,
@@ -17,8 +13,10 @@ import {
   Save,
   RefreshCw,
   X,
-  Users,
-  Globe,
+  Clock,
+  History,
+  Rocket,
+  FileEdit,
 } from "lucide-react";
 import {
   AdminCard,
@@ -27,6 +25,8 @@ import {
   Eyebrow,
   HAIRLINE,
 } from "@/components/admin/ui";
+
+/* ──────────────── types mirroring backend payloads ──────────────── */
 
 interface DocsConfigState {
   visibility: "ON" | "OFF" | "SCHEDULED";
@@ -49,32 +49,95 @@ interface TeamMember {
   is_active?: boolean;
 }
 
+interface PitchSection {
+  headline?: string | null;
+  points?: string[];
+}
+
+interface FeatureRow {
+  name: string;
+  status: string;
+  note?: string;
+}
+
+interface WorkContent {
+  pitch_deck: {
+    company?: string;
+    team_name?: string;
+    tagline?: string;
+    one_liner?: string;
+    section_order?: string[];
+    problem?: PitchSection;
+    solution?: PitchSection;
+    why_now?: PitchSection;
+    product_demo?: PitchSection;
+    market?: PitchSection;
+    business_model?: PitchSection;
+    traction?: PitchSection;
+    competition?: PitchSection;
+    unique_advantage?: PitchSection;
+    go_to_market?: PitchSection;
+    vision?: PitchSection;
+    the_ask?: string;
+  };
+  tech_docs: {
+    feature_matrix?: FeatureRow[];
+    [key: string]: unknown;
+  };
+  roadmap?: { short_term?: string[]; mid_term?: string[]; long_term?: string[] };
+  changelog?: { date?: string; version?: string; changes?: string[] }[];
+}
+
+interface VersionRow {
+  index: number;
+  at?: string;
+  by?: string;
+}
+
 const DEFAULT_CONFIG: DocsConfigState = {
   visibility: "SCHEDULED",
   schedule_start: "2027-06-10T00:00",
   schedule_end: "2027-06-14T23:59",
 };
 
+const PITCH_KEYS: { key: keyof WorkContent["pitch_deck"]; label: string }[] = [
+  { key: "problem", label: "Problem" },
+  { key: "solution", label: "Solution" },
+  { key: "why_now", label: "Why Now" },
+  { key: "product_demo", label: "Product Demo" },
+  { key: "market", label: "Market Opportunity" },
+  { key: "business_model", label: "Business Model" },
+  { key: "traction", label: "Traction" },
+  { key: "competition", label: "Competition" },
+  { key: "unique_advantage", label: "Unique Advantage" },
+  { key: "go_to_market", label: "Go-To-Market" },
+  { key: "vision", label: "Vision" },
+];
+
+const inputCls =
+  "w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)";
+
 export default function AdminDocsPage() {
   const [config, setConfig] = useState<DocsConfigState>(DEFAULT_CONFIG);
+  const [durationHours, setDurationHours] = useState<string>("");
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingConfig, setSavingConfig] = useState(false);
-  const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{
+    text: string;
+    type: "success" | "error";
+  } | null>(null);
 
-  // Modal State for adding/editing team members
+  // Content studio state
+  const [work, setWork] = useState<WorkContent | null>(null);
+  const [draftInfo, setDraftInfo] = useState<{ saved_at?: string; saved_by?: string } | null>(null);
+  const [versions, setVersions] = useState<VersionRow[]>([]);
+  const [studioBusy, setStudioBusy] = useState<"idle" | "draft" | "publish">("idle");
+
+  // Modal State for team members
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [memberFormData, setMemberFormData] = useState<Partial<TeamMember>>({
-    full_name: "",
-    role: "",
-    email: "",
-    image_url: "",
-    bio: "",
-    linkedin_url: "",
-    github_url: "",
-    display_order: 0,
-  });
+  const [memberFormData, setMemberFormData] = useState<Partial<TeamMember>>({});
   const [savingMember, setSavingMember] = useState(false);
 
   const API_BASE = useMemo(() => {
@@ -95,20 +158,53 @@ export default function AdminDocsPage() {
     }
   };
 
+  const authedHeaders = (json = true): Record<string, string> => {
+    const token = getAuthToken();
+    const headers: Record<string, string> = {};
+    if (json) headers["Content-Type"] = "application/json";
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    return headers;
+  };
+
   const showToast = (text: string, type: "success" | "error" = "success") => {
     setFeedbackMsg({ text, type });
     setTimeout(() => setFeedbackMsg(null), 4000);
   };
 
+  const loadStudio = async () => {
+    try {
+      const [contentRes, draftRes, versionsRes] = await Promise.all([
+        fetch(`${API_BASE}/api/docs/content`, { headers: authedHeaders(false) }),
+        fetch(`${API_BASE}/api/docs/draft`, { headers: authedHeaders(false) }),
+        fetch(`${API_BASE}/api/docs/versions`, { headers: authedHeaders(false) }),
+      ]);
+
+      if (contentRes.ok) {
+        const data = await contentRes.json();
+        setWork({
+          pitch_deck: data.pitch_deck ?? {},
+          tech_docs: data.tech_docs ?? {},
+          roadmap: data.roadmap ?? {},
+          changelog: data.changelog ?? [],
+        });
+      }
+      if (draftRes.ok) {
+        const d = await draftRes.json();
+        setDraftInfo(d?.draft?.saved_at ? d.draft : null);
+      }
+      if (versionsRes.ok) {
+        const v = await versionsRes.json();
+        if (Array.isArray(v)) setVersions(v);
+      }
+    } catch (err) {
+      console.error("Failed to load content studio data:", err);
+    }
+  };
+
   const fetchData = async () => {
     setLoading(true);
-    const token = getAuthToken();
-    const headers: Record<string, string> = { "Content-Type": "application/json" };
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
     try {
-      // 1. Fetch Config
-      const configRes = await fetch(`${API_BASE}/api/docs/config`, { headers });
+      const configRes = await fetch(`${API_BASE}/api/docs/config`, { headers: authedHeaders(false) });
       if (configRes.ok) {
         const data = await configRes.json();
         setConfig({
@@ -120,21 +216,21 @@ export default function AdminDocsPage() {
         });
       }
 
-      // 2. Fetch Team Members
-      const teamRes = await fetch(`${API_BASE}/api/docs/admin/team`, { headers });
+      const teamRes = await fetch(`${API_BASE}/api/docs/admin/team`, { headers: authedHeaders(false) });
       if (teamRes.ok) {
         const teamData = await teamRes.json();
         if (Array.isArray(teamData)) {
           setTeamMembers(teamData);
         }
       } else {
-        // Fallback public team endpoint
         const publicTeamRes = await fetch(`${API_BASE}/api/docs/team`);
         if (publicTeamRes.ok) {
           const publicData = await publicTeamRes.json();
           if (Array.isArray(publicData)) setTeamMembers(publicData);
         }
       }
+
+      await loadStudio();
     } catch (err) {
       console.error("Failed to load docs admin data:", err);
       showToast("Failed to load latest configuration", "error");
@@ -148,37 +244,180 @@ export default function AdminDocsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [API_BASE]);
 
+  /* ─────────── config save (visibility / schedule / duration) ─────────── */
+
   const handleSaveConfig = async () => {
     setSavingConfig(true);
-    const token = getAuthToken();
     try {
+      const body: Record<string, unknown> = {
+        visibility: config.visibility,
+        schedule_start: config.schedule_start ? new Date(config.schedule_start).toISOString() : null,
+        schedule_end: config.schedule_end ? new Date(config.schedule_end).toISOString() : null,
+      };
+      const dur = parseFloat(durationHours);
+      if (!isNaN(dur) && dur > 0) body.duration_hours = dur; // end = start + duration
+
       const res = await fetch(`${API_BASE}/api/docs/config`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          visibility: config.visibility,
-          schedule_start: config.schedule_start ? new Date(config.schedule_start).toISOString() : null,
-          schedule_end: config.schedule_end ? new Date(config.schedule_end).toISOString() : null,
-        }),
+        headers: authedHeaders(),
+        body: JSON.stringify(body),
       });
 
       if (res.ok) {
         const data = await res.json();
-        showToast("Documentation visibility & schedule saved successfully!");
+        showToast("Visibility, schedule & duration saved successfully!");
+        setDurationHours("");
         if (data.updated_at) setConfig((prev) => ({ ...prev, updated_at: data.updated_at }));
+        if (data.schedule_end) setConfig((prev) => ({ ...prev, schedule_end: data.schedule_end.slice(0, 16) }));
       } else {
         const err = await res.json();
         showToast(err.detail || "Failed to update configuration", "error");
       }
-    } catch (err) {
+    } catch {
       showToast("Network error saving configuration", "error");
     } finally {
       setSavingConfig(false);
     }
   };
+
+  /* ─────────── content studio: draft / publish / versions ─────────── */
+
+  const buildDraftPayload = () => {
+    if (!work) return null;
+    return {
+      pitch_deck: work.pitch_deck,
+      tech_docs: work.tech_docs,
+      roadmap: work.roadmap ?? {},
+      changelog: work.changelog ?? [],
+    };
+  };
+
+  const handleSaveDraft = async () => {
+    const payload = buildDraftPayload();
+    if (!payload) return;
+    setStudioBusy("draft");
+    try {
+      const res = await fetch(`${API_BASE}/api/docs/draft`, {
+        method: "PUT",
+        headers: authedHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (res.ok) {
+        showToast("Draft saved — not live until you publish.");
+        await loadStudio();
+      } else {
+        showToast("Failed to save draft", "error");
+      }
+    } catch {
+      showToast("Network error saving draft", "error");
+    } finally {
+      setStudioBusy("idle");
+    }
+  };
+
+  const handlePublish = async () => {
+    const payload = buildDraftPayload();
+    if (!payload) return;
+    setStudioBusy("publish");
+    try {
+      // keep the draft in sync with what is published, then publish
+      const draftRes = await fetch(`${API_BASE}/api/docs/draft`, {
+        method: "PUT",
+        headers: authedHeaders(),
+        body: JSON.stringify(payload),
+      });
+      if (!draftRes.ok) throw new Error("draft save failed");
+
+      const res = await fetch(`${API_BASE}/api/docs/publish`, {
+        method: "POST",
+        headers: authedHeaders(),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        showToast(`Published! ${d.versions ?? "?"} versions recorded.`);
+        await loadStudio();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.detail || "Failed to publish", "error");
+      }
+    } catch {
+      showToast("Network error publishing", "error");
+    } finally {
+      setStudioBusy("idle");
+    }
+  };
+
+  const handleDiscardDraft = async () => {
+    if (!confirm("Discard the saved draft? Live content stays untouched.")) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/docs/draft`, {
+        method: "DELETE",
+        headers: authedHeaders(false),
+      });
+      if (res.ok) {
+        showToast("Draft discarded — live content untouched.");
+        await loadStudio();
+      } else {
+        showToast("Failed to discard draft", "error");
+      }
+    } catch {
+      showToast("Network error discarding draft", "error");
+    }
+  };
+
+  const handleRestoreVersion = async (index: number) => {
+    if (!confirm(`Restore version ${index}? Current live content will be replaced (a new version records this rollback).`)) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/docs/versions/${index}/restore`, {
+        method: "POST",
+        headers: authedHeaders(),
+      });
+      if (res.ok) {
+        showToast(`Restored version ${index}.`);
+        await loadStudio();
+      } else {
+        showToast("Failed to restore version", "error");
+      }
+    } catch {
+      showToast("Network error restoring version", "error");
+    }
+  };
+
+  /* ─────────── content studio field updaters ─────────── */
+
+  const setPitchField = (field: string, value: unknown) =>
+    setWork((prev) =>
+      prev ? { ...prev, pitch_deck: { ...prev.pitch_deck, [field]: value } } : prev
+    );
+
+  const setSection = (key: string, field: "headline" | "points", value: string) =>
+    setWork((prev) => {
+      if (!prev) return prev;
+      const current = (prev.pitch_deck as Record<string, unknown>)[key] as PitchSection | undefined;
+      const updated =
+        field === "points"
+          ? { ...current, points: value.split("\n").map((s) => s.trim()).filter(Boolean) }
+          : { ...current, headline: value };
+      return {
+        ...prev,
+        pitch_deck: { ...prev.pitch_deck, [key]: updated },
+      };
+    });
+
+  const setRoadmapField = (field: "short_term" | "mid_term" | "long_term", value: string) =>
+    setWork((prev) =>
+      prev
+        ? {
+            ...prev,
+            roadmap: {
+              ...prev.roadmap,
+              [field]: value.split("\n").map((s) => s.trim()).filter(Boolean),
+            },
+          }
+        : prev
+    );
+
+  /* ─────────── team CRUD (unchanged behaviour) ─────────── */
 
   const openAddMemberModal = () => {
     setEditingMember(null);
@@ -218,18 +457,11 @@ export default function AdminDocsPage() {
     }
 
     setSavingMember(true);
-    const token = getAuthToken();
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    };
-
     try {
       if (editingMember) {
-        // PUT update
         const res = await fetch(`${API_BASE}/api/docs/team/${editingMember.id}`, {
           method: "PUT",
-          headers,
+          headers: authedHeaders(),
           body: JSON.stringify(memberFormData),
         });
         if (res.ok) {
@@ -240,10 +472,9 @@ export default function AdminDocsPage() {
           showToast("Failed to update member", "error");
         }
       } else {
-        // POST add
         const res = await fetch(`${API_BASE}/api/docs/team`, {
           method: "POST",
-          headers,
+          headers: authedHeaders(),
           body: JSON.stringify(memberFormData),
         });
         if (res.ok) {
@@ -263,14 +494,10 @@ export default function AdminDocsPage() {
 
   const handleDeleteMember = async (member: TeamMember) => {
     if (!confirm(`Are you sure you want to remove ${member.full_name}?`)) return;
-
-    const token = getAuthToken();
     try {
       const res = await fetch(`${API_BASE}/api/docs/team/${member.id}`, {
         method: "DELETE",
-        headers: {
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
+        headers: authedHeaders(false),
       });
       if (res.ok) {
         showToast(`Removed ${member.full_name}`);
@@ -283,23 +510,30 @@ export default function AdminDocsPage() {
     }
   };
 
+  /* ─────────── render ─────────── */
+
+  const features = work?.tech_docs?.feature_matrix ?? [];
+  const changelog = work?.changelog ?? [];
+
   return (
     <div className="space-y-6 max-w-6xl">
-      {/* Toast Notification */}
+      {/* Toast */}
       {feedbackMsg && (
         <div
           className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 text-xs font-semibold ${
-            feedbackMsg.type === "success"
-              ? "bg-emerald-600 text-white"
-              : "bg-rose-600 text-white"
+            feedbackMsg.type === "success" ? "bg-emerald-600 text-white" : "bg-rose-600 text-white"
           }`}
         >
-          {feedbackMsg.type === "success" ? <CheckCircle2 className="w-4 h-4" /> : <AlertCircle className="w-4 h-4" />}
+          {feedbackMsg.type === "success" ? (
+            <CheckCircle2 className="w-4 h-4" />
+          ) : (
+            <AlertCircle className="w-4 h-4" />
+          )}
           <span>{feedbackMsg.text}</span>
         </div>
       )}
 
-      {/* Header & Quick Action Row */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <Eyebrow>LIVE DOCUMENTATION CONTROLLER</Eyebrow>
@@ -307,7 +541,8 @@ export default function AdminDocsPage() {
             Docs, Pitch Deck &amp; Team Manager
           </h1>
           <p className="text-xs text-(--text-muted) mt-1">
-            Configure access control, schedule judging showcase windows, and manage team roster for /docs.
+            Access control, scheduling, content editing with draft/publish + versioning, and team
+            roster for /docs.
           </p>
         </div>
 
@@ -327,10 +562,8 @@ export default function AdminDocsPage() {
         </div>
       </div>
 
-      {/* Grid: Access Controls (Left) + Quick Summary (Right) */}
+      {/* ── Access control + duration ── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left: Access Control & Scheduling Panel */}
         <div className="lg:col-span-7 space-y-6">
           <AdminCard className="p-6 space-y-6">
             <SectionHeading
@@ -338,12 +571,11 @@ export default function AdminDocsPage() {
               sub="Control public availability for hackathon evaluators, investors, and general audience."
             />
 
-            {/* Visibility Selector */}
+            {/* Visibility */}
             <div className="space-y-3">
               <label className="text-xs font-bold text-(--text-primary) uppercase tracking-wider">
                 Visibility Mode
               </label>
-
               <div className="grid grid-cols-3 gap-3">
                 {[
                   {
@@ -373,7 +605,7 @@ export default function AdminDocsPage() {
                     <button
                       key={mode.value}
                       type="button"
-                      onClick={() => setConfig((prev) => ({ ...prev, visibility: mode.value as any }))}
+                      onClick={() => setConfig((prev) => ({ ...prev, visibility: mode.value as DocsConfigState["visibility"] }))}
                       className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${mode.tone} ${
                         isSelected ? mode.activeTone : "opacity-75 hover:opacity-100"
                       }`}
@@ -389,54 +621,65 @@ export default function AdminDocsPage() {
               </div>
             </div>
 
-            {/* Schedule Date & Time Windows */}
+            {/* Schedule + duration */}
             <div className={`space-y-4 pt-4 border-t ${HAIRLINE} ${config.visibility !== "SCHEDULED" ? "opacity-60" : ""}`}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <span className="text-xs font-bold text-(--text-primary) uppercase tracking-wider flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                  Scheduled Availability Window (BST / UTC+6)
+                  <Clock className="w-3.5 h-3.5 text-blue-500" />
+                  Scheduled Availability Window
                 </span>
-                <span className="text-[11px] font-mono text-(--text-muted)">Default: June 10 &ndash; June 14</span>
+                <span className="text-[11px] font-mono text-(--text-muted)">
+                  Default: June 10 &ndash; June 14
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-medium text-(--text-muted)">Start Date &amp; Time</label>
                   <input
                     type="datetime-local"
                     value={config.schedule_start}
                     onChange={(e) => setConfig((prev) => ({ ...prev, schedule_start: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                    className={inputCls}
                   />
                 </div>
-
                 <div className="space-y-1.5">
                   <label className="text-[11px] font-medium text-(--text-muted)">End Date &amp; Time</label>
                   <input
                     type="datetime-local"
                     value={config.schedule_end}
                     onChange={(e) => setConfig((prev) => ({ ...prev, schedule_end: e.target.value }))}
-                    className="w-full px-3 py-2 rounded-xl text-xs bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                    className={inputCls}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-medium text-(--text-muted)">
+                    or Duration (hours)
+                  </label>
+                  <input
+                    type="number"
+                    min="0.5"
+                    step="0.5"
+                    placeholder="e.g. 96"
+                    value={durationHours}
+                    onChange={(e) => setDurationHours(e.target.value)}
+                    className={inputCls}
                   />
                 </div>
               </div>
 
               <p className="text-[11px] text-(--text-muted) leading-relaxed">
-                When set to <strong>Scheduled</strong>, visitors accessing <code>/docs</code> outside this window will be shown a restricted showcase notice. Admins can always preview anytime.
+                When set to <strong>Scheduled</strong>, visitors outside this window see a restricted
+                notice. Duration (if set) overrides the end time: end = start + duration. Admins can
+                always preview anytime.
               </p>
             </div>
 
-            {/* Save Button */}
             <div className="pt-2 flex items-center justify-between">
               <span className="text-[10px] text-(--text-muted)">
                 {config.updated_at ? `Last saved: ${new Date(config.updated_at).toLocaleTimeString()}` : ""}
               </span>
-              <AdminButton
-                variant="solid"
-                onClick={handleSaveConfig}
-                disabled={savingConfig}
-                className="gap-2"
-              >
+              <AdminButton variant="solid" onClick={handleSaveConfig} disabled={savingConfig} className="gap-2">
                 <Save className="w-3.5 h-3.5" />
                 <span>{savingConfig ? "Saving..." : "Save Visibility Settings"}</span>
               </AdminButton>
@@ -444,11 +687,10 @@ export default function AdminDocsPage() {
           </AdminCard>
         </div>
 
-        {/* Right: Status Pill & System Diagnostics */}
+        {/* Status card */}
         <div className="lg:col-span-5 space-y-6">
           <AdminCard className="p-6 space-y-4">
             <SectionHeading title="Live Endpoint Status" sub="Telemetry for the public /docs route" />
-
             <div className="space-y-3 text-xs">
               <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 flex items-center justify-between">
                 <span className="text-(--text-muted)">Current Mode:</span>
@@ -456,7 +698,6 @@ export default function AdminDocsPage() {
                   {config.visibility}
                 </span>
               </div>
-
               <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 flex items-center justify-between">
                 <span className="text-(--text-muted)">Public URL:</span>
                 <Link
@@ -468,12 +709,13 @@ export default function AdminDocsPage() {
                   <ExternalLink className="w-3 h-3" />
                 </Link>
               </div>
-
               <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 flex items-center justify-between">
                 <span className="text-(--text-muted)">Team Roster Count:</span>
-                <span className="font-mono font-bold text-(--text-primary)">
-                  {teamMembers.length} Members
-                </span>
+                <span className="font-mono font-bold text-(--text-primary)">{teamMembers.length} Members</span>
+              </div>
+              <div className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 flex items-center justify-between">
+                <span className="text-(--text-muted)">Saved Versions:</span>
+                <span className="font-mono font-bold text-(--text-primary)">{versions.length}</span>
               </div>
             </div>
 
@@ -483,33 +725,404 @@ export default function AdminDocsPage() {
                 <span>Judging &amp; Evaluation Tip</span>
               </div>
               <p className="leading-relaxed">
-                During competition judging, leave mode set to <strong>ON</strong> or ensure the schedule covers the evaluation date. Any evaluator visiting will see live synchronized metrics.
+                During competition judging, leave mode set to <strong>ON</strong> or ensure the
+                schedule covers the evaluation date. Content edits go live only when you press
+                Publish.
               </p>
             </div>
           </AdminCard>
         </div>
-
       </div>
 
-      {/* Bottom Section: Team Members Showcase Manager */}
+      {/* ── Content Studio: draft / publish / versioning ── */}
       <AdminCard className="p-6 space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-(--text-primary)/10">
           <div>
-            <h2 className="text-sm font-serif font-bold text-(--text-primary)">
-              Team Members Showcase
+            <h2 className="text-sm font-serif font-bold text-(--text-primary) flex items-center gap-2">
+              <FileEdit className="w-4 h-4" />
+              Content Studio — Draft &amp; Publish
             </h2>
+            <p className="text-[11px] text-(--text-muted) mt-0.5">
+              Edit the pitch deck, feature matrix, roadmap and changelog. Save as draft first;
+              publish to make it live on /docs.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            {draftInfo?.saved_at ? (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                Draft saved {new Date(draftInfo.saved_at).toLocaleString()}
+              </span>
+            ) : (
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-(--bg-surface) text-(--text-muted) border border-(--text-primary)/10">
+                No draft
+              </span>
+            )}
+          </div>
+        </div>
+
+        {!work ? (
+          <div className="py-8 text-center text-xs text-(--text-muted)">
+            {loading ? "Loading content…" : "Content unavailable — check admin token / backend."}
+          </div>
+        ) : (
+          <>
+            {/* Pitch basics */}
+            <div className="space-y-4">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-(--text-muted)">
+                Pitch Deck Basics
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {(
+                  [
+                    ["company", "Company"],
+                    ["team_name", "Team name"],
+                    ["tagline", "Tagline"],
+                    ["one_liner", "One-liner"],
+                    ["the_ask", "The Ask"],
+                  ] as const
+                ).map(([field, label]) => (
+                  <div key={field} className="space-y-1">
+                    <label className="text-[11px] font-semibold text-(--text-primary)">{label}</label>
+                    <input
+                      className={inputCls}
+                      value={String((work.pitch_deck as Record<string, unknown>)[field] ?? "")}
+                      onChange={(e) => setPitchField(field, e.target.value || null)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Pitch sections */}
+            <div className="space-y-4 pt-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-(--text-muted)">
+                Pitch Sections (headline + points, one per line)
+              </p>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {PITCH_KEYS.map(({ key, label }) => {
+                  const sec = (work.pitch_deck as Record<string, unknown>)[key] as
+                    | PitchSection
+                    | undefined;
+                  return (
+                    <div
+                      key={key as string}
+                      className="p-4 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 space-y-2"
+                    >
+                      <p className="text-xs font-bold text-(--text-primary)">{label}</p>
+                      <input
+                        className={inputCls}
+                        placeholder="Headline"
+                        value={sec?.headline ?? ""}
+                        onChange={(e) => setSection(key as string, "headline", e.target.value)}
+                      />
+                      <textarea
+                        rows={4}
+                        className={`${inputCls} font-mono text-[11px]`}
+                        placeholder={"One point per line"}
+                        value={(sec?.points ?? []).join("\n")}
+                        onChange={(e) => setSection(key as string, "points", e.target.value)}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Feature matrix */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-(--text-muted)">
+                  Feature Matrix
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setWork((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            tech_docs: {
+                              ...prev.tech_docs,
+                              feature_matrix: [
+                                ...(prev.tech_docs.feature_matrix ?? []),
+                                { name: "", status: "PLANNED", note: "" },
+                              ],
+                            },
+                          }
+                        : prev
+                    )
+                  }
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline"
+                >
+                  <Plus className="w-3 h-3" /> Add feature
+                </button>
+              </div>
+              <div className="space-y-2">
+                {features.map((f, i) => (
+                  <div key={i} className="grid grid-cols-12 gap-2 items-center">
+                    <input
+                      className={`${inputCls} col-span-4`}
+                      placeholder="Feature name"
+                      value={f.name}
+                      onChange={(e) =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.tech_docs.feature_matrix ?? [])];
+                          rows[i] = { ...rows[i], name: e.target.value };
+                          return { ...prev, tech_docs: { ...prev.tech_docs, feature_matrix: rows } };
+                        })
+                      }
+                    />
+                    <select
+                      className={`${inputCls} col-span-2`}
+                      value={f.status}
+                      onChange={(e) =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.tech_docs.feature_matrix ?? [])];
+                          rows[i] = { ...rows[i], status: e.target.value };
+                          return { ...prev, tech_docs: { ...prev.tech_docs, feature_matrix: rows } };
+                        })
+                      }
+                    >
+                      <option value="LIVE">LIVE</option>
+                      <option value="BETA">BETA</option>
+                      <option value="PLANNED">PLANNED</option>
+                    </select>
+                    <input
+                      className={`${inputCls} col-span-5`}
+                      placeholder="Note"
+                      value={f.note ?? ""}
+                      onChange={(e) =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.tech_docs.feature_matrix ?? [])];
+                          rows[i] = { ...rows[i], note: e.target.value };
+                          return { ...prev, tech_docs: { ...prev.tech_docs, feature_matrix: rows } };
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.tech_docs.feature_matrix ?? [])];
+                          rows.splice(i, 1);
+                          return { ...prev, tech_docs: { ...prev.tech_docs, feature_matrix: rows } };
+                        })
+                      }
+                      className="col-span-1 p-1.5 rounded-lg hover:bg-rose-500/10 text-(--text-muted) hover:text-rose-600 justify-self-center"
+                      title="Remove feature"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Roadmap */}
+            <div className="space-y-3 pt-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-(--text-muted)">
+                Roadmap (one item per line)
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                {(
+                  [
+                    ["short_term", "Short term"],
+                    ["mid_term", "Mid term"],
+                    ["long_term", "Long term"],
+                  ] as const
+                ).map(([field, label]) => (
+                  <div key={field} className="space-y-1">
+                    <label className="text-[11px] font-semibold text-(--text-primary)">{label}</label>
+                    <textarea
+                      rows={4}
+                      className={`${inputCls} font-mono text-[11px]`}
+                      value={(work.roadmap?.[field] ?? []).join("\n")}
+                      onChange={(e) => setRoadmapField(field, e.target.value)}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Changelog */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-(--text-muted)">
+                  Changelog
+                </p>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setWork((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            changelog: [...(prev.changelog ?? []), { date: "", version: "", changes: [] }],
+                          }
+                        : prev
+                    )
+                  }
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 hover:underline"
+                >
+                  <Plus className="w-3 h-3" /> Add entry
+                </button>
+              </div>
+              <div className="space-y-2">
+                {changelog.map((entry, i) => (
+                  <div
+                    key={i}
+                    className="p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 grid grid-cols-12 gap-2 items-start"
+                  >
+                    <input
+                      className={`${inputCls} col-span-3`}
+                      placeholder="Version"
+                      value={entry.version ?? ""}
+                      onChange={(e) =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.changelog ?? [])];
+                          rows[i] = { ...rows[i], version: e.target.value };
+                          return { ...prev, changelog: rows };
+                        })
+                      }
+                    />
+                    <input
+                      className={`${inputCls} col-span-3`}
+                      placeholder="Date"
+                      value={entry.date ?? ""}
+                      onChange={(e) =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.changelog ?? [])];
+                          rows[i] = { ...rows[i], date: e.target.value };
+                          return { ...prev, changelog: rows };
+                        })
+                      }
+                    />
+                    <textarea
+                      rows={2}
+                      className={`${inputCls} col-span-5 font-mono text-[11px]`}
+                      placeholder="Changes, one per line"
+                      value={(entry.changes ?? []).join("\n")}
+                      onChange={(e) =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.changelog ?? [])];
+                          rows[i] = {
+                            ...rows[i],
+                            changes: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean),
+                          };
+                          return { ...prev, changelog: rows };
+                        })
+                      }
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setWork((prev) => {
+                          if (!prev) return prev;
+                          const rows = [...(prev.changelog ?? [])];
+                          rows.splice(i, 1);
+                          return { ...prev, changelog: rows };
+                        })
+                      }
+                      className="col-span-1 p-1.5 rounded-lg hover:bg-rose-500/10 text-(--text-muted) hover:text-rose-600 justify-self-center"
+                      title="Remove entry"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-3 border-t border-(--text-primary)/10 flex flex-wrap items-center gap-2">
+              <AdminButton
+                variant="outline"
+                onClick={handleSaveDraft}
+                disabled={studioBusy !== "idle"}
+              >
+                <Save className="w-3.5 h-3.5" />
+                <span>{studioBusy === "draft" ? "Saving draft…" : "Save Draft"}</span>
+              </AdminButton>
+              <AdminButton
+                variant="solid"
+                onClick={handlePublish}
+                disabled={studioBusy !== "idle"}
+                className="gap-1.5"
+              >
+                <Rocket className="w-3.5 h-3.5" />
+                <span>{studioBusy === "publish" ? "Publishing…" : "Publish Live"}</span>
+              </AdminButton>
+              <AdminButton variant="outline" onClick={handleDiscardDraft}>
+                <X className="w-3.5 h-3.5" />
+                <span>Discard Draft</span>
+              </AdminButton>
+            </div>
+          </>
+        )}
+      </AdminCard>
+
+      {/* ── Versions ── */}
+      <AdminCard className="p-6 space-y-4">
+        <div className="flex items-center justify-between pb-2 border-b border-(--text-primary)/10">
+          <div>
+            <h2 className="text-sm font-serif font-bold text-(--text-primary) flex items-center gap-2">
+              <History className="w-4 h-4" />
+              Version History
+            </h2>
+            <p className="text-[11px] text-(--text-muted) mt-0.5">
+              Last 10 publishes. Restore rolls content back (the rollback itself is recorded).
+            </p>
+          </div>
+        </div>
+        {versions.length === 0 ? (
+          <p className="text-xs text-(--text-muted) py-4 text-center">
+            No versions yet — publish something to create the first snapshot.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {versions.map((v) => (
+              <div
+                key={v.index}
+                className="flex items-center justify-between gap-3 p-3 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10"
+              >
+                <div className="text-xs">
+                  <span className="font-mono font-bold text-(--text-primary)">v{v.index}</span>
+                  <span className="text-(--text-muted) ml-2">
+                    {v.at ? new Date(v.at).toLocaleString() : "—"}
+                    {v.by ? ` · ${v.by}` : ""}
+                  </span>
+                </div>
+                <AdminButton variant="outline" onClick={() => handleRestoreVersion(v.index)}>
+                  Restore
+                </AdminButton>
+              </div>
+            ))}
+          </div>
+        )}
+      </AdminCard>
+
+      {/* ── Team showcase ── */}
+      <AdminCard className="p-6 space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-(--text-primary)/10">
+          <div>
+            <h2 className="text-sm font-serif font-bold text-(--text-primary)">Team Members Showcase</h2>
             <p className="text-[11px] text-(--text-muted) mt-0.5">
               Add or update team profiles displayed in the YC Pitch Deck &amp; Team section.
             </p>
           </div>
-
           <AdminButton variant="solid" onClick={openAddMemberModal} className="gap-1.5">
             <Plus className="w-3.5 h-3.5" />
             <span>Add Team Member</span>
           </AdminButton>
         </div>
 
-        {/* Team Members Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {teamMembers.map((member) => (
             <div
@@ -529,9 +1142,7 @@ export default function AdminDocsPage() {
                 </div>
 
                 <div className="text-center space-y-0.5">
-                  <div className="font-bold text-xs text-(--text-primary) truncate">
-                    {member.full_name}
-                  </div>
+                  <div className="font-bold text-xs text-(--text-primary) truncate">{member.full_name}</div>
                   <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
                     {member.role}
                   </div>
@@ -564,13 +1175,13 @@ export default function AdminDocsPage() {
 
           {teamMembers.length === 0 && !loading && (
             <div className="col-span-full py-10 text-center text-xs text-(--text-muted)">
-              No custom team members added yet. Default demo members are being rendered on /docs.
+              No team members added yet — add real members so judges see the actual team on /docs.
             </div>
           )}
         </div>
       </AdminCard>
 
-      {/* Team Member Add/Edit Modal */}
+      {/* Team modal */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
           <div className="bg-(--bg-card) border border-(--text-primary)/15 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -593,10 +1204,10 @@ export default function AdminDocsPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Tasin Ahmed"
+                  placeholder="e.g. Mahmudul Hasan Tasin"
                   value={memberFormData.full_name || ""}
                   onChange={(e) => setMemberFormData((prev) => ({ ...prev, full_name: e.target.value }))}
-                  className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                  className={inputCls}
                 />
               </div>
 
@@ -605,10 +1216,10 @@ export default function AdminDocsPage() {
                 <input
                   type="text"
                   required
-                  placeholder="e.g. Lead AI Architect"
+                  placeholder="e.g. Founder & Lead Engineer"
                   value={memberFormData.role || ""}
                   onChange={(e) => setMemberFormData((prev) => ({ ...prev, role: e.target.value }))}
-                  className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                  className={inputCls}
                 />
               </div>
 
@@ -617,10 +1228,10 @@ export default function AdminDocsPage() {
                   <label className="font-semibold text-(--text-primary)">Email Address</label>
                   <input
                     type="email"
-                    placeholder="tasin@domain.com"
+                    placeholder="name@domain.com"
                     value={memberFormData.email || ""}
                     onChange={(e) => setMemberFormData((prev) => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                    className={inputCls}
                   />
                 </div>
 
@@ -629,8 +1240,10 @@ export default function AdminDocsPage() {
                   <input
                     type="number"
                     value={memberFormData.display_order ?? 0}
-                    onChange={(e) => setMemberFormData((prev) => ({ ...prev, display_order: parseInt(e.target.value) || 0 }))}
-                    className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                    onChange={(e) =>
+                      setMemberFormData((prev) => ({ ...prev, display_order: parseInt(e.target.value) || 0 }))
+                    }
+                    className={inputCls}
                   />
                 </div>
               </div>
@@ -642,7 +1255,7 @@ export default function AdminDocsPage() {
                   placeholder="https://... image link"
                   value={memberFormData.image_url || ""}
                   onChange={(e) => setMemberFormData((prev) => ({ ...prev, image_url: e.target.value }))}
-                  className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                  className={inputCls}
                 />
               </div>
 
@@ -653,7 +1266,7 @@ export default function AdminDocsPage() {
                   placeholder="Brief background and expertise..."
                   value={memberFormData.bio || ""}
                   onChange={(e) => setMemberFormData((prev) => ({ ...prev, bio: e.target.value }))}
-                  className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                  className={inputCls}
                 />
               </div>
 
@@ -665,7 +1278,7 @@ export default function AdminDocsPage() {
                     placeholder="https://linkedin.com/in/..."
                     value={memberFormData.linkedin_url || ""}
                     onChange={(e) => setMemberFormData((prev) => ({ ...prev, linkedin_url: e.target.value }))}
-                    className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                    className={inputCls}
                   />
                 </div>
 
@@ -676,7 +1289,7 @@ export default function AdminDocsPage() {
                     placeholder="https://github.com/..."
                     value={memberFormData.github_url || ""}
                     onChange={(e) => setMemberFormData((prev) => ({ ...prev, github_url: e.target.value }))}
-                    className="w-full px-3 py-1.5 rounded-xl bg-(--bg-surface) border border-(--text-primary)/10 text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-(--text-primary)"
+                    className={inputCls}
                   />
                 </div>
               </div>
