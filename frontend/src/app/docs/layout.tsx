@@ -1,15 +1,34 @@
 import type { Metadata } from "next";
+import { Fraunces, Karla } from "next/font/google";
+import "./../globals.css";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  display: "swap",
+});
+
+const karla = Karla({
+  subsets: ["latin"],
+  variable: "--font-karla",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
-  title: "Documentation & Pitch Deck | Advotech Copilot",
-  description:
-    "Live YC-style pitch deck, deep technical whitepaper, and real-time system dashboard for Advotech Copilot — AI-native legal intelligence and contract compliance auditor for Bangladesh Law.",
+  title: "Advotech Copilot | Pitch Deck",
+  description: "AI-powered Legal Intelligence for the Global South",
 };
 
-export default function DocsLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <div className="min-h-screen bg-[var(--bg-primary)] text-[var(--text-primary)] selection:bg-[#1D1D1B] selection:text-white dark:selection:bg-white dark:selection:text-[#1D1D1B]">
-      {children}
-    </div>
+    <html lang="en" className={`${fraunces.variable} ${karla.variable}`}>
+      <body className="bg-[#FBF4EC] text-[#5C4F43] font-sans antialiased selection:bg-[#F6E2D7] selection:text-[#2E2117]">
+        {children}
+      </body>
+    </html>
   );
 }
