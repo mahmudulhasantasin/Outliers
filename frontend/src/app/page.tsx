@@ -1276,14 +1276,42 @@ export default function LandingAndAuthPage() {
           <FadeContent effect="focus" duration={0.9} threshold={0.15}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               {[
-                { to: 99.4, decimals: 1, suffix: "%", label: isBn ? "সংবিধিবদ্ধ ধারা নিশ্চয়তা" : "Statutory Accuracy", sub: "Grounded in bdlaws" },
-                { to: 1200, decimals: 0, suffix: "+", label: isBn ? "চুক্তি সফলভাবে অডিট" : "Contracts Audited", sub: "Commercial & Civil" },
-                { to: 98, decimals: 0, suffix: "%", label: isBn ? "আইনজীবী ও ক্লায়েন্ট সন্তুষ্টি" : "Counsel Satisfaction", sub: "Supreme Court Verified" },
-                { to: 100, decimals: 0, suffix: "%", label: isBn ? "সার্বভৌম ডেটা গোপনীয়তা" : "PII Redaction", sub: "Client-Side Zero Leakage" },
+                {
+                  to: 99.4,
+                  decimals: 1,
+                  prefix: "",
+                  suffix: "%",
+                  label: isBn ? "সংবিধিবদ্ধ সাইটেশন নির্ভুলতা" : "Citation Accuracy",
+                  sub: isBn ? "লাইভ MCP ও bdlaws যাচাই" : "Grounded in bdlaws & Live MCP",
+                },
+                {
+                  to: 35000,
+                  decimals: 0,
+                  prefix: "",
+                  suffix: "+",
+                  label: isBn ? "বাংলাদেশ সংবিধিবদ্ধ আইন" : "Statutes Ingested",
+                  sub: isBn ? "Qdrant ক্লাউডে ভেক্টরাইজড" : "Vectorized in Qdrant Cloud",
+                },
+                {
+                  to: 30,
+                  decimals: 0,
+                  prefix: "< ",
+                  suffix: "s",
+                  label: isBn ? "গড় চুক্তি অডিট সময়" : "Avg. Audit Latency",
+                  sub: isBn ? "ফুল AST ক্লজ রিস্ক পাইপলাইন" : "Full AST Clause Risk Pipeline",
+                },
+                {
+                  to: 100,
+                  decimals: 0,
+                  prefix: "",
+                  suffix: "%",
+                  label: isBn ? "সার্বভৌম ডেটা গোপনীয়তা" : "Client-Side Privacy",
+                  sub: isBn ? "ক্লায়েন্ট সাইড জিরো লিকেজ" : "Client-Side Zero Data Leakage",
+                },
               ].map((s, idx) => (
                 <div key={idx} className={`p-6 rounded-2xl bg-[var(--bg-card)] border ${borderClass} shadow-xs hover:border-[var(--text-primary)]/20 transition-all`}>
                   <div className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight mb-2 text-[var(--text-primary)] tabular-nums">
-                    <CountUp to={s.to} decimals={s.decimals} suffix={s.suffix} duration={1.2} />
+                    <CountUp to={s.to} decimals={s.decimals} prefix={s.prefix} suffix={s.suffix} duration={1.2} />
                   </div>
                   <div className="text-xs font-semibold text-[var(--text-primary)] uppercase tracking-wider mb-1">
                     {s.label}
