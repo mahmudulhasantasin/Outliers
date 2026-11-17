@@ -276,9 +276,11 @@ export async function getContractHistory(
 
 /** Get a signed download URL for a contract (GET /api/contracts/{contract_id}/download) */
 export async function getContractDownloadUrl(
-  contractId: string | number
+  contractId: string | number,
+  original: boolean = false
 ): Promise<DownloadUrlResponse> {
-  const data = await api.get<any>(`/api/contracts/${contractId}/download`);
+  const query = original ? "?original=true" : "";
+  const data = await api.get<any>(`/api/contracts/${contractId}/download${query}`);
   return {
     download_url: data?.download_url ?? "",
     is_lawyer_verified: Boolean(data?.is_lawyer_verified),
@@ -575,6 +577,10 @@ export interface LawyerQueueItem {
   contract_id: string | number;
   file_name?: string;
   contract_title?: string;
+  original_filename?: string;
+  file_size_mb?: number;
+  file_mime_type?: string;
+  file_path?: string;
   domain?: string;
   overall_risk?: "LOW" | "MODERATE" | "HIGH" | "CRITICAL";
   priority?: "NORMAL" | "MEDIUM" | "HIGH" | "URGENT";
@@ -585,6 +591,7 @@ export interface LawyerQueueItem {
   expires_at?: string;
   offer_expires_at?: string;
   time_left_seconds?: number;
+  clauses_analysis?: any[];
 }
 
 export interface ActiveTask {
@@ -592,6 +599,10 @@ export interface ActiveTask {
   contract_id: string | number;
   file_name?: string;
   contract_title?: string;
+  original_filename?: string;
+  file_size_mb?: number;
+  file_mime_type?: string;
+  file_path?: string;
   domain?: string;
   overall_risk?: string;
   priority?: string;
