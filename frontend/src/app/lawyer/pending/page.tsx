@@ -185,6 +185,8 @@ export default function LawyerPendingPage() {
     timestamp: string;
     barNo: string;
   } | null>(null);
+  const [deliverToClient, setDeliverToClient] = useState<boolean>(true);
+  const [isSavingDraft, setIsSavingDraft] = useState<boolean>(false);
 
   const loadQueueAndTasks = useCallback(async () => {
     if (!user || user.role !== "lawyer" || !isVerified) return;
@@ -306,6 +308,9 @@ export default function LawyerPendingPage() {
         if (raw) {
           try {
             const parsed = JSON.parse(raw);
+            if (parsed.advocate_notes) {
+              setAdvocateNotes(parsed.advocate_notes);
+            }
             const clausesArr = parsed.clauses || parsed.clauses_analysis;
             if (Array.isArray(clausesArr) && clausesArr.length > 0) {
               resolvedClauses = clausesArr.map((c: any, idx: number) => ({
@@ -376,6 +381,7 @@ export default function LawyerPendingPage() {
     setSignedPdfPath("");
     setSealMethod("digital");
     setSealedCertInfo(null);
+    setDeliverToClient(true);
   };
 
   const handleDownloadOriginalFile = async (contractId?: string) => {
@@ -506,6 +512,51 @@ export default function LawyerPendingPage() {
     }
   };
 
+  const handleSaveDraft = () => {
+    if (!selectedContract) return;
+    setIsSavingDraft(true);
+    try {
+      if (typeof window !== "undefined") {
+        const auditKeys = [
+          `contract_audit_${selectedContract.contractId || selectedContract.id}`,
+          selectedContract.contractId ? `contract_audit_${selectedContract.contractId}` : null,
+          selectedContract.id ? `contract_audit_${selectedContract.id}` : null,
+        ].filter(Boolean) as string[];
+
+        for (const k of auditKeys) {
+          const existingAudit = localStorage.getItem(k);
+          if (existingAudit) {
+            try {
+              const parsed = JSON.parse(existingAudit);
+              parsed.clauses = editableClauses;
+              parsed.advocate_notes = advocateNotes;
+              parsed.draft_saved_at = new Date().toISOString();
+              localStorage.setItem(k, JSON.stringify(parsed));
+            } catch {}
+          }
+        }
+
+        // Also update in activeTasks
+        setActiveTasks((prev) =>
+          prev.map((t) =>
+            t.id === selectedContract.id
+              ? { ...t, clauses: editableClauses }
+              : t
+          )
+        );
+      }
+      toast.success(
+        isBn
+          ? "খসড়া সফলভাবে সংরক্ষণ করা হয়েছে! ক্লায়েন্টকে পাঠানোর পূর্বে আপনি পরবর্তীতে এটি পুনরায় সম্পাদনা করতে পারবেন।"
+          : "Draft saved! You can continue revising before final delivery to client."
+      );
+    } catch {
+      toast.error(isBn ? "খসড়া সংরক্ষণ ব্যর্থ হয়েছে।" : "Failed to save draft.");
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
   const handleApproveAndSeal = async () => {
     if (!selectedContract) return;
     
@@ -525,17 +576,19 @@ export default function LawyerPendingPage() {
     const sealTimestamp = new Date().toISOString();
     const barEnrollment = user?.lawyerProfile?.barCouncilNo || "SC-DH-48912/2016";
 
-    try {
-      await submitReview(selectedContract.id, {
-        notes: advocateNotes || (isBn ? "সংবিধিবদ্ধ অডিট ও সুপ্রিম কোর্ট আইনজীবী সিলমোহর সম্পন্ন।" : "Statutory audit review and advocate seal verified."),
-        lawyer_notes: advocateNotes || (isBn ? "সংবিধিবদ্ধ অডিট ও সুপ্রিম কোর্ট আইনজীবী সিলমোহর সম্পন্ন।" : "Statutory audit review and advocate seal verified."),
-        verified: true,
-        updated_clauses: editableClauses,
-        signature_url: signaturePath || `digital_seal_${user?.id || 'advocate'}_${Date.now()}`,
-        signed_pdf_url: signedPdfPath || (selectedContract.filePath || ""),
-      });
-    } catch (err: unknown) {
-      console.warn("Submit review note:", err);
+    if (deliverToClient) {
+      try {
+        await submitReview(selectedContract.id, {
+          notes: advocateNotes || (isBn ? "সংবিধিবদ্ধ অডিট ও সুপ্রিম কোর্ট আইনজীবী সিলমোহর সম্পন্ন।" : "Statutory audit review and advocate seal verified."),
+          lawyer_notes: advocateNotes || (isBn ? "সংবিধিবদ্ধ অডিট ও সুপ্রিম কোর্ট আইনজীবী সিলমোহর সম্পন্ন।" : "Statutory audit review and advocate seal verified."),
+          verified: true,
+          updated_clauses: editableClauses,
+          signature_url: signaturePath || `digital_seal_${user?.id || 'advocate'}_${Date.now()}`,
+          signed_pdf_url: signedPdfPath || (selectedContract.filePath || ""),
+        });
+      } catch (err: unknown) {
+        console.warn("Submit review note:", err);
+      }
     }
 
     setTimeout(() => {
@@ -561,13 +614,14 @@ export default function LawyerPendingPage() {
           verifiedDateBn: new Date().toLocaleDateString("bn-BD"),
           statuteEn: selectedContract.statuteEn,
           statuteBn: selectedContract.statuteBn,
-          advocateName: user?.name ? (user.name.startsWith("Adv") ? user.name : `Adv. ${user.name}`) : "Advocate",
+          advocateName: user?.name ? (user.name.startsWith("Adv") ? user.name : `Adv. ${user.name}`) : "Advocate Tanvir Ahmed",
           barCouncilNo: barEnrollment,
           notes: advocateNotes || (isBn ? "আইনগত পর্যালোচনা সম্পন্ন।" : "Statutory review completed."),
           status: "verified",
           updated_clauses: editableClauses,
           sealReference: sealRefId,
           sha256Hash: mockHash,
+          deliveredToClient: deliverToClient,
         };
         localStorage.setItem(userArchiveKey, JSON.stringify([newVerified, ...archive]));
 
@@ -583,21 +637,43 @@ export default function LawyerPendingPage() {
             try {
               const parsed = JSON.parse(existingAudit);
               parsed.clauses = editableClauses;
-              parsed.is_lawyer_verified = true;
+              if (deliverToClient) {
+                parsed.is_lawyer_verified = true;
+                parsed.hitl_status = "COMPLETED";
+              }
               parsed.seal_reference = sealRefId;
               parsed.sha256_hash = mockHash;
+              parsed.advocate_notes = advocateNotes;
+              parsed.advocate_name = user?.name ? (user.name.startsWith("Adv") ? user.name : `Adv. ${user.name}`) : "Adv. Tanvir Ahmed";
+              parsed.bar_council_no = barEnrollment;
+              parsed.verified_at = sealTimestamp;
               localStorage.setItem(k, JSON.stringify(parsed));
             } catch {}
           }
         }
 
-        // [UPDATED] FIX: Cast JSON.parse result to PendingContract[]
-        const dispatched = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]") as PendingContract[];
-        localStorage.setItem("dispatched_pending_contracts", JSON.stringify(dispatched.filter((d) => d.id !== selectedContract.id)));
+        if (deliverToClient) {
+          // [UPDATED] FIX: Cast JSON.parse result to PendingContract[]
+          const dispatched = JSON.parse(localStorage.getItem("dispatched_pending_contracts") || "[]") as PendingContract[];
+          localStorage.setItem("dispatched_pending_contracts", JSON.stringify(dispatched.filter((d) => d.id !== selectedContract.id)));
+        }
       }
 
-      // Also remove from activeTasks in view
-      setActiveTasks((prev) => prev.filter((p) => p.id !== selectedContract.id));
+      if (deliverToClient) {
+        // Also remove from activeTasks in view
+        setActiveTasks((prev) => prev.filter((p) => p.id !== selectedContract.id));
+        toast.success(
+          isBn
+            ? "চুক্তি সংবিধিবদ্ধ সিলমোহরযুক্ত এবং সফলভাবে ক্লায়েন্টের ভল্টে হস্তান্তর করা হয়েছে!"
+            : "Contract sealed and delivered directly to the client's vault!"
+        );
+      } else {
+        toast.info(
+          isBn
+            ? "সিলমোহর সম্পন্ন হয়েছে (ক্লায়েন্টকে পাঠানোর অপশনটি বন্ধ ছিল)। এটি ড্রাফট মোডে রক্ষিত রয়েছে।"
+            : "Sealed internally. Preserved in draft mode without dispatching to client."
+        );
+      }
     }, 800);
   };
 
@@ -634,7 +710,77 @@ export default function LawyerPendingPage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+      {/* 1. DEDICATED PRINT / PDF EXPORT CONTAINER (INTERNATIONAL GRADE CLEAN A4 PAPER) */}
+      <div className="legal-print-only w-full bg-white text-black p-8 print-clean-paper">
+        {selectedContract ? (
+          <div className="space-y-6">
+            {/* Supreme Court Bar Letterhead */}
+            <div className="pb-4 border-b-2 border-neutral-900 flex justify-between items-baseline text-xs font-mono uppercase tracking-widest text-neutral-800">
+              <span className="font-bold">BANGLADESH SUPREME COURT BAR · STATUTORY AUDIT REPORT</span>
+              <span>REF: {sealedCertInfo?.sealRef || `BD-SEAL-${selectedContract.id}`}</span>
+            </div>
+
+            {/* Official Digital Seal Header Card */}
+            <div className="p-4 rounded-xl border-2 border-neutral-900 bg-neutral-50 flex items-center justify-between text-neutral-900 break-inside-avoid print-avoid-break">
+              <div>
+                <p className="font-bold text-sm uppercase tracking-wide">
+                  {isBn ? "বাংলাদেশ বার কাউন্সিল সংবিধিবদ্ধ অডিট ও অ্যাডভোকেট ডিজিটাল সিলমোহর" : "BANGLADESH BAR COUNCIL STATUTORY AUDIT & ADVOCATE DIGITAL SEAL"}
+                </p>
+                <p className="text-xs text-neutral-800 mt-1">
+                  Audited & Certified by {user?.name || "Adv. Tanvir Ahmed"}, Supreme Court of Bangladesh
+                </p>
+                <p className="text-[11px] font-mono text-neutral-600 mt-0.5">
+                  Enrollment: {user?.lawyerProfile?.barCouncilNo || "SC-DH-48912/2016"} · High Court Division
+                </p>
+                {sealedCertInfo?.hash && (
+                  <p className="text-[10px] font-mono text-neutral-500 mt-0.5">
+                    SHA-256 Digest: {sealedCertInfo.hash}
+                  </p>
+                )}
+                {advocateNotes && (
+                  <div className="mt-2 text-xs text-neutral-800 italic bg-white p-2.5 rounded border border-neutral-300">
+                    <span className="font-semibold not-italic block text-[10px] uppercase text-neutral-600 mb-0.5">
+                      {isBn ? "আইনজীবীর মন্তব্য ও রায়:" : "Advocate Statutory Advisory Notes:"}
+                    </span>
+                    &ldquo;{advocateNotes}&rdquo;
+                  </div>
+                )}
+              </div>
+
+              <div className="text-right font-mono text-[10px] text-neutral-700 shrink-0 ml-4 flex flex-col items-center">
+                <div className="w-20 h-20 border-2 border-emerald-800 text-emerald-900 p-1 mb-1 flex flex-col items-center justify-center font-bold text-center">
+                  <span className="text-[8px] tracking-wider">BANGLADESH</span>
+                  <span className="text-[12px] font-black">SEALED</span>
+                  <span className="text-[8px]">ADVOCATE</span>
+                </div>
+                <div>{new Date().toLocaleDateString("en-GB")}</div>
+              </div>
+            </div>
+
+            {/* Full Markdown Audit Content */}
+            <MarkdownViewer
+              content={generateContractAuditMarkdown(
+                contractIdForMarkdown,
+                isBn ? "bn" : "en",
+                {
+                  advocateName: user?.name || "Adv. Tanvir Ahmed, Supreme Court of Bangladesh",
+                  barCouncilNo: user?.lawyerProfile?.barCouncilNo || "SC-DH-48912/2016",
+                  verifiedAt: sealedCertInfo ? new Date(sealedCertInfo.timestamp).toLocaleString() : new Date().toLocaleString(),
+                  sealApplied: true,
+                  advocateNotes: advocateNotes || "Statutory audit verified and approved under Laws of Bangladesh.",
+                },
+                {
+                  ...selectedContract,
+                  clauses_analysis: editableClauses,
+                }
+              )}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {/* 2. INTERACTIVE SCREEN UI */}
+      <div className="legal-screen-only max-w-5xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8 font-sans">
           <div>
@@ -931,10 +1077,11 @@ export default function LawyerPendingPage() {
             </div>
           </>
         )}
+      </div>
 
-        {/* FULL ADVOCATE STATUTORY VERIFICATION & MARKDOWN MODAL */}
-        {selectedContract && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+      {/* FULL ADVOCATE STATUTORY VERIFICATION & MARKDOWN MODAL */}
+      {selectedContract && (
+        <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
             <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl border ${borderClass} bg-(--bg-card) shadow-2xl overflow-hidden`}>
               
               <div className="p-3.5 sm:p-5 border-b border-(--text-primary)/10 flex items-center justify-between gap-3 bg-(--bg-surface)">
@@ -1325,6 +1472,28 @@ export default function LawyerPendingPage() {
                       />
                     </div>
 
+                    {/* Delivery Option to Client Vault */}
+                    <div className="p-4 rounded-xl border border-(--text-primary)/15 bg-(--bg-card) space-y-2">
+                      <label className="flex items-start gap-3 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={deliverToClient}
+                          onChange={(e) => setDeliverToClient(e.target.checked)}
+                          className="mt-0.5 rounded text-emerald-600 w-4 h-4 cursor-pointer"
+                        />
+                        <div className="space-y-0.5">
+                          <span className="text-xs font-bold text-(--text-primary) block">
+                            {isBn ? "ক্লায়েন্টের ভল্টে সরাসরি পাঠান ও অবহিত করুন" : "Deliver Verified Document to Client Vault"}
+                          </span>
+                          <p className="text-[11px] text-(--text-muted) leading-relaxed">
+                            {isBn
+                              ? "সিলমোহর প্রয়োগের সাথে সাথে ক্লায়েন্টের সংগ্রহশালায় (Client Archive) 'আইনজীবী দ্বারা যাচাইকৃত' সিলমোহর ও সংশোধিত ক্লজসহ তাৎক্ষণিকভাবে যুক্ত হবে এবং ক্লায়েন্ট সংশোধিত রেডলাইন চুক্তি ও অডিট রিপোর্ট ডাউনলোড করতে পারবেন।"
+                              : "Upon sealing, the contract will be delivered to the client's archive with the 'Verified by Lawyer' seal, amended clauses, and redlined DOCX."}
+                          </p>
+                        </div>
+                      </label>
+                    </div>
+
                     {/* Official Sealed Certificate Card (International Grade) */}
                     {sealedSuccess && sealedCertInfo && (
                       <div className="p-5 rounded-2xl border-2 border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-100 space-y-4 animate-in fade-in zoom-in-95">
@@ -1393,7 +1562,7 @@ export default function LawyerPendingPage() {
                 )}
               </div>
 
-              <div className="p-4 sm:p-5 border-t border-(--text-primary)/10 flex items-center justify-between bg-(--bg-surface)">
+              <div className="p-4 sm:p-5 border-t border-(--text-primary)/10 flex flex-wrap sm:flex-nowrap items-center justify-between gap-3 bg-(--bg-surface)">
                 <button
                   type="button"
                   onClick={() => setSelectedContract(null)}
@@ -1402,7 +1571,19 @@ export default function LawyerPendingPage() {
                   {isBn ? "বন্ধ করুন" : "Close"}
                 </button>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                  {/* Save Draft Button */}
+                  <button
+                    type="button"
+                    onClick={handleSaveDraft}
+                    disabled={isSavingDraft || isSealing}
+                    className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold border ${borderClass} bg-(--bg-card) hover:bg-(--text-primary)/5 text-(--text-primary) flex items-center gap-1.5 transition-colors cursor-pointer disabled:opacity-50`}
+                    title={isBn ? "বর্তমান ধারা ও মন্তব্যগুলো খসড়া হিসেবে সংরক্ষণ করুন" : "Save clauses and notes as draft"}
+                  >
+                    <FileText className="w-3.5 h-3.5 text-amber-500" />
+                    <span>{isBn ? "খসড়া সংরক্ষণ" : "Save Draft"}</span>
+                  </button>
+
                   {modalTab !== "signoff" ? (
                     <button
                       type="button"
@@ -1421,9 +1602,9 @@ export default function LawyerPendingPage() {
                       {isSealing ? (
                         <><div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" /><span>{isBn ? "সিলমোহর প্রয়োগ হচ্ছে..." : "Applying Statutory Seal..."}</span></>
                       ) : sealedSuccess ? (
-                        <><Check className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদিত ও সিলমোহরযুক্ত" : "Approved & Sealed"}</span></>
+                        <><Check className="w-3.5 h-3.5" /><span>{isBn ? (deliverToClient ? "অনুমোদিত ও ক্লায়েন্টকে পাঠানো সম্পন্ন" : "অনুমোদিত ও ড্রাফটে রক্ষিত") : (deliverToClient ? "Approved & Delivered to Client" : "Approved & Stored in Draft")}</span></>
                       ) : (
-                        <><ShieldCheck className="w-3.5 h-3.5" /><span>{isBn ? "অনুমোদন ও সিলমোহর দিন" : "Approve & Seal"}</span></>
+                        <><ShieldCheck className="w-3.5 h-3.5" /><span>{isBn ? (deliverToClient ? "অনুমোদন ও ক্লায়েন্টকে হস্তান্তর" : "অভ্যন্তরীণ অনুমোদন ও সিল") : (deliverToClient ? "Approve & Deliver to Client" : "Approve & Seal Internally")}</span></>
                       )}
                     </button>
                   )}
@@ -1433,7 +1614,6 @@ export default function LawyerPendingPage() {
             </div>
           </div>
         )}
-      </div>
     </AppShell>
   );
 }

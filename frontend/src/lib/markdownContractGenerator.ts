@@ -77,6 +77,8 @@ export function generateContractAuditMarkdown(
     compliantCount?: number;
     isLawyerVerified?: boolean;
     hitlStatus?: string;
+    clauses?: unknown[];
+    clauses_analysis?: unknown[];
   }
 ): string {
   const isBn = language === "bn";
@@ -525,6 +527,9 @@ export function generateRealContractAuditMarkdown(
     md += `- **Bangladesh Bar Council Enrollment No:** \`${advocateVerification.barCouncilNo}\`\n`;
     md += `- **Verification Timestamp:** ${advocateVerification.verifiedAt}\n`;
     md += `- **Advocate Seal Status:** \`APPROVED & DIGITALLY SEALED\`\n`;
+    if (advocateVerification?.advocateNotes) {
+      md += `\n**Advocate Statutory Advisory Notes:**\n> "${advocateVerification.advocateNotes}"\n\n`;
+    }
   } else {
     md += `> [!IMPORTANT]\n`;
     md += `> **PENDING ADVOCATE REVIEW**\n`;
