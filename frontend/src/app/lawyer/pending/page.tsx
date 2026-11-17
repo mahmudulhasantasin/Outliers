@@ -607,6 +607,7 @@ export default function LawyerPendingPage() {
         const archive = JSON.parse(localStorage.getItem(userArchiveKey) || "[]") as Record<string, unknown>[];
         const newVerified = {
           id: `ver-${selectedContract.id}`,
+          contractId: selectedContract.contractId || selectedContract.id,
           clientName: selectedContract.clientName,
           titleEn: selectedContract.titleEn,
           titleBn: selectedContract.titleBn,
@@ -623,7 +624,11 @@ export default function LawyerPendingPage() {
           sha256Hash: mockHash,
           deliveredToClient: deliverToClient,
         };
-        localStorage.setItem(userArchiveKey, JSON.stringify([newVerified, ...archive]));
+        localStorage.setItem(userArchiveKey, JSON.stringify([newVerified, ...archive.filter((a: any) => a?.id !== newVerified.id)]));
+        if (userArchiveKey !== "verified_contracts_archive") {
+          const globalArchive = JSON.parse(localStorage.getItem("verified_contracts_archive") || "[]") as Record<string, unknown>[];
+          localStorage.setItem("verified_contracts_archive", JSON.stringify([newVerified, ...globalArchive.filter((a: any) => a?.id !== newVerified.id)]));
+        }
 
         const auditKeys = [
           `contract_audit_${selectedContract.contractId || selectedContract.id}`,

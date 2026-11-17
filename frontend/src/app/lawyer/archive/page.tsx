@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import AppShell from "@/components/layout/AppShell";
 import { useLanguage } from "@/context/LanguageContext";
@@ -16,6 +16,8 @@ import {
   PayoutMethodType,
   EarningsDashboard,
   WithdrawalRequest,
+  getCompletedTasks,
+  downloadRedlineDocx,
 } from "@/lib/apiServices";
 import {
   Search,
@@ -42,6 +44,7 @@ import {
 interface ArchivedVerification {
   id: string;
   clientName: string;
+  clientPhone?: string;
   titleEn: string;
   titleBn: string;
   verifiedDateEn: string;
@@ -53,6 +56,11 @@ interface ArchivedVerification {
   notes?: string;
   contractId?: string;
   status: "verified";
+  payoutBdt?: number;
+  clauses_analysis?: any[];
+  updated_clauses?: any[];
+  sealReference?: string;
+  sha256Hash?: string;
 }
 
 export default function LawyerArchivePage() {
@@ -75,24 +83,9 @@ export default function LawyerArchivePage() {
 
   const [activeTab, setActiveTab] = useState<"archive" | "earnings">("archive");
   const [search, setSearch] = useState("");
-  const [archiveList] = useState<ArchivedVerification[]>(() => {
-    if (typeof window === "undefined") return [];
-    try {
-      const userArchiveKey = user?.email
-        ? `verified_contracts_archive_${user.email}`
-        : "verified_contracts_archive";
-      const stored = JSON.parse(localStorage.getItem(userArchiveKey) || "[]");
-      if (Array.isArray(stored)) {
-        return stored.filter(
-          (s: ArchivedVerification) =>
-            s && s.id && !["ver-901", "ver-902", "ver-903", "ver-cnt-6639"].includes(s.id)
-        );
-      }
-    } catch {
-      // ignore
-    }
-    return [];
-  });
+  const [archiveList, setArchiveList] = useState<ArchivedVerification[]>([]);
+  const [isLoadingArchive, setIsLoadingArchive] = useState(false);
+  const [isDownloadingRedline, setIsDownloadingRedline] = useState<string | null>(null);
   const [selectedPreview, setSelectedPreview] = useState<ArchivedVerification | null>(null);
 
   // Earnings & Withdrawal state
@@ -107,6 +100,96 @@ export default function LawyerArchivePage() {
   const [withdrawalSuccess, setWithdrawalSuccess] = useState<string | null>(null);
 
   const isVerified = user?.lawyerProfile?.verificationStatus === "verified";
+
+  const fetchArchiveData = useCallback(async () => {
+    setIsLoadingArchive(true);
+    let backendItems: ArchivedVerification[] = [];
+    if (isVerified) {
+      try {
+        const tasks = await getCompletedTasks();
+        if (Array.isArray(tasks) && tasks.length > 0) {
+          backendItems = tasks.map((t) => ({
+            id: `ver-${t.memo_id}`,
+            clientName: t.client_name || "Enterprise Client",
+            clientPhone: t.client_phone || "+880 1700-000000",
+            titleEn: t.contract_title || "Commercial Contract",
+            titleBn: t.contract_title || "বাণিজ্যিক চুক্তিপত্র",
+            verifiedDateEn: t.verified_date_en || (t.completed_at ? new Date(t.completed_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recently"),
+            verifiedDateBn: t.verified_date_bn || "সম্প্রতি",
+            statuteEn: `Statutory Seal Applied · ৳${(t.payout_bdt || 1000).toLocaleString()} Earned`,
+            statuteBn: `সংবিধিবদ্ধ সিলমোহরকৃত · ৳${(t.payout_bdt || 1000).toLocaleString()} উপার্জিত`,
+            advocateName: user?.name ? (user.name.startsWith("Adv") ? user.name : `Adv. ${user.name}`) : "Advocate Tanvir Ahmed",
+            barCouncilNo: user?.lawyerProfile?.barCouncilNo || "SC-DH-48912/2016",
+            notes: t.lawyer_notes || (isBn ? "সংবিধিবদ্ধ অডিট ও সুপ্রিম কোর্ট আইনজীবী সিলমোহর সম্পন্ন।" : "Statutory review completed."),
+            contractId: String(t.contract_id || t.memo_id),
+            status: "verified" as const,
+            payoutBdt: t.payout_bdt || 1000,
+            clauses_analysis: t.clauses_analysis || [],
+          }));
+        }
+      } catch (err) {
+        console.warn("Could not load backend completed tasks:", err);
+      }
+    }
+
+    // Also load local storage items
+    let localItems: ArchivedVerification[] = [];
+    if (typeof window !== "undefined") {
+      try {
+        const userArchiveKey = user?.email
+          ? `verified_contracts_archive_${user.email}`
+          : "verified_contracts_archive";
+        const stored = JSON.parse(localStorage.getItem(userArchiveKey) || "[]");
+        const globalStored = JSON.parse(localStorage.getItem("verified_contracts_archive") || "[]");
+        const combined = [...(Array.isArray(stored) ? stored : []), ...(Array.isArray(globalStored) ? globalStored : [])];
+        const seenIds = new Set<string>();
+        for (const s of combined) {
+          if (s && s.id && !seenIds.has(s.id) && !["ver-901", "ver-902", "ver-903", "ver-cnt-6639"].includes(s.id)) {
+            seenIds.add(s.id);
+            localItems.push(s);
+          }
+        }
+      } catch {}
+    }
+
+    // Merge: backend takes precedence, local items filled in
+    const seen = new Set<string>(backendItems.map((b) => b.id));
+    const merged = [...backendItems];
+    for (const l of localItems) {
+      if (!seen.has(l.id)) {
+        seen.add(l.id);
+        merged.push(l);
+      }
+    }
+
+    setArchiveList(merged);
+    setIsLoadingArchive(false);
+  }, [isVerified, user, isBn]);
+
+  useEffect(() => {
+    fetchArchiveData();
+  }, [fetchArchiveData]);
+
+  const handleDownloadRedlineDocx = async (cid?: string) => {
+    if (!cid) return;
+    try {
+      setIsDownloadingRedline(cid);
+      const blob = await downloadRedlineDocx(cid);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Lawyer_Redline_${cid}.docx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      toast.success(isBn ? "রেডলাইন DOCX ডাউনলোড সম্পন্ন!" : "Redlined DOCX downloaded!");
+    } catch {
+      toast.error(isBn ? "রেডলাইন ফাইল ডাউনলোড করা যায়নি।" : "Failed to download redlined DOCX.");
+    } finally {
+      setIsDownloadingRedline(null);
+    }
+  };
 
   const fetchEarningsData = async () => {
     if (!isVerified) {
@@ -257,7 +340,71 @@ export default function LawyerArchivePage() {
 
   return (
     <AppShell>
-      <div className="max-w-5xl mx-auto px-4 py-8 md:py-12">
+      {/* 1. DEDICATED PRINT / PDF EXPORT CONTAINER (CLEAN A4 PAPER) */}
+      <div className="legal-print-only w-full bg-white text-black p-8 print-clean-paper">
+        {selectedPreview ? (
+          <div className="space-y-6">
+            <div className="pb-4 border-b-2 border-neutral-900 flex justify-between items-baseline text-xs font-mono uppercase tracking-widest text-neutral-800">
+              <span className="font-bold">BANGLADESH SUPREME COURT BAR · STATUTORY AUDIT MEMORANDUM</span>
+              <span>REF: {selectedPreview.sealReference || selectedPreview.id}</span>
+            </div>
+
+            <div className="p-4 rounded-xl border-2 border-neutral-900 bg-neutral-50 flex items-center justify-between text-neutral-900 break-inside-avoid print-avoid-break">
+              <div>
+                <p className="font-bold text-sm uppercase tracking-wide">
+                  {isBn ? "বাংলাদেশ বার কাউন্সিল সংবিধিবদ্ধ অডিট ও অ্যাডভোকেট ডিজিটাল সিলমোহর" : "BANGLADESH BAR COUNCIL STATUTORY AUDIT & ADVOCATE DIGITAL SEAL"}
+                </p>
+                <p className="text-xs text-neutral-800 mt-1">
+                  Audited & Certified by {selectedPreview.advocateName || "Adv. Tanvir Ahmed"}, Supreme Court of Bangladesh
+                </p>
+                <p className="text-[11px] font-mono text-neutral-600 mt-0.5">
+                  Enrollment: {selectedPreview.barCouncilNo || "SC-DH-48912/2016"} · High Court Division
+                </p>
+                {selectedPreview.sha256Hash && (
+                  <p className="text-[10px] font-mono text-neutral-500 mt-0.5">
+                    SHA-256 Digest: {selectedPreview.sha256Hash}
+                  </p>
+                )}
+                {selectedPreview.notes && (
+                  <div className="mt-2 text-xs text-neutral-800 italic bg-white p-2.5 rounded border border-neutral-300">
+                    <span className="font-semibold not-italic block text-[10px] uppercase text-neutral-600 mb-0.5">
+                      {isBn ? "আইনজীবীর মন্তব্য ও রায়:" : "Advocate Statutory Advisory Notes:"}
+                    </span>
+                    &ldquo;{selectedPreview.notes}&rdquo;
+                  </div>
+                )}
+              </div>
+
+              <div className="text-right font-mono text-[10px] text-neutral-700 shrink-0 ml-4 flex flex-col items-center">
+                <div className="w-20 h-20 border-2 border-emerald-800 text-emerald-900 p-1 mb-1 flex flex-col items-center justify-center font-bold text-center">
+                  <span className="text-[8px] tracking-wider">BANGLADESH</span>
+                  <span className="text-[12px] font-black">SEALED</span>
+                  <span className="text-[8px]">ADVOCATE</span>
+                </div>
+                <div>{new Date().toLocaleDateString("en-GB")}</div>
+              </div>
+            </div>
+
+            <MarkdownViewer
+              content={generateContractAuditMarkdown(
+                selectedPreview.contractId || "employment-agreement",
+                isBn ? "bn" : "en",
+                {
+                  advocateName: selectedPreview.advocateName || "Adv. Tanvir Ahmed, Supreme Court of Bangladesh",
+                  barCouncilNo: selectedPreview.barCouncilNo || "SC-DH-48912/2016",
+                  verifiedAt: isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn,
+                  sealApplied: true,
+                  advocateNotes: selectedPreview.notes,
+                },
+                selectedPreview
+              )}
+            />
+          </div>
+        ) : null}
+      </div>
+
+      {/* 2. INTERACTIVE SCREEN UI */}
+      <div className="legal-screen-only max-w-5xl mx-auto px-4 py-8 md:py-12">
         {/* Header */}
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 font-sans">
           <div>
@@ -406,7 +553,7 @@ export default function LawyerArchivePage() {
               </div>
 
               {/* Action */}
-              <div className="shrink-0 flex items-center gap-2">
+              <div className="shrink-0 flex items-center gap-2 flex-wrap">
                 <button
                   type="button"
                   onClick={() => setSelectedPreview(item)}
@@ -415,11 +562,35 @@ export default function LawyerArchivePage() {
                   <FileCode2 className="w-3.5 h-3.5" />
                   <span>{isBn ? "সিলমোহরকৃত রিপোর্ট দেখুন" : "View Sealed Report"}</span>
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleDownloadRedlineDocx(item.contractId || item.id)}
+                  disabled={isDownloadingRedline === (item.contractId || item.id)}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--bg-surface)] text-[var(--text-primary)] transition-colors cursor-pointer shadow-2xs disabled:opacity-50"
+                  title={isBn ? "সংশোধিত রেডলাইন চুক্তি (.DOCX) ডাউনলোড করুন" : "Download Redlined Contract (.DOCX)"}
+                >
+                  {isDownloadingRedline === (item.contractId || item.id) ? (
+                    <div className="w-3.5 h-3.5 rounded-full border-2 border-[var(--text-muted)] border-t-[var(--text-primary)] animate-spin" />
+                  ) : (
+                    <FileText className="w-3.5 h-3.5 text-emerald-600" />
+                  )}
+                  <span className="hidden sm:inline">{isBn ? "রেডলাইন DOCX" : "Redline DOCX"}</span>
+                </button>
               </div>
             </div>
           ))}
 
-          {filtered.length === 0 && (
+          {isLoadingArchive && (
+            <div className={`p-12 text-center rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
+              <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs text-[var(--text-muted)]">
+                {isBn ? "সংরক্ষিত চুক্তিপত্র লোড হচ্ছে..." : "Loading sealed archive records..."}
+              </p>
+            </div>
+          )}
+
+          {!isLoadingArchive && filtered.length === 0 && (
             <div className={`p-12 text-center rounded-2xl border ${borderClass} bg-[var(--bg-card)]`}>
               <CheckCircle2 className="w-10 h-10 text-[var(--text-muted)] mx-auto mb-3" />
               <p className="text-sm font-semibold text-[var(--text-primary)]">
@@ -694,68 +865,79 @@ export default function LawyerArchivePage() {
         )}
         </>
       )}
-        {selectedPreview && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200 print:static print:inset-auto print:bg-white print:p-0 print:m-0 print:w-full print:h-auto print:overflow-visible print:block print:z-auto">
-            <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden print:border-none print:shadow-none print:rounded-none print:max-h-none print:w-full print:bg-white`}>
-              <div className="p-3.5 sm:p-5 border-b border-[var(--text-primary)]/10 flex items-center justify-between gap-3 bg-[var(--bg-surface)] print:border-b-2 print:border-neutral-900 print:bg-white print:pb-3 print:mb-4">
-                <div className="min-w-0 flex-1 pr-2">
-                  <div className="flex items-center gap-2 flex-wrap mb-1">
-                    <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10 print:border-neutral-400 print:text-neutral-700">
-                      {selectedPreview.id}
-                    </span>
-                    <span className="text-[11px] font-semibold text-[var(--text-muted)] flex items-center gap-1">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      {isBn ? "সংবিধিবদ্ধ সিলমোহরকৃত অডিট" : "Statutory Sealed Audit"}
-                    </span>
-                  </div>
-                  <h2 className="text-base sm:text-lg font-semibold tracking-tight text-[var(--text-primary)] truncate print:text-neutral-900">
-                    {isBn ? selectedPreview.titleBn : selectedPreview.titleEn}
-                  </h2>
-                  <p className="text-xs text-[var(--text-muted)] mt-0.5 print:text-neutral-700 truncate">
-                    {isBn ? "ক্লায়েন্ট:" : "Client:"} {selectedPreview.clientName} · {isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn}
-                  </p>
-                </div>
+      </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2 print:hidden shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => window.print()}
-                    className="p-1.5 sm:p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
-                    title={isBn ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
-                  >
-                    <Printer className="w-4 h-4" />
-                    <span className="hidden sm:inline">{isBn ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedPreview(null)}
-                    className="p-1.5 sm:p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+      {selectedPreview && (
+        <div className="legal-screen-only fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-6 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className={`w-full max-w-4xl max-h-[92vh] flex flex-col rounded-2xl sm:rounded-3xl border ${borderClass} bg-[var(--bg-card)] shadow-2xl overflow-hidden`}>
+            <div className="p-3.5 sm:p-5 border-b border-[var(--text-primary)]/10 flex items-center justify-between gap-3 bg-[var(--bg-surface)]">
+              <div className="min-w-0 flex-1 pr-2">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="font-mono text-[10px] px-2 py-0.5 rounded-md bg-[var(--bg-card)] text-[var(--text-muted)] border border-[var(--text-primary)]/10">
+                    {selectedPreview.id}
+                  </span>
+                  <span className="text-[11px] font-semibold text-[var(--text-muted)] flex items-center gap-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    {isBn ? "সংবিধিবদ্ধ সিলমোহরকৃত অডিট" : "Statutory Sealed Audit"}
+                  </span>
                 </div>
+                <h2 className="text-base sm:text-lg font-semibold tracking-tight text-[var(--text-primary)] truncate">
+                  {isBn ? selectedPreview.titleBn : selectedPreview.titleEn}
+                </h2>
+                <p className="text-xs text-[var(--text-muted)] mt-0.5 truncate">
+                  {isBn ? "ক্লায়েন্ট:" : "Client:"} {selectedPreview.clientName} · {isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn}
+                </p>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 sm:p-6 print:overflow-visible print:p-0">
-                <MarkdownViewer
-                  content={generateContractAuditMarkdown(
-                    selectedPreview.contractId || "employment-agreement",
-                    isBn ? "bn" : "en",
-                    {
-                      advocateName: selectedPreview.advocateName || "Adv. Tanvir Ahmed, Supreme Court of Bangladesh",
-                      barCouncilNo: selectedPreview.barCouncilNo || "SC-DH-48912/2016",
-                      verifiedAt: isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn,
-                      sealApplied: true,
-                      advocateNotes: selectedPreview.notes,
-                    },
-                    selectedPreview
-                  )}
-                />
+              <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadRedlineDocx(selectedPreview.contractId || selectedPreview.id)}
+                  disabled={isDownloadingRedline === (selectedPreview.contractId || selectedPreview.id)}
+                  className="px-2.5 py-1.5 rounded-xl text-xs font-semibold border border-[var(--text-primary)]/15 hover:bg-[var(--bg-surface)] text-[var(--text-primary)] transition-colors cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
+                  title={isBn ? "রেডলাইন (.DOCX) ডাউনলোড করুন" : "Download Redline (.DOCX)"}
+                >
+                  <FileText className="w-4 h-4 text-emerald-600" />
+                  <span className="hidden sm:inline">{isBn ? "রেডলাইন DOCX" : "Redline DOCX"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="p-1.5 sm:p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--text-primary)]/5 transition-colors cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+                  title={isBn ? "অডিট মেমো প্রিন্ট / পিডিএফ ডাউনলোড করুন" : "Print / Export Audit Memo as PDF"}
+                >
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden sm:inline">{isBn ? "প্রিন্ট / PDF" : "Print / PDF"}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPreview(null)}
+                  className="p-1.5 sm:p-2 rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <MarkdownViewer
+                content={generateContractAuditMarkdown(
+                  selectedPreview.contractId || "employment-agreement",
+                  isBn ? "bn" : "en",
+                  {
+                    advocateName: selectedPreview.advocateName || "Adv. Tanvir Ahmed, Supreme Court of Bangladesh",
+                    barCouncilNo: selectedPreview.barCouncilNo || "SC-DH-48912/2016",
+                    verifiedAt: isBn ? selectedPreview.verifiedDateBn : selectedPreview.verifiedDateEn,
+                    sealApplied: true,
+                    advocateNotes: selectedPreview.notes,
+                  },
+                  selectedPreview
+                )}
+              />
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </AppShell>
   );
 }

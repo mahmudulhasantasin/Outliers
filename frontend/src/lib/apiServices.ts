@@ -763,6 +763,41 @@ export async function getActiveTasks(): Promise<ActiveTask[]> {
   }
 }
 
+export interface LawyerCompletedTask {
+  memo_id: number | string;
+  contract_id: number | string;
+  contract_title: string;
+  original_filename?: string;
+  client_name?: string;
+  client_email?: string;
+  client_phone?: string;
+  file_size_mb?: number;
+  file_mime_type?: string;
+  file_path?: string;
+  hitl_status: string;
+  payout_bdt: number;
+  completed_at?: string;
+  verified_date_en?: string;
+  verified_date_bn?: string;
+  risk_score?: number;
+  overall_risk?: string;
+  lawyer_notes?: string;
+  signature_url?: string;
+  signed_contract_path?: string;
+  clauses_analysis?: any[];
+}
+
+/** Get lawyer's completed/archived tasks (GET /api/lawyer/completed) */
+export async function getCompletedTasks(): Promise<LawyerCompletedTask[]> {
+  try {
+    const res = await api.get<LawyerCompletedTask[]>("/api/lawyer/completed");
+    if (Array.isArray(res)) return res;
+    return [];
+  } catch {
+    return [];
+  }
+}
+
 // [UPDATED] NEW: Upload signature or signed PDF
 export async function uploadLawyerProof(file: File): Promise<{ file_path: string }> {
   const formData = new FormData();
