@@ -145,9 +145,9 @@ export default function AdminDocsPage() {
 
   const API_BASE = useMemo(() => {
     if (typeof window !== "undefined") {
-      return process.env.NEXT_PUBLIC_API_URL || "https://legal-copilot-backend-npq7.onrender.com";
+      return process.env.NEXT_PUBLIC_API_URL || "https://legal-copilot-backend-088i.onrender.com";
     }
-    return "https://legal-copilot-backend-npq7.onrender.com";
+    return "https://legal-copilot-backend-088i.onrender.com";
   }, []);
 
   const getAuthToken = (): string | null => {

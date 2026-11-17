@@ -6,7 +6,7 @@
  */
 import { getToken, clearAuth } from "@/lib/auth";
 
-const LIVE_BACKEND_URL = "https://legal-copilot-backend-npq7.onrender.com";
+const LIVE_BACKEND_URL = "https://legal-copilot-backend-088i.onrender.com";
 
 // [UPDATED] FIX: Always fall back to the live backend URL if env var is missing.
 // This prevents the frontend from accidentally hitting its own Vercel domain.

@@ -4,6 +4,18 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from "react"
 import Link from "next/link";
 import Image from "next/image";
 import {
+  ProblemVisual,
+  SolutionVisual,
+  WhyNowVisual,
+  MarketVisual,
+  BusinessModelVisual,
+  CompetitionVisual,
+  UniqueAdvantageVisual,
+  GtmVisual,
+  VisionVisual,
+  TractionVisual,
+} from "./PitchVisuals";
+import {
   Shield,
   Zap,
   Globe,
@@ -1217,9 +1229,9 @@ export default function DocsPage() {
 
   const API_BASE = useMemo(() => {
     if (typeof window !== "undefined") {
-      return process.env.NEXT_PUBLIC_API_URL || "https://legal-copilot-backend-npq7.onrender.com";
+      return process.env.NEXT_PUBLIC_API_URL || "https://legal-copilot-backend-088i.onrender.com";
     }
-    return "https://legal-copilot-backend-npq7.onrender.com";
+    return "https://legal-copilot-backend-088i.onrender.com";
   }, []);
 
   const authHeaders = useMemo((): Record<string, string> => {
@@ -1523,19 +1535,36 @@ export default function DocsPage() {
           </p>
         )}
 
-        {meta.key === "product_demo" ? (
-          <ProductDemoShowcase points={sec.points ?? []} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pl-0 sm:pl-2">
-            {(sec.points ?? []).map((point, i) => (
-              <div
-                key={i}
-                className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-start gap-3"
-              >
-                <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <p className="text-sm text-[var(--text-muted)] leading-relaxed">{point}</p>
-              </div>
-            ))}
+        {/* Rich Interactive YC-Style Slide Visuals */}
+        {meta.key === "problem" && <ProblemVisual />}
+        {meta.key === "solution" && <SolutionVisual />}
+        {meta.key === "why_now" && <WhyNowVisual />}
+        {meta.key === "product_demo" && <ProductDemoShowcase points={sec.points ?? []} />}
+        {meta.key === "market" && <MarketVisual />}
+        {meta.key === "business_model" && <BusinessModelVisual />}
+        {meta.key === "traction" && <TractionVisual stats={stats ?? undefined} />}
+        {meta.key === "competition" && <CompetitionVisual />}
+        {meta.key === "unique_advantage" && <UniqueAdvantageVisual />}
+        {meta.key === "go_to_market" && <GtmVisual />}
+        {meta.key === "vision" && <VisionVisual />}
+
+        {/* Key Takeaways & Validations (rendered for non-demo sections) */}
+        {meta.key !== "product_demo" && (sec.points ?? []).length > 0 && (
+          <div className="space-y-2 pt-1 pl-0 sm:pl-2">
+            <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
+              Key Points &amp; Validations:
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(sec.points ?? []).map((point, i) => (
+                <div
+                  key={i}
+                  className="p-4 rounded-xl bg-[var(--bg-card)] border border-[var(--text-primary)]/10 flex items-start gap-3 shadow-sm hover:border-[var(--text-primary)]/20 transition-colors"
+                >
+                  <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <p className="text-sm text-[var(--text-muted)] leading-relaxed">{point}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>
