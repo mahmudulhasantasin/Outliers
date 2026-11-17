@@ -23,7 +23,7 @@ import { useAuth, normalizeUserRole } from "@/context/AuthContext"; // [UPDATED]
 import { useTheme } from "@/context/ThemeContext";
 import api from "@/lib/api"; // [UPDATED] NEW
 import { saveTokenResponse } from "@/lib/auth"; // [UPDATED] NEW
-import { submitFeedback, subscribeNewsletter } from "@/lib/apiServices";
+import { submitFeedback, subscribeNewsletter, getPlatformSystemStatus } from "@/lib/apiServices";
 import {
   Scale,
   ArrowUpRight,
@@ -130,6 +130,7 @@ export default function LandingAndAuthPage() {
 
   const [mounted, setMounted] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [instantJudgeMode, setInstantJudgeMode] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const googleSignInBtnRef = useRef<HTMLDivElement>(null);
   const googleSignUpBtnRef = useRef<HTMLDivElement>(null);
@@ -296,6 +297,9 @@ export default function LandingAndAuthPage() {
 
   useEffect(() => {
     setMounted(true);
+    getPlatformSystemStatus()
+      .then((st) => setInstantJudgeMode(Boolean(st?.instant_judge_mode)))
+      .catch(() => {});
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("auth") === "login" || params.get("login") === "true") {
@@ -304,6 +308,15 @@ export default function LandingAndAuthPage() {
       }
     }
   }, []);
+
+  // Refresh Instant Judge Mode status whenever auth modal opens
+  useEffect(() => {
+    if (showAuthModal) {
+      getPlatformSystemStatus()
+        .then((st) => setInstantJudgeMode(Boolean(st?.instant_judge_mode)))
+        .catch(() => {});
+    }
+  }, [showAuthModal]);
 
   // ESC key to close modal
   useEffect(() => {
@@ -2068,85 +2081,87 @@ export default function LandingAndAuthPage() {
                           </button>
                         </div>
 
-                        {/* ── Judge / Evaluator 1-Click Fast Access ── */}
-                        <div className="mt-5 pt-4 border-t border-[var(--text-primary)]/10">
-                          {!demoMenuOpen ? (
-                            <div className="flex flex-col items-center gap-2">
-                              <button
-                                type="button"
-                                onClick={() => setDemoMenuOpen(true)}
-                                aria-expanded={false}
-                                aria-label={isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
-                                className="relative w-12 h-12 rounded-full border border-[var(--text-primary)]/25 bg-[var(--bg-card)] shadow-sm flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer"
-                              >
-                                <span className="absolute inset-0 rounded-full border border-[var(--text-primary)]/15 animate-ping" style={{ animationDuration: "2.5s" }} />
-                                <Zap className="relative w-5 h-5 fill-current" />
-                              </button>
-                              <span className="text-center leading-tight">
-                                <span className="block text-[12px] font-semibold text-[var(--text-primary)]">
-                                  {isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
+                        {/* ── Judge / Evaluator 1-Click Fast Access (Only visible when Admin enables Instant Judge Mode) ── */}
+                        {instantJudgeMode && (
+                          <div className="mt-5 pt-4 border-t border-[var(--text-primary)]/10">
+                            {!demoMenuOpen ? (
+                              <div className="flex flex-col items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => setDemoMenuOpen(true)}
+                                  aria-expanded={false}
+                                  aria-label={isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
+                                  className="relative w-12 h-12 rounded-full border border-[var(--text-primary)]/25 bg-[var(--bg-card)] shadow-sm flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer"
+                                >
+                                  <span className="absolute inset-0 rounded-full border border-[var(--text-primary)]/15 animate-ping" style={{ animationDuration: "2.5s" }} />
+                                  <Zap className="relative w-5 h-5 fill-current" />
+                                </button>
+                                <span className="text-center leading-tight">
+                                  <span className="block text-[12px] font-semibold text-[var(--text-primary)]">
+                                    {isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
+                                  </span>
                                 </span>
-                              </span>
-                            </div>
-                          ) : (
-                            <div className="relative w-72 h-52 mx-auto my-1">
-                              {/* Main round button at the center — same style as the closed state, click toggles */}
-                              <button
-                                type="button"
-                                onClick={() => setDemoMenuOpen(false)}
-                                aria-expanded={true}
-                                aria-label={isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
-                                className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-[var(--text-primary)]/25 bg-[var(--bg-card)] shadow-sm flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer z-10"
-                              >
-                                <Zap className="w-5 h-5 fill-current" />
-                              </button>
+                              </div>
+                            ) : (
+                              <div className="relative w-72 h-52 mx-auto my-1">
+                                {/* Main round button at the center — same style as the closed state, click toggles */}
+                                <button
+                                  type="button"
+                                  onClick={() => setDemoMenuOpen(false)}
+                                  aria-expanded={true}
+                                  aria-label={isBn ? "বিচারকের জন্য তাৎক্ষণিক প্রবেশ" : "Instant Access for Judge"}
+                                  className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-12 h-12 rounded-full border border-[var(--text-primary)]/25 bg-[var(--bg-card)] shadow-sm flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer z-10"
+                                >
+                                  <Zap className="w-5 h-5 fill-current" />
+                                </button>
 
-                              {/* Role circles orbiting around the center */}
-                              {demoRoles.map((role, i) => {
-                                const offsets = [
-                                  { x: -86, y: -56 }, // top-left
-                                  { x: 86, y: -56 },  // top-right
-                                  { x: -86, y: 56 },  // bottom-left
-                                  { x: 86, y: 56 },   // bottom-right
-                                ];
-                                const o = offsets[i];
-                                return (
-                                  <div
-                                    key={role.key}
-                                    className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1"
-                                    style={{ transform: `translate(calc(-50% + ${o.x}px), calc(-50% + ${o.y}px))` }}
-                                  >
-                                    <button
-                                      type="button"
-                                      disabled={demoLoadingRole !== null}
-                                      onClick={() => handleQuickDemoLogin(role.key)}
-                                      aria-label={`${role.name} — ${isBn ? "ডেমো প্রবেশ" : "demo login"}`}
-                                      className="w-10 h-10 rounded-full border border-[var(--text-primary)]/15 bg-[var(--bg-card)] flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                                {/* Role circles orbiting around the center */}
+                                {demoRoles.map((role, i) => {
+                                  const offsets = [
+                                    { x: -86, y: -56 }, // top-left
+                                    { x: 86, y: -56 },  // top-right
+                                    { x: -86, y: 56 },  // bottom-left
+                                    { x: 86, y: 56 },   // bottom-right
+                                  ];
+                                  const o = offsets[i];
+                                  return (
+                                    <div
+                                      key={role.key}
+                                      className="absolute left-1/2 top-1/2 flex flex-col items-center gap-1"
+                                      style={{ transform: `translate(calc(-50% + ${o.x}px), calc(-50% + ${o.y}px))` }}
                                     >
-                                      {demoLoadingRole === role.key ? (
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                      ) : "img" in role ? (
-                                        <Image src={role.img} alt={role.name} width={20} height={20} className="w-5 h-5 object-contain dark:invert" />
-                                      ) : (
-                                        <role.icon className="w-4 h-4" strokeWidth={1.75} />
-                                      )}
-                                    </button>
-                                    <span className="flex flex-col items-center gap-0.5">
-                                      <span className="text-[8px] font-medium text-[var(--text-primary)] whitespace-nowrap leading-none">
-                                        {demoLoadingRole === role.key
-                                          ? isBn ? "প্রবেশ..." : "Entering..."
-                                          : role.name}
+                                      <button
+                                        type="button"
+                                        disabled={demoLoadingRole !== null}
+                                        onClick={() => handleQuickDemoLogin(role.key)}
+                                        aria-label={`${role.name} — ${isBn ? "ডেমো প্রবেশ" : "demo login"}`}
+                                        className="w-10 h-10 rounded-full border border-[var(--text-primary)]/15 bg-[var(--bg-card)] flex items-center justify-center text-[var(--text-primary)] hover:bg-[var(--text-primary)]/[0.06] hover:border-[var(--text-primary)]/35 active:scale-95 transition-all cursor-pointer disabled:opacity-50 shrink-0"
+                                      >
+                                        {demoLoadingRole === role.key ? (
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                        ) : "img" in role ? (
+                                          <Image src={role.img} alt={role.name} width={20} height={20} className="w-5 h-5 object-contain dark:invert" />
+                                        ) : (
+                                          <role.icon className="w-4 h-4" strokeWidth={1.75} />
+                                        )}
+                                      </button>
+                                      <span className="flex flex-col items-center gap-0.5">
+                                        <span className="text-[8px] font-medium text-[var(--text-primary)] whitespace-nowrap leading-none">
+                                          {demoLoadingRole === role.key
+                                            ? isBn ? "প্রবেশ..." : "Entering..."
+                                            : role.name}
+                                        </span>
+                                        <span className="text-[7px] text-[var(--text-muted)] whitespace-nowrap leading-none">
+                                          {isBn ? role.role.bn : role.role.en}
+                                        </span>
                                       </span>
-                                      <span className="text-[7px] text-[var(--text-muted)] whitespace-nowrap leading-none">
-                                        {isBn ? role.role.bn : role.role.en}
-                                      </span>
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </>
                     )}
 

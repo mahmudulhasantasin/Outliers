@@ -213,6 +213,8 @@ export interface VerificationRequestResponse {
   memo_id: string | number;
   message: string;
   credits_deducted?: number;
+  assigned_lawyer_id?: number;
+  assigned_lawyer_name?: string;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -1853,3 +1855,64 @@ export async function subscribeNewsletter(email: string): Promise<NewsletterResp
 export async function loginDemo(role: string): Promise<TokenResponse> {
   return api.post<TokenResponse>("/api/auth/demo-login", { role });
 }
+
+// ──────────────────────────────────────────────────────────
+// SYSTEM CONFIG & INSTANT JUDGE MODE
+// ──────────────────────────────────────────────────────────
+
+export interface PlatformSystemStatus {
+  instant_judge_mode: boolean;
+  judge_lawyer_name: string;
+}
+
+export interface AdminApprovedLawyer {
+  lawyer_id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  bar_council_id: string;
+  experience_years: number;
+}
+
+export interface AdminSystemConfig {
+  instant_judge_mode: boolean;
+  fixed_judge_lawyer_id: number | null;
+  fixed_judge_lawyer_name: string | null;
+  fixed_judge_lawyer_email: string | null;
+  updated_at: string | null;
+  updated_by: string | null;
+  approved_lawyers: AdminApprovedLawyer[];
+}
+
+export interface UpdateSystemConfigPayload {
+  instant_judge_mode?: boolean;
+  fixed_judge_lawyer_id?: number | null;
+  [key: string]: unknown;
+}
+
+/** Public endpoint to check if Instant Judge Mode is active */
+export async function getPlatformSystemStatus(): Promise<PlatformSystemStatus> {
+  try {
+    const res = await api.get<PlatformSystemStatus>("/api/platform/system-status");
+    return res || { instant_judge_mode: false, judge_lawyer_name: "" };
+  } catch {
+    return { instant_judge_mode: false, judge_lawyer_name: "" };
+  }
+}
+
+/** Get admin system configuration (Instant Judge Mode & Lawyers) */
+export async function getAdminSystemConfig(): Promise<AdminSystemConfig | null> {
+  try {
+    return await api.get<AdminSystemConfig>("/api/admin/system-config");
+  } catch {
+    return null;
+  }
+}
+
+/** Update admin system configuration (toggle Instant Judge Mode / change fixed lawyer) */
+export async function updateAdminSystemConfig(
+  payload: UpdateSystemConfigPayload
+): Promise<{ status: string; instant_judge_mode: boolean; fixed_judge_lawyer_id: number | null }> {
+  return api.patch("/api/admin/system-config", payload as Record<string, unknown>);
+}
+

@@ -301,6 +301,13 @@ export default function ContractMindPage() {
         } else if (refreshUser) {
           refreshUser().catch(() => {});
         }
+        if (verifRes?.assigned_lawyer_name) {
+          toast.success(
+            isBn
+              ? `আইনজীবী যাচাইকরণ অনুরোধ পাঠানো হয়েছে! আইনজীবী: ${verifRes.assigned_lawyer_name}`
+              : `Verification requested! Dispatched to ${verifRes.assigned_lawyer_name}.`
+          );
+        }
       } catch (err: unknown) {
         const errorMessage = err instanceof Error ? err.message : "Failed to request lawyer verification";
         toast.error(errorMessage || (isBn ? "আইনজীবী ভেরিফিকেশন রিকোয়েস্ট ব্যর্থ হয়েছে।" : "Failed to request lawyer verification"));
