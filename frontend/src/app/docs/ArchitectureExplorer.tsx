@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Sparkles, FileText, Scale, Zap } from "lucide-react";
 import {
   DEFAULT_ARCHITECTURE_SYSTEMS,
   ArchitectureSystem,
@@ -8,6 +9,20 @@ import {
   ExecutionStep,
   SystemMetrics,
 } from "./architectureData";
+
+const SYSTEM_ICON_MAP = {
+  chat: Sparkles,
+  contract: FileText,
+  lawyer: Scale,
+  mcp: Zap,
+};
+
+const SYSTEM_THEME_MAP = {
+  chat: { color: "#C45B3C", bg: "#FDF2EE", border: "rgba(196, 91, 60, 0.25)" },
+  contract: { color: "#B45309", bg: "#FEF7EE", border: "rgba(180, 83, 9, 0.25)" },
+  lawyer: { color: "#1E5C40", bg: "#EEF7F2", border: "rgba(30, 92, 64, 0.25)" },
+  mcp: { color: "#D97706", bg: "#FFFBEB", border: "rgba(217, 119, 6, 0.25)" },
+};
 
 interface ArchitectureExplorerProps {
   apiBase?: string;
@@ -28,7 +43,6 @@ export default function ArchitectureExplorer({
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [animateFlow, setAnimateFlow] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
-  const [copiedCodeKey, setCopiedCodeKey] = useState<string | null>(null);
   const [copiedEndpoint, setCopiedEndpoint] = useState<boolean>(false);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
@@ -56,26 +70,12 @@ export default function ArchitectureExplorer({
 
   const activeSystem = systems[activeSystemId] || DEFAULT_ARCHITECTURE_SYSTEMS[activeSystemId];
 
-  // Selected or hovered node details
-  const activeNode = useMemo(() => {
-    if (!selectedNodeId && !hoveredNodeId) return null;
-    const targetId = selectedNodeId || hoveredNodeId;
-    return activeSystem.nodes.find((n) => n.id === targetId) || null;
-  }, [activeSystem, selectedNodeId, hoveredNodeId]);
-
   // Handle system switch
   const handleSystemChange = (sysId: "chat" | "contract" | "lawyer" | "mcp") => {
     setActiveSystemId(sysId);
     setSelectedNodeId(null);
     setHoveredNodeId(null);
     setZoomLevel(1);
-  };
-
-  // Copy code utility
-  const copyCode = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedCodeKey(key);
-    setTimeout(() => setCopiedCodeKey(null), 2200);
   };
 
   // Copy endpoint utility
@@ -134,6 +134,9 @@ export default function ArchitectureExplorer({
           {(["chat", "contract", "lawyer", "mcp"] as const).map((id) => {
             const sys = systems[id];
             const isActive = activeSystemId === id;
+            const Icon = SYSTEM_ICON_MAP[id];
+            const theme = SYSTEM_THEME_MAP[id];
+
             return (
               <button
                 key={id}
@@ -141,8 +144,19 @@ export default function ArchitectureExplorer({
                 className={`arch-flow-pill${isActive ? " active" : ""}`}
                 onClick={() => handleSystemChange(id)}
               >
-                <span className="pill-icon">{sys.icon}</span>
-                <span className="pill-title">{sys.short_title}</span>
+                <div
+                  className="pill-icon-badge"
+                  style={{
+                    backgroundColor: theme.bg,
+                    color: theme.color,
+                    borderColor: theme.border,
+                  }}
+                >
+                  <Icon size={19} strokeWidth={2.3} />
+                </div>
+                <div className="pill-title-wrap">
+                  <span className="pill-title">{sys.short_title}</span>
+                </div>
                 <span className="pill-version">{sys.version}</span>
                 {isActive && <span className="pill-live-dot" />}
               </button>
@@ -162,7 +176,16 @@ export default function ArchitectureExplorer({
               <span className="arch-pill-tag pattern">{activeSystem.design_pattern}</span>
             </div>
             <h3 className="arch-system-title">
-              <span style={{ marginRight: "0.4rem" }}>{activeSystem.icon}</span>
+              <span
+                className="title-icon-badge"
+                style={{
+                  color: SYSTEM_THEME_MAP[activeSystemId].color,
+                  backgroundColor: SYSTEM_THEME_MAP[activeSystemId].bg,
+                  borderColor: SYSTEM_THEME_MAP[activeSystemId].border,
+                }}
+              >
+                {React.createElement(SYSTEM_ICON_MAP[activeSystemId], { size: 20, strokeWidth: 2.3 })}
+              </span>
               {activeSystem.title}
             </h3>
             <p className="arch-system-tagline">{activeSystem.tagline}</p>
@@ -385,85 +408,7 @@ export default function ArchitectureExplorer({
       </div>
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 5. COMPONENT DEEP-DIVE INSPECTOR PANEL                     */}
-      {/* ────────────────────────────────────────────────────────── */}
-      {activeNode && (
-        <div className="arch-node-inspector-card">
-          <div className="inspector-head">
-            <div className="inspector-title-group">
-              <span className="inspector-layer-pill">{activeNode.layer}</span>
-              <h4 className="inspector-name">{activeNode.label}</h4>
-              <span className={`status-badge ${activeNode.status.toLowerCase()}`}>
-                ● {activeNode.status}
-              </span>
-            </div>
-            <button
-              type="button"
-              className="inspector-close-btn"
-              onClick={() => setSelectedNodeId(null)}
-              title="Close Inspector"
-            >
-              ✕ Close
-            </button>
-          </div>
-
-          <p className="inspector-desc">{activeNode.description}</p>
-
-          <div className="inspector-grid">
-            <div className="inspector-box">
-              <span className="box-title">RESPONSIBILITY & ROLE</span>
-              <p className="box-text">{activeNode.role}</p>
-            </div>
-            <div className="inspector-box">
-              <span className="box-title">MAIN TECHNOLOGY</span>
-              <p className="box-text code-val">{activeNode.tech}</p>
-            </div>
-            <div className="inspector-box">
-              <span className="box-title">INPUT DATA RECEIVED</span>
-              <ul className="box-list">
-                {activeNode.inputs.map((inp, idx) => (
-                  <li key={idx}>{inp}</li>
-                ))}
-              </ul>
-            </div>
-            <div className="inspector-box">
-              <span className="box-title">OUTPUT DATA PRODUCED</span>
-              <ul className="box-list">
-                {activeNode.outputs.map((out, idx) => (
-                  <li key={idx}>{out}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="inspector-footer">
-            <div className="service-ref">
-              <span className="ref-label">BACKEND SERVICE MODULE:</span>
-              <code className="ref-path">{activeNode.service_module}</code>
-            </div>
-            {activeNode.code_snippet && (
-              <div className="snippet-wrap">
-                <div className="snippet-bar">
-                  <span className="snippet-title">LIVE CODE IMPLEMENTATION</span>
-                  <button
-                    type="button"
-                    className="snippet-copy-btn"
-                    onClick={() => copyCode(activeNode.code_snippet!, `node-${activeNode.id}`)}
-                  >
-                    {copiedCodeKey === `node-${activeNode.id}` ? "✓ Copied" : "Copy Code"}
-                  </button>
-                </div>
-                <pre className="arch-code-block">
-                  <code>{activeNode.code_snippet}</code>
-                </pre>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* 6. SCOPED STYLES (Preserving Hearth Theme Design Tokens)   */}
+      {/* 5. SCOPED STYLES (Preserving Hearth Theme Design Tokens)   */}
       {/* ────────────────────────────────────────────────────────── */}
       <style jsx>{`
         .arch-master-wrapper {
@@ -506,7 +451,7 @@ export default function ArchitectureExplorer({
         .arch-flow-pills {
           display: grid;
           grid-template-columns: repeat(4, 1fr);
-          gap: 0.75rem;
+          gap: 0.85rem;
         }
         @media (max-width: 900px) {
           .arch-flow-pills {
@@ -520,35 +465,54 @@ export default function ArchitectureExplorer({
         }
         .arch-flow-pill {
           background: #fbf4ec;
-          border: 1px solid #ecdfd0;
-          border-radius: 8px;
-          padding: 0.85rem 1rem;
+          border: 1.5px solid #eadbcc;
+          border-radius: 10px;
+          padding: 0.9rem 1.1rem;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 0.6rem;
+          gap: 0.85rem;
           font-family: inherit;
           text-align: left;
           position: relative;
-          transition: all 0.2s ease;
+          transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .arch-flow-pill:hover {
           border-color: #c45b3c;
           background: #ffffff;
+          transform: translateY(-1.5px);
+          box-shadow: 0 6px 16px rgba(46, 33, 23, 0.06);
         }
         .arch-flow-pill.active {
           background: #ffffff;
           border-color: #c45b3c;
-          box-shadow: 0 4px 12px rgba(196, 91, 60, 0.12);
+          box-shadow: 0 6px 20px rgba(196, 91, 60, 0.12), 0 2px 4px rgba(46, 33, 23, 0.04);
         }
-        .pill-icon {
-          font-size: 1.25rem;
+        .pill-icon-badge {
+          width: 38px;
+          height: 38px;
+          border-radius: 9px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: transform 0.2s ease;
+        }
+        .arch-flow-pill:hover .pill-icon-badge {
+          transform: scale(1.08);
+        }
+        .pill-title-wrap {
+          flex-grow: 1;
+          min-width: 0;
         }
         .pill-title {
-          font-size: 0.86rem;
+          font-family: var(--font-fraunces), serif;
+          font-size: 0.96rem;
           font-weight: 700;
           color: #2e2117;
-          flex-grow: 1;
+          line-height: 1.25;
+          letter-spacing: -0.01em;
+          display: block;
         }
         .arch-flow-pill.active .pill-title {
           color: #c45b3c;
@@ -556,21 +520,34 @@ export default function ArchitectureExplorer({
         .pill-version {
           font-size: 0.68rem;
           font-family: monospace;
-          background: #ecdfd0;
-          padding: 0.15rem 0.4rem;
-          border-radius: 4px;
+          background: #f0e6da;
+          padding: 0.2rem 0.5rem;
+          border-radius: 5px;
           color: #5c4f43;
-          font-weight: 600;
+          font-weight: 700;
+          flex-shrink: 0;
+          letter-spacing: 0.02em;
         }
         .pill-live-dot {
           width: 8px;
           height: 8px;
           border-radius: 50%;
           background: #1e5c40;
-          box-shadow: 0 0 0 2px rgba(30, 92, 64, 0.2);
+          box-shadow: 0 0 0 2.5px rgba(30, 92, 64, 0.25);
           position: absolute;
-          top: 8px;
-          right: 8px;
+          top: 9px;
+          right: 9px;
+        }
+        .title-icon-badge {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 34px;
+          height: 34px;
+          border-radius: 8px;
+          border: 1px solid transparent;
+          margin-right: 0.6rem;
+          vertical-align: middle;
         }
 
         /* 2. Telemetry Card */
