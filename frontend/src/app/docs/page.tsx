@@ -64,12 +64,12 @@ const DOCS_DATA = {
 
   team_name: "Team Advotech",
   team: [
-    { name: "Mohammad Shuaib", role: "Lead Architect / Full-Stack Engineer", email: "shuaib@advotech.ai", avatar: "/team/Mohammad_Shuaib.webp" },
-    { name: "Mahmudul Hasan Tasin", role: "Product Lead / Backend Architect", email: "tasin@advotech.ai", avatar: "/team/tasin.webp" },
-    { name: "SM Sayem Hossain", role: "UI/UX Engineer / Frontend Lead", email: "sayem@advotech.ai", avatar: "/team/sayem.webp" },
-    { name: "Sajjad", role: "Backend Engineer / DevOps", email: "sajjad@advotech.ai", avatar: "/team/sajjad.webp" },
-    { name: "Medha", role: "Legal Research & Compliance", email: "medha@advotech.ai", avatar: "/team/medha.webp" },
-    { name: "Jibon", role: "Go-To-Market / Partnerships", email: "jibon@advotech.ai", avatar: "/team/jibon.webp" },
+    { name: "Mohammad Shuaib", role: "Lead Architect / Full-Stack Engineer", email: "shuaib@advotech.ai", avatar: "/team/Mohammad_Shuaib.webp", objPos: "top center" },
+    { name: "Mahmudul Hasan Tasin", role: "Product Lead / Backend Architect", email: "tasin@advotech.ai", avatar: "/team/tasin.webp", objPos: "center 20%" },
+    { name: "SM Sayem Hossain", role: "UI/UX Engineer / Frontend Lead", email: "sayem@advotech.ai", avatar: "/team/sayem.webp", objPos: "top center" },
+    { name: "Sajjad", role: "Backend Engineer / DevOps", email: "sajjad@advotech.ai", avatar: "/team/sajjad.webp", objPos: "top center" },
+    { name: "Medha", role: "Legal Research & Compliance", email: "medha@advotech.ai", avatar: "/team/medha.webp", objPos: "top center" },
+    { name: "Jibon", role: "Go-To-Market / Partnerships", email: "jibon@advotech.ai", avatar: "/team/jibon.webp", objPos: "top center" },
   ],
 
   tech: {
@@ -367,7 +367,7 @@ const STYLES = `
   /* Team */
   .team-card { border-top: 2px solid var(--border-color); padding-top: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem; }
   .team-img-wrap { width: 100%; aspect-ratio: 1/1; overflow: hidden; background: var(--bg-accent); border-radius: 4px; }
-  .team-img { width: 100%; height: 100%; object-fit: cover; object-position: top center; filter: grayscale(15%); transition: filter 0.3s; display: block; }
+  .team-img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(15%); transition: filter 0.3s; display: block; }
   .team-card:hover .team-img { filter: grayscale(0%); }
   .team-name { font-family: var(--font-fraunces), serif; font-size: 1.1rem; color: var(--text-dark); margin: 0; }
   .team-role { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-clay); margin: 0; font-weight: 700; }
@@ -915,7 +915,7 @@ export default function DocsSystem() {
               {d.team.map((member, i) => (
                 <div key={i} className="team-card">
                   <div className="team-img-wrap">
-                    <img src={member.avatar} alt={member.name} className="team-img" loading="lazy" />
+                    <img src={member.avatar} alt={member.name} className="team-img" loading="lazy" style={{ objectPosition: member.objPos || "top center" }} />
                   </div>
                   <div>
                     <h3 className="team-name">{member.name}</h3>
