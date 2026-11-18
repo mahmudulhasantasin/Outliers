@@ -65,7 +65,7 @@ const DOCS_DATA = {
   team_name: "Team Advotech",
   team: [
     { name: "Mohammad Shuaib", role: "Lead Architect / Full-Stack Engineer", email: "shuaib@advotech.ai", avatar: "/team/Mohammad_Shuaib.webp", objPos: "top center" },
-    { name: "Mahmudul Hasan Tasin", role: "Product Lead / Backend Architect", email: "tasin@advotech.ai", avatar: "/team/tasin.webp", objPos: "center 20%" },
+    { name: "Mahmudul Hasan Tasin", role: "Product Lead / Backend Architect", email: "tasin@advotech.ai", avatar: "/team/tasin.webp", objPos: "center 5%" },
     { name: "SM Sayem Hossain", role: "UI/UX Engineer / Frontend Lead", email: "sayem@advotech.ai", avatar: "/team/sayem.webp", objPos: "top center" },
     { name: "Sajjad", role: "Backend Engineer / DevOps", email: "sajjad@advotech.ai", avatar: "/team/sajjad.webp", objPos: "top center" },
     { name: "Medha", role: "Legal Research & Compliance", email: "medha@advotech.ai", avatar: "/team/medha.webp", objPos: "top center" },
