@@ -834,7 +834,10 @@ const STYLES = `
 
   /* Topbar */
   .topbar { padding: 1rem 4vw; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; background: rgba(251, 244, 236, 0.96); position: sticky; top: 0; z-index: 80; backdrop-filter: blur(8px); }
-  .topbar-left { display: flex; gap: 1.25rem; align-items: center; flex-wrap: wrap; }
+  .topbar-left { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+  .topbar-brand { display: flex; align-items: center; gap: 0.65rem; }
+  .brand-title { font-family: var(--font-fraunces), serif; font-weight: 700; font-size: 1.05rem; color: var(--text-dark); letter-spacing: -0.01em; }
+  .brand-badge { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 4px; background: var(--bg-accent); color: var(--accent-clay); border: 1px solid rgba(196, 91, 60, 0.2); }
   .stat-pill { font-size: 0.8rem; color: var(--text-body); display: flex; align-items: center; gap: 0.4rem; font-weight: 500; }
   .stat-pill strong { color: var(--text-dark); font-weight: 700; }
   .stat-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse 2s infinite; }
@@ -896,10 +899,13 @@ const STYLES = `
   .jump-pill { font-size: 0.8rem; font-weight: 700; color: var(--text-dark); background: var(--bg-alt); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 50px; text-decoration: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
   .jump-pill:hover { border-color: var(--accent-clay); color: var(--accent-clay); transform: translateY(-1px); }
 
-  /* Hero Stats */
-  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1.5rem; margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--border-color); }
+  /* Hero Stats & Live Telemetry */
+  .hero-live-telemetry-header { display: flex; align-items: center; gap: 0.6rem; margin-top: 2.75rem; margin-bottom: -1rem; font-size: 0.78rem; }
+  .live-telemetry-label { font-weight: 800; color: var(--accent-clay); text-transform: uppercase; letter-spacing: 0.12em; }
+  .live-telemetry-status { color: var(--text-body); opacity: 0.75; font-weight: 500; }
+  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-top: 2rem; padding-top: 1.75rem; border-top: 1px solid var(--border-color); }
   .stat-item { display: flex; flex-direction: column; gap: 0.35rem; }
-  .stat-num { font-family: var(--font-fraunces), serif; font-size: 2.75rem; color: var(--text-dark); line-height: 1; font-weight: 700; }
+  .stat-num { font-family: var(--font-fraunces), serif; font-size: 2.6rem; color: var(--text-dark); line-height: 1; font-weight: 700; }
   .stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-clay); font-weight: 800; }
   .stat-sub { font-size: 0.8rem; color: var(--text-body); opacity: 0.8; }
 
@@ -2399,24 +2405,10 @@ export default function DocsSystem() {
         {/* TOPBAR */}
         <div className="topbar">
           <div className="topbar-left">
-            <span className="stat-pill">
-              <span className="stat-live-dot"></span> Live System
-            </span>
-            <span className="stat-pill">
-              👥 <strong>{d.stats.total_users}</strong> Users
-            </span>
-            <span className="stat-pill">
-              📋 <strong>{d.stats.total_audits}</strong> Audits
-            </span>
-            <span className="stat-pill">
-              📚 <strong>{d.stats.statutes_indexed.toLocaleString()}+</strong> Statutes
-            </span>
-            <span className="stat-pill">
-              ⚡ <strong>{d.stats.avg_turnaround}</strong> Avg Audit
-            </span>
-            <span className="stat-pill">
-              ✅ <strong>{d.stats.accuracy_rate}</strong> Precision
-            </span>
+            <div className="topbar-brand">
+              <span className="brand-title">Advotech Copilot</span>
+              <span className="brand-badge">DOCS</span>
+            </div>
           </div>
 
           <div className="topbar-right">
@@ -2471,7 +2463,26 @@ export default function DocsSystem() {
               </div>
             </div>
 
+            {/* Live Telemetry Status Strip */}
+            <div className="hero-live-telemetry-header">
+              <span className="stat-live-dot"></span>
+              <span className="live-telemetry-label">LIVE SYSTEM TELEMETRY</span>
+              <span className="live-telemetry-status">
+                · {syncStatus === "LIVE_DB" ? "Direct PostgreSQL Production Sync" : "Continuous Production Telemetry"}
+              </span>
+            </div>
+
             <div className="stats-bar">
+              <div className="stat-item">
+                <span className="stat-num">{d.stats.total_users}</span>
+                <span className="stat-label">Active Users</span>
+                <span className="stat-sub">Live verified accounts</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-num">{d.stats.total_audits}</span>
+                <span className="stat-label">Audits Completed</span>
+                <span className="stat-sub">Autonomous statutory audits</span>
+              </div>
               <div className="stat-item">
                 <span className="stat-num">{d.stats.statutes_indexed.toLocaleString()}+</span>
                 <span className="stat-label">Statutes Ingested</span>
@@ -2483,14 +2494,14 @@ export default function DocsSystem() {
                 <span className="stat-sub">33/36 gold standard test recall</span>
               </div>
               <div className="stat-item">
-                <span className="stat-num">{d.stats.benchmark_pass}</span>
-                <span className="stat-label">CI/CD Pass Rate</span>
-                <span className="stat-sub">Automated production test suites</span>
-              </div>
-              <div className="stat-item">
                 <span className="stat-num">{d.stats.avg_turnaround}</span>
                 <span className="stat-label">Turnaround SLA</span>
                 <span className="stat-sub">15-page complex PDF agreement</span>
+              </div>
+              <div className="stat-item">
+                <span className="stat-num">{d.stats.benchmark_pass}</span>
+                <span className="stat-label">CI/CD Pass Rate</span>
+                <span className="stat-sub">Automated production test suites</span>
               </div>
             </div>
           </Section>
