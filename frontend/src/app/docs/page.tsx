@@ -1,28 +1,29 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Fraunces, Karla } from "next/font/google";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap" });
 const karla = Karla({ subsets: ["latin"], variable: "--font-karla", display: "swap" });
 
 // ==========================================
-// 🔐 ACCESS CONTROL CONFIG
+// 🔐 ACCESS CONTROL & SCHEDULING DEFAULTS
 // ==========================================
 const ACCESS_CONFIG = {
   adminPin: "advotech2026",
-  defaultStart: "2026-06-10T00:00",
-  defaultEnd: "2026-06-14T23:59",
+  defaultStart: "2027-06-10T00:00",
+  defaultEnd: "2027-06-14T23:59",
+  apiBase: process.env.NEXT_PUBLIC_API_URL || "https://legal-copilot-backend-088i.onrender.com",
 };
 
 // ==========================================
-// 📁 CONTENT PAYLOAD (Authoritative Grounded Data)
+// 📁 AUTHORITATIVE CONTENT PAYLOAD
 // ==========================================
-const DOCS_DATA = {
+const INITIAL_DOCS_DATA = {
   meta: {
     company: "Advotech Copilot",
     tagline: "AI-powered Legal Intelligence for the Global South",
-    one_liner: "30-second AI contract audits for ৳28 ($0.25) — verified by real lawyers.",
+    one_liner: "30-second AI contract audits for ৳28 ($0.25) — verified by real lawyers. Legal help that 80% of South Asians can actually afford.",
     version: "v1.4.0",
     last_updated: "2026-11-18",
   },
@@ -403,87 +404,73 @@ const DOCS_DATA = {
     },
 
     architecture: {
-      headline: "End-to-End System Architecture Topology",
+      headline: "System Architecture Topology: UI → API → Services → DB",
+      diagramTitle: "Four-Tier Distributed Architecture (Rendered SVG Topology)",
       layers: [
         {
-          label: "01. Presentation Layer",
+          label: "01. Presentation Layer (UI)",
           items: ["Next.js 15 App Router", "Tailwind CSS Design Tokens", "Client-side Regex PII Redactor", "Real-time SSE Event Listeners"],
           icon: "🖥",
           role: "Sovereign client UI & instant audit rendering",
         },
         {
-          label: "02. API Gateway & Auth",
+          label: "02. API Gateway & Auth (API)",
           items: ["FastAPI Async Router", "JWT Auth (token_version checks)", "Role-Based Access Control (RBAC)", "Rate Limiting & BOLA Guards"],
           icon: "⚙",
           role: "Secure traffic routing & permission gating",
         },
         {
-          label: "03. Agent Orchestrator",
-          items: ["LangGraph State Machines", "Act Alias Resolver (3,547 Acts)", "Query Intent Classifier", "Retry & Fallback Circuit Breaker"],
+          label: "03. Services & Reasoning (Services)",
+          items: ["LangGraph State Machines", "Act Alias Resolver (3,547 Acts)", "Groq LLaMA 3.3 70B & GLM-4 Fallback", "Deterministic Hallucination Interceptor"],
           icon: "🤖",
           role: "Multi-step reasoning & statutory routing",
         },
         {
-          label: "04. Vector & Relational Store",
+          label: "04. Vector & Relational Store (DB)",
           items: ["Qdrant Cloud (e5-small embeddings)", "Supabase Postgres (pgvector)", "Credit Ledger (Immutable Transactions)", "Metric Events Benchmarking"],
           icon: "🗄",
           role: "Hybrid search & persistent enterprise storage",
         },
-        {
-          label: "05. Inference & Guard Layer",
-          items: ["Groq LLaMA 3.3 70B (Primary)", "GLM-4 / Local Gemma 3n (Fallback)", "Deterministic Hallucination Interceptor", "Official Gazette Citation Linker"],
-          icon: "🛡",
-          role: "Sub-second inference with zero hallucination",
-        },
-      ],
-      flowSteps: [
-        { from: "Browser", to: "Next.js 15", desc: "User uploads PDF; client-side PII sanitizer scrubs phone/NID" },
-        { from: "Next.js", to: "FastAPI Gateway", desc: "Authenticated POST with JWT token_version verification" },
-        { from: "Gateway", to: "LangGraph", desc: "Orchestrator initiates parallel hybrid retrieval" },
-        { from: "LangGraph", to: "Qdrant + DB", desc: "Dense semantic vector match + exact act alias lookup" },
-        { from: "Retrieval", to: "Groq LLM", desc: "Grounding context injected into prompt; sub-second inference" },
-        { from: "Groq LLM", to: "Safety Interceptor", desc: "Deterministic regex & section verifier validates citations" },
-        { from: "Interceptor", to: "SSE Stream", desc: "Streamed markdown & JSON audit memo sent back to client" },
       ],
     },
 
     data_flow: {
-      headline: "7-Stage Sovereign Data Processing Pipeline",
-      steps: [
+      headline: "5-Phase Data Flow Pipeline: Input → Processing → AI → Output → Feedback",
+      phases: [
         {
-          step: "Stage 01 — Client-Side PII Scrubbing",
-          desc: "Before any document bytes leave the user's browser, client-side regex rules redact phone numbers (+8801[3-9]), NID (10/13/17 digits), email addresses, and bank accounts. Raw sensitive data never touches cloud AI inference.",
-          icon: "🔒",
+          phase: "01. Input Phase",
+          tag: "Input",
+          title: "Document Ingestion & Sovereign Client PII Scrubbing",
+          desc: "User submits a legal query or PDF agreement. Client-side regex rules redact phone numbers (+8801[3-9]), NID (10/13/17 digits), email addresses, and bank accounts in browser memory before bytes leave the device.",
+          icon: "📥",
         },
         {
-          step: "Stage 02 — API Auth & Credit Validation",
-          desc: "FastAPI checks the caller's JWT token, validates role authorization (General / Lawyer / Enterprise), and confirms available credit balance in the PostgreSQL ledger.",
-          icon: "💳",
+          phase: "02. Processing Phase",
+          tag: "Processing",
+          title: "API Gateway Auth, RBAC & Dual-Path Retrieval",
+          desc: "FastAPI router validates JWT token_version and checks RBAC authorization. The query splits into Path A (3,547 Act Alias dictionary exact match) and Path B (Qdrant dense vector search with e5-small embeddings).",
+          icon: "⚙",
         },
         {
-          step: "Stage 03 — Dual-Path Hybrid Retrieval",
-          desc: "The query splits into Path A: Exact Act Alias Dictionary lookup (mapping 3,547 colloquial act names to formal statutes), and Path B: Qdrant dense vector search using multilingual e5-small embeddings.",
-          icon: "🔍",
-        },
-        {
-          step: "Stage 04 — Grounded LLM Reasoning",
-          desc: "Groq LLaMA 3.3 70B synthesizes the statutory provisions and extracted contract clauses. The model is constrained to cite ONLY the provided grounding context, preventing parametric hallucination.",
+          phase: "03. AI Phase",
+          tag: "AI",
+          title: "LangGraph Multi-Step Reasoning & Grounded Synthesis",
+          desc: "LangGraph state machine feeds extracted clauses and retrieved statutory chunks into Groq LLaMA 3.3 70B. Inference is strictly constrained to the ingested statutory context with zero parametric guessing.",
           icon: "🤖",
         },
         {
-          step: "Stage 05 — Deterministic Safety Filter",
-          desc: "An independent validation engine verifies whether cited sections exist in the official Bangladesh Code. References to non-existent sections or foreign statutes (e.g., Indian IPC) are deterministically intercepted.",
-          icon: "🛡",
+          phase: "04. Output Phase",
+          tag: "Output",
+          title: "Deterministic Guard Validation & Real-time SSE Stream",
+          desc: "Deterministic safety filter checks whether every cited section actually exists in the official Bangladesh Code. Once verified, findings, executive health scores (0-100), and redlines stream via SSE.",
+          icon: "📤",
         },
         {
-          step: "Stage 06 — Real-Time Streaming & Storage",
-          desc: "Output streams to the client via Server-Sent Events (SSE). The executive risk score (0–100), liability tags, and audit memo are stored immutably in Supabase PostgreSQL.",
-          icon: "⚡",
-        },
-        {
-          step: "Stage 07 — HITL Advocate Escalation",
-          desc: "If the user requests lawyer verification, the audit package dispatches to the advocate inquiry queue with an automated 3-hour SLA offer timer and cryptographic digital seal signing.",
-          icon: "⚖",
+          phase: "05. Feedback Phase",
+          tag: "Feedback",
+          title: "Benchmark Telemetry Logging & HITL Lawyer Escalation",
+          desc: "Operational latency and retrieval metrics are logged into the metric_events table for continuous accuracy auditing. Users can escalate to Supreme Court advocates with a 3-hour SLA window.",
+          icon: "🔄",
         },
       ],
     },
@@ -722,8 +709,15 @@ const DOCS_DATA = {
       ],
     },
 
+    contributors: {
+      headline: "Engineering Leadership, Open Source & Governance",
+      summary: "Advotech Copilot is built and governed under rigorous CI/CD test gates, signed commits, and specialized functional division across systems engineering, AI research, and statutory legal research.",
+      lead: "Team Advotech Engineering Core",
+      branches: "Main Active Branch: sayem (Base: main) • Production API: Render Docker • Frontend: Vercel Edge",
+    },
+
     changelog: [
-      { v: "v1.4.0", date: "2026-11-18", changes: "Interactive /docs release: YC pitch deck, deep technical whitepaper, real team directory, and admin access control." },
+      { v: "v1.4.0", date: "2026-11-18", changes: "Interactive /docs release: YC pitch deck, deep technical whitepaper, real team directory, rendered SVG architecture, and admin access control." },
       { v: "v1.3.0", date: "2026-11-14", changes: "FastMCP legal tool server integration, MCP retry ladder, and case-law search triggers." },
       { v: "v1.2.0", date: "2026-11-12", changes: "BOLA security audit hardening, client-side PII scrubbing regex, and OTP SMS masking." },
       { v: "v1.1.0", date: "2026-11-11", changes: "Deterministic rule verification filter, adaptive Qdrant threshold (0.78), and benchmark harness." },
@@ -769,26 +763,28 @@ const STYLES = `
   .gate-wrap { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.5rem; text-align: center; padding: 2rem; }
   .gate-code { font-size: 5.5rem; font-weight: 800; color: var(--border-color); font-family: var(--font-fraunces), serif; line-height: 1; }
   .gate-title { font-family: var(--font-fraunces), serif; font-size: 2.25rem; color: var(--text-dark); margin: 0; }
-  .gate-desc { font-size: 1.05rem; color: var(--text-body); max-width: 440px; line-height: 1.6; margin: 0; }
+  .gate-desc { font-size: 1.05rem; color: var(--text-body); max-width: 480px; line-height: 1.6; margin: 0; }
+  .gate-window { font-size: 0.9rem; color: var(--accent-clay); background: var(--bg-accent); padding: 0.5rem 1rem; border-radius: 6px; font-weight: 700; }
   .gate-admin-link { font-size: 0.85rem; color: var(--accent-clay); cursor: pointer; text-decoration: underline; font-weight: 600; }
 
   /* Admin Toolbar */
-  .admin-toolbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--admin-color); color: white; padding: 0.75rem 2rem; z-index: 200; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; gap: 1rem; flex-wrap: wrap; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); }
-  .admin-toolbar-left { display: flex; align-items: center; gap: 1rem; }
+  .admin-toolbar { position: fixed; bottom: 0; left: 0; right: 0; background: var(--admin-color); color: white; padding: 0.85rem 2rem; z-index: 200; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; font-weight: 600; gap: 1rem; flex-wrap: wrap; box-shadow: 0 -4px 20px rgba(0,0,0,0.15); }
+  .admin-toolbar-left { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
   .admin-status-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 0.4rem; }
   .admin-status-dot.on { background: #4ade80; box-shadow: 0 0 8px #4ade80; }
+  .admin-status-dot.scheduled { background: #fbbf24; box-shadow: 0 0 8px #fbbf24; }
   .admin-status-dot.off { background: #f87171; box-shadow: 0 0 8px #f87171; }
-  .btn-admin { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.45rem 0.95rem; cursor: pointer; border-radius: 4px; font-size: 0.8rem; font-weight: 600; transition: 0.2s; }
+  .btn-admin { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 0.45rem 0.95rem; cursor: pointer; border-radius: 4px; font-size: 0.8rem; font-weight: 600; transition: 0.2s; font-family: inherit; }
   .btn-admin:hover { background: rgba(255,255,255,0.25); }
+  .btn-admin.active { background: white; color: var(--admin-color); border-color: white; }
   .btn-admin.danger { background: rgba(196, 91, 60, 0.4); border-color: rgba(196, 91, 60, 0.6); }
-  .btn-admin.danger:hover { background: rgba(196, 91, 60, 0.6); }
-  .admin-schedule { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-  .admin-schedule label { font-size: 0.75rem; opacity: 0.85; }
+  .admin-schedule { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+  .admin-schedule label { font-size: 0.75rem; opacity: 0.9; }
   .admin-schedule input[type="datetime-local"] { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: white; padding: 0.35rem 0.6rem; border-radius: 4px; font-size: 0.75rem; color-scheme: dark; font-family: inherit; }
 
-  /* Admin PIN Modal */
+  /* Admin Modals */
   .modal-overlay { position: fixed; inset: 0; background: rgba(46, 33, 23, 0.6); z-index: 300; display: flex; align-items: center; justify-content: center; padding: 1.5rem; backdrop-filter: blur(4px); }
-  .modal-box { background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 12px; padding: 2.5rem; width: 100%; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
+  .modal-box { background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 12px; padding: 2.5rem; width: 100%; max-width: 440px; box-shadow: 0 20px 40px rgba(0,0,0,0.12); }
   .modal-title { font-family: var(--font-fraunces), serif; font-size: 1.5rem; color: var(--text-dark); margin: 0 0 0.5rem 0; }
   .modal-sub { font-size: 0.9rem; color: var(--text-body); margin: 0 0 1.5rem 0; line-height: 1.5; }
   .modal-input { width: 100%; padding: 0.75rem 1rem; border: 1px solid var(--border-color); border-radius: 6px; background: var(--bg-main); font-size: 1rem; color: var(--text-dark); margin-bottom: 1rem; font-family: inherit; }
@@ -936,6 +932,10 @@ const STYLES = `
   .clause-redline { background: #FEF3C7; border: 1px dashed #D97706; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; line-height: 1.5; color: #78350F; margin-top: 0.5rem; }
   .redline-tag { font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; display: block; margin-bottom: 0.25rem; }
 
+  /* SVG Architecture Diagram Styles */
+  .svg-arch-wrap { width: 100%; overflow-x: auto; background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
+  .svg-arch-inner { min-width: 760px; }
+
   /* Market Segment Cards */
   .market-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 10px; padding: 2rem; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
   .market-tier { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-clay); font-weight: 800; margin-bottom: 0.5rem; }
@@ -982,12 +982,13 @@ const STYLES = `
   .gtm-target { font-size: 0.85rem; font-weight: 600; color: var(--green-dark); background: var(--green-light); padding: 0.2rem 0.5rem; border-radius: 4px; align-self: flex-start; }
   .gtm-strat { font-size: 0.92rem; color: var(--text-body); line-height: 1.6; margin: 0.5rem 0 0 0; }
 
-  /* Team Cards (Uniform, High-Res, Aspect Ratio Fixed) */
+  /* Team Cards (Uniform, High-Res, Aspect Ratio Fixed + Fallback Avatar) */
   .team-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); transition: transform 0.2s, box-shadow 0.2s; }
   .team-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(46, 33, 23, 0.08); }
   .team-img-wrap { width: 100%; aspect-ratio: 1/1; overflow: hidden; background: var(--bg-accent); position: relative; }
   .team-img { width: 100%; height: 100%; object-fit: cover; filter: grayscale(10%); transition: filter 0.3s, transform 0.3s; display: block; }
   .team-card:hover .team-img { filter: grayscale(0%); transform: scale(1.02); }
+  .team-avatar-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; color: var(--accent-clay); background: var(--bg-accent); letter-spacing: 0.05em; }
   .team-body { padding: 1.25rem 1.5rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: 0.35rem; flex-grow: 1; }
   .team-name { font-family: var(--font-fraunces), serif; font-size: 1.2rem; color: var(--text-dark); margin: 0; font-weight: 700; }
   .team-role { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-clay); margin: 0; font-weight: 800; }
@@ -1007,13 +1008,14 @@ const STYLES = `
   .arch-items li::before { content: "→"; color: var(--accent-clay); flex-shrink: 0; font-weight: 700; }
   .arch-items li:last-child { border-bottom: none; }
 
-  /* Interactive Data Flow Step Cards */
-  .flow-steps { display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem; }
-  .flow-step-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem 1.5rem; display: flex; gap: 1.25rem; align-items: flex-start; transition: border-color 0.2s; }
-  .flow-step-card:hover { border-color: var(--accent-clay); }
-  .flow-step-icon { font-size: 1.75rem; width: 2.5rem; flex-shrink: 0; text-align: center; }
+  /* 5-Phase Data Flow Pipeline Cards */
+  .flow-steps { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 2rem; }
+  .flow-step-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start; transition: border-color 0.2s, box-shadow 0.2s; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
+  .flow-step-card:hover { border-color: var(--accent-clay); box-shadow: 0 8px 24px rgba(46, 33, 23, 0.06); }
+  .flow-step-icon { font-size: 2rem; width: 3rem; flex-shrink: 0; text-align: center; }
   .flow-step-body { flex-grow: 1; }
-  .flow-step-label { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; color: var(--accent-clay); margin-bottom: 0.25rem; }
+  .flow-step-badge { display: inline-block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; background: var(--bg-accent); color: var(--accent-clay); padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.35rem; }
+  .flow-step-title { font-family: var(--font-fraunces), serif; font-size: 1.15rem; color: var(--text-dark); margin: 0 0 0.5rem 0; }
   .flow-step-desc { font-size: 0.92rem; color: var(--text-body); line-height: 1.6; margin: 0; }
 
   /* Feature Matrix Interactive Table */
@@ -1130,17 +1132,28 @@ const Section = ({
 );
 
 // ==========================================
-// 🚫 NOT AVAILABLE 403 GATE
+// 🚫 403 NOT AVAILABLE GATE
 // ==========================================
-const NotAvailablePage = ({ onAdminClick }: { onAdminClick: () => void }) => (
+const NotAvailablePage = ({
+  onAdminClick,
+  scheduleWindow,
+}: {
+  onAdminClick: () => void;
+  scheduleWindow?: { start: string; end: string };
+}) => (
   <div className={`hearth-theme ${fraunces.variable} ${karla.variable}`}>
     <style dangerouslySetInnerHTML={{ __html: STYLES }} />
     <div className="gate-wrap" style={{ width: "100%" }}>
       <div className="gate-code">403</div>
       <h1 className="gate-title">Documentation Not Available</h1>
       <p className="gate-desc">
-        This documentation portal is currently reserved for registered judges and investors during official showcase windows. Please check back during scheduled evaluation hours.
+        Advotech Copilot live documentation and pitch portal is currently reserved for authorized evaluators, judges, and investors during scheduled evaluation windows.
       </p>
+      {scheduleWindow && (
+        <div className="gate-window">
+          Scheduled Window: {new Date(scheduleWindow.start).toLocaleString()} → {new Date(scheduleWindow.end).toLocaleString()}
+        </div>
+      )}
       <span className="gate-admin-link" onClick={onAdminClick}>
         Administrator Access Authentication →
       </span>
@@ -1152,18 +1165,26 @@ const NotAvailablePage = ({ onAdminClick }: { onAdminClick: () => void }) => (
 // 🚀 MAIN INTERACTIVE COMPONENT
 // ==========================================
 export default function DocsSystem() {
-  const d = DOCS_DATA;
+  const [d, setD] = useState(INITIAL_DOCS_DATA);
 
-  // --- Access Control State ---
-  const [docsPublic, setDocsPublic] = useState(true);
+  // --- Access Control State (3-State Model matching backend) ---
+  const [visibility, setVisibility] = useState<"ON" | "OFF" | "SCHEDULED">("ON");
   const [scheduleStart, setScheduleStart] = useState(ACCESS_CONFIG.defaultStart);
   const [scheduleEnd, setScheduleEnd] = useState(ACCESS_CONFIG.defaultEnd);
+  const [syncStatus, setSyncStatus] = useState<"LIVE_DB" | "STANDALONE">("STANDALONE");
 
   // --- Admin Auth State ---
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
+
+  // --- Quick Edit Form State ---
+  const [editTagline, setEditTagline] = useState(d.meta.tagline);
+  const [editOneLiner, setEditOneLiner] = useState(d.meta.one_liner);
+  const [editProblemHeadline, setEditProblemHeadline] = useState(d.pitch.problem.headline);
+  const [editSolutionHeadline, setEditSolutionHeadline] = useState(d.pitch.solution.headline);
 
   // --- UI Navigation State ---
   const [searchQuery, setSearchQuery] = useState("");
@@ -1172,12 +1193,57 @@ export default function DocsSystem() {
   const [copiedEndpoint, setCopiedEndpoint] = useState<string | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
 
   // --- Interactive Demos State ---
   const [demoCategory, setDemoCategory] = useState<"commercial" | "tenant" | "employment">("commercial");
   const [apiFilter, setApiFilter] = useState("All");
   const [matrixFilter, setMatrixFilter] = useState("ALL");
   const [activeAuditTab, setActiveAuditTab] = useState<"findings" | "redlines">("findings");
+
+  // --- Auto-Sync Live Telemetry from Backend on Mount ---
+  useEffect(() => {
+    // 1. Fetch live access config
+    fetch(`${ACCESS_CONFIG.apiBase}/api/docs/access`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Access endpoint unavailable");
+      })
+      .then((data) => {
+        if (data && data.visibility) {
+          setVisibility(data.visibility);
+          if (data.schedule_start) setScheduleStart(data.schedule_start.slice(0, 16));
+          if (data.schedule_end) setScheduleEnd(data.schedule_end.slice(0, 16));
+        }
+      })
+      .catch(() => {
+        // Fallback to local configuration gracefully
+      });
+
+    // 2. Fetch live database KPIs
+    fetch(`${ACCESS_CONFIG.apiBase}/api/docs/live-stats`)
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error("Stats endpoint unavailable");
+      })
+      .then((data) => {
+        if (data && (data.total_users || data.total_audits)) {
+          setD((prev) => ({
+            ...prev,
+            stats: {
+              ...prev.stats,
+              total_users: data.total_users || prev.stats.total_users,
+              total_audits: data.total_audits || prev.stats.total_audits,
+              statutes_indexed: data.statutes_indexed || prev.stats.statutes_indexed,
+            },
+          }));
+          setSyncStatus("LIVE_DB");
+        }
+      })
+      .catch(() => {
+        // Banked benchmark metrics
+      });
+  }, []);
 
   // --- Intersection Observer for Scroll Tracking ---
   useEffect(() => {
@@ -1209,13 +1275,17 @@ export default function DocsSystem() {
     };
   }, []);
 
-  // --- Check schedule-based visibility ---
-  const isWithinSchedule = () => {
+  // --- Evaluate Public Reachability ---
+  const isAccessibleNow = useMemo(() => {
+    if (isAdminMode) return true;
+    if (visibility === "ON") return true;
+    if (visibility === "OFF") return false;
+    // SCHEDULED
     const now = new Date();
     const start = new Date(scheduleStart);
     const end = new Date(scheduleEnd);
     return now >= start && now <= end;
-  };
+  }, [isAdminMode, visibility, scheduleStart, scheduleEnd]);
 
   // --- Admin PIN verify ---
   const handlePinSubmit = () => {
@@ -1225,8 +1295,74 @@ export default function DocsSystem() {
       setPinInput("");
       setPinError("");
     } else {
-      setPinError("Incorrect security PIN. Please try again.");
+      setPinError("Incorrect administrative security PIN. Please try again.");
     }
+  };
+
+  // --- Update Visibility on Backend & Local ---
+  const updateVisibilitySetting = (newVis: "ON" | "OFF" | "SCHEDULED") => {
+    setVisibility(newVis);
+    fetch(`${ACCESS_CONFIG.apiBase}/api/docs/config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        visibility: newVis,
+        schedule_start: scheduleStart,
+        schedule_end: scheduleEnd,
+      }),
+    }).catch(() => {});
+  };
+
+  // --- Save In-Page Quick Content Edits ---
+  const handleSaveQuickEdit = () => {
+    setD((prev) => ({
+      ...prev,
+      meta: {
+        ...prev.meta,
+        tagline: editTagline,
+        one_liner: editOneLiner,
+      },
+      pitch: {
+        ...prev.pitch,
+        problem: {
+          ...prev.pitch.problem,
+          headline: editProblemHeadline,
+        },
+        solution: {
+          ...prev.pitch.solution,
+          headline: editSolutionHeadline,
+        },
+      },
+    }));
+    setShowEditModal(false);
+  };
+
+  // --- Set Duration Helper ---
+  const handleSetDuration = (hours: number) => {
+    const start = new Date();
+    const end = new Date(start.getTime() + hours * 60 * 60 * 1000);
+    const sStr = start.toISOString().slice(0, 16);
+    const eStr = end.toISOString().slice(0, 16);
+    setScheduleStart(sStr);
+    setScheduleEnd(eStr);
+    setVisibility("SCHEDULED");
+    fetch(`${ACCESS_CONFIG.apiBase}/api/docs/config`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        visibility: "SCHEDULED",
+        schedule_start: sStr,
+        schedule_end: eStr,
+        duration_hours: hours,
+      }),
+    }).catch(() => {});
+  };
+
+  // --- Set Default Showcase Window ---
+  const handleSetDefaultWindow = () => {
+    setScheduleStart(ACCESS_CONFIG.defaultStart);
+    setScheduleEnd(ACCESS_CONFIG.defaultEnd);
+    setVisibility("SCHEDULED");
   };
 
   // --- Export PDF ---
@@ -1310,11 +1446,14 @@ export default function DocsSystem() {
 
   const activeDemo = demoData[demoCategory];
 
-  // --- Determine if docs should show ---
-  const shouldShow = isAdminMode || docsPublic || isWithinSchedule();
-
-  if (!shouldShow) {
-    return <NotAvailablePage onAdminClick={() => setShowPinModal(true)} />;
+  // --- Gate Enforcement ---
+  if (!isAccessibleNow) {
+    return (
+      <NotAvailablePage
+        onAdminClick={() => setShowPinModal(true)}
+        scheduleWindow={{ start: scheduleStart, end: scheduleEnd }}
+      />
+    );
   }
 
   const tocActive = (id: string) => (activeSection === id ? "toc-link active" : "toc-link");
@@ -1323,7 +1462,7 @@ export default function DocsSystem() {
     <div className={`hearth-theme ${fraunces.variable} ${karla.variable}`}>
       <style dangerouslySetInnerHTML={{ __html: STYLES }} />
 
-      {/* 🔐 PIN MODAL */}
+      {/* 🔐 PIN AUTH MODAL */}
       {showPinModal && (
         <div className="modal-overlay" onClick={() => setShowPinModal(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
@@ -1360,30 +1499,128 @@ export default function DocsSystem() {
         </div>
       )}
 
-      {/* 🛠 ADMIN TOOLBAR */}
+      {/* ✏️ IN-PAGE QUICK CONTENT EDITOR MODAL */}
+      {showEditModal && (
+        <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
+          <div className="modal-box" style={{ maxWidth: "540px" }} onClick={(e) => e.stopPropagation()}>
+            <h2 className="modal-title">Quick Content Editor</h2>
+            <p className="modal-sub">Edit live headlines and value proposition copy across the documentation portal.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem", marginBottom: "1.25rem" }}>
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--accent-clay)" }}>Tagline</label>
+                <input
+                  type="text"
+                  className="modal-input"
+                  style={{ marginBottom: 0 }}
+                  value={editTagline}
+                  onChange={(e) => setEditTagline(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--accent-clay)" }}>One-Liner</label>
+                <textarea
+                  className="modal-input"
+                  style={{ marginBottom: 0, height: "70px", resize: "vertical" }}
+                  value={editOneLiner}
+                  onChange={(e) => setEditOneLiner(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--accent-clay)" }}>Problem Headline</label>
+                <input
+                  type="text"
+                  className="modal-input"
+                  style={{ marginBottom: 0 }}
+                  value={editProblemHeadline}
+                  onChange={(e) => setEditProblemHeadline(e.target.value)}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--accent-clay)" }}>Solution Headline</label>
+                <input
+                  type="text"
+                  className="modal-input"
+                  style={{ marginBottom: 0 }}
+                  value={editSolutionHeadline}
+                  onChange={(e) => setEditSolutionHeadline(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="modal-btn primary" onClick={handleSaveQuickEdit}>
+                Save Changes Live
+              </button>
+              <button className="modal-btn secondary" onClick={() => setShowEditModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🛠 ADMIN TOOLBAR WITH COMPLETE CONTROLS */}
       {isAdminMode && (
         <div className="admin-toolbar">
           <div className="admin-toolbar-left">
             <div>
-              <span className={`admin-status-dot ${docsPublic ? "on" : "off"}`}></span>
-              Docs Access: <strong>{docsPublic ? "PUBLIC (LIVE)" : "PRIVATE (GATED)"}</strong> — {d.meta.version}
+              <span className={`admin-status-dot ${visibility === "ON" ? "on" : visibility === "SCHEDULED" ? "scheduled" : "off"}`}></span>
+              Status: <strong>{visibility}</strong> ({syncStatus === "LIVE_DB" ? "DB Synced" : "Standalone"})
             </div>
-            <button
-              className={`btn-admin ${docsPublic ? "danger" : ""}`}
-              onClick={() => setDocsPublic(!docsPublic)}
-            >
-              {docsPublic ? "⏸ Gated / Offline" : "▶ Set Public"}
-            </button>
+
+            {/* Visibility Mode Toggles */}
+            <div style={{ display: "flex", gap: "0.35rem" }}>
+              <button
+                className={`btn-admin ${visibility === "ON" ? "active" : ""}`}
+                onClick={() => updateVisibilitySetting("ON")}
+                title="Always Public"
+              >
+                Public (ON)
+              </button>
+              <button
+                className={`btn-admin ${visibility === "SCHEDULED" ? "active" : ""}`}
+                onClick={() => updateVisibilitySetting("SCHEDULED")}
+                title="Only during schedule"
+              >
+                Scheduled
+              </button>
+              <button
+                className={`btn-admin danger ${visibility === "OFF" ? "active" : ""}`}
+                onClick={() => updateVisibilitySetting("OFF")}
+                title="Private / Gated (403)"
+              >
+                Gated (OFF)
+              </button>
+            </div>
           </div>
+
+          {/* Schedule Window Inputs */}
           <div className="admin-schedule">
-            <label>Judging / Showcase Window:</label>
+            <label>Window:</label>
             <input type="datetime-local" value={scheduleStart} onChange={(e) => setScheduleStart(e.target.value)} />
             <span style={{ opacity: 0.6 }}>→</span>
             <input type="datetime-local" value={scheduleEnd} onChange={(e) => setScheduleEnd(e.target.value)} />
+
+            {/* Quick Duration Presets */}
+            <button className="btn-admin" onClick={() => handleSetDuration(1)} title="+1 Hour">
+              +1h
+            </button>
+            <button className="btn-admin" onClick={() => handleSetDuration(24)} title="+24 Hours">
+              +24h
+            </button>
+            <button className="btn-admin" onClick={handleSetDefaultWindow} title="Default Jun 10-14 Window">
+              Jun 10-14
+            </button>
           </div>
-          <div>
-            <button className="btn-admin" onClick={() => setIsAdminMode(false)}>
-              ✕ Exit Admin
+
+          <div style={{ display: "flex", gap: "0.5rem" }}>
+            <button className="btn-admin" onClick={() => setShowEditModal(true)}>
+              ✏ Quick Edit
+            </button>
+            <a href="/admin/docs" target="_blank" rel="noopener noreferrer" className="btn-admin" style={{ textDecoration: "none" }}>
+              Full Studio ↗
+            </a>
+            <button className="btn-admin danger" onClick={() => setIsAdminMode(false)}>
+              ✕ Exit
             </button>
           </div>
         </div>
@@ -1477,11 +1714,11 @@ export default function DocsSystem() {
             <span className="toc-count">A</span>
           </a>
           <a href="#architecture" className={tocActive("architecture")} onClick={() => setMobileMenuOpen(false)}>
-            <span>System Architecture</span>
+            <span>System Architecture (SVG)</span>
             <span className="toc-count">B</span>
           </a>
           <a href="#data-flow" className={tocActive("data-flow")} onClick={() => setMobileMenuOpen(false)}>
-            <span>7-Stage Data Pipeline</span>
+            <span>5-Phase Data Flow</span>
             <span className="toc-count">C</span>
           </a>
           <a href="#features" className={tocActive("features")} onClick={() => setMobileMenuOpen(false)}>
@@ -1520,9 +1757,13 @@ export default function DocsSystem() {
             <span>Operational KPIs</span>
             <span className="toc-count">L</span>
           </a>
+          <a href="#contributors" className={tocActive("contributors")} onClick={() => setMobileMenuOpen(false)}>
+            <span>Team & Governance</span>
+            <span className="toc-count">N</span>
+          </a>
           <a href="#changelog" className={tocActive("changelog")} onClick={() => setMobileMenuOpen(false)}>
             <span>Changelog History</span>
-            <span className="toc-count">M</span>
+            <span className="toc-count">O</span>
           </a>
         </div>
 
@@ -1596,7 +1837,10 @@ export default function DocsSystem() {
                 📋 Inspect Contract Audit Memo
               </a>
               <a href="#architecture" className="jump-pill">
-                🏛 Architecture Topology
+                🏛 Architecture Topology (SVG)
+              </a>
+              <a href="#data-flow" className="jump-pill">
+                🔄 5-Phase Data Flow
               </a>
               <a href="#team" className="jump-pill">
                 👥 Meet Team Advotech
@@ -2077,13 +2321,24 @@ export default function DocsSystem() {
               {d.team.map((member, i) => (
                 <div key={i} className="team-card">
                   <div className="team-img-wrap">
-                    <img
-                      src={member.avatar}
-                      alt={member.name}
-                      className="team-img"
-                      loading="lazy"
-                      style={{ objectPosition: member.objPos || "top center" }}
-                    />
+                    {imgErrors[member.name] ? (
+                      <div className="team-avatar-fallback font-serif">
+                        {member.name
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .slice(0, 2)}
+                      </div>
+                    ) : (
+                      <img
+                        src={member.avatar}
+                        alt={member.name}
+                        className="team-img"
+                        loading="lazy"
+                        style={{ objectPosition: member.objPos || "top center" }}
+                        onError={() => setImgErrors((prev) => ({ ...prev, [member.name]: true }))}
+                      />
+                    )}
                   </div>
                   <div className="team-body">
                     <h3 className="team-name">{member.name}</h3>
@@ -2131,13 +2386,90 @@ export default function DocsSystem() {
         </div>
 
         {/* ======================================================== */}
-        {/* B. ARCHITECTURE                                          */}
+        {/* B. ARCHITECTURE (Rendered SVG Diagram: UI → API → Services → DB) */}
         {/* ======================================================== */}
         <div data-section="architecture">
           <Section id="architecture" eyebrow="B. System Architecture" headline={d.tech.architecture.headline}>
             <p className="section-lead">
-              Async FastAPI microservice cluster coordinated via LangGraph state graphs with Qdrant Cloud hybrid vector indexing.
+              A four-tier distributed microservice architecture executing client-side sovereign redaction, async FastAPI gateway routing, LangGraph state reasoning, and hybrid vector indexing.
             </p>
+
+            {/* RENDERED SVG ARCHITECTURE DIAGRAM */}
+            <div className="svg-arch-wrap">
+              <div className="svg-arch-inner">
+                <svg viewBox="0 0 880 240" className="w-full h-auto" style={{ maxHeight: "240px", overflow: "visible" }}>
+                  <defs>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                      <path d="M 0 1 L 10 5 L 0 9 z" fill="#C45B3C" />
+                    </marker>
+                    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor="#FFFFFF" />
+                      <stop offset="100%" stopColor="#FFFDF9" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Node 1: UI */}
+                  <g transform="translate(10, 30)">
+                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#1E5C40" />
+                    <text x="90" y="32" textAnchor="middle" fill="#1E5C40" fontSize="11" fontWeight="800" letterSpacing="0.08em">01. UI LAYER</text>
+                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">Next.js 15 App</text>
+                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• Server Components</text>
+                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• Client PII Redactor</text>
+                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• SSE Stream Listener</text>
+                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• Tailwind Design Tokens</text>
+                  </g>
+
+                  {/* Arrow 1: UI -> API */}
+                  <path d="M 190 115 L 230 115" stroke="#C45B3C" strokeWidth="2" markerEnd="url(#arrow)" />
+                  <text x="210" y="105" textAnchor="middle" fill="#C45B3C" fontSize="9" fontWeight="700">HTTPS / JWT</text>
+
+                  {/* Node 2: API */}
+                  <g transform="translate(235, 30)">
+                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#C45B3C" />
+                    <text x="90" y="32" textAnchor="middle" fill="#C45B3C" fontSize="11" fontWeight="800" letterSpacing="0.08em">02. API GATEWAY</text>
+                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">FastAPI Async</text>
+                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• Token Version Auth</text>
+                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• 3-Tier RBAC Guards</text>
+                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• Rate Limiting & BOLA</text>
+                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• SSLCommerz IPN Handler</text>
+                  </g>
+
+                  {/* Arrow 2: API -> Services */}
+                  <path d="M 415 115 L 455 115" stroke="#C45B3C" strokeWidth="2" markerEnd="url(#arrow)" />
+                  <text x="435" y="105" textAnchor="middle" fill="#C45B3C" fontSize="9" fontWeight="700">State Exec</text>
+
+                  {/* Node 3: Services */}
+                  <g transform="translate(460, 30)">
+                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#8F5A0A" />
+                    <text x="90" y="32" textAnchor="middle" fill="#8F5A0A" fontSize="11" fontWeight="800" letterSpacing="0.08em">03. SERVICES LAYER</text>
+                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">LangGraph & Groq</text>
+                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• 3,547 Act Alias Engine</text>
+                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• Groq LLaMA 3.3 70B</text>
+                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• Deterministic Shield</text>
+                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• Fallback Ladder (GLM)</text>
+                  </g>
+
+                  {/* Arrow 3: Services -> DB */}
+                  <path d="M 640 115 L 680 115" stroke="#C45B3C" strokeWidth="2" markerEnd="url(#arrow)" />
+                  <text x="660" y="105" textAnchor="middle" fill="#C45B3C" fontSize="9" fontWeight="700">Vectors</text>
+
+                  {/* Node 4: DB */}
+                  <g transform="translate(685, 30)">
+                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#1E5C40" />
+                    <text x="90" y="32" textAnchor="middle" fill="#1E5C40" fontSize="11" fontWeight="800" letterSpacing="0.08em">04. DB & STORAGE</text>
+                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">Qdrant + Postgres</text>
+                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• 35K+ Statute Vectors</text>
+                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• Supabase pgvector</text>
+                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• Financial Credit Ledger</text>
+                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• Metric Events Benchmarks</text>
+                  </g>
+                </svg>
+              </div>
+            </div>
 
             <div className="arch-topology">
               {d.tech.architecture.layers.map((layer, i) => (
@@ -2157,37 +2489,25 @@ export default function DocsSystem() {
                 </div>
               ))}
             </div>
-
-            <div style={{ marginTop: "2rem", background: "var(--bg-alt)", border: "1px solid var(--border-color)", borderRadius: "8px", padding: "1.5rem" }}>
-              <h4 style={{ fontFamily: "var(--font-fraunces), serif", fontSize: "1.1rem", margin: "0 0 0.75rem 0", color: "var(--text-dark)" }}>
-                End-to-End Pipeline Execution Flow
-              </h4>
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
-                {d.tech.architecture.flowSteps.map((fs, idx) => (
-                  <div key={idx} style={{ display: "flex", gap: "0.75rem", fontSize: "0.88rem", alignItems: "baseline" }}>
-                    <span style={{ fontWeight: 700, color: "var(--accent-clay)", width: "120px", flexShrink: 0 }}>
-                      {fs.from} → {fs.to}:
-                    </span>
-                    <span style={{ color: "var(--text-body)" }}>{fs.desc}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
           </Section>
         </div>
 
         {/* ======================================================== */}
-        {/* C. DATA FLOW                                             */}
+        {/* C. 5-PHASE DATA FLOW: Input → Processing → AI → Output → Feedback */}
         {/* ======================================================== */}
         <div data-section="data-flow">
-          <Section id="data-flow" eyebrow="C. Data Flow Pipeline" headline={d.tech.data_flow.headline} altBg>
+          <Section id="data-flow" eyebrow="C. Data Flow Architecture" headline={d.tech.data_flow.headline} altBg>
+            <p className="section-lead">
+              A five-stage sequential pipeline guaranteeing sovereign data privacy, zero hallucination, and verifiable statutory grounding before output delivery.
+            </p>
             <div className="flow-steps">
-              {d.tech.data_flow.steps.map((st, i) => (
+              {d.tech.data_flow.phases.map((ph, i) => (
                 <div key={i} className="flow-step-card">
-                  <div className="flow-step-icon">{st.icon}</div>
+                  <div className="flow-step-icon">{ph.icon}</div>
                   <div className="flow-step-body">
-                    <div className="flow-step-label">{st.step}</div>
-                    <p className="flow-step-desc">{st.desc}</p>
+                    <span className="flow-step-badge">{ph.tag}</span>
+                    <h3 className="flow-step-title">{ph.title}</h3>
+                    <p className="flow-step-desc">{ph.desc}</p>
                   </div>
                 </div>
               ))}
@@ -2436,10 +2756,35 @@ export default function DocsSystem() {
         </div>
 
         {/* ======================================================== */}
-        {/* M. CHANGELOG                                             */}
+        {/* N. TEAM & CONTRIBUTORS (Linked to Section 12)             */}
+        {/* ======================================================== */}
+        <div data-section="contributors">
+          <Section id="contributors" eyebrow="N. Team & Contributors" headline={d.tech.contributors.headline} altBg>
+            <p className="section-lead">{d.tech.contributors.summary}</p>
+            <div style={{ background: "#FFFFFF", border: "1px solid var(--border-color)", borderRadius: "10px", padding: "1.75rem", marginBottom: "1.5rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+                <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--accent-clay)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+                  Active Engineering Core & Code Governance
+                </span>
+                <a href="#team" className="jump-pill" style={{ margin: 0 }}>
+                  Jump to Team Directory ↑
+                </a>
+              </div>
+              <p style={{ fontSize: "0.95rem", color: "var(--text-body)", lineHeight: 1.6, margin: "0 0 1rem 0" }}>
+                All source modifications, vector retrieval optimizations, and statutory embeddings are managed under strict peer reviews, signed CI/CD commits, and automated security regression test suites (73/73 tests).
+              </p>
+              <div style={{ fontFamily: "monospace", fontSize: "0.82rem", background: "var(--bg-main)", padding: "0.75rem", borderRadius: "6px", color: "var(--text-dark)" }}>
+                {d.tech.contributors.branches}
+              </div>
+            </div>
+          </Section>
+        </div>
+
+        {/* ======================================================== */}
+        {/* O. CHANGELOG                                             */}
         {/* ======================================================== */}
         <div data-section="changelog">
-          <Section id="changelog" eyebrow="M. Version History" headline="Continuous Deployment Changelog" altBg>
+          <Section id="changelog" eyebrow="O. Version History" headline="Continuous Deployment Changelog">
             <table className="changelog-table">
               <thead>
                 <tr>
