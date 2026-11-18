@@ -886,7 +886,7 @@ const STYLES = `
   .hero-visual-col { display: flex; justify-content: center; align-items: center; }
   .lady-justice-frame { position: relative; width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; animation: subtleHeroDrift 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes subtleHeroDrift { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-  .lady-justice-img { width: 100%; height: auto; max-height: 520px; object-fit: contain; filter: drop-shadow(0 12px 28px rgba(46, 33, 23, 0.08)); display: block; }
+  .lady-justice-img { width: 100%; height: auto; max-height: 520px; object-fit: contain; mix-blend-mode: multiply; filter: drop-shadow(0 12px 28px rgba(46, 33, 23, 0.06)); display: block; }
   .lady-justice-caption { margin-top: 1.25rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.2rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem; width: 85%; }
   .caption-tag { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent-clay); }
   .caption-sub { font-size: 0.78rem; color: var(--text-body); opacity: 0.75; }
@@ -2447,47 +2447,12 @@ export default function DocsSystem() {
             altBg
           >
             <div className="hero-editorial-grid">
-              {/* Left Column: Headlines, Description, CTAs */}
+              {/* Left Column: Headlines & Editorial Lead */}
               <div className="hero-content-col">
                 <h1 className="hero-main-headline">{d.meta.tagline}</h1>
-                <p className="hero-description">
+                <p className="hero-description" style={{ marginBottom: 0 }}>
                   {d.meta.one_liner}
                 </p>
-
-                <div className="hero-cta-group">
-                  <a href="#demo" className="hero-btn primary">
-                    ⚡ Try Bilingual Copilot
-                  </a>
-                  <a href="#demo-audit" className="hero-btn secondary">
-                    📋 Audit Contract Memo
-                  </a>
-                  <a href="#architecture" className="hero-btn tertiary">
-                    🏛 System Architecture
-                  </a>
-                </div>
-
-                <div className="hero-authority-strip">
-                  <span className="authority-dot"></span>
-                  <span>Autonomous Bangladesh Statutory Intelligence • Supreme Court Verified Precedents</span>
-                </div>
-
-                <div className="hero-quick-jumps">
-                  <a href="#demo" className="jump-pill">
-                    ⚡ Copilot Demo
-                  </a>
-                  <a href="#demo-audit" className="jump-pill">
-                    📋 Contract Audit
-                  </a>
-                  <a href="#architecture" className="jump-pill">
-                    🏛 4-Tier Architecture & System Flows
-                  </a>
-                  <a href="#data-flow" className="jump-pill">
-                    🔄 5-Phase Pipeline
-                  </a>
-                  <a href="#team" className="jump-pill">
-                    👥 Team Advotech
-                  </a>
-                </div>
               </div>
 
               {/* Right Column: Lady Justice Silhouette (Preserving exact asset & silhouette) */}
