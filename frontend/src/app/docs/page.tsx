@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Fraunces, Karla } from "next/font/google";
-import { Check, ArrowDownRight, ShieldCheck, Cpu, Bot, Send, CheckCircle2 } from "lucide-react";
+import { Check, ArrowDownRight, ShieldCheck, Cpu, Bot, Send, CheckCircle2, KeyRound, Users, Database, Fingerprint } from "lucide-react";
 import ArchitectureExplorer from "./ArchitectureExplorer";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap" });
@@ -724,12 +724,47 @@ const INITIAL_DOCS_DATA = {
 
     security: {
       headline: "Defense-in-Depth Security & Role-Based Access Architecture",
-      points: [
-        "JWT with Token-Version Revocation: Every access token includes a token_version claim. When a user logs out or an admin revokes access, incrementing the counter immediately invalidates all active tokens across all devices.",
-        "Role-Based Access Control (RBAC): Strict tripartite authorization model — GENERAL (consumer chat & audit), LAWYER (inquiry queue & client case files), ENTERPRISE (company vaults & playbooks). Route guards enforced at the FastAPI dependency level.",
-        "Broken Object-Level Authorization (BOLA) Hardening: All file downloads and audit memo retrievals enforce strict user_id ownership validation. Guessing UUIDs returns an immediate 403 Forbidden.",
-        "SQL Injection & SSRF Immunization: 100% parameterized queries via SQLAlchemy 2 ORM; internal HTTP dispatchers restricted to whitelisted payment gateway IP addresses.",
-        "Sovereign Cryptographic Signatures: SSLCommerz transaction callbacks verified via HMAC-SHA256 signature hashes before updating the persistent financial credit ledger.",
+      layers: [
+        {
+          num: "01",
+          category: "Identity & Session Security",
+          icon: "key",
+          title: "JWT Token-Version Revocation",
+          desc: "Token version claims, logout invalidation and admin revocation across all active devices.",
+          extra: null,
+        },
+        {
+          num: "02",
+          category: "Role-Based Access Control",
+          icon: "users",
+          title: "Three-Tier Authorization",
+          desc: "Strict tripartite model enforced at the FastAPI dependency level.",
+          extra: { type: "roles", items: ["GENERAL", "LAWYER", "ENTERPRISE"] },
+        },
+        {
+          num: "03",
+          category: "Resource Ownership Protection",
+          icon: "shield-check",
+          title: "BOLA Hardening",
+          desc: "Strict user_id ownership validation for all file downloads and audit memo retrievals.",
+          extra: null,
+        },
+        {
+          num: "04",
+          category: "Infrastructure & Query Protection",
+          icon: "database",
+          title: "SQL Injection & SSRF Immunization",
+          desc: "Parameterized ORM queries and whitelisted internal HTTP dispatchers.",
+          extra: null,
+        },
+        {
+          num: "05",
+          category: "Cryptographic Integrity",
+          icon: "fingerprint",
+          title: "Sovereign Cryptographic Signatures",
+          desc: "HMAC-SHA256 verification for SSLCommerz transaction callbacks before credit ledger updates.",
+          extra: null,
+        },
       ],
     },
 
@@ -1265,11 +1300,19 @@ const STYLES = `
   .roadmap-items li::before { content: "→"; color: var(--accent-clay); flex-shrink: 0; font-weight: 700; }
   .roadmap-items li:last-child { border-bottom: none; }
 
-  /* Security & Trust Points */
-  .security-list { list-style: none; padding: 0; margin: 2rem 0 0 0; display: flex; flex-direction: column; gap: 1rem; }
-  .security-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 8px; padding: 1.25rem 1.5rem; display: flex; gap: 1rem; align-items: flex-start; }
-  .security-icon { font-size: 1.5rem; flex-shrink: 0; }
-  .security-text { font-size: 0.95rem; line-height: 1.65; color: var(--text-body); margin: 0; }
+  /* Security & Trust Cards */
+  .security-layers { list-style: none; padding: 0; margin: 2rem 0 0 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  .sec-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
+  .sec-card-header { display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 1rem; }
+  .sec-card-left { display: flex; align-items: center; gap: 0.6rem; }
+  .sec-card-icon { width: 18px; height: 18px; color: var(--accent-clay); flex-shrink: 0; }
+  .sec-card-cat { font-size: 0.72rem; font-weight: 700; color: var(--accent-clay); letter-spacing: 0.04em; }
+  .sec-card-layer { font-size: 0.65rem; font-weight: 800; color: #1E5C40; background: rgba(30,92,64,0.1); padding: 0.2rem 0.6rem; border-radius: 50px; letter-spacing: 0.08em; }
+  .sec-card-body { padding: 0 1rem 1rem 1rem; }
+  .sec-card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-dark); margin: 0 0 0.3rem 0; font-family: var(--font-fraunces), serif; }
+  .sec-card-desc { font-size: 0.875rem; color: var(--text-body); line-height: 1.6; margin: 0; }
+  .sec-roles { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
+  .sec-role-pill { flex: 1; text-align: center; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; color: var(--text-dark); background: var(--bg-main); }
 
   /* Back to Top Button */
   .back-to-top { position: fixed; bottom: 2rem; right: 2rem; background: #1A1A1A; color: white; border: none; width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 16px rgba(0,0,0,0.2); transition: 0.2s; z-index: 100; font-size: 1.1rem; }
@@ -2936,14 +2979,41 @@ export default function DocsSystem() {
         {/* ======================================================== */}
         <div data-section="security">
           <Section id="security" eyebrow="K. Security & RBAC" headline={d.tech.security.headline} altBg>
-            <ul className="security-list">
-              {d.tech.security.points.map((pt, i) => (
-                <li key={i} className="security-card">
-                  <span className="security-icon">🔒</span>
-                  <p className="security-text">{pt}</p>
-                </li>
-              ))}
-            </ul>
+            {(() => {
+              const SEC_ICONS: Record<string, React.ReactNode> = {
+                "key":          <KeyRound className="sec-card-icon" />,
+                "users":        <Users className="sec-card-icon" />,
+                "shield-check": <ShieldCheck className="sec-card-icon" />,
+                "database":     <Database className="sec-card-icon" />,
+                "fingerprint":  <Fingerprint className="sec-card-icon" />,
+              };
+              return (
+                <ul className="security-layers">
+                  {d.tech.security.layers.map((layer, i) => (
+                    <li key={i} className="sec-card">
+                      <div className="sec-card-header">
+                        <div className="sec-card-left">
+                          {SEC_ICONS[layer.icon]}
+                          <span className="sec-card-cat">{String(layer.num).padStart(2,"0")} · {layer.category}</span>
+                        </div>
+                        <span className="sec-card-layer">LAYER {String(layer.num).padStart(2,"0")}</span>
+                      </div>
+                      <div className="sec-card-body">
+                        <p className="sec-card-title">{layer.title}</p>
+                        <p className="sec-card-desc">{layer.desc}</p>
+                        {layer.extra?.type === "roles" && (
+                          <div className="sec-roles">
+                            {layer.extra.items.map((r, ri) => (
+                              <span key={ri} className="sec-role-pill">{r}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </Section>
         </div>
 
