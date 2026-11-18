@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Fraunces, Karla } from "next/font/google";
+import { Check, ArrowDownRight } from "lucide-react";
 import ArchitectureExplorer from "./ArchitectureExplorer";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap" });
@@ -86,6 +87,10 @@ const INITIAL_DOCS_DATA = {
             "Sub-second citation grounding via ChromaDB + Groq LLaMA 3.3 70B",
             "Deterministic foreign-jurisdiction blocker (zero hallucinations)",
           ],
+          metrics: [
+            { v: "35K+", l: "Statutes indexed" },
+            { v: "3", l: "Input languages" },
+          ],
           cta: "Test Copilot Simulation Below",
           anchor: "#demo",
         },
@@ -99,6 +104,10 @@ const INITIAL_DOCS_DATA = {
             "Unfair penalty (§ 74) & void non-compete (§ 27) auto-detection",
             "Client-side sovereign PII redaction before cloud transmission",
             "Direct Human-in-the-Loop advocate verification dispatch (3-hr SLA)",
+          ],
+          metrics: [
+            { v: "~30s", l: "Full audit" },
+            { v: "0–100", l: "Risk grade" },
           ],
           cta: "Inspect Sample Audit Below",
           anchor: "#demo-audit",
@@ -841,7 +850,6 @@ const STYLES = `
   .topbar-brand { display: inline-flex; align-items: center; gap: 0.65rem; line-height: 1; }
   .topbar-brand img { display: block; flex-shrink: 0; transform: translateY(-1.5px); }
   .brand-title { font-family: var(--font-fraunces), serif; font-weight: 700; font-size: 1.05rem; color: var(--text-dark); letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 0.35rem; line-height: 1; transform: translateY(1.5px); }
-  .brand-badge { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 4px; background: var(--bg-accent); color: var(--accent-clay); border: 1px solid rgba(196, 91, 60, 0.2); line-height: 1; }
   .stat-pill { font-size: 0.8rem; color: var(--text-body); display: flex; align-items: center; gap: 0.4rem; font-weight: 500; }
   .stat-pill strong { color: var(--text-dark); font-weight: 700; }
   .stat-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse 2s infinite; }
@@ -904,14 +912,20 @@ const STYLES = `
   .jump-pill:hover { border-color: var(--accent-clay); color: var(--accent-clay); transform: translateY(-1px); }
 
   /* Hero Stats & Live Telemetry */
-  .hero-live-telemetry-header { display: flex; align-items: center; gap: 0.6rem; margin-top: 2.75rem; margin-bottom: -1rem; font-size: 0.78rem; }
+  /* Live Telemetry Panel */
+  .telemetry-panel { margin-top: 2.75rem; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; background: var(--border-color); box-shadow: 0 4px 20px rgba(46, 33, 23, 0.04); }
+  .telemetry-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; background: var(--bg-alt); padding: 0.85rem 1.5rem; font-size: 0.78rem; }
+  .telemetry-head-left { display: flex; align-items: center; gap: 0.6rem; }
   .live-telemetry-label { font-weight: 800; color: var(--accent-clay); text-transform: uppercase; letter-spacing: 0.12em; }
   .live-telemetry-status { color: var(--text-body); opacity: 0.75; font-weight: 500; }
-  .stats-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1.5rem; margin-top: 2rem; padding-top: 1.75rem; border-top: 1px solid var(--border-color); }
-  .stat-item { display: flex; flex-direction: column; gap: 0.35rem; }
-  .stat-num { font-family: var(--font-fraunces), serif; font-size: 2.6rem; color: var(--text-dark); line-height: 1; font-weight: 700; }
-  .stat-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent-clay); font-weight: 800; }
-  .stat-sub { font-size: 0.8rem; color: var(--text-body); opacity: 0.8; }
+  .telemetry-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: var(--border-color); }
+  .telemetry-cell { background: #FFFFFF; padding: 1.4rem 1.4rem 1.3rem; display: flex; flex-direction: column; gap: 0.45rem; transition: background 0.15s; }
+  .telemetry-cell:hover { background: var(--bg-alt); }
+  .tl-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.09em; color: var(--accent-clay); font-weight: 800; }
+  .tl-num { font-family: var(--font-fraunces), serif; font-size: 2.1rem; color: var(--text-dark); line-height: 1; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .tl-sub { font-size: 0.75rem; color: var(--text-body); opacity: 0.8; line-height: 1.4; }
+  @media (max-width: 1100px) { .telemetry-grid { grid-template-columns: repeat(3, 1fr); } }
+  @media (max-width: 640px) { .telemetry-grid { grid-template-columns: repeat(2, 1fr); } .telemetry-head { padding: 0.75rem 1rem; } .telemetry-cell { padding: 1.1rem 1rem; } }
 
   /* Premium Problem Cards */
   .problem-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 10px; padding: 1.75rem; display: flex; flex-direction: column; gap: 0.75rem; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); transition: transform 0.2s, box-shadow 0.2s; }
@@ -924,19 +938,31 @@ const STYLES = `
   .pc-desc { font-size: 0.92rem; color: var(--text-body); line-height: 1.6; margin: 0; }
 
   /* Product Cards */
-  .product-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; padding: 2.25rem; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(46, 33, 23, 0.04); position: relative; }
-  .pc-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
-  .pc-icon { font-size: 1.5rem; }
+  .product-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; padding: 2.25rem; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(46, 33, 23, 0.04); position: relative; transition: transform 0.2s, box-shadow 0.2s; }
+  .product-card:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(46, 33, 23, 0.08); }
+  .pc-head { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1.5rem; }
+  .pc-icon-tile { width: 46px; height: 46px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .pc-logo-img { width: 30px; height: 30px; object-fit: contain; }
+  .pc-icon-tile.green { background: var(--green-light); color: var(--green-dark); border: 1px solid rgba(30, 92, 64, 0.18); }
+  .pc-icon-tile.orange { background: var(--orange-light); color: var(--orange-dark); border: 1px solid rgba(143, 90, 10, 0.18); }
   .pc-tag { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.35rem 0.7rem; border-radius: 4px; }
   .pc-tag.green { background: var(--green-light); color: var(--green-dark); }
   .pc-tag.orange { background: var(--orange-light); color: var(--orange-dark); }
   .pc-card-title { font-family: var(--font-fraunces), serif; font-size: 1.6rem; color: var(--text-dark); margin: 0 0 1rem 0; line-height: 1.25; }
-  .pc-card-desc { font-size: 0.98rem; color: var(--text-body); line-height: 1.65; margin-bottom: 1.75rem; }
+  .pc-card-desc { font-size: 0.98rem; color: var(--text-body); line-height: 1.65; margin-bottom: 1.5rem; }
+  .pc-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 1.1rem 0; margin-bottom: 1.5rem; }
+  .pc-metric-cell { display: flex; flex-direction: column; gap: 0.3rem; }
+  .pc-metric-num { font-family: var(--font-fraunces), serif; font-size: 1.7rem; color: var(--text-dark); font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+  .pc-metric-label { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-body); font-weight: 700; opacity: 0.85; }
   .pc-checks { list-style: none; padding: 0; margin: 0 0 2rem 0; flex-grow: 1; }
-  .pc-checks li { display: flex; align-items: flex-start; gap: 0.75rem; font-size: 0.9rem; margin-bottom: 0.85rem; line-height: 1.45; color: var(--text-dark); }
-  .pc-checks li::before { content: "✓"; color: var(--green-dark); font-weight: 900; }
+  .pc-checks li { display: flex; align-items: flex-start; gap: 0.7rem; font-size: 0.9rem; margin-bottom: 0.85rem; line-height: 1.45; color: var(--text-dark); }
+  .pc-check-chip { width: 18px; height: 18px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 0.1rem; }
+  .pc-checks.green .pc-check-chip { background: var(--green-light); color: var(--green-dark); }
+  .pc-checks.orange .pc-check-chip { background: var(--orange-light); color: var(--orange-dark); }
   .pc-btn { background: #1A1A1A; color: white; border: none; border-radius: 8px; padding: 0.9rem 1.25rem; font-weight: 600; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center; cursor: pointer; transition: background 0.2s; text-decoration: none; font-family: inherit; }
   .pc-btn:hover { background: #000; color: white; }
+  .pc-btn svg { transition: transform 0.2s; }
+  .pc-btn:hover svg { transform: translate(2px, 2px); }
 
   /* Why Now Curve Cards */
   .curve-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 10px; padding: 2rem; position: relative; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
@@ -1906,7 +1932,6 @@ export default function DocsSystem() {
             <a href="#top" className="topbar-brand" style={{ textDecoration: "none" }}>
               <img src="/logo.svg" alt="AdvoTech Copilot" style={{ width: "24px", height: "24px", objectFit: "contain", flexShrink: 0 }} />
               <span className="brand-title">AdvoTech <span style={{ color: "var(--accent-clay)" }}>Copilot</span></span>
-              <span className="brand-badge">DOCS</span>
             </a>
           </div>
 
@@ -1962,45 +1987,48 @@ export default function DocsSystem() {
               </div>
             </div>
 
-            {/* Live Telemetry Status Strip */}
-            <div className="hero-live-telemetry-header">
-              <span className="stat-live-dot"></span>
-              <span className="live-telemetry-label">LIVE SYSTEM TELEMETRY</span>
-              <span className="live-telemetry-status">
-                · {syncStatus === "LIVE_DB" ? "Direct PostgreSQL Production Sync" : "Continuous Production Telemetry"}
-              </span>
-            </div>
-
-            <div className="stats-bar">
-              <div className="stat-item">
-                <span className="stat-num">{d.stats.total_users}</span>
-                <span className="stat-label">Active Users</span>
-                <span className="stat-sub">Live verified accounts</span>
+            {/* Live Telemetry Panel */}
+            <div className="telemetry-panel">
+              <div className="telemetry-head">
+                <span className="telemetry-head-left">
+                  <span className="stat-live-dot"></span>
+                  <span className="live-telemetry-label">Live System Telemetry</span>
+                </span>
+                <span className="live-telemetry-status">
+                  {syncStatus === "LIVE_DB" ? "Direct PostgreSQL Production Sync" : "Continuous Production Telemetry"}
+                </span>
               </div>
-              <div className="stat-item">
-                <span className="stat-num">{d.stats.total_audits}</span>
-                <span className="stat-label">Audits Completed</span>
-                <span className="stat-sub">Autonomous statutory audits</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-num">{d.stats.statutes_indexed.toLocaleString()}+</span>
-                <span className="stat-label">Statutes Ingested</span>
-                <span className="stat-sub">Official bdlaws.minlaw gazettes</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-num">{d.stats.accuracy_rate}</span>
-                <span className="stat-label">Audit Accuracy</span>
-                <span className="stat-sub">33/36 gold standard test recall</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-num">{d.stats.avg_turnaround}</span>
-                <span className="stat-label">Turnaround SLA</span>
-                <span className="stat-sub">15-page complex PDF agreement</span>
-              </div>
-              <div className="stat-item">
-                <span className="stat-num">{d.stats.benchmark_pass}</span>
-                <span className="stat-label">CI/CD Pass Rate</span>
-                <span className="stat-sub">Automated production test suites</span>
+              <div className="telemetry-grid">
+                <div className="telemetry-cell">
+                  <span className="tl-label">Active Users</span>
+                  <span className="tl-num">{d.stats.total_users}</span>
+                  <span className="tl-sub">Live verified accounts</span>
+                </div>
+                <div className="telemetry-cell">
+                  <span className="tl-label">Audits Completed</span>
+                  <span className="tl-num">{d.stats.total_audits}</span>
+                  <span className="tl-sub">Autonomous statutory audits</span>
+                </div>
+                <div className="telemetry-cell">
+                  <span className="tl-label">Statutes Ingested</span>
+                  <span className="tl-num">{d.stats.statutes_indexed.toLocaleString()}+</span>
+                  <span className="tl-sub">Official bdlaws.minlaw gazettes</span>
+                </div>
+                <div className="telemetry-cell">
+                  <span className="tl-label">Audit Accuracy</span>
+                  <span className="tl-num">{d.stats.accuracy_rate}</span>
+                  <span className="tl-sub">33/36 gold standard test recall</span>
+                </div>
+                <div className="telemetry-cell">
+                  <span className="tl-label">Turnaround SLA</span>
+                  <span className="tl-num">{d.stats.avg_turnaround}</span>
+                  <span className="tl-sub">15-page complex PDF agreement</span>
+                </div>
+                <div className="telemetry-cell">
+                  <span className="tl-label">CI/CD Pass Rate</span>
+                  <span className="tl-num">{d.stats.benchmark_pass}</span>
+                  <span className="tl-sub">Automated production test suites</span>
+                </div>
               </div>
             </div>
           </Section>
@@ -2035,26 +2063,40 @@ export default function DocsSystem() {
         {/* ======================================================== */}
         <div data-section="solution">
           <Section id="solution" eyebrow="02. The Solution" headline={d.pitch.solution.headline} altBg>
-            <p className="section-lead">
-              Advotech separates legal intelligence into two specialized execution engines: conversational bilingual research (Copilot) and autonomous risk extraction with human advocate sign-off (ContractMind).
-            </p>
             <div className="grid-2">
               {d.pitch.solution.products.map((p, i) => (
                 <div key={i} className="product-card">
                   <div className="pc-head">
-                    <span className="pc-icon">{p.id === "copilot" ? "💬" : "⚡"}</span>
+                    <span className={`pc-icon-tile ${p.tagColor}`}>
+                      <img
+                        src={p.id === "copilot" ? "/legal-copilot.png" : "/contractmind.png"}
+                        alt={p.id === "copilot" ? "Legal Copilot engine logo" : "ContractMind engine logo"}
+                        className="pc-logo-img"
+                      />
+                    </span>
                     <span className={`pc-tag ${p.tagColor}`}>{p.tag}</span>
                   </div>
                   <h3 className="pc-card-title">{p.title}</h3>
                   <p className="pc-card-desc">{p.desc}</p>
-                  <ul className="pc-checks">
+                  <div className="pc-metrics">
+                    {p.metrics.map((m, j) => (
+                      <div key={j} className="pc-metric-cell">
+                        <span className="pc-metric-num">{m.v}</span>
+                        <span className="pc-metric-label">{m.l}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <ul className={`pc-checks ${p.tagColor}`}>
                     {p.highlights.map((h, j) => (
-                      <li key={j}>{h}</li>
+                      <li key={j}>
+                        <span className="pc-check-chip"><Check size={11} strokeWidth={3.5} /></span>
+                        <span>{h}</span>
+                      </li>
                     ))}
                   </ul>
                   <a href={p.anchor} className="pc-btn">
                     <span>{p.cta}</span>
-                    <span>↘</span>
+                    <ArrowDownRight size={16} strokeWidth={2.5} />
                   </a>
                 </div>
               ))}

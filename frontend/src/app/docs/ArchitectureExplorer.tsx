@@ -26,7 +26,6 @@ export default function ArchitectureExplorer({
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [activeStep, setActiveStep] = useState<number | null>(null);
-  const [expandedSteps, setExpandedSteps] = useState<Record<number, boolean>>({ 1: true });
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [animateFlow, setAnimateFlow] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -81,30 +80,7 @@ export default function ArchitectureExplorer({
     setSelectedNodeId(null);
     setHoveredNodeId(null);
     setActiveStep(null);
-    setExpandedSteps({ 1: true });
     setZoomLevel(1);
-  };
-
-  // Toggle step expansion
-  const toggleStep = (stepNum: number) => {
-    setExpandedSteps((prev) => ({
-      ...prev,
-      [stepNum]: !prev[stepNum],
-    }));
-    setActiveStep(stepNum);
-  };
-
-  // Expand / collapse all steps
-  const expandAllSteps = () => {
-    const all: Record<number, boolean> = {};
-    activeSystem.execution_steps.forEach((s) => {
-      all[s.step] = true;
-    });
-    setExpandedSteps(all);
-  };
-
-  const collapseAllSteps = () => {
-    setExpandedSteps({});
   };
 
   // Copy code utility
@@ -148,12 +124,10 @@ export default function ArchitectureExplorer({
   const handlePrevStep = () => {
     const next = Math.max(1, currentStepIndex - 1);
     setActiveStep(next);
-    setExpandedSteps((prev) => ({ ...prev, [next]: true }));
   };
   const handleNextStep = () => {
     const next = Math.min(totalSteps, currentStepIndex + 1);
     setActiveStep(next);
-    setExpandedSteps((prev) => ({ ...prev, [next]: true }));
   };
 
   return (
@@ -316,21 +290,23 @@ export default function ArchitectureExplorer({
       {/* ────────────────────────────────────────────────────────── */}
       {/* 4. DYNAMIC INTERACTIVE SVG CANVAS                          */}
       {/* ────────────────────────────────────────────────────────── */}
-      <div className="svg-canvas-container" style={{ overflow: "auto" }}>
+      <div className="svg-canvas-container" style={{ overflow: zoomLevel > 1 ? "auto" : "hidden", width: "100%" }}>
         <div
           className="svg-zoom-wrapper"
           style={{
             transform: `scale(${zoomLevel})`,
             transformOrigin: "top left",
             transition: "transform 0.2s ease-out",
-            minWidth: "1060px",
+            width: "100%",
+            maxWidth: "100%",
           }}
         >
           <svg
             ref={svgRef}
-            viewBox="0 0 1060 410"
+            viewBox={activeSystem.system_id === "mcp" ? "0 0 1060 365" : "0 0 1060 250"}
             className="arch-svg-canvas"
-            style={{ width: "100%", height: "auto", overflow: "visible" }}
+            style={{ width: "100%", height: "auto", display: "block" }}
+            preserveAspectRatio="xMidYMid meet"
           >
             <defs>
               {/* Arrow Marker: Primary Terracotta */}
@@ -517,10 +493,10 @@ export default function ArchitectureExplorer({
         <div className="timeline-header-bar">
           <div className="timeline-header-left">
             <h4 className="timeline-section-title">
-              Execution Timeline: {activeSystem.short_title} ({totalSteps} Sequential Stages)
+              Execution Sequence: {activeSystem.short_title} ({totalSteps} Sequential Stages)
             </h4>
             <p className="timeline-section-sub">
-              Click any stage to highlight its corresponding node, review statutory guards, and inspect code.
+              Click any stage to highlight its corresponding node in the architecture diagram above.
             </p>
           </div>
 
@@ -549,30 +525,22 @@ export default function ArchitectureExplorer({
                 Next →
               </button>
             </div>
-
-            <div className="expand-collapse-buttons">
-              <button type="button" onClick={expandAllSteps} className="tb-btn small">
-                Expand All
-              </button>
-              <button type="button" onClick={collapseAllSteps} className="tb-btn small">
-                Collapse All
-              </button>
-            </div>
           </div>
         </div>
 
-        {/* Timeline Sequence */}
+        {/* Timeline Sequence - Clean & Streamlined, No Over-Data */}
         <div className="timeline-track">
           {activeSystem.execution_steps.map((step) => {
-            const isExpanded = !!expandedSteps[step.step];
             const isStepActive = activeStep === step.step || selectedNodeId === step.component_id;
 
             return (
               <div
                 key={step.step}
-                className={`timeline-step-card${isStepActive ? " active" : ""}${
-                  isExpanded ? " expanded" : ""
-                }`}
+                className={`timeline-step-card${isStepActive ? " active" : ""}`}
+                onClick={() => {
+                  setActiveStep(step.step);
+                  setSelectedNodeId(step.component_id);
+                }}
               >
                 {/* Timeline connector dot & line */}
                 <div className="timeline-guide-rail">
@@ -582,9 +550,9 @@ export default function ArchitectureExplorer({
                   {step.step < totalSteps && <div className="timeline-line" />}
                 </div>
 
-                {/* Step content */}
+                {/* Step content: Step number, Stage, Component, Main Work & Validation */}
                 <div className="timeline-body-wrap">
-                  <div className="timeline-step-head" onClick={() => toggleStep(step.step)}>
+                  <div className="timeline-step-head">
                     <div className="step-primary-info">
                       <div className="step-tags-line">
                         <span className="step-stage-tag">{step.stage}</span>
@@ -592,66 +560,17 @@ export default function ArchitectureExplorer({
                         <span className="step-module-tag">{step.service_module}</span>
                       </div>
                       <h5 className="step-operation-title">{step.operation}</h5>
-                      <p className="step-summary-text">
-                        <strong>Input:</strong> {step.input_data} → <strong>Output:</strong> {step.output_data}
+                      <p className="step-main-work">
+                        <span className="main-work-label">Core Operation:</span> {step.input_data} → {step.output_data}
                       </p>
-                    </div>
-
-                    <div className="step-expand-arrow">
-                      <span className="arrow-icon">{isExpanded ? "▲" : "▼"}</span>
-                    </div>
-                  </div>
-
-                  {/* Expanded deep dive */}
-                  {isExpanded && (
-                    <div className="timeline-step-expanded-details">
-                      <div className="step-io-grid">
-                        <div className="io-card">
-                          <span className="io-title">INPUT SPECIFICATION</span>
-                          <p className="io-desc">{step.input_data}</p>
-                        </div>
-                        <div className="io-card">
-                          <span className="io-title">OUTPUT / STATE UPDATE</span>
-                          <p className="io-desc">{step.output_data}</p>
-                        </div>
-                        <div className="io-card full-width guard">
-                          <span className="io-title guard-title">SECURITY & STATUTORY VALIDATION GUARD</span>
-                          <p className="io-desc guard-desc">{step.validation_check}</p>
-                        </div>
-                      </div>
-
-                      {step.code_reference && (
-                        <div className="step-code-section">
-                          <div className="step-code-bar">
-                            <span className="code-label">BACKEND IMPLEMENTATION</span>
-                            <button
-                              type="button"
-                              className="snippet-copy-btn"
-                              onClick={() => copyCode(step.code_reference!, `step-${step.step}`)}
-                            >
-                              {copiedCodeKey === `step-${step.step}` ? "✓ Copied" : "Copy Code"}
-                            </button>
-                          </div>
-                          <pre className="arch-code-block">
-                            <code>{step.code_reference}</code>
-                          </pre>
+                      {step.validation_check && (
+                        <div className="step-guard-line">
+                          <span className="guard-shield-badge">🛡️ Statutory Guard</span>
+                          <span className="guard-desc-text">{step.validation_check}</span>
                         </div>
                       )}
-
-                      <div className="step-footer-bar">
-                        <span className="next-stage-indicator">
-                          <strong>NEXT EXECUTION STAGE:</strong> {step.next_stage}
-                        </span>
-                        <button
-                          type="button"
-                          className="highlight-node-btn"
-                          onClick={() => setSelectedNodeId(step.component_id)}
-                        >
-                          Highlight Node in Canvas ↗
-                        </button>
-                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               </div>
             );
@@ -1001,11 +920,20 @@ export default function ArchitectureExplorer({
         /* 4. Canvas Container */
         .svg-canvas-container {
           background: #fbf4ec;
-          padding: 1.5rem 1.75rem;
+          padding: 1.25rem 1.5rem;
           position: relative;
+          width: 100%;
+          overflow: hidden;
+        }
+        .svg-zoom-wrapper {
+          width: 100%;
+          max-width: 100%;
         }
         .arch-svg-canvas {
           background: transparent;
+          width: 100%;
+          height: auto;
+          display: block;
         }
 
         /* 5. Node Inspector */
@@ -1280,15 +1208,10 @@ export default function ArchitectureExplorer({
           color: #5c4f43;
           padding: 0 0.4rem;
         }
-        .expand-collapse-buttons {
-          display: flex;
-          gap: 0.4rem;
-        }
-
         .timeline-track {
           display: flex;
           flex-direction: column;
-          gap: 1rem;
+          gap: 0.85rem;
         }
         .timeline-step-card {
           display: flex;
@@ -1296,28 +1219,30 @@ export default function ArchitectureExplorer({
           background: #ffffff;
           border: 1px solid #ecdfd0;
           border-radius: 10px;
-          padding: 1.25rem 1.5rem;
+          padding: 1rem 1.4rem;
           transition: all 0.2s ease;
+          cursor: pointer;
         }
         .timeline-step-card:hover {
           border-color: #c45b3c;
           box-shadow: 0 4px 14px rgba(196, 91, 60, 0.06);
+          background: #fffdf9;
         }
         .timeline-step-card.active {
           border-color: #c45b3c;
-          box-shadow: 0 6px 18px rgba(196, 91, 60, 0.1);
+          box-shadow: 0 4px 16px rgba(196, 91, 60, 0.12);
           background: #fffdf9;
         }
         .timeline-guide-rail {
           display: flex;
           flex-direction: column;
           align-items: center;
-          width: 34px;
+          width: 32px;
           flex-shrink: 0;
         }
         .timeline-dot {
-          width: 32px;
-          height: 32px;
+          width: 30px;
+          height: 30px;
           border-radius: 50%;
           background: #ecdfd0;
           color: #5c4f43;
@@ -1337,7 +1262,7 @@ export default function ArchitectureExplorer({
           width: 2px;
           flex-grow: 1;
           background: #ecdfd0;
-          margin-top: 0.5rem;
+          margin-top: 0.4rem;
         }
         .timeline-body-wrap {
           flex-grow: 1;
@@ -1346,14 +1271,13 @@ export default function ArchitectureExplorer({
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          cursor: pointer;
           user-select: none;
         }
         .step-tags-line {
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          margin-bottom: 0.4rem;
+          margin-bottom: 0.35rem;
           flex-wrap: wrap;
         }
         .step-stage-tag {
@@ -1381,122 +1305,42 @@ export default function ArchitectureExplorer({
         }
         .step-operation-title {
           font-family: var(--font-fraunces), serif;
-          font-size: 1.15rem;
+          font-size: 1.08rem;
           color: #2e2117;
           margin: 0 0 0.35rem 0;
           font-weight: 700;
+          line-height: 1.35;
         }
-        .step-summary-text {
-          font-size: 0.88rem;
+        .step-main-work {
+          font-size: 0.85rem;
           color: #5c4f43;
-          margin: 0;
+          margin: 0 0 0.35rem 0;
           line-height: 1.45;
         }
-        .step-expand-arrow {
-          font-size: 0.8rem;
-          color: #786b60;
-          padding: 0.2rem 0.4rem;
-        }
-        .timeline-step-expanded-details {
-          margin-top: 1.25rem;
-          padding-top: 1.25rem;
-          border-top: 1px dashed #ecdfd0;
-          display: flex;
-          flex-direction: column;
-          gap: 1rem;
-        }
-        .step-io-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 0.85rem;
-        }
-        @media (max-width: 768px) {
-          .step-io-grid {
-            grid-template-columns: 1fr;
-          }
-        }
-        .io-card {
-          background: #fbf4ec;
-          border: 1px solid #ecdfd0;
-          border-radius: 6px;
-          padding: 0.75rem 0.9rem;
-        }
-        .io-card.full-width {
-          grid-column: 1 / -1;
-        }
-        .io-card.guard {
-          background: #fffdf9;
-          border-color: #1e5c40;
-        }
-        .io-title {
-          font-size: 0.65rem;
-          font-weight: 800;
-          letter-spacing: 0.08em;
-          color: #786b60;
-          text-transform: uppercase;
-          display: block;
-          margin-bottom: 0.35rem;
-        }
-        .io-title.guard-title {
-          color: #1e5c40;
-        }
-        .io-desc {
-          font-size: 0.82rem;
-          color: #2e2117;
-          margin: 0;
-          line-height: 1.4;
-        }
-        .io-desc.guard-desc {
-          color: #1e5c40;
-          font-weight: 600;
-        }
-        .step-code-section {
-          border: 1px solid #ecdfd0;
-          border-radius: 6px;
-          overflow: hidden;
-        }
-        .step-code-bar {
-          background: #2e2117;
-          padding: 0.35rem 0.75rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        .code-label {
-          font-size: 0.65rem;
-          font-weight: 800;
-          letter-spacing: 0.08em;
-          color: #ecdfd0;
-          text-transform: uppercase;
-        }
-        .step-footer-bar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 0.75rem;
-          padding-top: 0.5rem;
-        }
-        .next-stage-indicator {
-          font-size: 0.78rem;
-          color: #5c4f43;
-        }
-        .next-stage-indicator strong {
-          color: #c45b3c;
-        }
-        .highlight-node-btn {
-          background: none;
-          border: 1px solid #c45b3c;
-          color: #c45b3c;
-          padding: 0.3rem 0.7rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
+        .main-work-label {
           font-weight: 700;
-          cursor: pointer;
+          color: #2e2117;
         }
-        .highlight-node-btn:hover {
-          background: #c45b3c;
-          color: #ffffff;
+        .step-guard-line {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          background: #fbf4ec;
+          border-left: 3px solid #1e5c40;
+          padding: 0.35rem 0.65rem;
+          border-radius: 0 4px 4px 0;
+          margin-top: 0.3rem;
+        }
+        .guard-shield-badge {
+          font-size: 0.68rem;
+          font-weight: 800;
+          color: #1e5c40;
+          white-space: nowrap;
+        }
+        .guard-desc-text {
+          font-size: 0.78rem;
+          color: #4a3b32;
+          line-height: 1.35;
         }
       `}</style>
     </div>
@@ -1525,18 +1369,18 @@ function ChatTopology({
   onSelectNode,
   onHoverNode,
 }: TopologyProps) {
-  const nodeWidth = 145;
-  const nodeHeight = 165;
-  const startY = 65;
-  const gap = 30;
+  const nodeWidth = 142;
+  const nodeHeight = 138;
+  const startY = 38;
+  const gap = 28;
 
   const positions = [
-    { x: 15, y: startY },
-    { x: 15 + (nodeWidth + gap), y: startY },
-    { x: 15 + (nodeWidth + gap) * 2, y: startY },
-    { x: 15 + (nodeWidth + gap) * 3, y: startY },
-    { x: 15 + (nodeWidth + gap) * 4, y: startY },
-    { x: 15 + (nodeWidth + gap) * 5, y: startY },
+    { x: 20, y: startY },
+    { x: 20 + (nodeWidth + gap), y: startY },
+    { x: 20 + (nodeWidth + gap) * 2, y: startY },
+    { x: 20 + (nodeWidth + gap) * 3, y: startY },
+    { x: 20 + (nodeWidth + gap) * 4, y: startY },
+    { x: 20 + (nodeWidth + gap) * 5, y: startY },
   ];
 
   return (
@@ -1547,11 +1391,11 @@ function ChatTopology({
         const toX = positions[idx + 1].x;
         const midY = startY + nodeHeight / 2;
         const labels = [
-          "POST /api/chat/query",
+          "HTTPS / POST",
           "qa_graph.ainvoke",
           "hybrid_retriever",
           "Groq LLaMA 70B",
-          "Deterministic Gazette",
+          "Gazette Verify",
         ];
         return (
           <g key={idx}>
@@ -1566,7 +1410,7 @@ function ChatTopology({
             />
             <text
               x={(fromX + toX) / 2}
-              y={midY - 8}
+              y={midY - 7}
               textAnchor="middle"
               fill="#C45B3C"
               fontSize="7.5"
@@ -1582,7 +1426,7 @@ function ChatTopology({
       <path
         d={`M ${positions[5].x + nodeWidth / 2} ${startY + nodeHeight} C ${
           positions[5].x + nodeWidth / 2
-        } 330, ${positions[0].x + nodeWidth / 2} 330, ${positions[0].x + nodeWidth / 2} ${
+        } 220, ${positions[0].x + nodeWidth / 2} 220, ${positions[0].x + nodeWidth / 2} ${
           startY + nodeHeight + 8
         }`}
         stroke="#1E5C40"
@@ -1594,9 +1438,9 @@ function ChatTopology({
       />
 
       {/* Return Stream Badge in the Center */}
-      <g transform="translate(250, 310)">
+      <g transform="translate(200, 202)">
         <rect
-          width="540"
+          width="660"
           height="32"
           rx="6"
           fill="#FFFDF9"
@@ -1604,11 +1448,11 @@ function ChatTopology({
           strokeWidth="1.2"
           filter="drop-shadow(0 2px 6px rgba(30,92,64,0.08))"
         />
-        <text x="270" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9.5" fontWeight="800">
+        <text x="330" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9" fontWeight="800">
           RETURN STREAM: Verified Statutory Citations & Gazette Links via SSE Token Stream
         </text>
-        <text x="270" y="26" textAnchor="middle" fill="#786B60" fontSize="8">
-          100% Anti-Hallucination Grounding • bdlaws.minlaw Precedents
+        <text x="330" y="26" textAnchor="middle" fill="#786B60" fontSize="7.8">
+          100% Anti-Hallucination Grounding • Precedents from bdlaws.minlaw.gov.bd
         </text>
       </g>
 
@@ -1650,19 +1494,19 @@ function ContractTopology({
   onSelectNode,
   onHoverNode,
 }: TopologyProps) {
-  const nodeWidth = 126;
-  const nodeHeight = 165;
-  const startY = 65;
-  const gap = 24;
+  const nodeWidth = 124;
+  const nodeHeight = 138;
+  const startY = 38;
+  const gap = 20;
 
   const positions = [
-    { x: 15, y: startY },
-    { x: 15 + (nodeWidth + gap), y: startY },
-    { x: 15 + (nodeWidth + gap) * 2, y: startY },
-    { x: 15 + (nodeWidth + gap) * 3, y: startY },
-    { x: 15 + (nodeWidth + gap) * 4, y: startY },
-    { x: 15 + (nodeWidth + gap) * 5, y: startY },
-    { x: 15 + (nodeWidth + gap) * 6, y: startY },
+    { x: 20, y: startY },
+    { x: 20 + (nodeWidth + gap), y: startY },
+    { x: 20 + (nodeWidth + gap) * 2, y: startY },
+    { x: 20 + (nodeWidth + gap) * 3, y: startY },
+    { x: 20 + (nodeWidth + gap) * 4, y: startY },
+    { x: 20 + (nodeWidth + gap) * 5, y: startY },
+    { x: 20 + (nodeWidth + gap) * 6, y: startY },
   ];
 
   return (
@@ -1677,7 +1521,7 @@ function ContractTopology({
           "AST Parsing",
           "Missing Checks",
           "LLaMA 70B Scorer",
-          "Quote Grounding",
+          "Statutory Match",
           "DOCX Memo Stream",
         ];
         return (
@@ -1693,7 +1537,7 @@ function ContractTopology({
             />
             <text
               x={(fromX + toX) / 2}
-              y={midY - 8}
+              y={midY - 7}
               textAnchor="middle"
               fill="#C45B3C"
               fontSize="7"
@@ -1709,7 +1553,7 @@ function ContractTopology({
       <path
         d={`M ${positions[6].x + nodeWidth / 2} ${startY + nodeHeight} C ${
           positions[6].x + nodeWidth / 2
-        } 335, ${positions[0].x + nodeWidth / 2} 335, ${positions[0].x + nodeWidth / 2} ${
+        } 220, ${positions[0].x + nodeWidth / 2} 220, ${positions[0].x + nodeWidth / 2} ${
           startY + nodeHeight + 8
         }`}
         stroke="#1E5C40"
@@ -1721,9 +1565,9 @@ function ContractTopology({
       />
 
       {/* Return Stream Badge */}
-      <g transform="translate(230, 310)">
+      <g transform="translate(190, 202)">
         <rect
-          width="580"
+          width="680"
           height="32"
           rx="6"
           fill="#FFFDF9"
@@ -1731,10 +1575,10 @@ function ContractTopology({
           strokeWidth="1.2"
           filter="drop-shadow(0 2px 6px rgba(30,92,64,0.08))"
         />
-        <text x="290" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9.5" fontWeight="800">
+        <text x="340" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9" fontWeight="800">
           RETURN STREAM: 30-Second Audit Memo · Severity Ranked Findings · DOCX Redlines
         </text>
-        <text x="290" y="26" textAnchor="middle" fill="#786B60" fontSize="8">
+        <text x="340" y="26" textAnchor="middle" fill="#786B60" fontSize="7.8">
           Executive Health Score (0-100) • Mandatory Statutory Compliance Validation
         </text>
       </g>
@@ -1777,17 +1621,17 @@ function LawyerTopology({
   onSelectNode,
   onHoverNode,
 }: TopologyProps) {
-  const nodeWidth = 175;
-  const nodeHeight = 165;
-  const startY = 65;
-  const gap = 34;
+  const nodeWidth = 170;
+  const nodeHeight = 138;
+  const startY = 38;
+  const gap = 32;
 
   const positions = [
-    { x: 25, y: startY },
-    { x: 25 + (nodeWidth + gap), y: startY },
-    { x: 25 + (nodeWidth + gap) * 2, y: startY },
-    { x: 25 + (nodeWidth + gap) * 3, y: startY },
-    { x: 25 + (nodeWidth + gap) * 4, y: startY },
+    { x: 35, y: startY },
+    { x: 35 + (nodeWidth + gap), y: startY },
+    { x: 35 + (nodeWidth + gap) * 2, y: startY },
+    { x: 35 + (nodeWidth + gap) * 3, y: startY },
+    { x: 35 + (nodeWidth + gap) * 4, y: startY },
   ];
 
   return (
@@ -1798,10 +1642,10 @@ function LawyerTopology({
         const toX = positions[idx + 1].x;
         const midY = startY + nodeHeight / 2;
         const labels = [
-          "POST /api/lawyer/inquiries",
-          "rank_lawyers_for_task",
-          "3-Hour Timed Dispatch",
-          "Advocate Review & Seal",
+          "POST /inquiries",
+          "rank_lawyers",
+          "3-Hour Dispatch",
+          "Bar Seal & Sign",
         ];
         return (
           <g key={idx}>
@@ -1816,7 +1660,7 @@ function LawyerTopology({
             />
             <text
               x={(fromX + toX) / 2}
-              y={midY - 8}
+              y={midY - 7}
               textAnchor="middle"
               fill="#C45B3C"
               fontSize="7.5"
@@ -1832,7 +1676,7 @@ function LawyerTopology({
       <path
         d={`M ${positions[4].x + nodeWidth / 2} ${startY + nodeHeight} C ${
           positions[4].x + nodeWidth / 2
-        } 330, ${positions[0].x + nodeWidth / 2} 330, ${positions[0].x + nodeWidth / 2} ${
+        } 220, ${positions[0].x + nodeWidth / 2} 220, ${positions[0].x + nodeWidth / 2} ${
           startY + nodeHeight + 8
         }`}
         stroke="#1E5C40"
@@ -1844,9 +1688,9 @@ function LawyerTopology({
       />
 
       {/* Return Stream Badge */}
-      <g transform="translate(240, 310)">
+      <g transform="translate(200, 202)">
         <rect
-          width="560"
+          width="660"
           height="32"
           rx="6"
           fill="#FFFDF9"
@@ -1854,10 +1698,10 @@ function LawyerTopology({
           strokeWidth="1.2"
           filter="drop-shadow(0 2px 6px rgba(30,92,64,0.08))"
         />
-        <text x="280" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9.5" fontWeight="800">
-          RETURN STREAM: Verified Countersigned Legal Memo & Digital Stamp
+        <text x="330" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9" fontWeight="800">
+          RETURN STREAM: Verified Countersigned Legal Memo & Official Bar Seal
         </text>
-        <text x="280" y="26" textAnchor="middle" fill="#786B60" fontSize="8">
+        <text x="330" y="26" textAnchor="middle" fill="#786B60" fontSize="7.8">
           Tamper-Proof Audit Trail • Instant Fee Disbursement to Advocate
         </text>
       </g>
@@ -1901,33 +1745,33 @@ function McpTopology({
   onHoverNode,
 }: TopologyProps) {
   // Hub & Spoke positions
-  const clientPos = { x: 25, y: 110, width: 155, height: 160 };
-  const gatewayPos = { x: 240, y: 110, width: 160, height: 160 };
+  const clientPos = { x: 25, y: 95, width: 155, height: 140 };
+  const gatewayPos = { x: 235, y: 95, width: 160, height: 140 };
 
-  const tool1Pos = { x: 470, y: 35, width: 250, height: 85 };
-  const tool2Pos = { x: 470, y: 145, width: 250, height: 85 };
-  const tool3Pos = { x: 470, y: 255, width: 250, height: 85 };
+  const tool1Pos = { x: 465, y: 25, width: 255, height: 75 };
+  const tool2Pos = { x: 465, y: 125, width: 255, height: 75 };
+  const tool3Pos = { x: 465, y: 225, width: 255, height: 75 };
 
-  const jsonRpcPos = { x: 790, y: 110, width: 160, height: 160 };
+  const jsonRpcPos = { x: 785, y: 95, width: 160, height: 140 };
 
   return (
     <g>
       {/* Client -> Gateway */}
       <path
-        d={`M ${clientPos.x + clientPos.width} 190 L ${gatewayPos.x - 2} 190`}
+        d={`M ${clientPos.x + clientPos.width} 165 L ${gatewayPos.x - 2} 165`}
         stroke="#C45B3C"
         strokeWidth="2"
         fill="none"
         markerEnd="url(#arch-arrow)"
         strokeDasharray={animateFlow ? "6 3" : "none"}
       />
-      <text x="200" y="180" textAnchor="middle" fill="#C45B3C" fontSize="7.5" fontWeight="800">
+      <text x="207" y="155" textAnchor="middle" fill="#C45B3C" fontSize="7.5" fontWeight="800">
         JSON-RPC 2.0
       </text>
 
       {/* Gateway -> Tool 1 (Top) */}
       <path
-        d={`M ${gatewayPos.x + gatewayPos.width} 150 C 430 150, 430 77, ${tool1Pos.x - 2} 77`}
+        d={`M ${gatewayPos.x + gatewayPos.width} 130 C 430 130, 430 62, ${tool1Pos.x - 2} 62`}
         stroke="#8F5A0A"
         strokeWidth="1.8"
         fill="none"
@@ -1937,7 +1781,7 @@ function McpTopology({
 
       {/* Gateway -> Tool 2 (Middle) */}
       <path
-        d={`M ${gatewayPos.x + gatewayPos.width} 190 L ${tool2Pos.x - 2} 190`}
+        d={`M ${gatewayPos.x + gatewayPos.width} 165 L ${tool2Pos.x - 2} 165`}
         stroke="#8F5A0A"
         strokeWidth="1.8"
         fill="none"
@@ -1947,7 +1791,7 @@ function McpTopology({
 
       {/* Gateway -> Tool 3 (Bottom) */}
       <path
-        d={`M ${gatewayPos.x + gatewayPos.width} 230 C 430 230, 430 297, ${tool3Pos.x - 2} 297`}
+        d={`M ${gatewayPos.x + gatewayPos.width} 200 C 430 200, 430 262, ${tool3Pos.x - 2} 262`}
         stroke="#8F5A0A"
         strokeWidth="1.8"
         fill="none"
@@ -1957,7 +1801,7 @@ function McpTopology({
 
       {/* Tool 1 -> JSON-RPC */}
       <path
-        d={`M ${tool1Pos.x + tool1Pos.width} 77 C 760 77, 760 150, ${jsonRpcPos.x - 2} 150`}
+        d={`M ${tool1Pos.x + tool1Pos.width} 62 C 755 62, 755 130, ${jsonRpcPos.x - 2} 130`}
         stroke="#1E5C40"
         strokeWidth="1.8"
         fill="none"
@@ -1966,7 +1810,7 @@ function McpTopology({
 
       {/* Tool 2 -> JSON-RPC */}
       <path
-        d={`M ${tool2Pos.x + tool2Pos.width} 190 L ${jsonRpcPos.x - 2} 190`}
+        d={`M ${tool2Pos.x + tool2Pos.width} 165 L ${jsonRpcPos.x - 2} 165`}
         stroke="#1E5C40"
         strokeWidth="1.8"
         fill="none"
@@ -1975,7 +1819,7 @@ function McpTopology({
 
       {/* Tool 3 -> JSON-RPC */}
       <path
-        d={`M ${tool3Pos.x + tool3Pos.width} 297 C 760 297, 760 230, ${jsonRpcPos.x - 2} 230`}
+        d={`M ${tool3Pos.x + tool3Pos.width} 262 C 755 262, 755 200, ${jsonRpcPos.x - 2} 200`}
         stroke="#1E5C40"
         strokeWidth="1.8"
         fill="none"
@@ -1984,11 +1828,9 @@ function McpTopology({
 
       {/* Return Stream: Arc from JSON-RPC back to Client */}
       <path
-        d={`M ${jsonRpcPos.x + jsonRpcPos.width / 2} ${jsonRpcPos.y + jsonRpcPos.height} C ${
+        d={`M ${jsonRpcPos.x + jsonRpcPos.width / 2} 235 C ${
           jsonRpcPos.x + jsonRpcPos.width / 2
-        } 365, ${clientPos.x + clientPos.width / 2} 365, ${clientPos.x + clientPos.width / 2} ${
-          clientPos.y + clientPos.height + 8
-        }`}
+        } 330, ${clientPos.x + clientPos.width / 2} 330, ${clientPos.x + clientPos.width / 2} 243`}
         stroke="#1E5C40"
         strokeWidth="2.2"
         strokeDasharray={animateFlow ? "6 4" : "none"}
@@ -1998,9 +1840,9 @@ function McpTopology({
       />
 
       {/* Return Stream Banner */}
-      <g transform="translate(230, 350)">
+      <g transform="translate(220, 315)">
         <rect
-          width="560"
+          width="580"
           height="30"
           rx="6"
           fill="#FFFDF9"
@@ -2008,10 +1850,10 @@ function McpTopology({
           strokeWidth="1.2"
           filter="drop-shadow(0 2px 6px rgba(30,92,64,0.08))"
         />
-        <text x="280" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9.5" fontWeight="800">
+        <text x="290" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9" fontWeight="800">
           RETURN STREAM: FastMCP JSON-RPC 2.0 Response Protocol over SSE Transport
         </text>
-        <text x="280" y="25" textAnchor="middle" fill="#786B60" fontSize="8">
+        <text x="290" y="25" textAnchor="middle" fill="#786B60" fontSize="7.8">
           Sub-420ms Latency • Automated Retry Ladder against Network Disconnects
         </text>
       </g>
@@ -2117,6 +1959,50 @@ function McpTopology({
   );
 }
 
+// ── CLEAN BULLET RETRIEVER HELPER ──
+function getNodeBullets(node: ArchitectureNode): string[] {
+  const map: Record<string, string[]> = {
+    // Chat Flow
+    chat_ui: ["Client Sovereign PII", "Live SSE Token Stream", "Zero Raw Transit"],
+    chat_gateway: ["Token Version Auth Guard", "Atomic Credit Ledger", "BOLA Security Layer"],
+    chat_router: ["Intent Classification", "StateGraph Machine", "Art. 33 Safeguards"],
+    chat_retriever: ["3,547 Act Aliases", "Qdrant Hybrid Vectors", "Cosine Filter >= 0.78"],
+    chat_generator: ["Groq LLaMA 3.3 70B", "Grounded Reasoning", "Context-Only Synthesis"],
+    chat_verifier: ["Official Gazette Check", "BDlaws Authentic URLs", "Zero Hallucination"],
+
+    // Contract Audit
+    contract_upload: ["Client Sovereignty", "Zero Raw Ingestion", "SHA-256 Checksum"],
+    contract_extract: ["PDF/DOCX AST Parsing", "Structural Hierarchy", "Table Matrix Parser"],
+    contract_classify: ["Clause Classification", "Missing Terms Alert", "Standard Playbook"],
+    contract_risk: ["LLaMA 70B Risk Scorer", "Severity Ranking", "Exposure Analysis"],
+    contract_statute: ["Bangla Statute Match", "Section Verification", "Statutory Checks"],
+    contract_grounding: ["Clause Pinpointer", "Citation Validation", "Confidence Scoring"],
+    contract_export: ["Executive Audit Memo", "DOCX Redlines Stream", "Client PDF Delivery"],
+
+    // Lawyer HITL
+    lawyer_trigger: ["Risk Threshold Alert", "Client Escrow Deposit", "Instant Dispatch"],
+    lawyer_matcher: ["Supreme Court Filter", "Specialty Routing", "3-Hour Timed Dispatch"],
+    lawyer_portal: ["Secure Sandbox Portal", "Dual Redline View", "Client Messaging"],
+    lawyer_sign: ["Digital Bar Seal", "Bangladesh Bar Sanction", "Signed Legal Memo"],
+    lawyer_audit: ["Tamper-Proof Audit", "SSLCommerz Payout", "Completed Delivery"],
+
+    // MCP Tools & Search
+    mcp_client: ["FastMCP Protocol", "Tool Discovery Consumer", "Cursor & Claude Desktop"],
+    mcp_gateway: ["JSON-RPC 2.0 Router", "Stateless Session", "SSE Stream Gateway"],
+    mcp_tool_statute: ["3,547 Act Registry", "Exact Section Match", "bdlaws Precedents"],
+    mcp_tool_retriever: ["Qdrant Hybrid Search", "e5-small Embeddings", "Relevance Scoring"],
+    mcp_tool_verify: ["Citation Integrity", "Null Hallucination", "Strict Cross-Check"],
+    mcp_output: ["Structured Schema", "SSE Event Dispatch", "Sub-420ms Latency"],
+  };
+
+  if (map[node.id]) return map[node.id];
+  return [
+    node.role.slice(0, 22),
+    (node.inputs[0] || "Standard Input").slice(0, 22),
+    (node.outputs[0] || "Verified Output").slice(0, 22),
+  ];
+}
+
 // ── SVG NODE CARD COMPONENT ──
 interface SvgNodeCardProps {
   node: ArchitectureNode;
@@ -2146,6 +2032,7 @@ function SvgNodeCard({
   onMouseLeave,
 }: SvgNodeCardProps) {
   const isHighlighted = isSelected || isHovered;
+  const bullets = getNodeBullets(node);
 
   return (
     <g
@@ -2167,15 +2054,15 @@ function SvgNodeCard({
       />
 
       {/* Top accent strip */}
-      <rect x="0" y="0" width={width} height="5" rx="2.5" fill={accentColor} />
+      <rect x="0" y="0" width={width} height="4" rx="2" fill={accentColor} />
 
       {/* Layer tag */}
       <text
         x={width / 2}
-        y="24"
+        y="19"
         textAnchor="middle"
         fill={accentColor}
-        fontSize="8.5"
+        fontSize="7.5"
         fontWeight="800"
         letterSpacing="0.08em"
       >
@@ -2185,52 +2072,40 @@ function SvgNodeCard({
       {/* Component Title */}
       <text
         x={width / 2}
-        y="42"
+        y="36"
         textAnchor="middle"
         fill="#2E2117"
-        fontSize="11.5"
+        fontSize="11"
         fontWeight="700"
       >
         {node.label.length > 20 ? node.label.slice(0, 18) + "…" : node.label}
       </text>
 
       {/* Tech tag pill */}
-      <g transform={`translate(${width / 2 - 45}, 49)`}>
+      <g transform={`translate(${width / 2 - 45}, 43)`}>
         <rect width="90" height="15" rx="3" fill="#FBF4EC" stroke="#ECDFD0" strokeWidth="0.8" />
-        <text x="45" y="11" textAnchor="middle" fill="#786B60" fontSize="7" fontWeight="700">
+        <text x="45" y="10.5" textAnchor="middle" fill="#786B60" fontSize="7" fontWeight="700">
           {node.tech.length > 18 ? node.tech.slice(0, 16) + "…" : node.tech}
         </text>
       </g>
 
-      <line x1="10" y1="72" x2={width - 10} y2="72" stroke="#F0E5D8" strokeWidth="1" />
+      <line x1="10" y1="64" x2={width - 10} y2="64" stroke="#F0E5D8" strokeWidth="1" />
 
-      {/* Inputs / outputs preview */}
-      <text x="12" y="87" fill="#C45B3C" fontSize="7.5" fontWeight="800">
-        INPUT:
-      </text>
-      <text x="12" y="99" fill="#5C4F43" fontSize="7.5">
-        {node.inputs[0]?.slice(0, 22) || "Standard Request"}…
-      </text>
+      {/* 3 Clean Key Role Bullets */}
+      {bullets.slice(0, 3).map((b, i) => (
+        <g key={i} transform={`translate(10, ${77 + i * 16})`}>
+          <circle cx="3" cy="-3" r="1.5" fill={accentColor} />
+          <text x="8" y="0" fill="#4A3B32" fontSize="7.6" fontWeight="500">
+            {b.length > 22 ? b.slice(0, 20) + "…" : b}
+          </text>
+        </g>
+      ))}
 
-      <text x="12" y="117" fill="#1E5C40" fontSize="7.5" fontWeight="800">
-        OUTPUT:
-      </text>
-      <text x="12" y="129" fill="#5C4F43" fontSize="7.5">
-        {node.outputs[0]?.slice(0, 22) || "Verified Payload"}…
-      </text>
-
-      {/* Status indicator button at bottom */}
-      <g transform={`translate(10, ${height - 24})`}>
-        <rect width={width - 20} height="16" rx="4" fill={isSelected ? "#C45B3C" : "#FBF4EC"} />
-        <text
-          x={(width - 20) / 2}
-          y="11.5"
-          textAnchor="middle"
-          fill={isSelected ? "#FFFFFF" : "#786B60"}
-          fontSize="7.5"
-          fontWeight="800"
-        >
-          {isSelected ? "INSPECTING NODE ✓" : "CLICK TO INSPECT"}
+      {/* Bottom status badge */}
+      <g transform={`translate(10, ${height - 16})`}>
+        <circle cx="4" cy="1" r="2.5" fill={isSelected ? "#C45B3C" : "#1E5C40"} />
+        <text x="11" y="4" fill={isSelected ? "#C45B3C" : "#786B60"} fontSize="7" fontWeight="700">
+          {isSelected ? "ACTIVE NODE ✓" : "VERIFIED & LIVE"}
         </text>
       </g>
     </g>
@@ -2252,6 +2127,7 @@ function SvgToolNodeCard({
   onMouseLeave,
 }: SvgNodeCardProps) {
   const isHighlighted = isSelected || isHovered;
+  const bullets = getNodeBullets(node);
 
   return (
     <g
@@ -2270,22 +2146,28 @@ function SvgToolNodeCard({
         stroke={isSelected ? "#C45B3C" : isHovered ? "#C45B3C" : "#ECDFD0"}
         strokeWidth={isSelected ? "2.5" : "1.5"}
       />
-      <rect x="0" y="0" width="5" height={height} rx="2" fill={accentColor} />
+      <rect x="0" y="0" width="4" height={height} rx="2" fill={accentColor} />
 
-      <text x="15" y="20" fill={accentColor} fontSize="8" fontWeight="800" letterSpacing="0.08em">
+      <text x="14" y="18" fill={accentColor} fontSize="7.5" fontWeight="800" letterSpacing="0.08em">
         TOOL: {node.id.replace("mcp_tool_", "").toUpperCase()}
       </text>
-      <text x="15" y="38" fill="#2E2117" fontSize="11" fontWeight="700">
+      <text x="14" y="34" fill="#2E2117" fontSize="11" fontWeight="700">
         {node.label}
       </text>
-      <text x="15" y="54" fill="#786B60" fontSize="7.5">
-        {node.role.slice(0, 42)}…
-      </text>
 
-      <g transform={`translate(15, 62)`}>
-        <rect width="120" height="15" rx="3" fill="#FBF4EC" />
-        <text x="60" y="11" textAnchor="middle" fill="#243E56" fontSize="7" fontWeight="700">
-          {node.service_module.slice(0, 26)}
+      {bullets.slice(0, 2).map((b, i) => (
+        <g key={i} transform={`translate(14, ${48 + i * 14})`}>
+          <circle cx="2" cy="-2.5" r="1.5" fill={accentColor} />
+          <text x="7" y="0" fill="#4A3B32" fontSize="7.5" fontWeight="500">
+            {b}
+          </text>
+        </g>
+      ))}
+
+      <g transform={`translate(${width - 110}, 10)`}>
+        <rect width="100" height="15" rx="3" fill="#FBF4EC" />
+        <text x="50" y="10.5" textAnchor="middle" fill="#243E56" fontSize="7" fontWeight="700">
+          {node.service_module.slice(0, 20)}
         </text>
       </g>
     </g>
