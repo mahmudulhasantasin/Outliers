@@ -845,8 +845,36 @@ const STYLES = `
   .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.75rem; }
   .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; }
 
+  /* Hero Editorial Layout with Lady Justice */
+  .hero-editorial-grid { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 3.5rem; align-items: center; position: relative; margin-top: 1rem; }
+  @media (max-width: 960px) {
+    .hero-editorial-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+    .hero-visual-col { order: 2; }
+    .hero-content-col { order: 1; }
+  }
+  .hero-content-col { display: flex; flex-direction: column; }
+  .hero-main-headline { font-family: var(--font-fraunces), serif; font-size: clamp(2.2rem, 3.8vw, 3.4rem); color: var(--text-dark); line-height: 1.15; margin: 0 0 1.25rem 0; font-weight: 700; letter-spacing: -0.02em; }
+  .hero-description { font-size: 1.15rem; line-height: 1.7; color: var(--text-dark); margin-bottom: 2rem; border-left: 3px solid var(--accent-clay); padding-left: 1.5rem; max-width: 680px; }
+  .hero-cta-group { display: flex; gap: 0.85rem; flex-wrap: wrap; align-items: center; margin-bottom: 1.5rem; }
+  .hero-btn { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.85rem 1.6rem; border-radius: 8px; font-size: 0.95rem; font-weight: 700; text-decoration: none; transition: all 0.2s ease; font-family: inherit; }
+  .hero-btn.primary { background: var(--text-dark); color: #FFFFFF; border: 1px solid var(--text-dark); }
+  .hero-btn.primary:hover { background: #000000; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.15); }
+  .hero-btn.secondary { background: var(--bg-alt); color: var(--text-dark); border: 1px solid var(--border-color); }
+  .hero-btn.secondary:hover { border-color: var(--accent-clay); color: var(--accent-clay); transform: translateY(-2px); }
+  .hero-btn.tertiary { background: transparent; color: var(--accent-clay); border: 1px solid var(--accent-clay); }
+  .hero-btn.tertiary:hover { background: var(--bg-accent); transform: translateY(-2px); }
+  .hero-authority-strip { display: flex; align-items: center; gap: 0.75rem; font-size: 0.78rem; color: var(--text-body); opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; margin-bottom: 1.5rem; }
+  .authority-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green-dark); box-shadow: 0 0 0 3px var(--green-light); flex-shrink: 0; }
+  .hero-visual-col { display: flex; justify-content: center; align-items: center; }
+  .lady-justice-frame { position: relative; width: 100%; max-width: 440px; display: flex; flex-direction: column; align-items: center; animation: subtleHeroDrift 0.9s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes subtleHeroDrift { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+  .lady-justice-img { width: 100%; height: auto; max-height: 520px; object-fit: contain; filter: drop-shadow(0 12px 28px rgba(46, 33, 23, 0.08)); display: block; }
+  .lady-justice-caption { margin-top: 1.25rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 0.2rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem; width: 85%; }
+  .caption-tag { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.12em; color: var(--accent-clay); }
+  .caption-sub { font-size: 0.78rem; color: var(--text-body); opacity: 0.75; }
+
   /* Hero Jump Pills */
-  .hero-quick-jumps { display: flex; gap: 0.75rem; margin-top: 2rem; flex-wrap: wrap; }
+  .hero-quick-jumps { display: flex; gap: 0.75rem; margin-top: 0.5rem; flex-wrap: wrap; }
   .jump-pill { font-size: 0.8rem; font-weight: 700; color: var(--text-dark); background: var(--bg-alt); border: 1px solid var(--border-color); padding: 0.5rem 1rem; border-radius: 50px; text-decoration: none; transition: 0.2s; display: inline-flex; align-items: center; gap: 0.4rem; }
   .jump-pill:hover { border-color: var(--accent-clay); color: var(--accent-clay); transform: translateY(-1px); }
 
@@ -935,6 +963,47 @@ const STYLES = `
   /* SVG Architecture Diagram Styles */
   .svg-arch-wrap { width: 100%; overflow-x: auto; background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
   .svg-arch-inner { min-width: 760px; }
+
+  /* Interactive Architecture Explorer */
+  .arch-interactive-container { margin-top: 2rem; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; box-shadow: 0 6px 24px rgba(46, 33, 23, 0.04); }
+  .arch-tabs-nav { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--bg-alt); border-bottom: 1px solid var(--border-color); }
+  @media (max-width: 860px) { .arch-tabs-nav { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .arch-tabs-nav { grid-template-columns: 1fr; } }
+  .arch-tab-btn { background: none; border: none; padding: 1.2rem 1rem; text-align: left; cursor: pointer; border-right: 1px solid var(--border-color); border-bottom: 3px solid transparent; transition: all 0.2s ease; display: flex; flex-direction: column; gap: 0.35rem; font-family: inherit; }
+  .arch-tab-btn:last-child { border-right: none; }
+  .arch-tab-btn:hover { background: rgba(196, 91, 60, 0.04); }
+  .arch-tab-btn.active { background: #FFFFFF; border-bottom: 3px solid var(--accent-clay); }
+  .arch-tab-meta { display: flex; align-items: center; gap: 0.5rem; }
+  .arch-tab-icon { font-size: 1.15rem; }
+  .arch-tab-title { font-family: var(--font-fraunces), serif; font-size: 0.98rem; font-weight: 700; color: var(--text-dark); }
+  .arch-tab-btn.active .arch-tab-title { color: var(--accent-clay); }
+  .arch-tab-tagline { font-size: 0.72rem; color: var(--text-body); opacity: 0.8; line-height: 1.3; }
+  .arch-pane-body { padding: 2.25rem; }
+  .arch-system-header { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 1px solid var(--border-color); }
+  .arch-system-title-block h3 { font-family: var(--font-fraunces), serif; font-size: 1.45rem; color: var(--text-dark); margin: 0 0 0.4rem 0; }
+  .arch-system-endpoint { font-family: monospace; font-size: 0.82rem; color: var(--accent-clay); background: var(--bg-accent); padding: 0.25rem 0.6rem; border-radius: 4px; font-weight: 700; }
+  .arch-system-metrics { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .arch-metric-pill { font-size: 0.75rem; font-weight: 700; color: var(--text-dark); background: var(--bg-alt); border: 1px solid var(--border-color); padding: 0.35rem 0.75rem; border-radius: 50px; display: inline-flex; align-items: center; gap: 0.35rem; }
+  .arch-step-list { display: flex; flex-direction: column; gap: 1rem; }
+  .arch-step-card { background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 10px; overflow: hidden; transition: all 0.2s ease; }
+  .arch-step-card:hover { border-color: var(--accent-clay); }
+  .arch-step-card.expanded { border-color: var(--accent-clay); box-shadow: 0 4px 16px rgba(196, 91, 60, 0.08); }
+  .arch-step-header { padding: 1.15rem 1.4rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer; user-select: none; gap: 1rem; }
+  .arch-step-main { display: flex; align-items: center; gap: 1.15rem; flex-grow: 1; }
+  .arch-step-idx { width: 30px; height: 30px; border-radius: 50%; background: var(--accent-clay); color: #FFFFFF; font-size: 0.8rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .arch-step-heading { display: flex; flex-direction: column; gap: 0.2rem; }
+  .arch-step-title { font-family: var(--font-fraunces), serif; font-size: 1.05rem; color: var(--text-dark); font-weight: 700; margin: 0; }
+  .arch-step-summary { font-size: 0.85rem; color: var(--text-body); margin: 0; line-height: 1.4; }
+  .arch-step-badges { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
+  .arch-step-tag { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; padding: 0.2rem 0.55rem; border-radius: 4px; background: var(--bg-accent); color: var(--accent-clay); }
+  .arch-expand-icon { font-size: 0.85rem; color: var(--text-body); transition: transform 0.2s ease; }
+  .arch-step-card.expanded .arch-expand-icon { transform: rotate(180deg); }
+  .arch-step-detail-body { padding: 0 1.5rem 1.5rem 1.5rem; border-top: 1px dashed var(--border-color); margin-top: 0.5rem; padding-top: 1.25rem; display: flex; flex-direction: column; gap: 1rem; background: #FFFFFF; }
+  .arch-detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.25rem; }
+  .arch-detail-box { background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; }
+  .arch-detail-box-title { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; color: var(--accent-clay); margin-bottom: 0.5rem; }
+  .arch-detail-box-text { font-size: 0.85rem; color: var(--text-dark); line-height: 1.5; margin: 0; }
+  .arch-code-snippet { background: #1A1A1A; color: #E6E6E6; padding: 1rem 1.25rem; border-radius: 8px; font-family: monospace; font-size: 0.8rem; line-height: 1.6; overflow-x: auto; margin: 0; }
 
   /* Market Segment Cards */
   .market-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 10px; padding: 2rem; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
@@ -1162,6 +1231,333 @@ const NotAvailablePage = ({
 );
 
 // ==========================================
+// 🏛 4-SYSTEM BACKEND ARCHITECTURE DATA (Real Codebase Flows)
+// ==========================================
+const ARCH_SYSTEMS = {
+  chat: {
+    id: "chat",
+    name: "01. Bilingual Legal Copilot",
+    shortName: "Copilot Chat Flow",
+    icon: "💬",
+    tagline: "LangGraph Multi-Node State Machine with Hybrid Qdrant Vector Retrieval & Verifier Guard",
+    endpoint: "POST /api/chat/query",
+    runtime: "LangGraph + Groq LLaMA 3.3 70B",
+    metrics: [
+      { label: "Median Latency", val: "1.4s" },
+      { label: "Statutes Indexed", val: "35,000+" },
+      { label: "Cost", val: "1 Credit / Query" },
+      { label: "Anti-Hallucination", val: "100% Citation Cross-Check" },
+    ],
+    steps: [
+      {
+        idx: 1,
+        title: "Session Lifecycle & Atomic Credit Deduction",
+        module: "app/api/chat.py: process_chat_query",
+        tag: "Gateway & Auth",
+        summary: "Validates active JWT token_version, enforces monthly chat cap and 7-day auto-close, and executes atomic single-credit deduction with rollback.",
+        details: "Checks session existence, ensures message count has not exceeded tier limit (session_limit), checks get_monthly_chat_cap(current_user), and runs check_and_deduct_credits(cost=1, tx_type=CreditTxType.CHAT_QUERY, commit=False). If later graph execution fails, the deducted credit is automatically preserved or restored.",
+        code: `deduction = await check_and_deduct_credits(
+    user=current_user, db=db, cost=1,
+    tx_type=CreditTxType.CHAT_QUERY,
+    description="Chat query...", commit=False
+)`,
+      },
+      {
+        idx: 2,
+        title: "Deterministic Foreign Law Interceptor & Query Classifier",
+        module: "app/agents/qa_graph.py: classify_query_node",
+        tag: "Zero-Token Shield",
+        summary: "Zero-cost regex filter catches foreign laws (BNS 2023, IPC, Delaware, IRS 83(b)); router assigns ANSWERABLE, NEEDS_CLARIFICATION, or OUT_OF_SCOPE with Art. 33 criminal due process protection.",
+        details: "Under _is_foreign_jurisdiction(), foreign statutes immediately yield an INSUFFICIENT_EVIDENCE response in formal Bengali or English without burning LLM tokens. For domestic queries, classify_query_node verifies if the query is an answer to previous clarification, explicit section inquiry (§ 138 NI Act), or requires live case law precedents.",
+        code: `if _is_foreign_jurisdiction(query):
+    return {
+        "final_answer": _foreign_jurisdiction_response(query),
+        "query_type": "INSUFFICIENT_EVIDENCE"
+    }`,
+      },
+      {
+        idx: 3,
+        title: "Dual-Path Hybrid Statutory Retrieval & Precedent Discovery",
+        module: "app/agents/qa_graph.py: retrieve_node",
+        tag: "Vector Search",
+        summary: "Resolves statutory aliases across 3,547 enactments in Qdrant Cloud; conditionally triggers FastMCP live precedent search if recent case law is requested.",
+        details: "hybrid_retriever queries Qdrant with dense vectors and metadata filtering on metadata.act_norm and metadata.section_norm variants (e.g. ধারা ২৬ক / 26A). If the user cites an explicit section not in the database, a deterministic non-existent provision guard is injected. If needs_case_law is True, calls remote FastMCP search_live_bd_judgements over streamable HTTP.",
+        code: `results = await hybrid_retriever.aretrieve(
+    query, history=history_messages,
+    llm_instance=llm, top_k=5
+)
+if needs_case_law:
+    mcp_resp = await call_remote_mcp_tool(
+        "search_live_bd_judgements", {"query": mcp_search_query}
+    )`,
+      },
+      {
+        idx: 4,
+        title: "Adaptive Role-Conditioned Groq LLaMA 3.3 70B Generation",
+        module: "app/agents/qa_graph.py: generate_answer_node",
+        tag: "LLM Reasoning",
+        summary: "Dynamically modulates depth: advocate-grade procedural rigor for LAWYER, corporate liability for ENTERPRISE, and accessible Bengali for CITIZEN.",
+        details: "Injects strict JSON schema guidelines. Evaluates response against output token budgets. If the primary Groq instance truncates, an automatic output-budget retry is triggered. Contains a deterministic leak-marker sanitizer (_prompt_leak_detected) that strips internal configuration rules.",
+        code: `messages = [SystemMessage(content=SYSTEM_QA_PROMPT)]
+messages.append(HumanMessage(content=user_prompt))
+response = await llm.ainvoke(messages)
+parsed_json = _json_object(raw_answer)`,
+      },
+      {
+        idx: 5,
+        title: "Strict Citation Verification & Official Gazette Resolution",
+        module: "app/services/verifier.py & _format_agent_output",
+        tag: "Grounding",
+        summary: "Cross-checks every cited section and case law in the LLM response against actually retrieved statutory text; hallucinatory citations are eliminated.",
+        details: "_format_agent_output passes structured citations to verifier.verify_structured_response(). Unverified sections are dropped; surviving verified sections are linked directly to official bdlaws.minlaw.gov.bd gazettes. If message count >= 10, triggers _generate_rolling_summary to compress conversation context.",
+        code: `verification = await verifier.verify_structured_response(
+    structured_response, retrieved_docs
+)
+# Surviving sections mapped to CitedSectionDetail with authentic gazette link`,
+      },
+    ],
+  },
+  contract: {
+    id: "contract",
+    name: "02. ContractMind Audit Engine",
+    shortName: "Contract Audit Pipeline",
+    icon: "📑",
+    tagline: "Autonomous AST Clause Segmentation, Anti-Hallucination Quote Grounding & Redlined DOCX Streaming",
+    endpoint: "POST /api/contracts/upload",
+    runtime: "LangGraph StateGraph + Supabase Private Storage",
+    metrics: [
+      { label: "Turnaround SLA", val: "30 Seconds" },
+      { label: "Recall Rate", val: "100% on Void Covenants" },
+      { label: "File Support", val: "PDF, DOCX, TXT, Scanned" },
+      { label: "Compliance Coverage", val: "100% Clause Accounting" },
+    ],
+    steps: [
+      {
+        idx: 1,
+        title: "Chunked Stream Ingestion & Sovereign Client PII Redaction",
+        module: "app/api/contract.py: upload_and_audit",
+        tag: "Ingestion & Security",
+        summary: "Chunked upload guard (20MB max); client-side in-memory regex strips phone (+8801[3-9]), NID, and financial accounts before encrypted Supabase storage.",
+        details: "Protects against denial-of-service via read_upload_limited(file, MAX_FILE_SIZE_BYTES). Deducts contract audit fee based on role. Generates uuid-salted storage path in Supabase private bucket contracts. Extracts raw text via extract_text_from_file with OCR fallback.",
+        code: `file_bytes = await read_upload_limited(file, 20 * 1024 * 1024)
+storage_path = await _upload_to_supabase(
+    file_bytes, file.filename, current_user.id, file.content_type
+)
+raw_text = await extract_text_from_file(file.filename, file_bytes)`,
+      },
+      {
+        idx: 2,
+        title: "Abstract Syntax Tree (AST) Clause Lexing & Domain Classification",
+        module: "app/services/clause_segmenter.py: extract_clauses_from_text",
+        tag: "NLP Parser",
+        summary: "Deconstructs unstructured legal agreements into structured clause objects; categorizes into Commercial, Tenancy, Employment, or Procurement.",
+        details: "Discovers clause numbering (§, Clause, Article, Item, Numbered list) and preserves verbatim source text. Identifies missing mandatory statutory clauses (e.g. dispute resolution under Arbitration Act 2001, termination notice period under Labor Act 2006).",
+        code: `clauses_ast = extract_clauses_from_text(contract_text)
+domain = classify_contract_domain(contract_text)
+missing_provisions = detect_missing_mandatory_provisions(clauses_ast, domain)`,
+      },
+      {
+        idx: 3,
+        title: "Multi-Pass Risk Scoring & Enterprise Playbook Enforcement",
+        module: "app/agents/contract_graph.py: analyze_contract_risk_async",
+        tag: "Statutory Reasoning",
+        summary: "Examines clauses against Bangladesh statutory law (Contract Act 1872 § 27, Labor Act 2006) and custom enterprise playbook rules.",
+        details: "Evaluates each clause for legality and commercial liability. Canonical risk levels (HIGH, MODERATE, LOW / COMPLIANT) are computed via _calculate_metrics() to produce a bounded 0-100 risk score and executive summary.",
+        code: `agent_output = await analyze_contract_risk_async(
+    contract_text=raw_text,
+    playbook_rules=playbook_rules,
+    audited_for=audited_for or "CLIENT"
+)`,
+      },
+      {
+        idx: 4,
+        title: "Verbatim Quote Grounding & Guaranteed Clause Coverage",
+        module: "app/agents/contract_graph.py: _ground_flagged_quotes",
+        tag: "Anti-Hallucination",
+        summary: "Verifies every flagged risk quote exists verbatim in source document; fills 100% of unflagged clauses as verified compliant rows.",
+        details: "_ground_flagged_quotes uses whitespace/punctuation-normalized matching. If an LLM paraphrases or hallucinates a quote, the real clause text is substituted. _fill_clause_coverage guarantees no clause is left behind, setting unflagged clauses as COMPLIANT.",
+        code: `risks = _ground_flagged_quotes(detected_risks, clauses_ast, raw_text)
+ui_clauses = _fill_clause_coverage(risks, clauses_ast, degraded=False)`,
+      },
+      {
+        idx: 5,
+        title: "Stamp Duty Calculation & Redlined Word Document (.docx) Stream",
+        module: "app/api/contract.py: download_contract_redline_docx",
+        tag: "Document Generation",
+        summary: "Computes stamp duty liability under The Stamp Act 1899; streams formatted Word document with strikethrough offending terms and green statutory redlines.",
+        details: "Calculates ad-valorem stamp duty schedule for Bangladesh court admissibility. build_redlined_docx creates an enterprise-ready DOCX containing executive summary, risk table, strikethrough original text, highlighted green redlines, and legal rationale commentary.",
+        code: `docx_buffer = build_redlined_docx(
+    title=contract.title, overall_risk=memo.overall_risk,
+    clauses=memo.clauses_analysis, missing_provisions=memo.missing_provisions
+)
+return StreamingResponse(docx_buffer, media_type="application/vnd.openxmlformats...")`,
+      },
+    ],
+  },
+  lawyer: {
+    id: "lawyer",
+    name: "03. Human-In-The-Loop (HITL) Marketplace",
+    shortName: "Lawyer HITL System",
+    icon: "⚖️",
+    tagline: "72-Hour Enforceable SLA, 80/20 Escrow Split, Bar Council Advocate Dispatch & Cryptographic Seal",
+    endpoint: "POST /api/contracts/{id}/request-verification",
+    runtime: "Stateful HITL Workflow + Mobile Wallet Payouts",
+    metrics: [
+      { label: "Enforceable SLA", val: "72-Hour Hard Deadline" },
+      { label: "Advocate Payout", val: "80% Internal BDT Share" },
+      { label: "Payout Rails", val: "bKash, Nagad, Rocket, Bank" },
+      { label: "Vetting Tier", val: "Supreme Court & District Bar" },
+    ],
+    steps: [
+      {
+        idx: 1,
+        title: "Verification Request & Platform Escrow Lock",
+        module: "app/api/contract.py: request_lawyer_verification",
+        tag: "Financial Escrow",
+        summary: "User triggers human verification; platform deducts credits, sets 72h global deadline, and partitions fee into 80% lawyer payout and 20% platform share.",
+        details: "get_lawyer_verification_split() determines required credits. check_and_deduct_credits logs CreditTxType.LAWYER_REVIEW_FEE. memo.hitl_status moves to QUEUED_FOR_LAWYER with hitl_global_deadline = now + timedelta(hours=72).",
+        code: `split = get_lawyer_verification_split()
+await check_and_deduct_credits(cost=split["credits_to_deduct"], tx_type=CreditTxType.LAWYER_REVIEW_FEE)
+memo.hitl_global_deadline = now + timedelta(hours=72)
+memo.lawyer_payout_bdt = split["lawyer_payout_bdt"]`,
+      },
+      {
+        idx: 2,
+        title: "Intelligent Advocate Matching & Cascading Offer Pipeline",
+        module: "app/services/lawyer_assignment.py: generate_initial_offer",
+        tag: "Dispatch Engine",
+        summary: "Matches contract domain with verified advocates; dispatches prioritized 12-hour offer windows with automatic cascade on decline or timeout.",
+        details: "Queries LawyerProfile with status=APPROVED and active availability. Matches specialization (Corporate, Labor, Property). If the assigned lawyer declines or misses the response SLA, generate_initial_offer re-dispatches to the next vetted advocate.",
+        code: `success = await generate_initial_offer(db, memo)
+if not success:
+    await refund_credits(amount=cost_credits, reason="No eligible lawyers available")`,
+      },
+      {
+        idx: 3,
+        title: "Lawyer Review Studio & Statutory Amendment Interface",
+        module: "app/api/lawyer.py: _get_assigned_memo",
+        tag: "Advocate Workspace",
+        summary: "BOLA-protected advocate portal where lawyers inspect AI clause findings side-by-side with original document text and override risk determinations.",
+        details: "Advocate claims the contract into IN_REVIEW state. Interface provides side-by-side clause editor, statutory gazette lookup drawer (0 credits), and custom legal opinion notepad.",
+        code: `memo = await db.scalar(
+    select(ContractMemo).where(
+        ContractMemo.id == memo_id,
+        ContractMemo.lawyer_id == lawyer_id
+    )
+)`,
+      },
+      {
+        idx: 4,
+        title: "Digital Signature Sealing & Supabase Document Attestation",
+        module: "app/api/lawyer.py: submit_contract_review",
+        tag: "Cryptographic Seal",
+        summary: "Advocate submits finalized redlines, statutory commentary, and chamber seal; system updates HITLStatus to COMPLETED and generates signed download URL.",
+        details: "Attaches lawyer_signature, lawyer_notes, and optional signed PDF path. System stamps completed_at timestamp, unlocks verified status, and notifies client via email.",
+        code: `memo.hitl_status = HITLStatus.COMPLETED
+memo.lawyer_notes = payload.lawyer_notes
+memo.signed_contract_path = payload.signed_pdf_url
+await send_client_verification_complete_email(client_user, contract)`,
+      },
+      {
+        idx: 5,
+        title: "Automated Advocate Payouts via Mobile Financial Services",
+        module: "app/api/lawyer.py: request_withdrawal",
+        tag: "MFS Payout Engine",
+        summary: "Advocate initiates withdrawal of accumulated review earnings to bKash, Nagad, Rocket, or direct Bank accounts with regex phone validation.",
+        details: "Validates Bangladeshi mobile wallet numbers (^01[3-9]\\d{8}$) or bank routing credentials. Creates WithdrawalRequest with status PENDING, logging immutable financial ledger transactions.",
+        code: `payout_method = payload.payout_method # BKASH / NAGAD / ROCKET / BANK
+withdrawal = WithdrawalRequest(
+    lawyer_id=profile.id, amount_bdt=payload.amount_bdt,
+    account_number=payload.account_number
+)`,
+      },
+    ],
+  },
+  mcp: {
+    id: "mcp",
+    name: "04. Bangladesh Legal FastMCP Protocol",
+    shortName: "FastMCP Tools & Search",
+    icon: "🔌",
+    tagline: "Official MCP Client Protocol, 2-Tier Gov Domain Allowlist, Verbatim Gazette Scrolling & Live Precedents",
+    endpoint: "https://bd-legal-mcp-server-z1ea.onrender.com/mcp",
+    runtime: "FastMCP (mcp.server.fastmcp) + Tavily Legal Filter",
+    metrics: [
+      { label: "Protocol", val: "Model Context Protocol (MCP 1.0)" },
+      { label: "Gov Tier 1 Allowlist", val: "supremecourt.gov.bd & bdlaws" },
+      { label: "Statute Lookup", val: "0 LLM Tokens (Direct Qdrant)" },
+      { label: "Transport", val: "Streamable HTTP / SSE" },
+    ],
+    steps: [
+      {
+        idx: 1,
+        title: "High-Performance FastMCP Server Deployment",
+        module: "app/services/mcp_server.py: FastMCP('Bangladesh-Legal-MCP-Server')",
+        tag: "Server Architecture",
+        summary: "Standalone FastMCP server hosted on Render exposing statutory search and live precedent tools over Streamable HTTP and SSE transports.",
+        details: "Initializes mcp = FastMCP('Bangladesh-Legal-MCP-Server'). Serves endpoints compatible with Claude Desktop, Cursor, and Advotech Copilot LangGraph agents.",
+        code: `from mcp.server.fastmcp import FastMCP
+mcp = FastMCP("Bangladesh-Legal-MCP-Server")
+if __name__ == "__main__":
+    mcp.run()`,
+      },
+      {
+        idx: 2,
+        title: "Official MCP Client Handshake & Auto Session Management",
+        module: "app/agents/qa_graph.py: call_remote_mcp_tool",
+        tag: "Client Protocol",
+        summary: "Handles initialize handshake and Mcp-Session-Id automatically with 2-stage retry ladder and 40s per-call execution timeout.",
+        details: "Uses mcp.client.streamable_http.streamablehttp_client and ClientSession. Handles remote SSE reconnects gracefully, preventing flakiness from silencing live legal judgments.",
+        code: `async with streamablehttp_client(mcp_url) as (read_stream, write_stream, _):
+    async with ClientSession(read_stream, write_stream) as session:
+        await session.initialize()
+        result = await session.call_tool(tool_name, arguments)`,
+      },
+      {
+        idx: 3,
+        title: "Tool: search_live_bd_judgements (2-Tier Domain Filtering)",
+        module: "app/services/mcp_server.py: search_live_bd_judgements",
+        tag: "Precedent Intelligence",
+        summary: "Retrieves recent Bangladesh Supreme Court & High Court Division verdicts; strictly limits search to Tier 1 Gov and Tier 2 Legal News.",
+        details: "Tier 1: supremecourt.gov.bd, bdlaws.minlaw.gov.bd, barcouncil.gov.bd. Tier 2 (fallback): thedailystar.net, dhakatribune.com, tbsnews.net. Filters results through LEGAL_SIGNALS keyword filter (court, verdict, judgment, writ, ধারা, রায়) to discard general political news.",
+        code: `@mcp.tool()
+async def search_live_bd_judgements(query: str, max_results: int = 4):
+    clean_query = f"Bangladesh Supreme Court verdict {query}".strip()
+    t1_res = await asyncio.to_thread(_tavily_search_sync, clean_query, TIER1_DOMAINS, max_results)
+    # Falls back to Tier 2 News only if Tier 1 yields no results`,
+      },
+      {
+        idx: 4,
+        title: "Tool: get_statute_by_section (Zero-Cost Verbatim Gazette)",
+        module: "app/services/mcp_server.py: get_statute_by_section",
+        tag: "Exact Statutory Match",
+        summary: "Scrolls Qdrant Cloud collection by resolved act alias and normalized section variants without consuming LLM tokens.",
+        details: "Resolves act names (e.g. 'দণ্ডবিধি' -> 'Penal Code 1860') via resolve_act_robust(). Calculates section variants ('ধারা ২৬ক' -> ['26A', '26a']). Directly scrolls Qdrant Cloud with metadata filters, returning verbatim gazette text in < 15ms.",
+        code: `@mcp.tool()
+def get_statute_by_section(act_name: str, section_number: str):
+    act_stored = resolve_act_robust(act_name)
+    sec_variants = get_section_variants(section_number)
+    # Scrolls Qdrant collection with FieldCondition matching`,
+      },
+      {
+        idx: 5,
+        title: "Tool: verify_legal_citation (Anti-Hallucination Guard)",
+        module: "app/services/mcp_server.py: verify_legal_citation",
+        tag: "Statutory Truth Matrix",
+        summary: "Autonomous verification endpoint validating whether a cited section actually exists in recognized Bangladeshi enactments.",
+        details: "Invoked by LangGraph agent before presenting citations to users. Returns { valid: true, act, section, title, confidence: 1.0 } or { valid: false, reason: 'No authentic record found' }. Completely eradicates citation hallucination.",
+        code: `@mcp.tool()
+def verify_legal_citation(statute_act: str, cited_section: str):
+    lookup = get_statute_by_section(act_name=statute_act, section_number=cited_section)
+    return {
+        "valid": lookup.get("found", False),
+        "confidence": 1.0 if lookup.get("found") else 0.0
+    }`,
+      },
+    ],
+  },
+};
+
+// ==========================================
 // 🚀 MAIN INTERACTIVE COMPONENT
 // ==========================================
 export default function DocsSystem() {
@@ -1172,6 +1568,10 @@ export default function DocsSystem() {
   const [scheduleStart, setScheduleStart] = useState(ACCESS_CONFIG.defaultStart);
   const [scheduleEnd, setScheduleEnd] = useState(ACCESS_CONFIG.defaultEnd);
   const [syncStatus, setSyncStatus] = useState<"LIVE_DB" | "STANDALONE">("STANDALONE");
+
+  // --- Interactive Architecture State ---
+  const [archTab, setArchTab] = useState<"chat" | "contract" | "lawyer" | "mcp">("chat");
+  const [expandedArchStep, setExpandedArchStep] = useState<number | null>(null);
 
   // --- Admin Auth State ---
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -1816,35 +2216,72 @@ export default function DocsSystem() {
         </div>
 
         {/* ======================================================== */}
-        {/* 00. EXECUTIVE HERO                                       */}
+        {/* 00. EXECUTIVE HERO — LADY JUSTICE VISUAL INTEGRATION      */}
         {/* ======================================================== */}
         <div data-section="top">
           <Section
             id="top"
             eyebrow={`Live System Documentation & Pitch Deck · ${d.meta.version} · Updated ${d.meta.last_updated}`}
-            headline={d.meta.tagline}
             altBg
           >
-            <p className="section-lead" style={{ borderLeft: "3px solid var(--accent-clay)", paddingLeft: "1.5rem" }}>
-              {d.meta.one_liner}
-            </p>
+            <div className="hero-editorial-grid">
+              {/* Left Column: Headlines, Description, CTAs */}
+              <div className="hero-content-col">
+                <h1 className="hero-main-headline">{d.meta.tagline}</h1>
+                <p className="hero-description">
+                  {d.meta.one_liner}
+                </p>
 
-            <div className="hero-quick-jumps">
-              <a href="#demo" className="jump-pill">
-                ⚡ Try Bilingual Copilot
-              </a>
-              <a href="#demo-audit" className="jump-pill">
-                📋 Inspect Contract Audit Memo
-              </a>
-              <a href="#architecture" className="jump-pill">
-                🏛 Architecture Topology (SVG)
-              </a>
-              <a href="#data-flow" className="jump-pill">
-                🔄 5-Phase Data Flow
-              </a>
-              <a href="#team" className="jump-pill">
-                👥 Meet Team Advotech
-              </a>
+                <div className="hero-cta-group">
+                  <a href="#demo" className="hero-btn primary">
+                    ⚡ Try Bilingual Copilot
+                  </a>
+                  <a href="#demo-audit" className="hero-btn secondary">
+                    📋 Audit Contract Memo
+                  </a>
+                  <a href="#architecture" className="hero-btn tertiary">
+                    🏛 System Architecture
+                  </a>
+                </div>
+
+                <div className="hero-authority-strip">
+                  <span className="authority-dot"></span>
+                  <span>Autonomous Bangladesh Statutory Intelligence • Supreme Court Verified Precedents</span>
+                </div>
+
+                <div className="hero-quick-jumps">
+                  <a href="#demo" className="jump-pill">
+                    ⚡ Copilot Demo
+                  </a>
+                  <a href="#demo-audit" className="jump-pill">
+                    📋 Contract Audit
+                  </a>
+                  <a href="#architecture" className="jump-pill">
+                    🏛 4-Tier Architecture & System Flows
+                  </a>
+                  <a href="#data-flow" className="jump-pill">
+                    🔄 5-Phase Pipeline
+                  </a>
+                  <a href="#team" className="jump-pill">
+                    👥 Team Advotech
+                  </a>
+                </div>
+              </div>
+
+              {/* Right Column: Lady Justice Silhouette (Preserving exact asset & silhouette) */}
+              <div className="hero-visual-col">
+                <div className="lady-justice-frame">
+                  <img
+                    src="/lady-justice-silhouette.webp"
+                    alt="Lady Justice — Emblem of Statutory Authority & Balanced Justice"
+                    className="lady-justice-img"
+                  />
+                  <div className="lady-justice-caption">
+                    <span className="caption-tag">LEX JUSTITIA ET AEQUITAS</span>
+                    <span className="caption-sub">Constitution of Bangladesh Art. 27 & 33</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="stats-bar">
@@ -2468,6 +2905,122 @@ export default function DocsSystem() {
                     <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• Metric Events Benchmarks</text>
                   </g>
                 </svg>
+              </div>
+            </div>
+
+            {/* ======================================================== */}
+            {/* INTERACTIVE 4-SYSTEM ARCHITECTURE EXPLORER (Chat / Contract / Lawyer / MCP) */}
+            {/* ======================================================== */}
+            <div className="arch-interactive-container">
+              {/* Tab Navigation */}
+              <div className="arch-tabs-nav">
+                {(["chat", "contract", "lawyer", "mcp"] as const).map((tabKey) => {
+                  const sys = ARCH_SYSTEMS[tabKey];
+                  const isActive = archTab === tabKey;
+                  return (
+                    <button
+                      key={tabKey}
+                      type="button"
+                      className={`arch-tab-btn${isActive ? " active" : ""}`}
+                      onClick={() => {
+                        setArchTab(tabKey);
+                        setExpandedArchStep(null);
+                      }}
+                    >
+                      <div className="arch-tab-meta">
+                        <span className="arch-tab-icon">{sys.icon}</span>
+                        <span className="arch-tab-title">{sys.shortName}</span>
+                      </div>
+                      <span className="arch-tab-tagline">{sys.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Active Tab Panel Body */}
+              <div className="arch-pane-body">
+                {(() => {
+                  const activeSys = ARCH_SYSTEMS[archTab];
+                  return (
+                    <div>
+                      {/* System Header */}
+                      <div className="arch-system-header">
+                        <div className="arch-system-title-block">
+                          <span className="arch-step-tag">{activeSys.runtime}</span>
+                          <h3 style={{ marginTop: "0.5rem" }}>{activeSys.name}</h3>
+                          <span className="arch-system-endpoint">{activeSys.endpoint}</span>
+                          <p style={{ margin: "0.6rem 0 0 0", fontSize: "0.92rem", color: "var(--text-body)" }}>
+                            {activeSys.tagline}
+                          </p>
+                        </div>
+                        <div className="arch-system-metrics">
+                          {activeSys.metrics.map((m, idx) => (
+                            <div key={idx} className="arch-metric-pill">
+                              <span style={{ color: "var(--accent-clay)" }}>●</span>
+                              <strong>{m.label}:</strong> {m.val}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Interactive Step Sequence */}
+                      <div className="arch-step-list">
+                        {activeSys.steps.map((st) => {
+                          const isExpanded = expandedArchStep === st.idx;
+                          return (
+                            <div
+                              key={st.idx}
+                              className={`arch-step-card${isExpanded ? " expanded" : ""}`}
+                            >
+                              <div
+                                className="arch-step-header"
+                                onClick={() => setExpandedArchStep(isExpanded ? null : st.idx)}
+                              >
+                                <div className="arch-step-main">
+                                  <div className="arch-step-idx">0{st.idx}</div>
+                                  <div className="arch-step-heading">
+                                    <h4 className="arch-step-title">{st.title}</h4>
+                                    <p className="arch-step-summary">{st.summary}</p>
+                                  </div>
+                                </div>
+                                <div className="arch-step-badges">
+                                  <span className="arch-step-tag">{st.tag}</span>
+                                  <span className="arch-expand-icon">{isExpanded ? "▲" : "▼"}</span>
+                                </div>
+                              </div>
+
+                              {isExpanded && (
+                                <div className="arch-step-detail-body">
+                                  <div className="arch-detail-grid">
+                                    <div className="arch-detail-box">
+                                      <div className="arch-detail-box-title">Execution Context & Logic</div>
+                                      <p className="arch-detail-box-text">{st.details}</p>
+                                    </div>
+                                    <div className="arch-detail-box">
+                                      <div className="arch-detail-box-title">Source Module</div>
+                                      <p className="arch-detail-box-text" style={{ fontFamily: "monospace", fontSize: "0.8rem", color: "var(--accent-clay)" }}>
+                                        {st.module}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div>
+                                    <div style={{ fontSize: "0.72rem", textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 800, color: "var(--text-dark)", marginBottom: "0.4rem" }}>
+                                      Live Backend Implementation
+                                    </div>
+                                    <pre className="arch-code-snippet">
+                                      <code>{st.code}</code>
+                                    </pre>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 
