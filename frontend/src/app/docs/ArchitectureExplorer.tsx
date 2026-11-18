@@ -303,7 +303,7 @@ export default function ArchitectureExplorer({
         >
           <svg
             ref={svgRef}
-            viewBox={activeSystem.system_id === "mcp" ? "0 0 1060 365" : "0 0 1060 250"}
+            viewBox="0 0 1060 250"
             className="arch-svg-canvas"
             style={{ width: "100%", height: "auto", display: "block" }}
             preserveAspectRatio="xMidYMid meet"
@@ -1744,93 +1744,66 @@ function McpTopology({
   onSelectNode,
   onHoverNode,
 }: TopologyProps) {
-  // Hub & Spoke positions
-  const clientPos = { x: 25, y: 95, width: 155, height: 140 };
-  const gatewayPos = { x: 235, y: 95, width: 160, height: 140 };
+  const nodeWidth = 142;
+  const nodeHeight = 138;
+  const startY = 38;
+  const gap = 28;
 
-  const tool1Pos = { x: 465, y: 25, width: 255, height: 75 };
-  const tool2Pos = { x: 465, y: 125, width: 255, height: 75 };
-  const tool3Pos = { x: 465, y: 225, width: 255, height: 75 };
-
-  const jsonRpcPos = { x: 785, y: 95, width: 160, height: 140 };
+  const positions = [
+    { x: 20, y: startY },
+    { x: 20 + (nodeWidth + gap), y: startY },
+    { x: 20 + (nodeWidth + gap) * 2, y: startY },
+    { x: 20 + (nodeWidth + gap) * 3, y: startY },
+    { x: 20 + (nodeWidth + gap) * 4, y: startY },
+    { x: 20 + (nodeWidth + gap) * 5, y: startY },
+  ];
 
   return (
     <g>
-      {/* Client -> Gateway */}
-      <path
-        d={`M ${clientPos.x + clientPos.width} 165 L ${gatewayPos.x - 2} 165`}
-        stroke="#C45B3C"
-        strokeWidth="2"
-        fill="none"
-        markerEnd="url(#arch-arrow)"
-        strokeDasharray={animateFlow ? "6 3" : "none"}
-      />
-      <text x="207" y="155" textAnchor="middle" fill="#C45B3C" fontSize="7.5" fontWeight="800">
-        JSON-RPC 2.0
-      </text>
+      {/* Primary Connectors (Between consecutive nodes) */}
+      {positions.slice(0, 5).map((pos, idx) => {
+        const fromX = pos.x + nodeWidth;
+        const toX = positions[idx + 1].x;
+        const midY = startY + nodeHeight / 2;
+        const labels = [
+          "JSON-RPC 2.0",
+          "search_statutes",
+          "check_act_status",
+          "search_case_law",
+          "Proxy-Safe POST",
+        ];
+        return (
+          <g key={idx}>
+            <path
+              d={`M ${fromX} ${midY} L ${toX - 2} ${midY}`}
+              stroke="#C45B3C"
+              strokeWidth="2"
+              fill="none"
+              markerEnd="url(#arch-arrow)"
+              strokeDasharray={animateFlow ? "6 3" : "none"}
+              className={animateFlow ? "arch-flowing-path" : ""}
+            />
+            <text
+              x={(fromX + toX) / 2}
+              y={midY - 7}
+              textAnchor="middle"
+              fill="#C45B3C"
+              fontSize="7.5"
+              fontWeight="800"
+            >
+              {labels[idx]}
+            </text>
+          </g>
+        );
+      })}
 
-      {/* Gateway -> Tool 1 (Top) */}
+      {/* Return Stream: Arc from Node 5 back to Node 0 */}
       <path
-        d={`M ${gatewayPos.x + gatewayPos.width} 130 C 430 130, 430 62, ${tool1Pos.x - 2} 62`}
-        stroke="#8F5A0A"
-        strokeWidth="1.8"
-        fill="none"
-        markerEnd="url(#arch-tool-arrow)"
-        strokeDasharray={animateFlow ? "5 3" : "none"}
-      />
-
-      {/* Gateway -> Tool 2 (Middle) */}
-      <path
-        d={`M ${gatewayPos.x + gatewayPos.width} 165 L ${tool2Pos.x - 2} 165`}
-        stroke="#8F5A0A"
-        strokeWidth="1.8"
-        fill="none"
-        markerEnd="url(#arch-tool-arrow)"
-        strokeDasharray={animateFlow ? "5 3" : "none"}
-      />
-
-      {/* Gateway -> Tool 3 (Bottom) */}
-      <path
-        d={`M ${gatewayPos.x + gatewayPos.width} 200 C 430 200, 430 262, ${tool3Pos.x - 2} 262`}
-        stroke="#8F5A0A"
-        strokeWidth="1.8"
-        fill="none"
-        markerEnd="url(#arch-tool-arrow)"
-        strokeDasharray={animateFlow ? "5 3" : "none"}
-      />
-
-      {/* Tool 1 -> JSON-RPC */}
-      <path
-        d={`M ${tool1Pos.x + tool1Pos.width} 62 C 755 62, 755 130, ${jsonRpcPos.x - 2} 130`}
-        stroke="#1E5C40"
-        strokeWidth="1.8"
-        fill="none"
-        markerEnd="url(#arch-return-arrow)"
-      />
-
-      {/* Tool 2 -> JSON-RPC */}
-      <path
-        d={`M ${tool2Pos.x + tool2Pos.width} 165 L ${jsonRpcPos.x - 2} 165`}
-        stroke="#1E5C40"
-        strokeWidth="1.8"
-        fill="none"
-        markerEnd="url(#arch-return-arrow)"
-      />
-
-      {/* Tool 3 -> JSON-RPC */}
-      <path
-        d={`M ${tool3Pos.x + tool3Pos.width} 262 C 755 262, 755 200, ${jsonRpcPos.x - 2} 200`}
-        stroke="#1E5C40"
-        strokeWidth="1.8"
-        fill="none"
-        markerEnd="url(#arch-return-arrow)"
-      />
-
-      {/* Return Stream: Arc from JSON-RPC back to Client */}
-      <path
-        d={`M ${jsonRpcPos.x + jsonRpcPos.width / 2} 235 C ${
-          jsonRpcPos.x + jsonRpcPos.width / 2
-        } 330, ${clientPos.x + clientPos.width / 2} 330, ${clientPos.x + clientPos.width / 2} 243`}
+        d={`M ${positions[5].x + nodeWidth / 2} ${startY + nodeHeight} C ${
+          positions[5].x + nodeWidth / 2
+        } 220, ${positions[0].x + nodeWidth / 2} 220, ${positions[0].x + nodeWidth / 2} ${
+          startY + nodeHeight + 8
+        }`}
         stroke="#1E5C40"
         strokeWidth="2.2"
         strokeDasharray={animateFlow ? "6 4" : "none"}
@@ -1840,121 +1813,49 @@ function McpTopology({
       />
 
       {/* Return Stream Banner */}
-      <g transform="translate(220, 315)">
+      <g transform="translate(200, 202)">
         <rect
-          width="580"
-          height="30"
+          width="660"
+          height="32"
           rx="6"
           fill="#FFFDF9"
           stroke="#1E5C40"
           strokeWidth="1.2"
           filter="drop-shadow(0 2px 6px rgba(30,92,64,0.08))"
         />
-        <text x="290" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9" fontWeight="800">
-          RETURN STREAM: FastMCP JSON-RPC 2.0 Response Protocol over SSE Transport
+        <text x="330" y="15" textAnchor="middle" fill="#1E5C40" fontSize="9" fontWeight="800">
+          RETURN STREAM: Proxy-Safe Inline JSON-RPC 2.0 Response · Sub-280ms Latency · Zero SSE Drops
         </text>
-        <text x="290" y="25" textAnchor="middle" fill="#786B60" fontSize="7.8">
-          Sub-420ms Latency • Automated Retry Ladder against Network Disconnects
+        <text x="330" y="26" textAnchor="middle" fill="#786B60" fontSize="7.8">
+          8 Production Legal Tools • 2 Dynamic Resources (legal://) • 2 Research Prompt Templates
         </text>
       </g>
 
-      {/* Render Nodes */}
-      {nodes[0] && (
-        <SvgNodeCard
-          node={nodes[0]}
-          x={clientPos.x}
-          y={clientPos.y}
-          width={clientPos.width}
-          height={clientPos.height}
-          isSelected={selectedNodeId === nodes[0].id}
-          isHovered={hoveredNodeId === nodes[0].id}
-          accentColor="#1E5C40"
-          onClick={() => onSelectNode(nodes[0].id)}
-          onMouseEnter={() => onHoverNode(nodes[0].id)}
-          onMouseLeave={() => onHoverNode(null)}
-        />
-      )}
+      {/* Render 6 Nodes */}
+      {nodes.map((node, idx) => {
+        const pos = positions[idx] || { x: 0, y: 0 };
+        const isSelected = selectedNodeId === node.id;
+        const isHovered = hoveredNodeId === node.id;
 
-      {nodes[1] && (
-        <SvgNodeCard
-          node={nodes[1]}
-          x={gatewayPos.x}
-          y={gatewayPos.y}
-          width={gatewayPos.width}
-          height={gatewayPos.height}
-          isSelected={selectedNodeId === nodes[1].id}
-          isHovered={hoveredNodeId === nodes[1].id}
-          accentColor="#C45B3C"
-          onClick={() => onSelectNode(nodes[1].id)}
-          onMouseEnter={() => onHoverNode(nodes[1].id)}
-          onMouseLeave={() => onHoverNode(null)}
-        />
-      )}
-
-      {/* 3 Tools */}
-      {nodes[2] && (
-        <SvgToolNodeCard
-          node={nodes[2]}
-          x={tool1Pos.x}
-          y={tool1Pos.y}
-          width={tool1Pos.width}
-          height={tool1Pos.height}
-          isSelected={selectedNodeId === nodes[2].id}
-          isHovered={hoveredNodeId === nodes[2].id}
-          accentColor="#8F5A0A"
-          onClick={() => onSelectNode(nodes[2].id)}
-          onMouseEnter={() => onHoverNode(nodes[2].id)}
-          onMouseLeave={() => onHoverNode(null)}
-        />
-      )}
-
-      {nodes[3] && (
-        <SvgToolNodeCard
-          node={nodes[3]}
-          x={tool2Pos.x}
-          y={tool2Pos.y}
-          width={tool2Pos.width}
-          height={tool2Pos.height}
-          isSelected={selectedNodeId === nodes[3].id}
-          isHovered={hoveredNodeId === nodes[3].id}
-          accentColor="#8F5A0A"
-          onClick={() => onSelectNode(nodes[3].id)}
-          onMouseEnter={() => onHoverNode(nodes[3].id)}
-          onMouseLeave={() => onHoverNode(null)}
-        />
-      )}
-
-      {nodes[4] && (
-        <SvgToolNodeCard
-          node={nodes[4]}
-          x={tool3Pos.x}
-          y={tool3Pos.y}
-          width={tool3Pos.width}
-          height={tool3Pos.height}
-          isSelected={selectedNodeId === nodes[4].id}
-          isHovered={hoveredNodeId === nodes[4].id}
-          accentColor="#8F5A0A"
-          onClick={() => onSelectNode(nodes[4].id)}
-          onMouseEnter={() => onHoverNode(nodes[4].id)}
-          onMouseLeave={() => onHoverNode(null)}
-        />
-      )}
-
-      {nodes[5] && (
-        <SvgNodeCard
-          node={nodes[5]}
-          x={jsonRpcPos.x}
-          y={jsonRpcPos.y}
-          width={jsonRpcPos.width}
-          height={jsonRpcPos.height}
-          isSelected={selectedNodeId === nodes[5].id}
-          isHovered={hoveredNodeId === nodes[5].id}
-          accentColor="#243E56"
-          onClick={() => onSelectNode(nodes[5].id)}
-          onMouseEnter={() => onHoverNode(nodes[5].id)}
-          onMouseLeave={() => onHoverNode(null)}
-        />
-      )}
+        return (
+          <SvgNodeCard
+            key={node.id}
+            node={node}
+            x={pos.x}
+            y={pos.y}
+            width={nodeWidth}
+            height={nodeHeight}
+            isSelected={isSelected}
+            isHovered={isHovered}
+            accentColor={
+              idx === 0 ? "#1E5C40" : idx === 1 ? "#C45B3C" : idx === 3 ? "#8F5A0A" : idx === 4 ? "#1E5C40" : "#243E56"
+            }
+            onClick={() => onSelectNode(node.id)}
+            onMouseEnter={() => onHoverNode(node.id)}
+            onMouseLeave={() => onHoverNode(null)}
+          />
+        );
+      })}
     </g>
   );
 }
@@ -1986,13 +1887,13 @@ function getNodeBullets(node: ArchitectureNode): string[] {
     lawyer_sign: ["Digital Bar Seal", "Bangladesh Bar Sanction", "Signed Legal Memo"],
     lawyer_audit: ["Tamper-Proof Audit", "SSLCommerz Payout", "Completed Delivery"],
 
-    // MCP Tools & Search
-    mcp_client: ["FastMCP Protocol", "Tool Discovery Consumer", "Cursor & Claude Desktop"],
-    mcp_gateway: ["JSON-RPC 2.0 Router", "Stateless Session", "SSE Stream Gateway"],
-    mcp_tool_statute: ["3,547 Act Registry", "Exact Section Match", "bdlaws Precedents"],
-    mcp_tool_retriever: ["Qdrant Hybrid Search", "e5-small Embeddings", "Relevance Scoring"],
-    mcp_tool_verify: ["Citation Integrity", "Null Hallucination", "Strict Cross-Check"],
-    mcp_output: ["Structured Schema", "SSE Event Dispatch", "Sub-420ms Latency"],
+    // MCP Tools & Search (Updated directly from Bangladesh-Legal-MCP Server)
+    mcp_client: ["Cursor IDE & Claude", "FastMCP Protocol Client", "Sub-second Tool Calls"],
+    mcp_gateway: ["DNS Rebinding Shield", "Allowed Hosts Filter", "Stateless HTTP Transport"],
+    mcp_statute: ["35K+ Sections (e5-small)", "Verbatim Section Scroll", "Act Table of Contents"],
+    mcp_shield: ["[রহিত] Repeal Detector", "Replacement Chain Map", "0% Phantom Citations"],
+    mcp_case_law: ["Supreme Court Verdicts", "10 Legal Topic Vectors", "Tier 1 Domain Filter"],
+    mcp_delivery: ["Self-Contained POST Body", "Zero SSE Proxy Buffering", "Render-to-Render Safe"],
   };
 
   if (map[node.id]) return map[node.id];
@@ -2106,68 +2007,6 @@ function SvgNodeCard({
         <circle cx="4" cy="1" r="2.5" fill={isSelected ? "#C45B3C" : "#1E5C40"} />
         <text x="11" y="4" fill={isSelected ? "#C45B3C" : "#786B60"} fontSize="7" fontWeight="700">
           {isSelected ? "ACTIVE NODE ✓" : "VERIFIED & LIVE"}
-        </text>
-      </g>
-    </g>
-  );
-}
-
-// ── SVG TOOL NODE CARD (For MCP Hub & Spoke) ──
-function SvgToolNodeCard({
-  node,
-  x,
-  y,
-  width,
-  height,
-  isSelected,
-  isHovered,
-  accentColor,
-  onClick,
-  onMouseEnter,
-  onMouseLeave,
-}: SvgNodeCardProps) {
-  const isHighlighted = isSelected || isHovered;
-  const bullets = getNodeBullets(node);
-
-  return (
-    <g
-      transform={`translate(${x}, ${y})`}
-      onClick={onClick}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      style={{ cursor: "pointer" }}
-      filter={isHighlighted ? "url(#nodeGlow)" : undefined}
-    >
-      <rect
-        width={width}
-        height={height}
-        rx="6"
-        fill="url(#nodeGrad)"
-        stroke={isSelected ? "#C45B3C" : isHovered ? "#C45B3C" : "#ECDFD0"}
-        strokeWidth={isSelected ? "2.5" : "1.5"}
-      />
-      <rect x="0" y="0" width="4" height={height} rx="2" fill={accentColor} />
-
-      <text x="14" y="18" fill={accentColor} fontSize="7.5" fontWeight="800" letterSpacing="0.08em">
-        TOOL: {node.id.replace("mcp_tool_", "").toUpperCase()}
-      </text>
-      <text x="14" y="34" fill="#2E2117" fontSize="11" fontWeight="700">
-        {node.label}
-      </text>
-
-      {bullets.slice(0, 2).map((b, i) => (
-        <g key={i} transform={`translate(14, ${48 + i * 14})`}>
-          <circle cx="2" cy="-2.5" r="1.5" fill={accentColor} />
-          <text x="7" y="0" fill="#4A3B32" fontSize="7.5" fontWeight="500">
-            {b}
-          </text>
-        </g>
-      ))}
-
-      <g transform={`translate(${width - 110}, 10)`}>
-        <rect width="100" height="15" rx="3" fill="#FBF4EC" />
-        <text x="50" y="10.5" textAnchor="middle" fill="#243E56" fontSize="7" fontWeight="700">
-          {node.service_module.slice(0, 20)}
         </text>
       </g>
     </g>
