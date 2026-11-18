@@ -821,10 +821,10 @@ const STYLES = `
   .sidebar::-webkit-scrollbar { width: 4px; }
   .sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
   .main-content { flex-grow: 1; width: calc(100% - 290px); }
-  .brand { display: flex; align-items: center; gap: 0.65rem; font-family: var(--font-fraunces), serif; font-size: 1.3rem; color: var(--text-dark); margin-bottom: 1.5rem; text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
-  .brand-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
-  .brand .brand-name { display: inline-flex; align-items: baseline; gap: 0.35rem; }
-  .brand .brand-accent { color: var(--accent-clay); }
+  .brand { display: inline-flex; align-items: center; gap: 0.65rem; font-family: var(--font-fraunces), serif; font-size: 1.3rem; color: var(--text-dark); margin-bottom: 1.5rem; text-decoration: none; font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
+  .brand-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; display: block; transform: translateY(-2px); }
+  .brand .brand-name { display: inline-flex; align-items: center; gap: 0.35rem; line-height: 1; transform: translateY(2px); }
+  .brand .brand-accent { color: var(--accent-clay); line-height: 1; }
   .search-box-wrap { position: relative; margin-bottom: 1.75rem; }
   .search-box { width: 100%; padding: 0.75rem 0.9rem 0.75rem 2.2rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; font-size: 0.85rem; color: var(--text-dark); }
   .search-box:focus { outline: 2px solid var(--accent-clay); border-color: transparent; }
@@ -838,9 +838,10 @@ const STYLES = `
   /* Topbar */
   .topbar { padding: 1rem 4vw; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; background: rgba(251, 244, 236, 0.96); position: sticky; top: 0; z-index: 80; backdrop-filter: blur(8px); }
   .topbar-left { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
-  .topbar-brand { display: flex; align-items: center; gap: 0.65rem; }
-  .brand-title { font-family: var(--font-fraunces), serif; font-weight: 700; font-size: 1.05rem; color: var(--text-dark); letter-spacing: -0.01em; }
-  .brand-badge { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 4px; background: var(--bg-accent); color: var(--accent-clay); border: 1px solid rgba(196, 91, 60, 0.2); }
+  .topbar-brand { display: inline-flex; align-items: center; gap: 0.65rem; line-height: 1; }
+  .topbar-brand img { display: block; flex-shrink: 0; transform: translateY(-1.5px); }
+  .brand-title { font-family: var(--font-fraunces), serif; font-weight: 700; font-size: 1.05rem; color: var(--text-dark); letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 0.35rem; line-height: 1; transform: translateY(1.5px); }
+  .brand-badge { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; padding: 0.2rem 0.55rem; border-radius: 4px; background: var(--bg-accent); color: var(--accent-clay); border: 1px solid rgba(196, 91, 60, 0.2); line-height: 1; }
   .stat-pill { font-size: 0.8rem; color: var(--text-body); display: flex; align-items: center; gap: 0.4rem; font-weight: 500; }
   .stat-pill strong { color: var(--text-dark); font-weight: 700; }
   .stat-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; display: inline-block; animation: pulse 2s infinite; }
@@ -1750,7 +1751,7 @@ export default function DocsSystem() {
         <a href="#top" className="brand" style={{ margin: 0, fontSize: "1.15rem" }}>
           <img src="/logo.svg" alt="AdvoTech Copilot" className="brand-logo" style={{ width: "26px", height: "26px" }} />
           <span className="brand-name">
-            AdvoTech <span className="brand-accent">Docs</span>
+            AdvoTech <span className="brand-accent">Copilot</span>
           </span>
         </a>
         <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
