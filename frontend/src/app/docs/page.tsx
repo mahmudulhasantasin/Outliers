@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Fraunces, Karla } from "next/font/google";
-import { Check, ArrowDownRight } from "lucide-react";
+import { Check, ArrowDownRight, ShieldCheck, Cpu, Bot, Send, CheckCircle2 } from "lucide-react";
 import ArchitectureExplorer from "./ArchitectureExplorer";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap" });
@@ -1159,15 +1159,63 @@ const STYLES = `
   .arch-items li::before { content: "→"; color: var(--accent-clay); flex-shrink: 0; font-weight: 700; }
   .arch-items li:last-child { border-bottom: none; }
 
-  /* 5-Phase Data Flow Pipeline Cards */
-  .flow-steps { display: flex; flex-direction: column; gap: 1.25rem; margin-top: 2rem; }
-  .flow-step-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; display: flex; gap: 1.5rem; align-items: flex-start; transition: border-color 0.2s, box-shadow 0.2s; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
-  .flow-step-card:hover { border-color: var(--accent-clay); box-shadow: 0 8px 24px rgba(46, 33, 23, 0.06); }
-  .flow-step-icon { font-size: 2rem; width: 3rem; flex-shrink: 0; text-align: center; }
-  .flow-step-body { flex-grow: 1; }
-  .flow-step-badge { display: inline-block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; background: var(--bg-accent); color: var(--accent-clay); padding: 0.2rem 0.55rem; border-radius: 4px; margin-bottom: 0.35rem; }
-  .flow-step-title { font-family: var(--font-fraunces), serif; font-size: 1.15rem; color: var(--text-dark); margin: 0 0 0.5rem 0; }
-  .flow-step-desc { font-size: 0.92rem; color: var(--text-body); line-height: 1.6; margin: 0; }
+  /* 5-Phase Data Flow Pipeline Cards (Reference Pipeline Layout) */
+  .dataflow-pipeline-container { position: relative; margin-top: 2.25rem; width: 100%; }
+  .dataflow-cards-track { position: relative; display: grid; grid-template-columns: repeat(5, 1fr); gap: 1.15rem; z-index: 1; }
+  .dataflow-cards-track::before { content: ""; position: absolute; top: 76px; left: 40px; right: 40px; height: 0; border-top: 2px dashed #D6C7B7; z-index: 0; pointer-events: none; }
+  
+  .dataflow-pipeline-card {
+    position: relative;
+    z-index: 1;
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 1.6rem 1.25rem 1.75rem 1.25rem;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 18px rgba(46, 33, 23, 0.04);
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s, border-color 0.22s;
+  }
+  .dataflow-pipeline-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--accent-clay);
+    box-shadow: 0 12px 30px rgba(46, 33, 23, 0.08);
+  }
+  .dataflow-pipeline-card.final-phase-card {
+    background: #1A1A1A;
+    border-color: #1A1A1A;
+    color: #FFFFFF;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.16);
+  }
+  .dataflow-pipeline-card.final-phase-card:hover {
+    transform: translateY(-4px);
+    border-color: #333333;
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25);
+  }
+  
+  .dataflow-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem; }
+  .dataflow-step-num { font-size: 0.78rem; font-weight: 800; font-family: monospace; color: #786B60; }
+  .final-phase-card .dataflow-step-num { color: rgba(255, 255, 255, 0.6); }
+  .dataflow-phase-tag { font-size: 0.64rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; background: var(--bg-accent); color: var(--accent-clay); padding: 0.15rem 0.5rem; border-radius: 4px; }
+  .final-phase-card .dataflow-phase-tag { background: rgba(255, 255, 255, 0.15); color: #FFFFFF; }
+  
+  .dataflow-card-icon-wrap { width: 44px; height: 44px; border-radius: 10px; background: #FBF4EC; color: var(--accent-clay); display: flex; align-items: center; justify-content: center; margin-bottom: 1.25rem; border: 1px solid #EADCCE; transition: transform 0.2s ease; }
+  .dataflow-pipeline-card:hover .dataflow-card-icon-wrap { transform: scale(1.08); }
+  .final-phase-card .dataflow-card-icon-wrap { background: rgba(255, 255, 255, 0.12); color: #60A5FA; border-color: rgba(255, 255, 255, 0.2); }
+  
+  .dataflow-card-title { font-family: var(--font-fraunces), serif; font-size: 1.05rem; font-weight: 700; color: var(--text-dark); margin: 0 0 0.65rem 0; line-height: 1.32; }
+  .final-phase-card .dataflow-card-title { color: #FFFFFF; }
+  
+  .dataflow-card-desc { font-size: 0.82rem; color: var(--text-body); line-height: 1.55; margin: 0; }
+  .final-phase-card .dataflow-card-desc { color: rgba(255, 255, 255, 0.78); }
+
+  @media (max-width: 1200px) {
+    .dataflow-cards-track { grid-template-columns: repeat(3, 1fr); }
+    .dataflow-cards-track::before { display: none; }
+  }
+  @media (max-width: 768px) {
+    .dataflow-cards-track { grid-template-columns: 1fr; }
+  }
 
   /* Feature Matrix Interactive Table */
   .matrix-toolbar { display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem; }
@@ -2651,17 +2699,26 @@ export default function DocsSystem() {
             <p className="section-lead">
               A five-stage sequential pipeline guaranteeing sovereign data privacy, zero hallucination, and verifiable statutory grounding before output delivery.
             </p>
-            <div className="flow-steps">
-              {d.tech.data_flow.phases.map((ph, i) => (
-                <div key={i} className="flow-step-card">
-                  <div className="flow-step-icon">{ph.icon}</div>
-                  <div className="flow-step-body">
-                    <span className="flow-step-badge">{ph.tag}</span>
-                    <h3 className="flow-step-title">{ph.title}</h3>
-                    <p className="flow-step-desc">{ph.desc}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="dataflow-pipeline-container">
+              <div className="dataflow-cards-track">
+                {d.tech.data_flow.phases.map((ph, i) => {
+                  const Icon = [ShieldCheck, Cpu, Bot, Send, CheckCircle2][i] || ShieldCheck;
+                  const isFinal = i === d.tech.data_flow.phases.length - 1;
+                  return (
+                    <div key={i} className={`dataflow-pipeline-card${isFinal ? " final-phase-card" : ""}`}>
+                      <div className="dataflow-card-header">
+                        <span className="dataflow-step-num">0{i + 1}</span>
+                        <span className="dataflow-phase-tag">{ph.tag}</span>
+                      </div>
+                      <div className="dataflow-card-icon-wrap">
+                        <Icon size={24} strokeWidth={isFinal ? 2.3 : 1.9} />
+                      </div>
+                      <h4 className="dataflow-card-title">{ph.title}</h4>
+                      <p className="dataflow-card-desc">{ph.desc}</p>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </Section>
         </div>
