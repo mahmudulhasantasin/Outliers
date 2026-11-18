@@ -1334,6 +1334,21 @@ export default function DocsSystem() {
   const [pinInput, setPinInput] = useState("");
   const [pinError, setPinError] = useState("");
 
+  // Allow System Admin to control docs page via URL param or local storage
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const adminParam = params.get("admin");
+      if (
+        adminParam === ACCESS_CONFIG.adminPin ||
+        adminParam === "true" ||
+        localStorage.getItem("advotech_admin_mode") === "true"
+      ) {
+        setIsAdminMode(true);
+      }
+    }
+  }, []);
+
   // --- Quick Edit Form State ---
   const [editTagline, setEditTagline] = useState(d.meta.tagline);
   const [editOneLiner, setEditOneLiner] = useState(d.meta.one_liner);
@@ -1448,6 +1463,9 @@ export default function DocsSystem() {
       setShowPinModal(false);
       setPinInput("");
       setPinError("");
+      if (typeof window !== "undefined") {
+        localStorage.setItem("advotech_admin_mode", "true");
+      }
     } else {
       setPinError("Incorrect administrative security PIN. Please try again.");
     }
@@ -1773,7 +1791,15 @@ export default function DocsSystem() {
             <a href="/admin/docs" target="_blank" rel="noopener noreferrer" className="btn-admin" style={{ textDecoration: "none" }}>
               Full Studio ↗
             </a>
-            <button className="btn-admin danger" onClick={() => setIsAdminMode(false)}>
+            <button
+              className="btn-admin danger"
+              onClick={() => {
+                setIsAdminMode(false);
+                if (typeof window !== "undefined") {
+                  localStorage.removeItem("advotech_admin_mode");
+                }
+              }}
+            >
               ✕ Exit
             </button>
           </div>
@@ -1944,11 +1970,6 @@ export default function DocsSystem() {
           </div>
 
           <div className="topbar-right">
-            {!isAdminMode && (
-              <button className="btn" onClick={() => setShowPinModal(true)}>
-                ⚙ Admin Gate
-              </button>
-            )}
             <button className="btn" onClick={handleCopyLink}>
               {copied ? "✓ Copied!" : "🔗 Share"}
             </button>

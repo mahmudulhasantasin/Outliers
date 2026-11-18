@@ -25,7 +25,6 @@ export default function ArchitectureExplorer({
   const [activeSystemId, setActiveSystemId] = useState<"chat" | "contract" | "lawyer" | "mcp">(initialSystemId);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [activeStep, setActiveStep] = useState<number | null>(null);
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [animateFlow, setAnimateFlow] = useState<boolean>(true);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -64,22 +63,11 @@ export default function ArchitectureExplorer({
     return activeSystem.nodes.find((n) => n.id === targetId) || null;
   }, [activeSystem, selectedNodeId, hoveredNodeId]);
 
-  // Connect active step to node
-  useEffect(() => {
-    if (activeStep !== null) {
-      const stepObj = activeSystem.execution_steps.find((s) => s.step === activeStep);
-      if (stepObj) {
-        setSelectedNodeId(stepObj.component_id);
-      }
-    }
-  }, [activeStep, activeSystem]);
-
   // Handle system switch
   const handleSystemChange = (sysId: "chat" | "contract" | "lawyer" | "mcp") => {
     setActiveSystemId(sysId);
     setSelectedNodeId(null);
     setHoveredNodeId(null);
-    setActiveStep(null);
     setZoomLevel(1);
   };
 
@@ -117,18 +105,6 @@ export default function ArchitectureExplorer({
   const handleZoomIn = () => setZoomLevel((z) => Math.min(1.5, Math.round((z + 0.15) * 100) / 100));
   const handleZoomOut = () => setZoomLevel((z) => Math.max(0.7, Math.round((z - 0.15) * 100) / 100));
   const handleZoomReset = () => setZoomLevel(1);
-
-  // Stepper navigation
-  const currentStepIndex = activeStep !== null ? activeStep : 1;
-  const totalSteps = activeSystem.execution_steps.length;
-  const handlePrevStep = () => {
-    const next = Math.max(1, currentStepIndex - 1);
-    setActiveStep(next);
-  };
-  const handleNextStep = () => {
-    const next = Math.min(totalSteps, currentStepIndex + 1);
-    setActiveStep(next);
-  };
 
   return (
     <div
@@ -487,99 +463,7 @@ export default function ArchitectureExplorer({
       )}
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 6. CONNECTED INTERACTIVE EXECUTION TIMELINE                */}
-      {/* ────────────────────────────────────────────────────────── */}
-      <div className="arch-timeline-container">
-        <div className="timeline-header-bar">
-          <div className="timeline-header-left">
-            <h4 className="timeline-section-title">
-              Execution Sequence: {activeSystem.short_title} ({totalSteps} Sequential Stages)
-            </h4>
-            <p className="timeline-section-sub">
-              Click any stage to highlight its corresponding node in the architecture diagram above.
-            </p>
-          </div>
-
-          <div className="timeline-header-controls">
-            {/* Step navigation buttons */}
-            <div className="step-stepper">
-              <button
-                type="button"
-                className="step-nav-btn"
-                onClick={handlePrevStep}
-                disabled={currentStepIndex <= 1}
-                title="Previous execution stage"
-              >
-                ← Prev
-              </button>
-              <span className="step-stepper-label">
-                Stage {currentStepIndex} of {totalSteps}
-              </span>
-              <button
-                type="button"
-                className="step-nav-btn"
-                onClick={handleNextStep}
-                disabled={currentStepIndex >= totalSteps}
-                title="Next execution stage"
-              >
-                Next →
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Timeline Sequence - Clean & Streamlined, No Over-Data */}
-        <div className="timeline-track">
-          {activeSystem.execution_steps.map((step) => {
-            const isStepActive = activeStep === step.step || selectedNodeId === step.component_id;
-
-            return (
-              <div
-                key={step.step}
-                className={`timeline-step-card${isStepActive ? " active" : ""}`}
-                onClick={() => {
-                  setActiveStep(step.step);
-                  setSelectedNodeId(step.component_id);
-                }}
-              >
-                {/* Timeline connector dot & line */}
-                <div className="timeline-guide-rail">
-                  <div className={`timeline-dot${isStepActive ? " active-dot" : ""}`}>
-                    {step.step < 10 ? `0${step.step}` : step.step}
-                  </div>
-                  {step.step < totalSteps && <div className="timeline-line" />}
-                </div>
-
-                {/* Step content: Step number, Stage, Component, Main Work & Validation */}
-                <div className="timeline-body-wrap">
-                  <div className="timeline-step-head">
-                    <div className="step-primary-info">
-                      <div className="step-tags-line">
-                        <span className="step-stage-tag">{step.stage}</span>
-                        <span className="step-component-tag">{step.component_name}</span>
-                        <span className="step-module-tag">{step.service_module}</span>
-                      </div>
-                      <h5 className="step-operation-title">{step.operation}</h5>
-                      <p className="step-main-work">
-                        <span className="main-work-label">Core Operation:</span> {step.input_data} → {step.output_data}
-                      </p>
-                      {step.validation_check && (
-                        <div className="step-guard-line">
-                          <span className="guard-shield-badge">🛡️ Statutory Guard</span>
-                          <span className="guard-desc-text">{step.validation_check}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* 7. SCOPED STYLES (Preserving Hearth Theme Design Tokens)   */}
+      {/* 6. SCOPED STYLES (Preserving Hearth Theme Design Tokens)   */}
       {/* ────────────────────────────────────────────────────────── */}
       <style jsx>{`
         .arch-master-wrapper {
