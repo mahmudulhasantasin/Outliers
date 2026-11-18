@@ -1282,8 +1282,9 @@ const STYLES = `
   .version-badge { font-family: monospace; background: var(--bg-accent); color: var(--accent-clay); padding: 0.25rem 0.55rem; border-radius: 4px; font-size: 0.85rem; font-weight: 800; }
 
   /* Divider */
-  .whitepaper-divider { height: 12px; background: var(--border-color); position: relative; }
-  .whitepaper-divider-tag { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: var(--accent-clay); color: white; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.15em; padding: 0.35rem 1rem; border-radius: 50px; }
+  .whitepaper-divider { display: flex; align-items: center; gap: 1.25rem; padding: 2.5rem max(1.5rem, calc((100% - 900px) / 2)); }
+  .whitepaper-divider::before, .whitepaper-divider::after { content: ""; flex: 1; height: 1px; background: var(--border-color); }
+  .whitepaper-divider-tag { flex-shrink: 0; color: var(--accent-clay); font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.18em; white-space: nowrap; }
 
   /* Responsive Rules */
   @media (max-width: 960px) {
