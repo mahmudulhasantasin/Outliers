@@ -21,7 +21,7 @@ const ACCESS_CONFIG = {
 // ==========================================
 const INITIAL_DOCS_DATA = {
   meta: {
-    company: "Advotech Copilot",
+    company: "AdvoTech Copilot",
     tagline: "AI-powered Legal Intelligence for the Global South",
     one_liner: "30-second AI contract audits for ৳28 ($0.25) — verified by real lawyers. Legal help that 80% of South Asians can actually afford.",
     version: "v1.4.0",
@@ -820,8 +820,10 @@ const STYLES = `
   .sidebar::-webkit-scrollbar { width: 4px; }
   .sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
   .main-content { flex-grow: 1; width: calc(100% - 290px); }
-  .brand { font-family: var(--font-fraunces), serif; font-size: 1.35rem; color: var(--text-dark); margin-bottom: 1.5rem; display: block; text-decoration: none; font-weight: 700; }
-  .brand span { color: var(--accent-clay); }
+  .brand { display: flex; align-items: center; gap: 0.65rem; font-family: var(--font-fraunces), serif; font-size: 1.3rem; color: var(--text-dark); margin-bottom: 1.5rem; text-decoration: none; font-weight: 700; letter-spacing: -0.01em; }
+  .brand-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; }
+  .brand .brand-name { display: inline-flex; align-items: baseline; gap: 0.35rem; }
+  .brand .brand-accent { color: var(--accent-clay); }
   .search-box-wrap { position: relative; margin-bottom: 1.75rem; }
   .search-box { width: 100%; padding: 0.75rem 0.9rem 0.75rem 2.2rem; background: var(--bg-main); border: 1px solid var(--border-color); border-radius: 6px; font-family: inherit; font-size: 0.85rem; color: var(--text-dark); }
   .search-box:focus { outline: 2px solid var(--accent-clay); border-color: transparent; }
@@ -2256,8 +2258,11 @@ export default function DocsSystem() {
 
       {/* 📱 MOBILE HEADER */}
       <div className="mobile-header">
-        <a href="#top" className="brand" style={{ margin: 0 }}>
-          Advotech <span>Docs</span>
+        <a href="#top" className="brand" style={{ margin: 0, fontSize: "1.15rem" }}>
+          <img src="/logo.svg" alt="AdvoTech Copilot" className="brand-logo" style={{ width: "26px", height: "26px" }} />
+          <span className="brand-name">
+            AdvoTech <span className="brand-accent">Docs</span>
+          </span>
         </a>
         <button className="mobile-toggle" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
           {mobileMenuOpen ? "✕ Close" : "☰ Sections"}
@@ -2267,7 +2272,10 @@ export default function DocsSystem() {
       {/* 🧭 SIDEBAR NAVIGATION */}
       <aside className={`sidebar ${mobileMenuOpen ? "mobile-open" : ""}`}>
         <a href="#top" className="brand" onClick={() => setMobileMenuOpen(false)}>
-          Advotech <span>Copilot</span>
+          <img src="/logo.svg" alt="AdvoTech Copilot" className="brand-logo" />
+          <span className="brand-name">
+            AdvoTech <span className="brand-accent">Copilot</span>
+          </span>
         </a>
 
         <div className="search-box-wrap">
@@ -2405,10 +2413,11 @@ export default function DocsSystem() {
         {/* TOPBAR */}
         <div className="topbar">
           <div className="topbar-left">
-            <div className="topbar-brand">
-              <span className="brand-title">Advotech Copilot</span>
+            <a href="#top" className="topbar-brand" style={{ textDecoration: "none" }}>
+              <img src="/logo.svg" alt="AdvoTech Copilot" style={{ width: "24px", height: "24px", objectFit: "contain", flexShrink: 0 }} />
+              <span className="brand-title">AdvoTech <span style={{ color: "var(--accent-clay)" }}>Copilot</span></span>
               <span className="brand-badge">DOCS</span>
-            </div>
+            </a>
           </div>
 
           <div className="topbar-right">
