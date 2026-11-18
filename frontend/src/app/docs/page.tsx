@@ -332,7 +332,7 @@ const INITIAL_DOCS_DATA = {
       attendance: "Physical (In-person)",
       email: "tasin@advotech.ai",
       avatar: "/team/tasin.webp",
-      objPos: "center 5%",
+      objPos: "center center",
       expertise: "Team Leadership, AI/ML Pipelines, LangGraph Architecture, Vector RAG",
     },
     {
