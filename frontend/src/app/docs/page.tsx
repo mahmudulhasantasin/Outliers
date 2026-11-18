@@ -325,52 +325,70 @@ const INITIAL_DOCS_DATA = {
   team_name: "Team Advotech",
   team: [
     {
-      name: "Mohammad Shuaib",
-      role: "Lead Architect / Full-Stack Engineer",
-      email: "shuaib@advotech.ai",
-      avatar: "/team/Mohammad_Shuaib.webp",
-      objPos: "top center",
-      expertise: "Distributed Systems, FastAPI, LangGraph, Full-Stack Architecture",
-    },
-    {
       name: "Mahmudul Hasan Tasin",
-      role: "Product Lead / Backend Architect",
+      role: "Team Lead • AI/ML Engineer • Backend Lead",
+      badge: "Leader",
+      country: "BD",
+      attendance: "Physical (In-person)",
       email: "tasin@advotech.ai",
       avatar: "/team/tasin.webp",
       objPos: "center 5%",
-      expertise: "Product Strategy, Vector Retrieval Pipelines, RAG Benchmarking",
+      expertise: "Team Leadership, AI/ML Pipelines, LangGraph Architecture, Vector RAG",
     },
     {
-      name: "SM Sayem Hossain",
-      role: "UI/UX Engineer / Frontend Lead",
-      email: "sayem@advotech.ai",
-      avatar: "/team/sayem.webp",
-      objPos: "top center",
-      expertise: "Design Systems, Next.js 15, Responsive Engineering, Human-Centered UX",
-    },
-    {
-      name: "Sajjad",
-      role: "Backend Engineer / DevOps",
+      name: "MOHAMMAD SAJJAD",
+      role: "Product Strategist & Global Compliance Advisor",
+      badge: "Member",
+      country: "SA",
+      attendance: "Virtual (Online)",
       email: "sajjad@advotech.ai",
       avatar: "/team/sajjad.webp",
       objPos: "top center",
-      expertise: "PostgreSQL pgvector, SSLCommerz Payment Gateway, CI/CD",
+      expertise: "Product Strategy, Global Regulatory Compliance, Cross-Border Advisory",
     },
     {
-      name: "Medha",
-      role: "Legal Research & Compliance",
-      email: "medha@advotech.ai",
-      avatar: "/team/medha.webp",
-      objPos: "top center",
-      expertise: "Bangladesh Statutory Law, Labor Act Compliance, Legal Knowledge Graph",
-    },
-    {
-      name: "Jibon",
-      role: "Go-To-Market / Partnerships",
+      name: "MD JIBON ALI",
+      role: "Business Analyst",
+      badge: "Member",
+      country: "BD",
+      attendance: "Physical (In-person)",
       email: "jibon@advotech.ai",
       avatar: "/team/jibon.webp",
       objPos: "top center",
-      expertise: "Growth Marketing, Bar Association Relations, Enterprise Client Acquisition",
+      expertise: "Business Analysis, Market Feasibility, Enterprise Client Workflows",
+    },
+    {
+      name: "SM SAYEM HOSSAIN",
+      role: "Product/UX Designer",
+      badge: "Member",
+      country: "BD",
+      attendance: "Physical (In-person)",
+      email: "sayem@advotech.ai",
+      avatar: "/team/sayem.webp",
+      objPos: "top center",
+      expertise: "Product & UX Design, Design Systems, Human-Centered Interaction",
+    },
+    {
+      name: "Mohammad Shuaib",
+      role: "Full-Stack Developer",
+      badge: "Member",
+      country: "BD",
+      attendance: "Virtual (Online)",
+      email: "shuaib@advotech.ai",
+      avatar: "/team/Mohammad_Shuaib.webp",
+      objPos: "top center",
+      expertise: "Full-Stack Development, FastAPI Microservices, Next.js 15, Scalable APIs",
+    },
+    {
+      name: "Farhana Afrin Medha",
+      role: "Presentation & Communication Lead",
+      badge: "Member",
+      country: "BD",
+      attendance: "Physical (In-person)",
+      email: "medha@advotech.ai",
+      avatar: "/team/medha.webp",
+      objPos: "top center",
+      expertise: "Product Presentation, Stakeholder Communication, Legal Tech Advocacy",
     },
   ],
 
@@ -2982,6 +3000,26 @@ export default function DocsSystem() {
                     )}
                   </div>
                   <div className="team-body">
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.25rem" }}>
+                      <span style={{ fontSize: "0.68rem", fontWeight: 800, color: "var(--text-body)", opacity: 0.85, letterSpacing: "0.08em" }}>
+                        {member.country} • {member.attendance}
+                      </span>
+                      {member.badge && (
+                        <span style={{
+                          fontSize: "0.65rem",
+                          fontWeight: 800,
+                          textTransform: "uppercase",
+                          letterSpacing: "0.08em",
+                          padding: "0.2rem 0.55rem",
+                          borderRadius: "4px",
+                          background: member.badge === "Leader" ? "rgba(30, 92, 64, 0.12)" : "var(--bg-accent)",
+                          color: member.badge === "Leader" ? "var(--green-dark)" : "var(--accent-clay)",
+                          border: member.badge === "Leader" ? "1px solid rgba(30, 92, 64, 0.25)" : "none"
+                        }}>
+                          {member.badge}
+                        </span>
+                      )}
+                    </div>
                     <h3 className="team-name">{member.name}</h3>
                     <p className="team-role">{member.role}</p>
                     <a href={`mailto:${member.email}`} className="team-email">
