@@ -40,10 +40,8 @@ export default function ArchitectureExplorer({
   const [activeSystemId, setActiveSystemId] = useState<"chat" | "contract" | "lawyer" | "mcp">(initialSystemId);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
-  const [zoomLevel, setZoomLevel] = useState<number>(1);
-  const [animateFlow, setAnimateFlow] = useState<boolean>(true);
-  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [copiedEndpoint, setCopiedEndpoint] = useState<boolean>(false);
+  const animateFlow = true;
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -75,7 +73,6 @@ export default function ArchitectureExplorer({
     setActiveSystemId(sysId);
     setSelectedNodeId(null);
     setHoveredNodeId(null);
-    setZoomLevel(1);
   };
 
   // Copy endpoint utility
@@ -85,43 +82,8 @@ export default function ArchitectureExplorer({
     setTimeout(() => setCopiedEndpoint(false), 2000);
   };
 
-  // Export current SVG as downloadable file
-  const downloadSvg = () => {
-    if (!svgRef.current) return;
-    const serializer = new XMLSerializer();
-    const source = serializer.serializeToString(svgRef.current);
-    const blob = new Blob([source], { type: "image/svg+xml;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const downloadLink = document.createElement("a");
-    downloadLink.href = url;
-    downloadLink.download = `advotech-${activeSystemId}-architecture.svg`;
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    URL.revokeObjectURL(url);
-  };
-
-  // Zoom handlers
-  const handleZoomIn = () => setZoomLevel((z) => Math.min(1.5, Math.round((z + 0.15) * 100) / 100));
-  const handleZoomOut = () => setZoomLevel((z) => Math.max(0.7, Math.round((z - 0.15) * 100) / 100));
-  const handleZoomReset = () => setZoomLevel(1);
-
   return (
-    <div
-      ref={containerRef}
-      className={`arch-master-wrapper${isFullscreen ? " fullscreen-modal" : ""}`}
-      style={{
-        position: isFullscreen ? "fixed" : "relative",
-        top: isFullscreen ? 0 : undefined,
-        left: isFullscreen ? 0 : undefined,
-        width: isFullscreen ? "100vw" : "100%",
-        height: isFullscreen ? "100vh" : "auto",
-        zIndex: isFullscreen ? 99999 : undefined,
-        background: "#FBF4EC",
-        overflowY: isFullscreen ? "auto" : undefined,
-        padding: isFullscreen ? "2rem" : 0,
-      }}
-    >
+    <div ref={containerRef} className="arch-master-wrapper">
       {/* ────────────────────────────────────────────────────────── */}
       {/* 1. SYSTEM SELECTOR BAR (Hearth-styled Pills)              */}
       {/* ────────────────────────────────────────────────────────── */}
@@ -171,10 +133,6 @@ export default function ArchitectureExplorer({
       <div className="arch-telemetry-card">
         <div className="arch-telemetry-header">
           <div className="arch-telemetry-left">
-            <div className="arch-telemetry-tags">
-              <span className="arch-pill-tag brand">{activeSystem.runtime}</span>
-              <span className="arch-pill-tag pattern">{activeSystem.design_pattern}</span>
-            </div>
             <h3 className="arch-system-title">
               <span
                 className="title-icon-badge"
@@ -233,80 +191,16 @@ export default function ArchitectureExplorer({
       </div>
 
       {/* ────────────────────────────────────────────────────────── */}
-      {/* 3. CANVAS CONTROLS TOOLBAR                                 */}
+      {/* 3. DYNAMIC INTERACTIVE SVG CANVAS                          */}
       {/* ────────────────────────────────────────────────────────── */}
-      <div className="arch-canvas-toolbar">
-        <div className="toolbar-left">
-          <span className="canvas-badge">
-            <span className="pulse-indicator" />
-            LIVE BACKEND TOPOLOGY ({activeSystem.nodes.length} NODES · {activeSystem.connections.length} FLOWS)
-          </span>
-          <span className="canvas-help-text">Click any component to inspect data contracts & source code</span>
-        </div>
-
-        <div className="toolbar-actions">
-          {/* Zoom controls */}
-          <div className="zoom-btn-group">
-            <button type="button" onClick={handleZoomOut} title="Zoom Out" className="tb-btn">
-              −
-            </button>
-            <span className="zoom-label">{Math.round(zoomLevel * 100)}%</span>
-            <button type="button" onClick={handleZoomIn} title="Zoom In" className="tb-btn">
-              +
-            </button>
-            <button type="button" onClick={handleZoomReset} title="Reset Scale" className="tb-btn">
-              ↺
-            </button>
-          </div>
-
-          {/* Animate Flow Toggle */}
-          <button
-            type="button"
-            className={`tb-btn toggle-btn${animateFlow ? " active" : ""}`}
-            onClick={() => setAnimateFlow(!animateFlow)}
-            title="Toggle animated data packet flows"
-          >
-            {animateFlow ? "⚡ Animated" : "⏹ Static"}
-          </button>
-
-          {/* Export SVG */}
-          <button type="button" onClick={downloadSvg} className="tb-btn action-btn" title="Download standalone SVG">
-            ⬇ Export SVG
-          </button>
-
-          {/* Fullscreen Toggle */}
-          <button
-            type="button"
-            onClick={() => setIsFullscreen(!isFullscreen)}
-            className="tb-btn action-btn"
-            title="Toggle Fullscreen Explorer"
-          >
-            {isFullscreen ? "✕ Exit Fullscreen" : "⛶ Fullscreen"}
-          </button>
-        </div>
-      </div>
-
-      {/* ────────────────────────────────────────────────────────── */}
-      {/* 4. DYNAMIC INTERACTIVE SVG CANVAS                          */}
-      {/* ────────────────────────────────────────────────────────── */}
-      <div className="svg-canvas-container" style={{ overflow: zoomLevel > 1 ? "auto" : "hidden", width: "100%" }}>
-        <div
-          className="svg-zoom-wrapper"
-          style={{
-            transform: `scale(${zoomLevel})`,
-            transformOrigin: "top left",
-            transition: "transform 0.2s ease-out",
-            width: "100%",
-            maxWidth: "100%",
-          }}
+      <div className="svg-canvas-container" style={{ width: "100%", overflow: "hidden" }}>
+        <svg
+          ref={svgRef}
+          viewBox="0 0 1060 250"
+          className="arch-svg-canvas"
+          style={{ width: "100%", height: "auto", display: "block" }}
+          preserveAspectRatio="xMidYMid meet"
         >
-          <svg
-            ref={svgRef}
-            viewBox="0 0 1060 250"
-            className="arch-svg-canvas"
-            style={{ width: "100%", height: "auto", display: "block" }}
-            preserveAspectRatio="xMidYMid meet"
-          >
             <defs>
               {/* Arrow Marker: Primary Terracotta */}
               <marker
@@ -404,7 +298,6 @@ export default function ArchitectureExplorer({
               />
             )}
           </svg>
-        </div>
       </div>
 
       {/* ────────────────────────────────────────────────────────── */}
