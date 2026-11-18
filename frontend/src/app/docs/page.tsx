@@ -960,9 +960,29 @@ const STYLES = `
   .clause-redline { background: #FEF3C7; border: 1px dashed #D97706; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; line-height: 1.5; color: #78350F; margin-top: 0.5rem; }
   .redline-tag { font-size: 0.7rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0.08em; display: block; margin-bottom: 0.25rem; }
 
-  /* SVG Architecture Diagram Styles */
-  .svg-arch-wrap { width: 100%; overflow-x: auto; background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
-  .svg-arch-inner { min-width: 760px; }
+  /* SVG Architecture Diagram Styles & Dynamic Flow Canvas */
+  .svg-arch-wrap { width: 100%; overflow-x: auto; background: var(--bg-alt); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem; margin-top: 1rem; box-shadow: 0 4px 16px rgba(46, 33, 23, 0.03); }
+  .svg-arch-inner { min-width: 880px; }
+  .arch-flow-selector-bar { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-top: 1.75rem; padding: 0.85rem 1.25rem; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; box-shadow: 0 2px 10px rgba(46, 33, 23, 0.03); }
+  .arch-selector-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 800; color: var(--accent-clay); }
+  .arch-flow-pills { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .arch-flow-pill { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.5rem 1.1rem; border-radius: 50px; font-size: 0.84rem; font-weight: 700; border: 1px solid var(--border-color); background: var(--bg-alt); color: var(--text-dark); cursor: pointer; transition: all 0.2s ease; font-family: inherit; }
+  .arch-flow-pill:hover { border-color: var(--accent-clay); color: var(--accent-clay); transform: translateY(-1px); }
+  .arch-flow-pill.active { background: var(--text-dark); color: #FFFFFF; border-color: var(--text-dark); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+  .pill-live-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ADE80; box-shadow: 0 0 6px #4ADE80; display: inline-block; }
+  .arch-flow-meta-banner { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-top: 0.75rem; margin-bottom: 0.25rem; padding: 0.65rem 1rem; background: var(--bg-accent); border-radius: 8px; font-size: 0.8rem; }
+  .arch-flow-meta-left { display: flex; align-items: center; gap: 0.6rem; font-weight: 700; color: var(--text-dark); }
+  .arch-flow-meta-tag { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; background: #FFFFFF; color: var(--accent-clay); padding: 0.2rem 0.5rem; border-radius: 4px; }
+  .arch-flow-meta-right { display: flex; gap: 0.85rem; font-size: 0.75rem; color: var(--text-body); font-weight: 600; flex-wrap: wrap; }
+
+  @keyframes flowDash {
+    from { stroke-dashoffset: 24; }
+    to { stroke-dashoffset: 0; }
+  }
+  .svg-flow-path { stroke: var(--accent-clay); stroke-width: 2; stroke-dasharray: 6 4; animation: flowDash 1.2s linear infinite; }
+  .svg-return-path { stroke: var(--admin-color); stroke-width: 2; stroke-dasharray: 6 4; animation: flowDash 1.8s linear infinite reverse; }
+  .svg-interactive-node { cursor: pointer; transition: filter 0.2s, transform 0.2s; }
+  .svg-interactive-node:hover { filter: drop-shadow(0 6px 14px rgba(196, 91, 60, 0.18)); }
 
   /* Interactive Architecture Explorer */
   .arch-interactive-container { margin-top: 2rem; background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; box-shadow: 0 6px 24px rgba(46, 33, 23, 0.04); }
@@ -1248,6 +1268,52 @@ const ARCH_SYSTEMS = {
       { label: "Cost", val: "1 Credit / Query" },
       { label: "Anti-Hallucination", val: "100% Citation Cross-Check" },
     ],
+    topology: {
+      node1: {
+        badge: "01. PRESENTATION",
+        title: "Next.js 15 Client",
+        sub: "Sovereign UI & PII Filter",
+        bullets: ["Client Regex Redactor", "Real-Time SSE Listener", "Zero-Storage Memory", "Bengali / English UI"],
+        color: "#1E5C40",
+      },
+      arrow1: {
+        label: "POST /api/chat/query",
+        sub: "1 Credit • Bearer JWT",
+      },
+      node2: {
+        badge: "02. API GATEWAY",
+        title: "FastAPI Async",
+        sub: "Token Auth & Zero-Token Shield",
+        bullets: ["token_version Check", "Monthly Cap Guard", "Foreign Law Intercept", "Rate Limiting & BOLA"],
+        color: "#C45B3C",
+      },
+      arrow2: {
+        label: "qa_graph.ainvoke",
+        sub: "LangGraph State",
+      },
+      node3: {
+        badge: "03. REASONING ENGINE",
+        title: "qa_graph & Groq 70B",
+        sub: "Router ➔ Synthesis ➔ Verifier",
+        bullets: ["3,547 Act Alias Resolver", "Groq LLaMA 3.3 70B", "Lawyer/Citizen Persona", "Anti-Leak Sanitizer"],
+        color: "#8F5A0A",
+      },
+      arrow3: {
+        label: "Vector & Tool Call",
+        sub: "Cosine Similarity",
+      },
+      node4: {
+        badge: "04. DATA & PRECEDENTS",
+        title: "Qdrant + FastMCP",
+        sub: "35K+ Statutes & Live Case Law",
+        bullets: ["35,000+ Statute Vectors", "FastMCP Live Search", "Immutable Credit Ledger", "Rolling Chat Summaries"],
+        color: "#243E56",
+      },
+      returnStream: {
+        label: "Verified Statutory Citations & bdlaws.minlaw Gazette Links via SSE Stream",
+        sub: "100% Anti-Hallucination Grounding • Zero Phantom Provisions",
+      },
+    },
     steps: [
       {
         idx: 1,
@@ -1331,6 +1397,52 @@ parsed_json = _json_object(raw_answer)`,
       { label: "File Support", val: "PDF, DOCX, TXT, Scanned" },
       { label: "Compliance Coverage", val: "100% Clause Accounting" },
     ],
+    topology: {
+      node1: {
+        badge: "01. CLIENT INGESTION",
+        title: "Sovereign Client Suite",
+        sub: "Chunked Stream & PII Masking",
+        bullets: ["20MB Chunked Reader", "Regex PII Redactor (+8801)", "Private Browser Memory", "PDF / DOCX / Scanned"],
+        color: "#1E5C40",
+      },
+      arrow1: {
+        label: "POST /api/contracts/upload",
+        sub: "Multipart • Audit Fee",
+      },
+      node2: {
+        badge: "02. GATEWAY & STORAGE",
+        title: "FastAPI & Supabase",
+        sub: "Private Vault & Ingestion",
+        bullets: ["Dynamic Role Pricing", "Supabase Private Bucket", "OCR Text Extraction", "SEC-DOS-01 Chunk Guard"],
+        color: "#C45B3C",
+      },
+      arrow2: {
+        label: "contract_graph",
+        sub: "AST Clause State",
+      },
+      node3: {
+        badge: "03. CONTRACTMIND ENGINE",
+        title: "LangGraph Contract Graph",
+        sub: "AST Lexing & Risk Scorer",
+        bullets: ["Clause AST Tokenizer", "Mandatory Missing Clauses", "Contract Act § 27 Check", "Verbatim Quote Matcher"],
+        color: "#8F5A0A",
+      },
+      arrow3: {
+        label: "Playbook & Stamp Law",
+        sub: "The Stamp Act 1899",
+      },
+      node4: {
+        badge: "04. PLAYBOOK & REDLINES",
+        title: "Enterprise Vault & DOCX",
+        sub: "Playbooks & Word Redlines",
+        bullets: ["Company Playbook Rules", "Stamp Duty Matrix", "100% Clause Coverage", "Redlined .docx Builder"],
+        color: "#243E56",
+      },
+      returnStream: {
+        label: "Executive Audit Memo + Stamp Duty Advisory + Redlined .docx Stream",
+        sub: "Strikethrough Offending Clauses • Green Statutory Safe Replacements",
+      },
+    },
     steps: [
       {
         idx: 1,
@@ -1408,6 +1520,52 @@ return StreamingResponse(docx_buffer, media_type="application/vnd.openxmlformats
       { label: "Payout Rails", val: "bKash, Nagad, Rocket, Bank" },
       { label: "Vetting Tier", val: "Supreme Court & District Bar" },
     ],
+    topology: {
+      node1: {
+        badge: "01. CLIENT & STUDIO",
+        title: "Client & Advocate Portal",
+        sub: "HITL Verification Studio",
+        bullets: ["Verification Request UI", "Side-by-Side Clause Diff", "Gazette Lookup Drawer", "Digital Seal Canvas"],
+        color: "#1E5C40",
+      },
+      arrow1: {
+        label: "POST /request-verification",
+        sub: "Credit Escrow Lock",
+      },
+      node2: {
+        badge: "02. ESCROW & SLA GATEWAY",
+        title: "FastAPI HITL Router",
+        sub: "72h SLA & 80/20 Fee Split",
+        bullets: ["72h Global SLA Deadline", "80% Lawyer Payout Share", "20% Platform Fee", "SEC-BOLA-01 Auth Guard"],
+        color: "#C45B3C",
+      },
+      arrow2: {
+        label: "generate_initial_offer",
+        sub: "12h Priority Windows",
+      },
+      node3: {
+        badge: "03. ADVOCATE DISPATCH",
+        title: "Supreme Court Bar Network",
+        sub: "Vetted Advocates & Review",
+        bullets: ["Bar Council Verified", "Specialization Matching", "Clause Finding Override", "Authoritative Legal Notes"],
+        color: "#8F5A0A",
+      },
+      arrow3: {
+        label: "Cryptographic Seal",
+        sub: "MFS Payout Ledger",
+      },
+      node4: {
+        badge: "04. VAULT & PAYOUT RAILS",
+        title: "Supabase & MFS Engine",
+        sub: "Signed PDFs & Wallet Payouts",
+        bullets: ["Supabase Sealed PDFs", "Bar Reg. Seal Attestation", "bKash / Nagad / Bank", "Immutable Financial Ledger"],
+        color: "#243E56",
+      },
+      returnStream: {
+        label: "Bar-Attested Sealed Contract + Legal Opinion + Instant MFS Advocate Payout",
+        sub: "Supreme Court Registered Advocate Signature • 72-Hour Enforceable SLA",
+      },
+    },
     steps: [
       {
         idx: 1,
@@ -1487,6 +1645,52 @@ withdrawal = WithdrawalRequest(
       { label: "Statute Lookup", val: "0 LLM Tokens (Direct Qdrant)" },
       { label: "Transport", val: "Streamable HTTP / SSE" },
     ],
+    topology: {
+      node1: {
+        badge: "01. AGENT / IDE CLIENT",
+        title: "Advotech Agent / IDE",
+        sub: "Cursor, Claude Desktop, Copilot",
+        bullets: ["Official ClientSession", "SSE Stream Listener", "Dynamic Query Analyzer", "Autonomous Tool Calling"],
+        color: "#1E5C40",
+      },
+      arrow1: {
+        label: "Streamable HTTP / SSE",
+        sub: "Initialize Handshake",
+      },
+      node2: {
+        badge: "02. FASTMCP SERVER",
+        title: "FastMCP Host on Render",
+        sub: "Bangladesh-Legal-MCP-Server",
+        bullets: ["FastMCP Instance (Render)", "Mcp-Session-Id Manager", "2-Stage Retry Ladder", "40s Execution Timeout"],
+        color: "#C45B3C",
+      },
+      arrow2: {
+        label: "Tool Invocation",
+        sub: "Structured Arguments",
+      },
+      node3: {
+        badge: "03. TOOL LOGIC LAYER",
+        title: "MCP Tools Implementation",
+        sub: "Precedents & Gazette Truth",
+        bullets: ["search_live_bd_judgements", "get_statute_by_section", "verify_legal_citation", "Legal Signal Keyword Filter"],
+        color: "#8F5A0A",
+      },
+      arrow3: {
+        label: "2-Tier Allowlist",
+        sub: "Direct Qdrant Scroll",
+      },
+      node4: {
+        badge: "04. GOV DOMAINS & QDRANT",
+        title: "Official Sources & Vectors",
+        sub: "Gazette Truth & Live Verdicts",
+        bullets: ["Tier 1: supremecourt.gov.bd", "Tier 2: Reputable Legal News", "Qdrant Section Scrolling", "0 LLM Tokens Spent"],
+        color: "#243E56",
+      },
+      returnStream: {
+        label: "Authentic Statutory Gazette Chunks (0 Credits) + Live Precedents (Confidence 1.0)",
+        sub: "Zero Legal Hallucination • Verified against Official Bangladesh Gazettes",
+      },
+    },
     steps: [
       {
         idx: 1,
@@ -2823,7 +3027,7 @@ export default function DocsSystem() {
         </div>
 
         {/* ======================================================== */}
-        {/* B. ARCHITECTURE (Rendered SVG Diagram: UI → API → Services → DB) */}
+        {/* B. ARCHITECTURE (Interactive 4-System Topology: UI → API → Services → DB) */}
         {/* ======================================================== */}
         <div data-section="architecture">
           <Section id="architecture" eyebrow="B. System Architecture" headline={d.tech.architecture.headline}>
@@ -2831,89 +3035,10 @@ export default function DocsSystem() {
               A four-tier distributed microservice architecture executing client-side sovereign redaction, async FastAPI gateway routing, LangGraph state reasoning, and hybrid vector indexing.
             </p>
 
-            {/* RENDERED SVG ARCHITECTURE DIAGRAM */}
-            <div className="svg-arch-wrap">
-              <div className="svg-arch-inner">
-                <svg viewBox="0 0 880 240" className="w-full h-auto" style={{ maxHeight: "240px", overflow: "visible" }}>
-                  <defs>
-                    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                      <path d="M 0 1 L 10 5 L 0 9 z" fill="#C45B3C" />
-                    </marker>
-                    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                      <stop offset="0%" stopColor="#FFFFFF" />
-                      <stop offset="100%" stopColor="#FFFDF9" />
-                    </linearGradient>
-                  </defs>
-
-                  {/* Node 1: UI */}
-                  <g transform="translate(10, 30)">
-                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
-                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#1E5C40" />
-                    <text x="90" y="32" textAnchor="middle" fill="#1E5C40" fontSize="11" fontWeight="800" letterSpacing="0.08em">01. UI LAYER</text>
-                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">Next.js 15 App</text>
-                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• Server Components</text>
-                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• Client PII Redactor</text>
-                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• SSE Stream Listener</text>
-                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• Tailwind Design Tokens</text>
-                  </g>
-
-                  {/* Arrow 1: UI -> API */}
-                  <path d="M 190 115 L 230 115" stroke="#C45B3C" strokeWidth="2" markerEnd="url(#arrow)" />
-                  <text x="210" y="105" textAnchor="middle" fill="#C45B3C" fontSize="9" fontWeight="700">HTTPS / JWT</text>
-
-                  {/* Node 2: API */}
-                  <g transform="translate(235, 30)">
-                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
-                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#C45B3C" />
-                    <text x="90" y="32" textAnchor="middle" fill="#C45B3C" fontSize="11" fontWeight="800" letterSpacing="0.08em">02. API GATEWAY</text>
-                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">FastAPI Async</text>
-                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• Token Version Auth</text>
-                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• 3-Tier RBAC Guards</text>
-                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• Rate Limiting & BOLA</text>
-                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• SSLCommerz IPN Handler</text>
-                  </g>
-
-                  {/* Arrow 2: API -> Services */}
-                  <path d="M 415 115 L 455 115" stroke="#C45B3C" strokeWidth="2" markerEnd="url(#arrow)" />
-                  <text x="435" y="105" textAnchor="middle" fill="#C45B3C" fontSize="9" fontWeight="700">State Exec</text>
-
-                  {/* Node 3: Services */}
-                  <g transform="translate(460, 30)">
-                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
-                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#8F5A0A" />
-                    <text x="90" y="32" textAnchor="middle" fill="#8F5A0A" fontSize="11" fontWeight="800" letterSpacing="0.08em">03. SERVICES LAYER</text>
-                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">LangGraph & Groq</text>
-                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• 3,547 Act Alias Engine</text>
-                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• Groq LLaMA 3.3 70B</text>
-                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• Deterministic Shield</text>
-                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• Fallback Ladder (GLM)</text>
-                  </g>
-
-                  {/* Arrow 3: Services -> DB */}
-                  <path d="M 640 115 L 680 115" stroke="#C45B3C" strokeWidth="2" markerEnd="url(#arrow)" />
-                  <text x="660" y="105" textAnchor="middle" fill="#C45B3C" fontSize="9" fontWeight="700">Vectors</text>
-
-                  {/* Node 4: DB */}
-                  <g transform="translate(685, 30)">
-                    <rect width="180" height="170" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
-                    <rect x="0" y="0" width="180" height="6" rx="3" fill="#1E5C40" />
-                    <text x="90" y="32" textAnchor="middle" fill="#1E5C40" fontSize="11" fontWeight="800" letterSpacing="0.08em">04. DB & STORAGE</text>
-                    <text x="90" y="55" textAnchor="middle" fill="#2E2117" fontSize="14" fontWeight="700">Qdrant + Postgres</text>
-                    <text x="15" y="85" fill="#5C4F43" fontSize="10.5">• 35K+ Statute Vectors</text>
-                    <text x="15" y="105" fill="#5C4F43" fontSize="10.5">• Supabase pgvector</text>
-                    <text x="15" y="125" fill="#5C4F43" fontSize="10.5">• Financial Credit Ledger</text>
-                    <text x="15" y="145" fill="#5C4F43" fontSize="10.5">• Metric Events Benchmarks</text>
-                  </g>
-                </svg>
-              </div>
-            </div>
-
-            {/* ======================================================== */}
-            {/* INTERACTIVE 4-SYSTEM ARCHITECTURE EXPLORER (Chat / Contract / Lawyer / MCP) */}
-            {/* ======================================================== */}
-            <div className="arch-interactive-container">
-              {/* Tab Navigation */}
-              <div className="arch-tabs-nav">
+            {/* INTERACTIVE SYSTEM FLOW SELECTOR BAR */}
+            <div className="arch-flow-selector-bar">
+              <span className="arch-selector-label">SELECT SYSTEM TO TRACE:</span>
+              <div className="arch-flow-pills">
                 {(["chat", "contract", "lawyer", "mcp"] as const).map((tabKey) => {
                   const sys = ARCH_SYSTEMS[tabKey];
                   const isActive = archTab === tabKey;
@@ -2921,23 +3046,143 @@ export default function DocsSystem() {
                     <button
                       key={tabKey}
                       type="button"
-                      className={`arch-tab-btn${isActive ? " active" : ""}`}
+                      className={`arch-flow-pill${isActive ? " active" : ""}`}
                       onClick={() => {
                         setArchTab(tabKey);
                         setExpandedArchStep(null);
                       }}
                     >
-                      <div className="arch-tab-meta">
-                        <span className="arch-tab-icon">{sys.icon}</span>
-                        <span className="arch-tab-title">{sys.shortName}</span>
-                      </div>
-                      <span className="arch-tab-tagline">{sys.name}</span>
+                      <span>{sys.icon}</span>
+                      <span>{sys.shortName}</span>
+                      {isActive && <span className="pill-live-dot"></span>}
                     </button>
                   );
                 })}
               </div>
+            </div>
 
-              {/* Active Tab Panel Body */}
+            {/* DYNAMIC TOPOLOGY SVG CANVAS (Synchronized with selected system) */}
+            {(() => {
+              const activeSys = ARCH_SYSTEMS[archTab];
+              const topo = activeSys.topology;
+              return (
+                <div className="svg-arch-wrap">
+                  <div className="arch-flow-meta-banner">
+                    <div className="arch-flow-meta-left">
+                      <span>{activeSys.icon}</span>
+                      <span>{activeSys.name}</span>
+                      <span className="arch-flow-meta-tag">{activeSys.runtime}</span>
+                    </div>
+                    <div className="arch-flow-meta-right">
+                      {activeSys.metrics.map((m, idx) => (
+                        <span key={idx}>
+                          <strong style={{ color: "var(--accent-clay)" }}>{m.label}:</strong> {m.val}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="svg-arch-inner">
+                    <svg viewBox="0 0 940 310" className="w-full h-auto" style={{ maxHeight: "310px", overflow: "visible" }}>
+                      <defs>
+                        <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                          <path d="M 0 1 L 10 5 L 0 9 z" fill="#C45B3C" />
+                        </marker>
+                        <marker id="returnArrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                          <path d="M 0 1 L 10 5 L 0 9 z" fill="#1E5C40" />
+                        </marker>
+                        <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                          <stop offset="0%" stopColor="#FFFFFF" />
+                          <stop offset="100%" stopColor="#FFFDF9" />
+                        </linearGradient>
+                      </defs>
+
+                      {/* Tier 1 Node: Presentation / Ingestion */}
+                      <g className="svg-interactive-node" transform="translate(15, 30)" onClick={() => setExpandedArchStep(1)}>
+                        <rect width="195" height="175" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                        <rect x="0" y="0" width="195" height="6" rx="3" fill={topo.node1.color} />
+                        <text x="97" y="28" textAnchor="middle" fill={topo.node1.color} fontSize="10.5" fontWeight="800" letterSpacing="0.08em">{topo.node1.badge}</text>
+                        <text x="97" y="48" textAnchor="middle" fill="#2E2117" fontSize="13" fontWeight="700">{topo.node1.title}</text>
+                        <text x="97" y="65" textAnchor="middle" fill="#8C7E72" fontSize="9.5" fontWeight="600">{topo.node1.sub}</text>
+                        <line x1="15" y1="74" x2="180" y2="74" stroke="#F0E5D8" strokeWidth="1" />
+                        {topo.node1.bullets.map((b, i) => (
+                          <text key={i} x="16" y={93 + i * 19} fill="#5C4F43" fontSize="10">• {b}</text>
+                        ))}
+                      </g>
+
+                      {/* Arrow 1: Tier 1 -> Tier 2 */}
+                      <path d="M 210 117 L 258 117" className="svg-flow-path" markerEnd="url(#arrow)" />
+                      <text x="234" y="105" textAnchor="middle" fill="#C45B3C" fontSize="8.5" fontWeight="700">{topo.arrow1.label}</text>
+                      <text x="234" y="133" textAnchor="middle" fill="#8C7E72" fontSize="8">{topo.arrow1.sub}</text>
+
+                      {/* Tier 2 Node: Gateway & Security */}
+                      <g className="svg-interactive-node" transform="translate(260, 30)" onClick={() => setExpandedArchStep(2)}>
+                        <rect width="195" height="175" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                        <rect x="0" y="0" width="195" height="6" rx="3" fill={topo.node2.color} />
+                        <text x="97" y="28" textAnchor="middle" fill={topo.node2.color} fontSize="10.5" fontWeight="800" letterSpacing="0.08em">{topo.node2.badge}</text>
+                        <text x="97" y="48" textAnchor="middle" fill="#2E2117" fontSize="13" fontWeight="700">{topo.node2.title}</text>
+                        <text x="97" y="65" textAnchor="middle" fill="#8C7E72" fontSize="9.5" fontWeight="600">{topo.node2.sub}</text>
+                        <line x1="15" y1="74" x2="180" y2="74" stroke="#F0E5D8" strokeWidth="1" />
+                        {topo.node2.bullets.map((b, i) => (
+                          <text key={i} x="16" y={93 + i * 19} fill="#5C4F43" fontSize="10">• {b}</text>
+                        ))}
+                      </g>
+
+                      {/* Arrow 2: Tier 2 -> Tier 3 */}
+                      <path d="M 455 117 L 503 117" className="svg-flow-path" markerEnd="url(#arrow)" />
+                      <text x="479" y="105" textAnchor="middle" fill="#C45B3C" fontSize="8.5" fontWeight="700">{topo.arrow2.label}</text>
+                      <text x="479" y="133" textAnchor="middle" fill="#8C7E72" fontSize="8">{topo.arrow2.sub}</text>
+
+                      {/* Tier 3 Node: Reasoning & Agents */}
+                      <g className="svg-interactive-node" transform="translate(505, 30)" onClick={() => setExpandedArchStep(3)}>
+                        <rect width="195" height="175" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                        <rect x="0" y="0" width="195" height="6" rx="3" fill={topo.node3.color} />
+                        <text x="97" y="28" textAnchor="middle" fill={topo.node3.color} fontSize="10.5" fontWeight="800" letterSpacing="0.08em">{topo.node3.badge}</text>
+                        <text x="97" y="48" textAnchor="middle" fill="#2E2117" fontSize="13" fontWeight="700">{topo.node3.title}</text>
+                        <text x="97" y="65" textAnchor="middle" fill="#8C7E72" fontSize="9.5" fontWeight="600">{topo.node3.sub}</text>
+                        <line x1="15" y1="74" x2="180" y2="74" stroke="#F0E5D8" strokeWidth="1" />
+                        {topo.node3.bullets.map((b, i) => (
+                          <text key={i} x="16" y={93 + i * 19} fill="#5C4F43" fontSize="10">• {b}</text>
+                        ))}
+                      </g>
+
+                      {/* Arrow 3: Tier 3 -> Tier 4 */}
+                      <path d="M 700 117 L 728 117" className="svg-flow-path" markerEnd="url(#arrow)" />
+                      <text x="714" y="105" textAnchor="middle" fill="#C45B3C" fontSize="8.5" fontWeight="700">{topo.arrow3.label}</text>
+                      <text x="714" y="133" textAnchor="middle" fill="#8C7E72" fontSize="8">{topo.arrow3.sub}</text>
+
+                      {/* Tier 4 Node: Data & Precedents */}
+                      <g className="svg-interactive-node" transform="translate(730, 30)" onClick={() => setExpandedArchStep(4)}>
+                        <rect width="195" height="175" rx="8" fill="url(#cardGrad)" stroke="#ECDFD0" strokeWidth="1.5" />
+                        <rect x="0" y="0" width="195" height="6" rx="3" fill={topo.node4.color} />
+                        <text x="97" y="28" textAnchor="middle" fill={topo.node4.color} fontSize="10.5" fontWeight="800" letterSpacing="0.08em">{topo.node4.badge}</text>
+                        <text x="97" y="48" textAnchor="middle" fill="#2E2117" fontSize="13" fontWeight="700">{topo.node4.title}</text>
+                        <text x="97" y="65" textAnchor="middle" fill="#8C7E72" fontSize="9.5" fontWeight="600">{topo.node4.sub}</text>
+                        <line x1="15" y1="74" x2="180" y2="74" stroke="#F0E5D8" strokeWidth="1" />
+                        {topo.node4.bullets.map((b, i) => (
+                          <text key={i} x="16" y={93 + i * 19} fill="#5C4F43" fontSize="10">• {b}</text>
+                        ))}
+                      </g>
+
+                      {/* Return Response Stream (Bottom Arc from Tier 4 back to Tier 1) */}
+                      <path d="M 827 210 C 827 275, 112 275, 112 215" className="svg-return-path" markerEnd="url(#returnArrow)" />
+                      <g transform="translate(200, 256)">
+                        <rect width="540" height="36" rx="6" fill="#FFFDF9" stroke="#ECDFD0" strokeWidth="1.2" />
+                        <text x="270" y="16" textAnchor="middle" fill="#1E5C40" fontSize="10" fontWeight="800">
+                          RETURN STREAM: {topo.returnStream.label}
+                        </text>
+                        <text x="270" y="29" textAnchor="middle" fill="#786B60" fontSize="8.5">
+                          {topo.returnStream.sub}
+                        </text>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* INTERACTIVE STEP-BY-STEP DEEP-DIVE EXPLORER */}
+            <div className="arch-interactive-container">
               <div className="arch-pane-body">
                 {(() => {
                   const activeSys = ARCH_SYSTEMS[archTab];
@@ -2947,7 +3192,7 @@ export default function DocsSystem() {
                       <div className="arch-system-header">
                         <div className="arch-system-title-block">
                           <span className="arch-step-tag">{activeSys.runtime}</span>
-                          <h3 style={{ marginTop: "0.5rem" }}>{activeSys.name}</h3>
+                          <h3 style={{ marginTop: "0.5rem" }}>{activeSys.name} Execution Sequence</h3>
                           <span className="arch-system-endpoint">{activeSys.endpoint}</span>
                           <p style={{ margin: "0.6rem 0 0 0", fontSize: "0.92rem", color: "var(--text-body)" }}>
                             {activeSys.tagline}
@@ -2963,7 +3208,7 @@ export default function DocsSystem() {
                         </div>
                       </div>
 
-                      {/* Interactive Step Sequence */}
+                      {/* Step List */}
                       <div className="arch-step-list">
                         {activeSys.steps.map((st) => {
                           const isExpanded = expandedArchStep === st.idx;
