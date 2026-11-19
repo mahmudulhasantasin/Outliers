@@ -1720,15 +1720,34 @@ export default function DocsSystem() {
       })
       .then((data) => {
         if (data && (data.total_users || data.total_audits)) {
-          setD((prev) => ({
-            ...prev,
-            stats: {
-              ...prev.stats,
-              total_users: data.total_users || prev.stats.total_users,
-              total_audits: data.total_audits || prev.stats.total_audits,
-              statutes_indexed: data.statutes_indexed || prev.stats.statutes_indexed,
-            },
-          }));
+          setD((prev) => {
+            const users = data.total_users || prev.stats.total_users;
+            const audits = data.total_audits || prev.stats.total_audits;
+            return {
+              ...prev,
+              stats: {
+                ...prev.stats,
+                total_users: users,
+                total_audits: audits,
+                statutes_indexed: data.statutes_indexed || prev.stats.statutes_indexed,
+              },
+              tech: {
+                ...prev.tech,
+                analytics: {
+                  ...prev.tech.analytics,
+                  kpis: prev.tech.analytics.kpis.map((kpi) => {
+                    if (kpi.label === "Active Test Users") {
+                      return { ...kpi, value: String(users) };
+                    }
+                    if (kpi.label === "Contracts Audited") {
+                      return { ...kpi, value: String(audits) };
+                    }
+                    return kpi;
+                  }),
+                },
+              },
+            };
+          });
           setSyncStatus("LIVE_DB");
         }
       })
@@ -3295,13 +3314,21 @@ export default function DocsSystem() {
         <div data-section="analytics">
           <Section id="analytics" eyebrow="L. Analytics & Telemetry" headline={d.tech.analytics.headline}>
             <div className="grid-3">
-              {d.tech.analytics.kpis.map((kpi, i) => (
-                <div key={i} className="benchmark-card">
-                  <span className="bench-label">{kpi.label}</span>
-                  <div className="bench-val">{kpi.value}</div>
-                  <div className="bench-sub">{kpi.sub}</div>
-                </div>
-              ))}
+              {d.tech.analytics.kpis.map((kpi, i) => {
+                const liveVal =
+                  kpi.label === "Active Test Users"
+                    ? String(d.stats.total_users)
+                    : kpi.label === "Contracts Audited"
+                    ? String(d.stats.total_audits)
+                    : kpi.value;
+                return (
+                  <div key={i} className="benchmark-card">
+                    <span className="bench-label">{kpi.label}</span>
+                    <div className="bench-val">{liveVal}</div>
+                    <div className="bench-sub">{kpi.sub}</div>
+                  </div>
+                );
+              })}
             </div>
           </Section>
         </div>
