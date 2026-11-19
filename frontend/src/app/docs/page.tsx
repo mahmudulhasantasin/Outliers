@@ -34,7 +34,7 @@ const INITIAL_DOCS_DATA = {
     total_audits: 33,
     statutes_indexed: 35000,
     avg_turnaround: "30s",
-    benchmark_pass: "73/73",
+    benchmark_pass: "80.8%",
     accuracy_rate: "91.7%",
   },
 
@@ -212,9 +212,9 @@ const INITIAL_DOCS_DATA = {
       metrics: [
         { label: "Contract Provision Recall", value: "100%", sub: "33 of 33 test provisions identified without omission", score: 100 },
         { label: "Contract Audit Accuracy", value: "91.7%", sub: "33/36 precision on multi-clause risk scoring", score: 92 },
-        { label: "RAG Act Hit@K", value: "93.9%", sub: "46 of 49 statutory citations accurately grounded", score: 94 },
-        { label: "Deterministic Hallucination Block", value: "88.9%", sub: "Intercepts and blocks phantom section numbers", score: 89 },
-        { label: "Production CI/CD Suite", value: "73/73", sub: "100% test pass rate across unit, API & RAG tests", score: 100 },
+        { label: "RAG Act Hit@K", value: "93.9%", sub: "Top-K statutory retrieval accuracy across 52 legal cases", score: 94 },
+        { label: "Deterministic Hallucination Block", value: "88.9%", sub: "16/18 security attacks & phantom sections intercepted", score: 89 },
+        { label: "Golden Benchmark Suite", value: "80.8%", sub: "59/73 gold cases passed (100% statutory router accuracy)", score: 81 },
         { label: "Average E2E Latency", value: "< 2.8s", sub: "Bilingual legal chat response generation", score: 95 },
       ],
     },
@@ -794,9 +794,9 @@ const INITIAL_DOCS_DATA = {
         { label: "Contract Audit Latency", value: "~28s", note: "15-page complex PDF agreement" },
         { label: "Bilingual Chat Latency", value: "1.4s", note: "Time-to-first-token on Groq LLaMA" },
         { label: "API System Uptime", value: "99.4%", note: "Production Render & Vercel SLA" },
-        { label: "Test Suite Pass Rate", value: "73 / 73", note: "100% CI/CD unit & integration pass" },
+        { label: "Golden Benchmark Pass", value: "80.8%", note: "59/73 gold cases (100% statutory router accuracy)" },
         { label: "Provision Recall", value: "100%", note: "33/33 test provisions detected" },
-        { label: "Hallucination Defense", value: "88.9%", note: "Deterministic section intercept rate" },
+        { label: "Hallucination Defense", value: "88.9%", note: "16/18 security & out-of-scope intercepts" },
       ],
       strategies: [
         "Connection Pooling: Async SQLAlchemy with NullPool on serverless workers prevents database socket exhaustion.",
@@ -856,8 +856,8 @@ const INITIAL_DOCS_DATA = {
       headline: "Live Operational KPIs & Evaluation Telemetry",
       kpis: [
         { label: "Audit Accuracy", value: "91.7%", sub: "33/36 benchmark provisions matched" },
-        { label: "Act Hit@K", value: "93.9%", sub: "46/55 statutory retrievals effective" },
-        { label: "Hallucination Block", value: "88.9%", sub: "Deterministic guard intercepts" },
+        { label: "Act Hit@K", value: "93.9%", sub: "Top-K statutory retrieval accuracy" },
+        { label: "Hallucination Block", value: "88.9%", sub: "16/18 deterministic guard intercepts" },
         { label: "RAG MRR", value: "0.864", sub: "Mean Reciprocal Rank accuracy" },
         { label: "Active Test Users", value: "44", sub: "Production beta cohort" },
         { label: "Contracts Audited", value: "33", sub: "Commercial agreements analyzed" },
@@ -1881,7 +1881,7 @@ export default function DocsSystem() {
 
   // --- Export Markdown ---
   const handleMarkdownExport = () => {
-    const md = `# ${d.meta.company} — Technical Whitepaper & YC Pitch\n\n**Version:** ${d.meta.version} | **Last Updated:** ${d.meta.last_updated}\n\n## Overview\n${d.meta.one_liner}\n\n## Traction\n- Contract Audit Recall: 100%\n- Accuracy: ${d.stats.accuracy_rate}\n- Statutes Indexed: ${d.stats.statutes_indexed.toLocaleString()}\n- CI/CD Pass Rate: ${d.stats.benchmark_pass}\n\n## Team\n${d.team.map((m) => `- **${m.name}** — ${m.role} (${m.email})`).join("\n")}\n`;
+    const md = `# ${d.meta.company} — Technical Whitepaper & YC Pitch\n\n**Version:** ${d.meta.version} | **Last Updated:** ${d.meta.last_updated}\n\n## Overview\n${d.meta.one_liner}\n\n## Traction\n- Contract Audit Recall: 100%\n- Accuracy: ${d.stats.accuracy_rate}\n- Statutes Indexed: ${d.stats.statutes_indexed.toLocaleString()}\n- Benchmark Pass Rate: ${d.stats.benchmark_pass} (59/73 gold cases)\n\n## Team\n${d.team.map((m) => `- **${m.name}** — ${m.role} (${m.email})`).join("\n")}\n`;
     const blob = new Blob([md], { type: "text/markdown" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2378,9 +2378,9 @@ export default function DocsSystem() {
                   <span className="tl-sub">15-page complex PDF agreement</span>
                 </div>
                 <div className="telemetry-cell">
-                  <span className="tl-label">CI/CD Pass Rate</span>
+                  <span className="tl-label">Benchmark Pass Rate</span>
                   <span className="tl-num">{d.stats.benchmark_pass}</span>
-                  <span className="tl-sub">Automated production test suites</span>
+                  <span className="tl-sub">59 of 73 gold cases passing</span>
                 </div>
               </div>
             </div>
@@ -3322,7 +3322,7 @@ export default function DocsSystem() {
                 </a>
               </div>
               <p style={{ fontSize: "0.95rem", color: "var(--text-body)", lineHeight: 1.6, margin: "0 0 1rem 0" }}>
-                All source modifications, vector retrieval optimizations, and statutory embeddings are managed under strict peer reviews, signed CI/CD commits, and automated security regression test suites (73/73 tests).
+                All source modifications, vector retrieval optimizations, and statutory embeddings are managed under strict peer reviews, signed CI/CD commits, and automated security regression test suites (98 unit tests, 80.8% gold benchmark pass rate).
               </p>
               <div style={{ fontFamily: "monospace", fontSize: "0.82rem", background: "var(--bg-main)", padding: "0.75rem", borderRadius: "6px", color: "var(--text-dark)" }}>
                 {d.tech.contributors.branches}
