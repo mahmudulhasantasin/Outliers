@@ -332,7 +332,7 @@ const INITIAL_DOCS_DATA = {
   },
 
   // --- TEAM ---
-  team_name: "Outliers",
+  team_name: "Team Outliers",
   team: [
     {
       name: "Mahmudul Hasan Tasin",
@@ -343,7 +343,7 @@ const INITIAL_DOCS_DATA = {
       email: "tasinoutlook@gmail.com",
       avatar: "/team/tasin.webp",
       objPos: "center center",
-      expertise: "Team Leadership, AI/ML Pipelines, LangGraph Architecture, Vector RAG",
+      expertise: "Team Leadership, AI/ML Pipelines, LangGraph Architecture, Vector RAG,FastAPI",
     },
     {
       name: "SM SAYEM HOSSAIN",
@@ -365,7 +365,7 @@ const INITIAL_DOCS_DATA = {
       email: "shuaib.cyclist@gmail.com",
       avatar: "/team/Mohammad_Shuaib.webp",
       objPos: "top center",
-      expertise: "Full-Stack Development, FastAPI Microservices, Next.js 15, Scalable APIs",
+      expertise: "Full-Stack Development,Next.js 15, Scalable APIs",
     },
     {
       name: "MOHAMMAD SAJJAD",
@@ -958,7 +958,7 @@ const STYLES = `
   .sidebar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
   .main-content { flex-grow: 1; width: calc(100% - 290px); }
   .brand { display: inline-flex; align-items: center; gap: 0.65rem; font-family: var(--font-fraunces), sans-serif; font-size: 1.3rem; color: var(--text-dark); margin-bottom: 1.5rem; text-decoration: none; font-weight: 700; letter-spacing: -0.01em; line-height: 1; }
-  .brand-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; display: block; transform: translateY(-2px); }
+  .brand-logo { width: 32px; height: 32px; object-fit: contain; flex-shrink: 0; display: block; transform: translateY(-2px); filter: brightness(0) invert(1); }
   .brand .brand-name { display: inline-flex; align-items: center; gap: 0.35rem; line-height: 1; transform: translateY(2px); }
   .brand .brand-accent { color: var(--accent-clay); line-height: 1; }
   .search-box-wrap { position: relative; margin-bottom: 1.75rem; }
@@ -976,7 +976,7 @@ const STYLES = `
   .topbar::after { content: ""; position: absolute; left: 0; right: 0; top: 100%; height: 36px; background: linear-gradient(to bottom, rgba(14, 14, 14, 0.5), transparent); pointer-events: none; }
   .topbar-left { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
   .topbar-brand { display: inline-flex; align-items: center; gap: 0.65rem; line-height: 1; }
-  .topbar-brand img { display: block; flex-shrink: 0; transform: translateY(-1.5px); }
+  .topbar-brand img { display: block; flex-shrink: 0; transform: translateY(-1.5px); filter: brightness(0) invert(1); }
   .brand-title { font-family: var(--font-fraunces), sans-serif; font-weight: 700; font-size: 1.05rem; color: var(--text-dark); letter-spacing: -0.01em; display: inline-flex; align-items: center; gap: 0.35rem; line-height: 1; transform: translateY(1.5px); }
   .stat-pill { font-size: 0.8rem; color: var(--text-body); display: flex; align-items: center; gap: 0.4rem; font-weight: 500; }
   .stat-pill strong { color: var(--text-dark); font-weight: 700; }
@@ -2293,7 +2293,7 @@ export default function DocsSystem() {
         <div className="topbar">
           <div className="topbar-left">
             <a href="#top" className="topbar-brand" style={{ textDecoration: "none" }}>
-              <img src="/logo.svg" alt="AdvoTech Copilot" style={{ width: "24px", height: "24px", objectFit: "contain", flexShrink: 0 }} />
+              <img src="/logo.svg" alt="AdvoTech Copilot" className="brand-logo" style={{ width: "24px", height: "24px", objectFit: "contain", flexShrink: 0 }} />
               <span className="brand-title">AdvoTech <span style={{ color: "var(--accent-clay)" }}>Copilot</span></span>
             </a>
           </div>
