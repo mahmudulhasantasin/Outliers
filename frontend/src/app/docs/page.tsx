@@ -1411,7 +1411,7 @@ const STYLES = `
 
   /* Divider */
   .whitepaper-divider { display: flex; align-items: center; gap: 1.25rem; padding: 2.5rem max(4vw, calc((100% - 960px) / 2)); width: 100%; }
-  .whitepaper-divider::before, .whitepaper-divider::after { content: ""; flex: 1; height: 0; border-top: 1px dotted rgba(255, 255, 255, 0.38); }
+  .whitepaper-divider::before, .whitepaper-divider::after { content: ""; flex: 1; height: 0; border-top: 1.5px dotted rgba(255, 255, 255, 0.55); }
   .whitepaper-divider-tag { flex-shrink: 0; color: var(--accent-clay); font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.18em; white-space: nowrap; }
 
   /* Cards: borderless by default, visible only on hover */
@@ -1518,20 +1518,31 @@ const STYLES = `
     .demo-tab-btn { padding: 0.45rem 0.85rem; font-size: 0.76rem; }
   }
 
+  /* ======================================================== */
+  /* 🖨️ A4 INTELLIGENT PRINT PAGINATION ENGINE               */
+  /* ======================================================== */
+  @page {
+    size: A4 portrait;
+    margin: 12mm 14mm 14mm 14mm;
+  }
+
   @media print {
+    /* Hide screen-only interactive controls */
     .sidebar, .topbar, .admin-toolbar, .modal-overlay, .btn, .back-to-top, .mobile-header,
     .hero-quick-jumps, .mobile-toggle, .arch-copy-btn, .matrix-filters, .api-filter-tabs,
-    .demo-top-tabs, .pill-live-dot, .stat-live-dot, .admin-schedule { display: none !important; }
+    .demo-top-tabs, .pill-live-dot, .stat-live-dot, .admin-schedule, .pc-btn {
+      display: none !important;
+    }
 
-    /* Light theme for print */
+    /* Light theme color palette for print */
     .hearth-theme {
       --bg-main: #ffffff;
       --bg-alt: #ffffff;
-      --bg-accent: #f5f5f5;
+      --bg-accent: #f7f7f7;
       --text-dark: #111111;
       --text-body: #333333;
       --accent-clay: #111111;
-      --border-color: #dddddd;
+      --border-color: #e5e5e5;
       --green-dark: #166534;
       --green-light: #f0fdf4;
       --orange-light: #fefce8;
@@ -1540,44 +1551,427 @@ const STYLES = `
       background: #ffffff !important;
       color: #111111 !important;
     }
-    .main-content { width: 100%; }
-    .doc-section { padding: 1.75rem 1rem; break-inside: avoid; border-bottom: 1px solid #eee; }
-    .doc-section.alt { background: #ffffff !important; }
 
-    /* Force light on everything (beats inline dark styles) */
+    /* Neutralize inline dark styles cleanly */
     .hearth-theme * {
       background-color: transparent !important;
       background-image: none !important;
       color: #111111 !important;
-      border-color: #dddddd !important;
+      border-color: #e5e5e5 !important;
       box-shadow: none !important;
       text-shadow: none !important;
     }
-    .hearth-theme h1, .hearth-theme h2, .hearth-theme h3 { color: #111111 !important; }
-    .hearth-theme a { color: #111111 !important; text-decoration: underline; }
 
-    /* SVG diagrams: white bg, dark strokes */
-    .hearth-theme svg { background: #ffffff !important; }
-    .hearth-theme svg text { fill: #111111 !important; }
+    /* Typography in print */
+    .hearth-theme h1, .hearth-theme h2, .hearth-theme h3, .hearth-theme h4 {
+      color: #111111 !important;
+    }
+    .hearth-theme a {
+      color: #111111 !important;
+      text-decoration: none;
+    }
+
+    /* Main layout reset */
+    .main-content {
+      width: 100% !important;
+      max-width: 100% !important;
+      padding: 24px 0 26px 0 !important;
+      margin: 0 !important;
+    }
+    .doc-inner {
+      max-width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+
+    /* SECTION FLOW: Natural flow for large sections */
+    .doc-section {
+      padding: 1.35rem 0.25rem !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      border-bottom: 1px solid #eeeeee !important;
+    }
+    .doc-section.alt {
+      background: #ffffff !important;
+    }
+
+    /* PART I: YC PITCH DECK SLIDE-BASED PAGES (Clean 1 slide per page) */
+    [data-section="problem"],
+    [data-section="solution"],
+    [data-section="why-now"],
+    [data-section="demo"],
+    [data-section="market"],
+    [data-section="business-model"],
+    [data-section="traction"],
+    [data-section="competition"],
+    [data-section="advantage"],
+    [data-section="gtm"],
+    [data-section="vision"],
+    [data-section="team"] {
+      break-before: page !important;
+      page-break-before: always !important;
+    }
+
+    /* In Section 04 Demo: split the 2 demo simulators onto 2 clean pages */
+    #demo-audit {
+      break-before: page !important;
+      page-break-before: always !important;
+      margin-top: 1.5rem !important;
+    }
+
+    /* PART II: TECHNICAL WHITEPAPER DIVIDER (Starts on clean page) */
+    .whitepaper-divider {
+      break-before: page !important;
+      page-break-before: always !important;
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+      padding: 1.5rem 0.25rem !important;
+    }
+
+    /* PART II TECHNICAL SECTIONS: Allow natural multi-page flow */
+    [data-section="overview"],
+    [data-section="architecture"],
+    [data-section="data-flow"],
+    [data-section="features"],
+    [data-section="tech-stack"],
+    [data-section="api-docs"],
+    [data-section="data-layer"],
+    [data-section="ai-layer"],
+    [data-section="roadmap"],
+    [data-section="performance"],
+    [data-section="security"],
+    [data-section="analytics"],
+    [data-section="contributors"],
+    [data-section="changelog"] {
+      break-before: auto !important;
+      page-break-before: auto !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+
+    /* COVER PAGE (Hero Section) — Clean Page 1 executive cover */
+    [data-section="top"] {
+      break-after: page !important;
+      page-break-after: always !important;
+    }
+    [data-section="top"] .doc-section {
+      min-height: 88vh !important;
+      display: flex !important;
+      flex-direction: column !important;
+      justify-content: space-between !important;
+      border-bottom: none !important;
+      padding-top: 0.5rem !important;
+    }
+    [data-section="top"] .hero-editorial-grid {
+      gap: 1.25rem !important;
+      margin-top: 0.5rem !important;
+      align-items: center !important;
+    }
+    [data-section="top"] .hero-main-headline {
+      font-size: 2.15rem !important;
+      line-height: 1.2 !important;
+      margin-bottom: 0.85rem !important;
+    }
+    [data-section="top"] .hero-description {
+      font-size: 0.95rem !important;
+      line-height: 1.55 !important;
+      margin-bottom: 0.75rem !important;
+      padding-left: 1rem !important;
+    }
+    [data-section="top"] .lady-justice-img {
+      max-height: 220px !important;
+      width: auto !important;
+      mix-blend-mode: normal !important;
+      filter: none !important;
+    }
+    [data-section="top"] .telemetry-panel {
+      margin-top: 1rem !important;
+      border: 1px solid #e0e0e0 !important;
+      border-radius: 6px !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    [data-section="top"] .telemetry-grid {
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 0.75rem 1.25rem !important;
+      padding: 0.85rem 1rem !important;
+    }
+    [data-section="top"] .tl-num {
+      font-size: 1.6rem !important;
+    }
+    [data-section="top"] .tl-label {
+      font-size: 0.65rem !important;
+    }
+    [data-section="top"] .tl-sub {
+      font-size: 0.72rem !important;
+    }
+
+    /* HEADINGS: NEVER ORPHAN A HEADING WITHOUT ITS CONTENT */
+    h1, h2, h3, h4, h5, h6,
+    .headline, .hero-main-headline,
+    .eyebrow, .section-lead,
+    .whitepaper-divider, .whitepaper-divider-tag,
+    .pc-title, .pc-card-title, .biz-title, .pillar-title,
+    .market-tier, .gtm-step, .team-name, .stack-layer,
+    .arch-layer-title, .dataflow-card-title, .sec-card-title,
+    .clause-title, .clause-head {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
+
+    /* PARAGRAPH ORPHANS & WIDOWS */
+    p, .paragraph, .pc-desc, .pc-card-desc, .market-desc,
+    .biz-subtext, .pillar-desc, .gtm-strat, .stack-desc,
+    .api-desc, .sec-card-desc {
+      orphans: 3 !important;
+      widows: 3 !important;
+    }
+
+    /* GRID TRACKS ON A4 PRINT */
+    .grid-2 {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr !important;
+      gap: 0.85rem !important;
+    }
+    .grid-3 {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 0.75rem !important;
+    }
+    .grid-4 {
+      display: grid !important;
+      grid-template-columns: repeat(4, 1fr) !important;
+      gap: 0.65rem !important;
+    }
+
+    /* SMALL & COMPLEX CONTENT CARDS: ALWAYS KEEP TOGETHER */
+    .problem-card,
+    .product-card,
+    .biz-card,
+    .market-card,
+    .curve-card,
+    .pillar-card,
+    .gtm-card,
+    .team-card,
+    .stack-card,
+    .roadmap-card,
+    .sec-card,
+    .security-card,
+    .benchmark-card,
+    .audit-clause-card,
+    .audit-score-banner,
+    .api-item,
+    .arch-layer-card,
+    .arch-step-card,
+    .dataflow-pipeline-card,
+    .telemetry-cell {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      border: 1px solid #e0e0e0 !important;
+      border-radius: 6px !important;
+      background: #ffffff !important;
+    }
+
+    /* SPECIFIC ISSUE FIXES */
+    /* 1. Problem Cards (Issue A: Diaspora Inaccessibility) */
+    .problem-card {
+      padding: 1.15rem 1rem !important;
+      margin-bottom: 0.65rem !important;
+    }
+    .problem-card .pc-top,
+    .problem-card .pc-title,
+    .problem-card .pc-metric {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
+
+    /* 2. Product Showcase Cards (Issue B: ContractMind Card) */
+    .product-card {
+      padding: 1.15rem 1rem !important;
+      margin-bottom: 0.75rem !important;
+    }
+    .product-card .pc-head,
+    .product-card .pc-card-title,
+    .product-card .pc-metrics {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
+    .product-card .pc-metrics {
+      margin-bottom: 0.65rem !important;
+      padding: 0.5rem 0 !important;
+    }
+    .product-card .pc-checks {
+      margin-bottom: 0.5rem !important;
+    }
+    .product-card .pc-checks li {
+      break-inside: avoid !important;
+    }
+
+    /* 3. Contract Audit Simulator (Issue C: Health Score & Clauses) */
+    .audit-viewer {
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+      border: none !important;
+      padding: 0 !important;
+      background: transparent !important;
+    }
+    .audit-viewer > div:first-child {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+      margin-bottom: 0.75rem !important;
+    }
+    .audit-score-banner {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+      padding: 0.85rem 1.15rem !important;
+      margin-bottom: 0.75rem !important;
+      background: #fcfcfc !important;
+    }
+    .audit-clauses {
+      break-inside: auto !important;
+    }
+    .audit-clause-card {
+      padding: 0.85rem 1rem !important;
+      margin-bottom: 0.65rem !important;
+    }
+    .audit-clause-card .clause-head {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+      margin-bottom: 0.35rem !important;
+    }
+
+    /* 4. Business Model (Issue D: FastMCP Card & Blank Space Reduction) */
+    [data-section="business-model"] .grid-3 {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 0.75rem !important;
+    }
+    .biz-card {
+      padding: 1rem 0.85rem !important;
+      margin-bottom: 0.65rem !important;
+      height: auto !important;
+      justify-content: flex-start !important;
+    }
+    .biz-badge, .biz-title, .biz-price, .biz-subtext {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+    }
+    .biz-price {
+      font-size: 1.35rem !important;
+    }
+    .biz-subtext {
+      margin-bottom: 0.65rem !important;
+    }
+    .biz-list {
+      gap: 0.35rem !important;
+    }
+    .biz-list li {
+      font-size: 0.76rem !important;
+      line-height: 1.3 !important;
+    }
+
+    /* 5. Team Section: 3x2 Grid for Clean Single A4 Page Fitting */
+    [data-section="team"] .grid-3 {
+      display: grid !important;
+      grid-template-columns: repeat(3, 1fr) !important;
+      gap: 0.65rem !important;
+    }
+    .team-card {
+      margin-bottom: 0.35rem !important;
+    }
+    .team-img-wrap {
+      aspect-ratio: 16/10 !important;
+      max-height: 85px !important;
+    }
+    .team-body {
+      padding: 0.5rem 0.65rem !important;
+      gap: 0.15rem !important;
+    }
+    .team-name {
+      font-size: 0.88rem !important;
+    }
+    .team-exp {
+      font-size: 0.66rem !important;
+      margin-top: 0.25rem !important;
+      padding-top: 0.25rem !important;
+    }
+
+    /* 6. Comparison & Data Tables */
+    .comp-table-wrap, .matrix-table-wrap, .changelog-table {
+      break-inside: auto !important;
+      overflow: visible !important;
+      width: 100% !important;
+      border: 1px solid #e0e0e0 !important;
+      border-radius: 6px !important;
+    }
+    .comp-table, .matrix-table, .changelog-table {
+      width: 100% !important;
+      min-width: 0 !important;
+    }
+    .comp-table tr, .matrix-table tr, .changelog-table tr {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
+    thead {
+      display: table-header-group !important;
+    }
+    .comp-table th, .matrix-table th, .changelog-table th {
+      break-after: avoid !important;
+      padding: 0.65rem 0.85rem !important;
+    }
+    .comp-table td, .matrix-table td, .changelog-table td {
+      padding: 0.65rem 0.85rem !important;
+    }
+
+    /* 7. SVG Diagrams & Architecture */
+    .arch-svg-canvas, .svg-arch-inner {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+      height: auto !important;
+    }
+    .svg-canvas-container, .svg-arch-wrap {
+      overflow: visible !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+      padding: 0 !important;
+    }
+    .hearth-theme svg {
+      background: #ffffff !important;
+    }
+    .hearth-theme svg text {
+      fill: #111111 !important;
+    }
     .hearth-theme svg rect, .hearth-theme svg circle, .hearth-theme svg path, .hearth-theme svg line {
       fill: #ffffff !important;
       stroke: #444444 !important;
     }
-    .hearth-theme svg text { fill: #111111 !important; }
 
-    /* Photos stay as-is */
-    .hearth-theme img { filter: none !important; mix-blend-mode: normal !important; }
-    .lady-justice-img { filter: none !important; mix-blend-mode: normal !important; }
+    /* 8. Whitepaper Divider */
+    .whitepaper-divider {
+      break-after: avoid !important;
+      page-break-after: avoid !important;
+      padding: 1.5rem 0.25rem !important;
+    }
+    .whitepaper-divider::before, .whitepaper-divider::after {
+      content: "" !important;
+      flex: 1 !important;
+      height: 0 !important;
+      border-top: 1.5px dotted #666666 !important;
+    }
 
-    /* Let wide SVGs shrink to fit the page */
-    .arch-svg-canvas, .svg-arch-inner { min-width: 0 !important; }
-    .svg-canvas-container, .svg-arch-wrap { overflow: visible !important; padding: 0 !important; }
-
-    /* Page setup */
-    html, body { background: #ffffff !important; }
-    div[class*="bg-\[\#0e0e0e\]"] { background: #ffffff !important; }
-    .whitepaper-divider::before, .whitepaper-divider::after { border-top: 1px dotted #888888 !important; }
-    .headline, .hero-main-headline { -webkit-print-color-adjust: exact; }
+    /* Force background print colors */
+    html, body {
+      background: #ffffff !important;
+    }
+    div[class*="bg-\[\#0e0e0e\]"] {
+      background: #ffffff !important;
+    }
+    .headline, .hero-main-headline {
+      -webkit-print-color-adjust: exact;
+    }
   }
 `;
 
@@ -1881,7 +2275,16 @@ export default function DocsSystem() {
   };
 
   // --- Export PDF ---
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (typeof window !== "undefined") {
+      const oldTitle = document.title;
+      document.title = "Advotech-Copilot-Whitepaper-YC-Pitch";
+      window.print();
+      setTimeout(() => {
+        document.title = oldTitle;
+      }, 1500);
+    }
+  };
 
   // --- Copy link ---
   const handleCopyLink = () => {
