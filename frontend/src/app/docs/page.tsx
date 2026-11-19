@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import { Fraunces, Karla } from "next/font/google";
-import { Check, ArrowDownRight, ShieldCheck, Cpu, Bot, Send, CheckCircle2, KeyRound, Users, Database, Fingerprint } from "lucide-react";
+import { Check, ArrowDownRight, ShieldCheck, Cpu, Bot, Send, CheckCircle2, KeyRound, Users, Database, Fingerprint, BookOpen, EyeOff, Layers, Lock, Search, Workflow, FileCheck, Zap } from "lucide-react";
 import ArchitectureExplorer from "./ArchitectureExplorer";
 
 const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap" });
@@ -658,6 +658,48 @@ const INITIAL_DOCS_DATA = {
         "PostgreSQL pgvector Schema: Relational metadata (users, audit_memos, credit_ledger, advocate_inquiries) is partitioned with Row-Level Security (RLS) guaranteeing tenant isolation.",
         "Zero-Retention AI Policy: Contract audit texts are processed in memory and never stored in external LLM vendor logging buffers. Audit memos are stored encrypted in user vaults.",
       ],
+      layers: [
+        {
+          num: "01",
+          category: "Corpus Acquisition & ETL",
+          badge: "LAYER 01",
+          icon: "book-open",
+          title: "Statutory Ingestion Pipeline",
+          desc: "Custom web ETL scraper extracted all 35,000+ sections across 1,100+ volumes of the official Bangladesh Code (bdlaws.minlaw.gov.bd). Data is normalized with act ID, amendment history, and gazette publication dates.",
+        },
+        {
+          num: "02",
+          category: "Client-Side Anonymization",
+          badge: "LAYER 02",
+          icon: "eye-off",
+          title: "Sovereign Client-Side PII Scrubbing",
+          desc: "User contracts undergo client-side regex and tokenizer scrubbing before upload. All personal names, NID numbers, phone numbers, and financial details are anonymized into standardized tokens ([PARTY_A], [AMOUNT_TK]).",
+        },
+        {
+          num: "03",
+          category: "Vector & Sparse Indexing",
+          badge: "LAYER 03",
+          icon: "layers",
+          title: "Dual-Embedding Geometry",
+          desc: "Text chunks are embedded using multilingual e5-small (384 dimensions) for dense semantic retrieval, coupled with custom BM25 sparse indices for exact statutory section numbers (§ 27, § 74, § 138).",
+        },
+        {
+          num: "04",
+          category: "Tenant-Isolated Vaults",
+          badge: "LAYER 04",
+          icon: "database",
+          title: "PostgreSQL pgvector Schema",
+          desc: "Relational metadata (users, audit_memos, credit_ledger, advocate_inquiries) is partitioned with Row-Level Security (RLS) guaranteeing tenant isolation.",
+        },
+        {
+          num: "05",
+          category: "Privacy & Zero Data Leaks",
+          badge: "LAYER 05",
+          icon: "lock",
+          title: "Zero-Retention AI Policy",
+          desc: "Contract audit texts are processed in memory and never stored in external LLM vendor logging buffers. Audit memos are stored encrypted in user vaults.",
+        },
+      ],
     },
 
     ai_layer: {
@@ -668,6 +710,48 @@ const INITIAL_DOCS_DATA = {
         "Deterministic Guardrail Interceptor: Custom post-generation filter regex parses statutory citations in the response. If a cited section cannot be matched against the official gazette database, the generation is blocked and re-prompted.",
         "Explainable Citation Grounding: Every affirmative statement in the response includes a hard-linked hyper-reference to the specific section, amendment year, and bdlaws gazette URL.",
         "Model Failover Ladder: Primary requests execute against Groq LLaMA 3.3 70B (latency < 1.2s). If Groq rate limits, the request fails over seamlessly to GLM-4 without user disruption.",
+      ],
+      layers: [
+        {
+          num: "01",
+          category: "Hybrid Search Topology",
+          badge: "LAYER 01",
+          icon: "search",
+          title: "Hybrid 2-Path Retrieval Engine",
+          desc: "Path A executes an exact lookup in the 3,547-act alias index. Path B performs cosine similarity search over Qdrant vectors with an adaptive threshold (0.78 cutoff).",
+        },
+        {
+          num: "02",
+          category: "State Machine Control",
+          badge: "LAYER 02",
+          icon: "workflow",
+          title: "LangGraph State Machine",
+          desc: "Controls the lifecycle of each request across 5 states: QueryClassifier → StatutoryRetriever → ConstraintValidator → Generator → CitationChecker.",
+        },
+        {
+          num: "03",
+          category: "Deterministic Safety Filter",
+          badge: "LAYER 03",
+          icon: "shield-check",
+          title: "Deterministic Guardrail Interceptor",
+          desc: "Custom post-generation filter regex parses statutory citations in the response. If a cited section cannot be matched against the official gazette database, the generation is blocked and re-prompted.",
+        },
+        {
+          num: "04",
+          category: "Verifiable Grounding",
+          badge: "LAYER 04",
+          icon: "file-check",
+          title: "Explainable Citation Grounding",
+          desc: "Every affirmative statement in the response includes a hard-linked hyper-reference to the specific section, amendment year, and bdlaws gazette URL.",
+        },
+        {
+          num: "05",
+          category: "Fault-Tolerant Inference",
+          badge: "LAYER 05",
+          icon: "zap",
+          title: "Model Failover Ladder",
+          desc: "Primary requests execute against Groq LLaMA 3.3 70B (latency < 1.2s). If Groq rate limits, the request fails over seamlessly to GLM-4 without user disruption.",
+        },
       ],
     },
 
@@ -1300,17 +1384,18 @@ const STYLES = `
   .roadmap-items li::before { content: "→"; color: var(--accent-clay); flex-shrink: 0; font-weight: 700; }
   .roadmap-items li:last-child { border-bottom: none; }
 
-  /* Security & Trust Cards */
-  .security-layers { list-style: none; padding: 0; margin: 2rem 0 0 0; display: flex; flex-direction: column; gap: 0.75rem; }
-  .sec-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
-  .sec-card-header { display: flex; align-items: center; justify-content: space-between; padding: 0.65rem 1rem; }
-  .sec-card-left { display: flex; align-items: center; gap: 0.6rem; }
-  .sec-card-icon { width: 18px; height: 18px; color: var(--accent-clay); flex-shrink: 0; }
-  .sec-card-cat { font-size: 0.72rem; font-weight: 700; color: var(--accent-clay); letter-spacing: 0.04em; }
-  .sec-card-layer { font-size: 0.65rem; font-weight: 800; color: #1E5C40; background: rgba(30,92,64,0.1); padding: 0.2rem 0.6rem; border-radius: 50px; letter-spacing: 0.08em; }
-  .sec-card-body { padding: 0 1rem 1rem 1rem; }
-  .sec-card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-dark); margin: 0 0 0.3rem 0; font-family: var(--font-fraunces), serif; }
-  .sec-card-desc { font-size: 0.875rem; color: var(--text-body); line-height: 1.6; margin: 0; }
+  /* Layered Architecture Cards (Security, Data, AI) */
+  .security-layers, .security-list { list-style: none; padding: 0; margin: 2rem 0 0 0; display: flex; flex-direction: column; gap: 0.75rem; }
+  .sec-card, .security-card { background: #FFFFFF; border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(46, 33, 23, 0.03); transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .sec-card:hover, .security-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(46, 33, 23, 0.06); }
+  .sec-card-header { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1.15rem 0.35rem 1.15rem; }
+  .sec-card-left { display: flex; align-items: center; gap: 0.65rem; }
+  .sec-card-icon, .security-icon { width: 18px; height: 18px; color: var(--accent-clay); flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+  .sec-card-cat { font-size: 0.74rem; font-weight: 700; color: var(--accent-clay); letter-spacing: 0.04em; }
+  .sec-card-layer { font-size: 0.65rem; font-weight: 800; color: #1E5C40; background: rgba(30,92,64,0.1); padding: 0.2rem 0.6rem; border-radius: 50px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .sec-card-body { padding: 0.35rem 1.15rem 1rem 1.15rem; }
+  .sec-card-title { font-size: 1.05rem; font-weight: 700; color: var(--text-dark); margin: 0 0 0.35rem 0; font-family: var(--font-fraunces), serif; }
+  .sec-card-desc, .security-text { font-size: 0.88rem; color: var(--text-body); line-height: 1.6; margin: 0; }
   .sec-roles { display: flex; gap: 0.5rem; margin-top: 0.75rem; flex-wrap: wrap; }
   .sec-role-pill { flex: 1; text-align: center; padding: 0.5rem 0.75rem; border: 1px solid var(--border-color); border-radius: 8px; font-size: 0.68rem; font-weight: 800; letter-spacing: 0.1em; color: var(--text-dark); background: var(--bg-main); }
 
@@ -2888,14 +2973,34 @@ export default function DocsSystem() {
         {/* ======================================================== */}
         <div data-section="data-layer">
           <Section id="data-layer" eyebrow="G. Data & Privacy Layer" headline={d.tech.data_layer.headline} altBg>
-            <ul className="security-list">
-              {d.tech.data_layer.points.map((pt, i) => (
-                <li key={i} className="security-card">
-                  <span className="security-icon">💾</span>
-                  <p className="security-text">{pt}</p>
-                </li>
-              ))}
-            </ul>
+            {(() => {
+              const DATA_ICONS: Record<string, React.ReactNode> = {
+                "book-open":    <BookOpen className="sec-card-icon" />,
+                "eye-off":      <EyeOff className="sec-card-icon" />,
+                "layers":       <Layers className="sec-card-icon" />,
+                "database":     <Database className="sec-card-icon" />,
+                "lock":         <Lock className="sec-card-icon" />,
+              };
+              return (
+                <ul className="security-layers">
+                  {d.tech.data_layer.layers.map((layer, i) => (
+                    <li key={i} className="sec-card">
+                      <div className="sec-card-header">
+                        <div className="sec-card-left">
+                          {DATA_ICONS[layer.icon]}
+                          <span className="sec-card-cat">{String(layer.num).padStart(2, "0")} · {layer.category}</span>
+                        </div>
+                        <span className="sec-card-layer">{layer.badge}</span>
+                      </div>
+                      <div className="sec-card-body">
+                        <p className="sec-card-title">{layer.title}</p>
+                        <p className="sec-card-desc">{layer.desc}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </Section>
         </div>
 
@@ -2904,14 +3009,34 @@ export default function DocsSystem() {
         {/* ======================================================== */}
         <div data-section="ai-layer">
           <Section id="ai-layer" eyebrow="H. AI & RAG Mechanics" headline={d.tech.ai_layer.headline}>
-            <ul className="security-list">
-              {d.tech.ai_layer.points.map((pt, i) => (
-                <li key={i} className="security-card">
-                  <span className="security-icon">🧠</span>
-                  <p className="security-text">{pt}</p>
-                </li>
-              ))}
-            </ul>
+            {(() => {
+              const AI_ICONS: Record<string, React.ReactNode> = {
+                "search":       <Search className="sec-card-icon" />,
+                "workflow":     <Workflow className="sec-card-icon" />,
+                "shield-check": <ShieldCheck className="sec-card-icon" />,
+                "file-check":   <FileCheck className="sec-card-icon" />,
+                "zap":          <Zap className="sec-card-icon" />,
+              };
+              return (
+                <ul className="security-layers">
+                  {d.tech.ai_layer.layers.map((layer, i) => (
+                    <li key={i} className="sec-card">
+                      <div className="sec-card-header">
+                        <div className="sec-card-left">
+                          {AI_ICONS[layer.icon]}
+                          <span className="sec-card-cat">{String(layer.num).padStart(2, "0")} · {layer.category}</span>
+                        </div>
+                        <span className="sec-card-layer">{layer.badge}</span>
+                      </div>
+                      <div className="sec-card-body">
+                        <p className="sec-card-title">{layer.title}</p>
+                        <p className="sec-card-desc">{layer.desc}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              );
+            })()}
           </Section>
         </div>
 
