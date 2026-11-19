@@ -504,15 +504,32 @@ const INITIAL_DOCS_DATA = {
     },
 
     feature_matrix: [
-      { name: "30s AI Contract Audit (PDF)", status: "LIVE", tier: "Core", note: "91.7% accuracy, 100% clause recall across lease/employment agreements" },
-      { name: "Bilingual Grounded Legal Chat", status: "LIVE", tier: "Core", note: "3,547 Acts (35,000+ sections), MRR 0.864, answers in Bengali, Banglish & English" },
-      { name: "SSLCommerz / bKash Credit Ledger", status: "LIVE", tier: "Billing", note: "Instant ৳28 micro-payments with IPN callbacks and credit deduction" },
-      { name: "Client-Side PII Auto-Redaction", status: "LIVE", tier: "Security", note: "Regex & NLP sanitization of BD mobile, NID & financial numbers" },
-      { name: "HITL Lawyer Review Marketplace", status: "BETA", tier: "Marketplace", note: "3-hour SLA cron matching, digital seal, fee disbursement" },
-      { name: "FastMCP Legal Server (Bangladesh-Legal-MCP)", status: "LIVE", tier: "Developer", note: "8 active legal tools, Anti-Repeal Shield, dynamic resources & prompts over proxy-safe stateless HTTP" },
-      { name: "Enterprise Workspaces & Quotas", status: "PLANNED", tier: "Enterprise", note: "Shared legal vaults, team quota allocations, custom playbooks (Q1 2027)" },
-      { name: "Multi-Jurisdiction Ingestion (India/Pak)", status: "PLANNED", tier: "Expansion", note: "Companies Act 2013 & Pakistan Labour Code ingestion (Q2 2027)" },
-      { name: "Dispute Preparation AI Agent", status: "PLANNED", tier: "Litigation", note: "Pre-litigation legal notice generation & evidence bundling (Q3 2027)" },
+      // --- LIVE PRODUCTION CORE ---
+      { name: "30s AI Contract Audit (PDF)", status: "LIVE", tier: "Core", note: "Clause-by-clause risk scoring, 100% recall across lease/employment contracts, executive health score (0-100) & redline diffs" },
+      { name: "Bilingual Grounded Legal Chat", status: "LIVE", tier: "Core", note: "3,547 Bangladesh Acts (35,000+ sections), MRR 0.864, answers in Bengali, Banglish & English with hyperlinked gazette citations" },
+      { name: "Enterprise Workspaces & Vaults", status: "LIVE", tier: "Enterprise", note: "Departmental encrypted legal repositories, corporate credit pooling, team seat provisioning (Admin/Reviewer/Viewer) (/enterprise/admin)" },
+      { name: "Super Admin Platform Governance", status: "LIVE", tier: "Platform", note: "Real-time metrics, RJSC corporate verification, Bar Council advocate approvals, and tamper-evident cryptographic audit logs (/admin)" },
+      { name: "Contract Archive & PDF Memo Export", status: "LIVE", tier: "Core", note: "Historical audit vault with executive risk scores, clause categorization, and one-click PDF report export for offline counsel (/archive)" },
+      { name: "SSLCommerz & bKash Credit Ledger", status: "LIVE", tier: "Billing", note: "Instant ৳28 micro-payments via bKash/Nagad/Cards with cryptographically signed IPN webhook callbacks and double-entry ledger" },
+      { name: "Client-Side PII Auto-Redaction", status: "LIVE", tier: "Security", note: "Zero-knowledge in-browser regex scrubbing of BD mobile numbers (+8801[3-9]), NID (10/13/17 digits), bank accounts, and party names" },
+      { name: "FastMCP Legal Server (bd-legal-mcp)", status: "LIVE", tier: "Developer", note: "8 JSON-RPC tools, Anti-Repeal Shield, dynamic resources & prompts over proxy-safe stateless HTTP for Claude & Cursor" },
+      { name: "Anti-Repeal Guardrail Shield", status: "LIVE", tier: "AI & RAG", note: "Deterministic filter intercepting repealed or amended statutes (e.g. Penal Code 1860 vs Cyber Security Act) before LLM generation" },
+      { name: "Multi-Model Fault-Tolerant Engine", status: "LIVE", tier: "Infrastructure", note: "Google Gemini 3.5 Flash Lite (Primary) → Groq Qwen 2.5 27B (Fallback) → Z.AI GLM-4 waterfall delivering 1.4s TTFT and 99.4% uptime" },
+      { name: "Dynamic Showcase Gate & PDF Engine", status: "LIVE", tier: "Platform", note: "Granular 403 showcase scheduler, PIN security gate, live database telemetry hydration, and publication-grade A4 PDF exporter" },
+
+      // --- BETA WORKFLOWS ---
+      { name: "HITL Lawyer Review & Escrow Queue", status: "BETA", tier: "Marketplace", note: "Supreme Court advocate review workspace, 3-hour SLA escrow matching, digital bar license seal sign-off, and payout tracking (/lawyer/pending)" },
+      { name: "Custom Corporate Compliance Playbooks", status: "BETA", tier: "Enterprise", note: "Custom rule injection engine enforcing organizational clause constraints (e.g. mandatory arbitration in Dhaka, strict IP ownership) (/enterprise/admin/playbook)" },
+
+      // --- MID-TERM FUTURE CAPABILITIES (Q1 - Q3 2027) ---
+      { name: "Autonomous Dispute Preparation AI Agent", status: "PLANNED", tier: "Litigation (Mid-Term)", note: "Pre-litigation statutory legal demand notice generator, breach timeline chronology constructor, and court-admissible evidence bundle assembler (Q1 2027)" },
+      { name: "Scanned Bengali OCR & Table Parser", status: "PLANNED", tier: "Data (Mid-Term)", note: "Multi-column scanned Bengali legal deed parser, Land Ministry khatiyan/porcha digitization, and stamp paper seal extraction (Q2 2027)" },
+      { name: "WhatsApp & Telegram Voice Legal Bot", status: "PLANNED", tier: "Access (Mid-Term)", note: "Voice-to-text Bengali legal advisory for low-literacy migrant workers, rural landholders, and micro-entrepreneurs via WhatsApp Business API (Q3 2027)" },
+
+      // --- LONG-TERM STRATEGIC ROADMAP (Q3 2027+) ---
+      { name: "Cross-Border South Asian Legal Ingestion", status: "PLANNED", tier: "Expansion (Long-Term)", note: "Indian Companies Act 2013, Bharatiya Nyaya Sanhita (BNS), Pakistan Labour Code, and UAE DIFC Common Law for 4.5M+ South Asian expatriates (Q3 2027)" },
+      { name: "Decentralized Advocate Reputation & Escrow", status: "PLANNED", tier: "Web3 (Long-Term)", note: "Cryptographic on-chain advocate identity verification, zero-knowledge bar credentials, and smart contract milestone payouts (Q4 2027)" },
+      { name: "Autonomous Mock Arbitrator & Case Simulator", status: "PLANNED", tier: "Analytics (Long-Term)", note: "Monte Carlo case outcome simulator, judicial precedent victory probability estimator, and pre-trial settlement range calculator (2028)" },
     ],
 
     tech_stack: [
