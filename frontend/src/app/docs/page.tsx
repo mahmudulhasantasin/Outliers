@@ -332,7 +332,7 @@ const INITIAL_DOCS_DATA = {
   },
 
   // --- TEAM ---
-  team_name: "Team Advotech",
+  team_name: "Outliers",
   team: [
     {
       name: "Mahmudul Hasan Tasin",
@@ -867,7 +867,7 @@ const INITIAL_DOCS_DATA = {
     contributors: {
       headline: "Engineering Leadership, Open Source & Governance",
       summary: "Advotech Copilot is built and governed under rigorous CI/CD test gates, signed commits, and specialized functional division across systems engineering, AI research, and statutory legal research.",
-      lead: "Team Advotech Engineering Core",
+      lead: "Outliers Engineering Core",
       branches: "Main Active Branch: sayem (Base: main) • Production API: Render Docker • Frontend: Vercel Edge",
     },
 
@@ -2218,8 +2218,8 @@ export default function DocsSystem() {
             <span>Long-term Vision</span>
             <span className="toc-count">11</span>
           </a>
-          <a href="#team" className={tocActive("team")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("Team Advotech") ? undefined : "none" }}>
-            <span>Team Advotech</span>
+          <a href="#team" className={tocActive("team")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("Outliers") || tocMatch("Team") ? undefined : "none" }}>
+            <span>Outliers</span>
             <span className="toc-count">12</span>
           </a>
 
