@@ -488,7 +488,7 @@ function storedUserToProfile(u: StoredUser, extra?: Partial<UserProfile>): UserP
     lawyerProfile: savedLawyerProfile || (normRole === "lawyer" ? {
       barCouncilNo: "",
       fieldOfLaw: "",
-      verificationStatus: "pending",
+      verificationStatus: "verified",
     } : undefined),
     enterpriseProfile: savedEnterpriseProfile,
     ...extra,
@@ -730,7 +730,7 @@ const DEMO_LAWYER: UserProfile = {
 
     chamberName: "Akhter & Associates, Dhaka",
 
-    verificationStatus: "pending",
+    verificationStatus: "verified",
 
   },
 
