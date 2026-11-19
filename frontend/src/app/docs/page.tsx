@@ -353,7 +353,7 @@ const INITIAL_DOCS_DATA = {
       attendance: "Physical (In-person)",
       email: "smsayemhossain1@gmail.com",
       avatar: "/team/sayem.webp",
-      objPos: "top center",
+      objPos: "center center",
       expertise: "Product & UX Design, Design Systems, Human-Centered Interaction",
     },
     {
@@ -364,7 +364,7 @@ const INITIAL_DOCS_DATA = {
       attendance: "Virtual (Online)",
       email: "shuaib.cyclist@gmail.com",
       avatar: "/team/Mohammad_Shuaib.webp",
-      objPos: "top center",
+      objPos: "center center",
       expertise: "Full-Stack Development,Next.js 15, Scalable APIs",
     },
     {
@@ -375,7 +375,7 @@ const INITIAL_DOCS_DATA = {
       attendance: "Virtual (Online)",
       email: "mohammadsajjadksa@gmail.com",
       avatar: "/team/sajjad.webp",
-      objPos: "top center",
+      objPos: "center center",
       expertise: "Product Strategy, Global Regulatory Compliance, Cross-Border Advisory",
     },
     {
@@ -386,7 +386,7 @@ const INITIAL_DOCS_DATA = {
       attendance: "Physical (In-person)",
       email: "abdussubahan751@gmail.com",
       avatar: "/team/jibon.webp",
-      objPos: "top center",
+      objPos: "center center",
       expertise: "Business Analysis, Market Feasibility, Enterprise Client Workflows",
     },
     {
@@ -397,7 +397,7 @@ const INITIAL_DOCS_DATA = {
       attendance: "Physical (In-person)",
       email: "farhanaafrinmedha@gmail.com",
       avatar: "/team/medha.webp",
-      objPos: "top center",
+      objPos: "center center",
       expertise: "Product Presentation, Stakeholder Communication, Legal Tech Advocacy",
     },
   ],
@@ -1872,30 +1872,50 @@ const STYLES = `
       line-height: 1.3 !important;
     }
 
-    /* 5. Team Section: 3x2 Grid for Clean Single A4 Page Fitting */
+    /* 5. Team Section: 3x2 Grid with Full, Uncut Square Headshot Photos */
     [data-section="team"] .grid-3 {
       display: grid !important;
       grid-template-columns: repeat(3, 1fr) !important;
       gap: 0.65rem !important;
     }
     .team-card {
-      margin-bottom: 0.35rem !important;
+      margin-bottom: 0.25rem !important;
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
     }
     .team-img-wrap {
-      aspect-ratio: 16/10 !important;
-      max-height: 85px !important;
+      width: 100% !important;
+      aspect-ratio: 1/1 !important;
+      max-height: none !important;
+      height: auto !important;
+      overflow: hidden !important;
+      background: #f5f5f5 !important;
+    }
+    .team-img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      object-position: center center !important;
+      display: block !important;
     }
     .team-body {
-      padding: 0.5rem 0.65rem !important;
+      padding: 0.45rem 0.65rem !important;
       gap: 0.15rem !important;
     }
     .team-name {
       font-size: 0.88rem !important;
     }
+    .team-role {
+      font-size: 0.62rem !important;
+    }
+    .team-email {
+      font-size: 0.7rem !important;
+    }
     .team-exp {
-      font-size: 0.66rem !important;
-      margin-top: 0.25rem !important;
-      padding-top: 0.25rem !important;
+      font-size: 0.64rem !important;
+      margin-top: 0.2rem !important;
+      padding-top: 0.2rem !important;
+      line-height: 1.3 !important;
     }
 
     /* 6. Comparison & Data Tables */
