@@ -30,9 +30,9 @@ const INITIAL_DOCS_DATA = {
     last_updated: "2026-11-18",
   },
   stats: {
-    total_users: 44,
-    total_audits: 33,
-    statutes_indexed: 35000,
+    total_users: 45,
+    total_audits: 36,
+    statutes_indexed: 3547,
     avg_turnaround: "30s",
     benchmark_pass: "80.8%",
     accuracy_rate: "91.7%",
@@ -83,12 +83,12 @@ const INITIAL_DOCS_DATA = {
           title: "Advotech Copilot (Bilingual Legal Q&A)",
           desc: "Conversational legal intelligence operating fluently in Bengali, Banglish, and English, grounded deterministically in 35,000+ codified sections of the Laws of Bangladesh.",
           highlights: [
-            "35,000+ official Bangladesh Code statutes indexed in GraphRAG",
-            "Sub-second citation grounding via ChromaDB + Groq LLaMA 3.3 70B",
+            "3,547 Bangladesh Acts (35,000+ codified sections) indexed in statutory RAG",
+            "Sub-second citation grounding via Gemini 3.5 Flash Lite + Groq Qwen 2.5 27B waterfall",
             "Deterministic foreign-jurisdiction blocker (zero hallucinations)",
           ],
           metrics: [
-            { v: "35K+", l: "Statutes indexed" },
+            { v: "3,547", l: "Acts indexed" },
             { v: "3", l: "Input languages" },
           ],
           cta: "Test Copilot Simulation Below",
@@ -224,7 +224,7 @@ const INITIAL_DOCS_DATA = {
       matrix: [
         {
           feature: "Bangladesh Code Ingestion",
-          advotech: "35,000+ Sections Codified",
+          advotech: "3,547 Acts (35,000+ Sections)",
           harvey: "None (US/UK Focus)",
           traditional: "Manual Paper Volumes",
           directories: "None (Phonebook Only)",
@@ -422,7 +422,7 @@ const INITIAL_DOCS_DATA = {
         },
         {
           persona: "Practicing Advocates & Law Chambers",
-          scenario: "Accelerating junior research by instantly finding relevant statutory sections and precedent citations across all 35,000+ gazette provisions.",
+          scenario: "Accelerating junior research by instantly finding relevant statutory sections and precedent citations across 3,547 Acts (35,000+ gazette provisions).",
         },
         {
           persona: "Non-Resident Bangladeshi Diaspora",
@@ -449,13 +449,13 @@ const INITIAL_DOCS_DATA = {
         },
         {
           label: "03. Services & Reasoning (Services)",
-          items: ["LangGraph State Machines", "Act Alias Resolver (3,547 Acts)", "Groq LLaMA 3.3 70B & GLM-4 Fallback", "Deterministic Hallucination Interceptor"],
+          items: ["LangGraph State Machines", "Act Alias Resolver (3,547 Acts)", "Gemini 3.5 Flash Lite & Groq Qwen Fallback", "Deterministic Hallucination Interceptor"],
           icon: "🤖",
           role: "Multi-step reasoning & statutory routing",
         },
         {
           label: "04. Vector & Relational Store (DB)",
-          items: ["Qdrant Cloud (e5-small embeddings)", "Supabase Postgres (pgvector)", "Credit Ledger (Immutable Transactions)", "Metric Events Benchmarking"],
+          items: ["Qdrant Cloud (bge-m3 embeddings)", "Supabase Postgres (pgvector)", "Credit Ledger (Immutable Transactions)", "Metric Events Benchmarking"],
           icon: "🗄",
           role: "Hybrid search & persistent enterprise storage",
         },
@@ -476,14 +476,14 @@ const INITIAL_DOCS_DATA = {
           phase: "02. Processing Phase",
           tag: "Processing",
           title: "API Gateway Auth, RBAC & Dual-Path Retrieval",
-          desc: "FastAPI router validates JWT token_version and checks RBAC authorization. The query splits into Path A (3,547 Act Alias dictionary exact match) and Path B (Qdrant dense vector search with e5-small embeddings).",
+          desc: "FastAPI router validates JWT token_version and checks RBAC authorization. The query splits into Path A (3,547 Act Alias dictionary exact match) and Path B (Qdrant dense vector search with bge-m3 multilingual embeddings + BM25).",
           icon: "⚙",
         },
         {
           phase: "03. AI Phase",
           tag: "AI",
           title: "LangGraph Multi-Step Reasoning & Grounded Synthesis",
-          desc: "LangGraph state machine feeds extracted clauses and retrieved statutory chunks into Groq LLaMA 3.3 70B. Inference is strictly constrained to the ingested statutory context with zero parametric guessing.",
+          desc: "LangGraph state machine feeds extracted clauses and retrieved statutory chunks into Gemini 3.5 Flash Lite with Groq Qwen 2.5 27B fallback. Inference is strictly constrained to the ingested statutory context with zero parametric guessing.",
           icon: "🤖",
         },
         {
@@ -505,7 +505,7 @@ const INITIAL_DOCS_DATA = {
 
     feature_matrix: [
       { name: "30s AI Contract Audit (PDF)", status: "LIVE", tier: "Core", note: "91.7% accuracy, 100% clause recall across lease/employment agreements" },
-      { name: "Bilingual Grounded Legal Chat", status: "LIVE", tier: "Core", note: "35,000+ statutes, MRR 0.864, answers in Bengali, Banglish & English" },
+      { name: "Bilingual Grounded Legal Chat", status: "LIVE", tier: "Core", note: "3,547 Acts (35,000+ sections), MRR 0.864, answers in Bengali, Banglish & English" },
       { name: "SSLCommerz / bKash Credit Ledger", status: "LIVE", tier: "Billing", note: "Instant ৳28 micro-payments with IPN callbacks and credit deduction" },
       { name: "Client-Side PII Auto-Redaction", status: "LIVE", tier: "Security", note: "Regex & NLP sanitization of BD mobile, NID & financial numbers" },
       { name: "HITL Lawyer Review Marketplace", status: "BETA", tier: "Marketplace", note: "3-hour SLA cron matching, digital seal, fee disbursement" },
@@ -528,13 +528,13 @@ const INITIAL_DOCS_DATA = {
       },
       {
         layer: "AI & Vector Search",
-        items: "Qdrant Cloud (35,000+ statute vectors), e5-small embeddings, BM25 sparse index, ChromaDB",
+        items: "Qdrant Cloud (3,547 Acts / 35,000+ vectors), bge-m3 embeddings, BM25 sparse index, Reciprocal Rank Fusion",
         desc: "Hybrid two-path semantic search yielding 93.9% Act Hit@K retrieval performance.",
       },
       {
         layer: "LLM Inference Engine",
-        items: "Groq LLaMA 3.3 70B (Sub-second primary) → GLM-4 (Fallback) → Local Gemma 3n (Offline verify)",
-        desc: "Multi-tier model fallback ladder guaranteeing continuous availability under load.",
+        items: "Google Gemini 3.5 Flash Lite (Primary) → Groq Qwen 2.5 27B (Fallback) → Z.AI GLM-4 (Resilience)",
+        desc: "Multi-tier 3-layer model waterfall guaranteeing continuous availability and 80.8% benchmark pass rate under load.",
       },
       {
         layer: "Database & Storage",
@@ -652,9 +652,9 @@ const INITIAL_DOCS_DATA = {
     data_layer: {
       headline: "Sovereign Ingestion, Vectorization & Client-Side Privacy Standards",
       points: [
-        "Statutory Ingestion Pipeline: Custom web ETL scraper extracted all 35,000+ sections across 1,100+ volumes of the official Bangladesh Code (bdlaws.minlaw.gov.bd). Data is normalized with act ID, amendment history, and gazette publication dates.",
+        "Statutory Ingestion Pipeline: Custom web ETL scraper extracted all 35,000+ sections across 3,547 Acts in 1,100+ volumes of the official Bangladesh Code (bdlaws.minlaw.gov.bd). Data is normalized with act ID, amendment history, and gazette publication dates.",
         "Sovereign Client-Side PII Scrubbing: User contracts undergo client-side regex and tokenizer scrubbing before upload. All personal names, NID numbers, phone numbers, and financial details are anonymized into standardized tokens ([PARTY_A], [AMOUNT_TK]).",
-        "Dual-Embedding Geometry: Text chunks are embedded using multilingual e5-small (384 dimensions) for dense semantic retrieval, coupled with custom BM25 sparse indices for exact statutory section numbers (§ 27, § 74, § 138).",
+        "Dual-Embedding Geometry: Text chunks are embedded using multilingual bge-m3 (dense + sparse representations) for semantic retrieval, coupled with custom BM25 keyword indices for exact statutory section numbers (§ 27, § 74, § 138).",
         "PostgreSQL pgvector Schema: Relational metadata (users, audit_memos, credit_ledger, advocate_inquiries) is partitioned with Row-Level Security (RLS) guaranteeing tenant isolation.",
         "Zero-Retention AI Policy: Contract audit texts are processed in memory and never stored in external LLM vendor logging buffers. Audit memos are stored encrypted in user vaults.",
       ],
@@ -665,7 +665,7 @@ const INITIAL_DOCS_DATA = {
           badge: "LAYER 01",
           icon: "book-open",
           title: "Statutory Ingestion Pipeline",
-          desc: "Custom web ETL scraper extracted all 35,000+ sections across 1,100+ volumes of the official Bangladesh Code (bdlaws.minlaw.gov.bd). Data is normalized with act ID, amendment history, and gazette publication dates.",
+          desc: "Custom web ETL scraper extracted all 35,000+ sections across 3,547 Acts in 1,100+ volumes of the official Bangladesh Code (bdlaws.minlaw.gov.bd). Data is normalized with act ID, amendment history, and gazette publication dates.",
         },
         {
           num: "02",
@@ -681,7 +681,7 @@ const INITIAL_DOCS_DATA = {
           badge: "LAYER 03",
           icon: "layers",
           title: "Dual-Embedding Geometry",
-          desc: "Text chunks are embedded using multilingual e5-small (384 dimensions) for dense semantic retrieval, coupled with custom BM25 sparse indices for exact statutory section numbers (§ 27, § 74, § 138).",
+          desc: "Text chunks are embedded using multilingual bge-m3 (dense + sparse representations) for semantic retrieval, coupled with custom BM25 keyword indices for exact statutory section numbers (§ 27, § 74, § 138).",
         },
         {
           num: "04",
@@ -709,7 +709,7 @@ const INITIAL_DOCS_DATA = {
         "LangGraph State Machine: Controls the lifecycle of each request across 5 states: QueryClassifier → StatutoryRetriever → ConstraintValidator → Generator → CitationChecker.",
         "Deterministic Guardrail Interceptor: Custom post-generation filter regex parses statutory citations in the response. If a cited section cannot be matched against the official gazette database, the generation is blocked and re-prompted.",
         "Explainable Citation Grounding: Every affirmative statement in the response includes a hard-linked hyper-reference to the specific section, amendment year, and bdlaws gazette URL.",
-        "Model Failover Ladder: Primary requests execute against Groq LLaMA 3.3 70B (latency < 1.2s). If Groq rate limits, the request fails over seamlessly to GLM-4 without user disruption.",
+        "Model Failover Ladder: Primary requests execute against Google Gemini 3.5 Flash Lite with temperature waterfall. If rate limited, the request fails over seamlessly to Groq Qwen 2.5 27B and Z.AI GLM-4 without user disruption.",
       ],
       layers: [
         {
@@ -750,7 +750,7 @@ const INITIAL_DOCS_DATA = {
           badge: "LAYER 05",
           icon: "zap",
           title: "Model Failover Ladder",
-          desc: "Primary requests execute against Groq LLaMA 3.3 70B (latency < 1.2s). If Groq rate limits, the request fails over seamlessly to GLM-4 without user disruption.",
+          desc: "Primary requests execute against Google Gemini 3.5 Flash Lite with temperature waterfall. If rate limited, the request fails over seamlessly to Groq Qwen 2.5 27B and Z.AI GLM-4 without user disruption.",
         },
       ],
     },
@@ -792,7 +792,7 @@ const INITIAL_DOCS_DATA = {
       headline: "Rigorous Production Latency, Scalability & Benchmarks",
       metrics: [
         { label: "Contract Audit Latency", value: "~28s", note: "15-page complex PDF agreement" },
-        { label: "Bilingual Chat Latency", value: "1.4s", note: "Time-to-first-token on Groq LLaMA" },
+        { label: "Bilingual Chat Latency", value: "1.4s", note: "Time-to-first-token on Gemini & Groq" },
         { label: "API System Uptime", value: "99.4%", note: "Production Render & Vercel SLA" },
         { label: "Golden Benchmark Pass", value: "80.8%", note: "59/73 gold cases (100% statutory router accuracy)" },
         { label: "Provision Recall", value: "100%", note: "33/33 test provisions detected" },
@@ -859,8 +859,8 @@ const INITIAL_DOCS_DATA = {
         { label: "Act Hit@K", value: "93.9%", sub: "Top-K statutory retrieval accuracy" },
         { label: "Hallucination Block", value: "88.9%", sub: "16/18 deterministic guard intercepts" },
         { label: "RAG MRR", value: "0.864", sub: "Mean Reciprocal Rank accuracy" },
-        { label: "Active Test Users", value: "44", sub: "Production beta cohort" },
-        { label: "Contracts Audited", value: "33", sub: "Commercial agreements analyzed" },
+        { label: "Active Test Users", value: "45", sub: "Production beta cohort" },
+        { label: "Contracts Audited", value: "36", sub: "Commercial agreements analyzed" },
       ],
     },
 
