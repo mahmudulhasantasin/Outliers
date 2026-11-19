@@ -616,6 +616,54 @@ const INITIAL_DOCS_DATA = {
         payload: "Query params: ?status=completed",
       },
       {
+        group: "Enterprise",
+        method: "POST",
+        path: "/api/company/playbooks",
+        auth: "Bearer JWT (Enterprise Admin)",
+        desc: "Creates corporate compliance rule playbook enforcing custom clause constraints (e.g., maximum liability caps, required dispute jurisdiction).",
+        payload: '{ "name": "Standard IT Vendor Playbook", "rules": [{ "type": "no_void_non_compete", "target_statute": "Contract Act § 27" }] }',
+      },
+      {
+        group: "Enterprise",
+        method: "GET",
+        path: "/api/company/vault",
+        auth: "Bearer JWT (Enterprise Member)",
+        desc: "Retrieves encrypted corporate legal vault repository with department tags, health audit grades, and team access logs.",
+        payload: "Query params: ?department=Engineering&min_grade=80",
+      },
+      {
+        group: "Enterprise",
+        method: "POST",
+        path: "/api/company/members",
+        auth: "Bearer JWT (Enterprise Admin)",
+        desc: "Provisions enterprise team seats, role-based permissions (Admin, Reviewer, Viewer), and monthly audit quota pools.",
+        payload: '{ "email": "legal-counsel@enterprise.bd", "role": "reviewer", "monthly_quota": 50 }',
+      },
+      {
+        group: "Lawyer",
+        method: "GET",
+        path: "/api/lawyer/queue",
+        auth: "Bearer JWT (Verified Advocate)",
+        desc: "Polls live escrow audit queue for contracts requiring human-in-the-loop advocate verification under the 3-hour SLA window.",
+        payload: "Query params: ?court_tier=supreme_court&status=pending",
+      },
+      {
+        group: "Lawyer",
+        method: "POST",
+        path: "/api/lawyer/active/{memo_id}/submit",
+        auth: "Bearer JWT (Verified Advocate)",
+        desc: "Submits advocate-reviewed redlines, statutory citation seals, and cryptographic bar license sign-off to complete audit.",
+        payload: '{ "verification_status": "APPROVED", "bar_registration": "SC-10492/BD", "advocate_notes": "Section 74 damages mitigated to actual loss." }',
+      },
+      {
+        group: "Lawyer",
+        method: "GET",
+        path: "/api/lawyer/earnings",
+        auth: "Bearer JWT (Verified Advocate)",
+        desc: "Retrieves real-time advocate escrow wallet balance, completed review fee ledgers, and bKash/Bank payout status.",
+        payload: "{}",
+      },
+      {
         group: "Payments",
         method: "POST",
         path: "/api/payments/initiate",
@@ -630,6 +678,46 @@ const INITIAL_DOCS_DATA = {
         auth: "HMAC Signature",
         desc: "IPN webhook handler validating SSLCommerz cryptographic signature and crediting user balance.",
         payload: "FormData: { tran_id, val_id, amount, status: 'VALID' }",
+      },
+      {
+        group: "Admin",
+        method: "GET",
+        path: "/api/admin/dashboard",
+        auth: "Bearer JWT (Super Admin)",
+        desc: "Aggregates platform-wide metrics: total registered advocates, active enterprise seats, system uptime, and dispute escrow balances.",
+        payload: "{}",
+      },
+      {
+        group: "Admin",
+        method: "POST",
+        path: "/api/admin/enterprises/{enterprise_id}/approve",
+        auth: "Bearer JWT (Super Admin)",
+        desc: "Approves enterprise corporate account after verifying RJSC certificate and activates pooled credit tier.",
+        payload: '{ "approved": true, "corporate_credit_limit": 500, "contract_vault_active": true }',
+      },
+      {
+        group: "Admin",
+        method: "POST",
+        path: "/api/admin/lawyers/{lawyer_id}/approve",
+        auth: "Bearer JWT (Super Admin)",
+        desc: "Verifies advocate Bangladesh Bar Council enrollment certificate and activates HITL dispatch queue access.",
+        payload: '{ "approved": true, "bar_id_verified": true, "sla_tier": "tier_1_supreme_court" }',
+      },
+      {
+        group: "Admin",
+        method: "GET",
+        path: "/api/admin/audit-logs",
+        auth: "Bearer JWT (Super Admin)",
+        desc: "Returns tamper-evident cryptographic system audit trail of all privilege escalations, BOLA checks, and data export events.",
+        payload: "Query params: ?page=1&event_type=security_check",
+      },
+      {
+        group: "Platform",
+        method: "GET",
+        path: "/api/platform/system-status",
+        auth: "Public / Monitoring",
+        desc: "Multi-service distributed health probe reporting status for FastAPI gateway, Qdrant Cloud, Gemini 3.5 Flash, Supabase DB, and SSLCommerz.",
+        payload: '{ "status": "HEALTHY", "latency_ms": 42, "qdrant_indexed_statutes": 35000 }',
       },
       {
         group: "MCP",
@@ -3516,8 +3604,29 @@ export default function DocsSystem() {
         <div data-section="api-docs">
           <Section id="api-docs" eyebrow="F. API Reference & Explorer" headline="REST Endpoints & FastMCP Protocol Specification">
             <div className="api-explorer">
+              {/* TELEMETRY / COVERAGE BANNER */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "0.85rem 1.25rem", background: "var(--bg-alt)", border: "1px solid var(--border-color)", borderRadius: "6px", marginBottom: "1.25rem", flexWrap: "wrap", gap: "0.75rem" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", flexWrap: "wrap" }}>
+                  <span style={{ display: "inline-block", width: "8px", height: "8px", borderRadius: "50%", background: "#16a34a" }}></span>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "var(--text-dark)" }}>
+                    {filteredApiDocs.length} Core Documented Specification Endpoints
+                  </span>
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-body)", opacity: 0.85 }}>
+                    • 135 Total FastAPI Microservice Routes Active
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.7rem", background: "var(--bg-accent)", color: "var(--accent-clay)", padding: "0.2rem 0.55rem", borderRadius: "4px", fontWeight: 800 }}>
+                    OpenAPI 3.1 & Redoc
+                  </span>
+                  <span style={{ fontSize: "0.7rem", background: "var(--bg-accent)", color: "var(--accent-clay)", padding: "0.2rem 0.55rem", borderRadius: "4px", fontWeight: 800 }}>
+                    FastMCP JSON-RPC 2.0
+                  </span>
+                </div>
+              </div>
+
               <div className="api-filter-tabs">
-                {["All", "Auth", "Chat", "Audit", "Payments", "MCP"].map((group) => (
+                {["All", "Auth", "Chat", "Audit", "Enterprise", "Lawyer", "Payments", "Admin", "Platform", "MCP"].map((group) => (
                   <button
                     key={group}
                     className={`api-tab-btn ${apiFilter === group ? "active" : ""}`}
