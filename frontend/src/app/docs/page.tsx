@@ -455,7 +455,7 @@ const INITIAL_DOCS_DATA = {
         },
         {
           label: "04. Vector & Relational Store (DB)",
-          items: ["Qdrant Cloud (bge-m3 embeddings)", "Supabase Postgres (pgvector)", "Credit Ledger (Immutable Transactions)", "Metric Events Benchmarking"],
+          items: ["Qdrant Cloud (multilingual-e5-small)", "Supabase Postgres (pgvector)", "Credit Ledger (Immutable Transactions)", "Metric Events Benchmarking"],
           icon: "🗄",
           role: "Hybrid search & persistent enterprise storage",
         },
@@ -476,7 +476,7 @@ const INITIAL_DOCS_DATA = {
           phase: "02. Processing Phase",
           tag: "Processing",
           title: "API Gateway Auth, RBAC & Dual-Path Retrieval",
-          desc: "FastAPI router validates JWT token_version and checks RBAC authorization. The query splits into Path A (3,547 Act Alias dictionary exact match) and Path B (Qdrant dense vector search with bge-m3 multilingual embeddings + BM25).",
+          desc: "FastAPI router validates JWT token_version and checks RBAC authorization. The query splits into Path A (3,547 Act Alias dictionary exact match) and Path B (Qdrant dense vector search with multilingual-e5-small embeddings).",
           icon: "⚙",
         },
         {
@@ -528,7 +528,7 @@ const INITIAL_DOCS_DATA = {
       },
       {
         layer: "AI & Vector Search",
-        items: "Qdrant Cloud (3,547 Acts / 35,000+ vectors), bge-m3 embeddings, BM25 sparse index, Reciprocal Rank Fusion",
+        items: "Qdrant Cloud (collection bd_laws_e5_small), multilingual-e5-small embeddings, ProductionHybridRetriever (Path A + Path B)",
         desc: "Hybrid two-path semantic search yielding 93.9% Act Hit@K retrieval performance.",
       },
       {
@@ -654,7 +654,7 @@ const INITIAL_DOCS_DATA = {
       points: [
         "Statutory Ingestion Pipeline: Custom web ETL scraper extracted all 35,000+ sections across 3,547 Acts in 1,100+ volumes of the official Bangladesh Code (bdlaws.minlaw.gov.bd). Data is normalized with act ID, amendment history, and gazette publication dates.",
         "Sovereign Client-Side PII Scrubbing: User contracts undergo client-side regex and tokenizer scrubbing before upload. All personal names, NID numbers, phone numbers, and financial details are anonymized into standardized tokens ([PARTY_A], [AMOUNT_TK]).",
-        "Dual-Embedding Geometry: Text chunks are embedded using multilingual bge-m3 (dense + sparse representations) for semantic retrieval, coupled with custom BM25 keyword indices for exact statutory section numbers (§ 27, § 74, § 138).",
+        "Dual-Path Retrieval Geometry: Text chunks are embedded using multilingual-e5-small (384 dimensions) for dense semantic retrieval (Path B), combined with Path A 3,547-act alias exact section scroll matching (§ 27, § 74, § 138).",
         "PostgreSQL pgvector Schema: Relational metadata (users, audit_memos, credit_ledger, advocate_inquiries) is partitioned with Row-Level Security (RLS) guaranteeing tenant isolation.",
         "Zero-Retention AI Policy: Contract audit texts are processed in memory and never stored in external LLM vendor logging buffers. Audit memos are stored encrypted in user vaults.",
       ],
@@ -680,8 +680,8 @@ const INITIAL_DOCS_DATA = {
           category: "Vector & Sparse Indexing",
           badge: "LAYER 03",
           icon: "layers",
-          title: "Dual-Embedding Geometry",
-          desc: "Text chunks are embedded using multilingual bge-m3 (dense + sparse representations) for semantic retrieval, coupled with custom BM25 keyword indices for exact statutory section numbers (§ 27, § 74, § 138).",
+          title: "Dual-Path Retrieval Geometry",
+          desc: "Text chunks are embedded using multilingual-e5-small (384 dimensions) for dense semantic retrieval (Path B), combined with Path A 3,547-act alias exact section scroll matching (§ 27, § 74, § 138).",
         },
         {
           num: "04",
