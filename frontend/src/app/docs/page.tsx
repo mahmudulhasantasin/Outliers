@@ -1271,7 +1271,7 @@ const STYLES = `
   .team-exp { font-size: 0.78rem; color: var(--text-body); opacity: 0.85; margin-top: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.5rem; line-height: 1.4; }
 
   /* Architecture Topology Cards */
-  .arch-topology { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-top: 2rem; }
+  .arch-topology { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-top: 2rem; }
   .arch-layer-card { background: #0e0e0e; border: 1px solid #2e2e2e; border-radius: 0; padding: 1.5rem; display: flex; flex-direction: column; gap: 0.75rem;  }
   .arch-layer-head { display: flex; align-items: center; gap: 0.75rem; }
   .arch-layer-icon { font-size: 1.5rem; }
@@ -1466,6 +1466,7 @@ const STYLES = `
     .section-lead { font-size: 1.02rem; margin-bottom: 1.5rem; }
     .paragraph { font-size: 0.98rem; }
     .grid-2 { grid-template-columns: 1fr; gap: 1.25rem; }
+    .arch-topology { grid-template-columns: 1fr; gap: 1.25rem; }
     .grid-3 { grid-template-columns: 1fr; gap: 1.25rem; }
     .grid-4 { grid-template-columns: 1fr 1fr; gap: 1rem; }
     .hero-editorial-grid { grid-template-columns: 1fr; gap: 2rem; }
