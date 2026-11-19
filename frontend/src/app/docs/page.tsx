@@ -1716,11 +1716,8 @@ const STYLES = `
       padding: 1.5rem 0.25rem !important;
     }
 
-    /* PART II TECHNICAL SECTIONS: Allow natural multi-page flow */
-    [data-section="overview"],
-    [data-section="architecture"],
+    /* PART II TECHNICAL SECTIONS: Intentional chapter page breaks */
     [data-section="data-flow"],
-    [data-section="features"],
     [data-section="tech-stack"],
     [data-section="api-docs"],
     [data-section="data-layer"],
@@ -1729,8 +1726,17 @@ const STYLES = `
     [data-section="performance"],
     [data-section="security"],
     [data-section="analytics"],
-    [data-section="contributors"],
     [data-section="changelog"] {
+      break-before: page !important;
+      page-break-before: always !important;
+      break-inside: auto !important;
+      page-break-inside: auto !important;
+    }
+
+    [data-section="overview"],
+    [data-section="architecture"],
+    [data-section="features"],
+    [data-section="contributors"] {
       break-before: auto !important;
       page-break-before: auto !important;
       break-inside: auto !important;
@@ -1794,7 +1800,7 @@ const STYLES = `
       font-size: 0.72rem !important;
     }
 
-    /* HEADINGS: NEVER ORPHAN A HEADING WITHOUT ITS CONTENT */
+    /* HEADINGS: NEVER ORPHAN A HEADING WITHOUT ITS CONTENT OR SPLIT ACROSS PAGES */
     h1, h2, h3, h4, h5, h6,
     .headline, .hero-main-headline,
     .eyebrow, .section-lead,
@@ -1803,6 +1809,8 @@ const STYLES = `
     .market-tier, .gtm-step, .team-name, .stack-layer,
     .arch-layer-title, .dataflow-card-title, .sec-card-title,
     .clause-title, .clause-head {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
       break-after: avoid !important;
       page-break-after: avoid !important;
     }
@@ -1852,6 +1860,8 @@ const STYLES = `
     .arch-layer-card,
     .arch-step-card,
     .dataflow-pipeline-card,
+    .perf-opt-box,
+    .governance-box,
     .telemetry-cell {
       break-inside: avoid !important;
       page-break-inside: avoid !important;
@@ -1961,6 +1971,10 @@ const STYLES = `
     }
 
     /* 5. Team Section: 3x2 Grid with Full, Uncut Square Headshot Photos */
+    [data-section="team"] {
+      break-inside: avoid !important;
+      page-break-inside: avoid !important;
+    }
     [data-section="team"] .grid-3 {
       display: grid !important;
       grid-template-columns: repeat(3, 1fr) !important;
@@ -1978,13 +1992,18 @@ const STYLES = `
       height: auto !important;
       overflow: hidden !important;
       background: #f5f5f5 !important;
+      position: relative !important;
+      display: block !important;
     }
     .team-img {
       width: 100% !important;
       height: 100% !important;
       object-fit: cover !important;
-      object-position: center center !important;
       display: block !important;
+      opacity: 1 !important;
+      visibility: visible !important;
+      print-color-adjust: exact !important;
+      -webkit-print-color-adjust: exact !important;
     }
     .team-body {
       padding: 0.45rem 0.65rem !important;
@@ -2257,6 +2276,29 @@ export default function DocsSystem() {
       .catch(() => {
         // Banked benchmark metrics
       });
+
+    // 3. Eagerly preload and decode team member avatars for instant, flawless print & display
+    if (typeof window !== "undefined") {
+      INITIAL_DOCS_DATA.team.forEach((m) => {
+        if (m.avatar) {
+          const img = new Image();
+          img.src = m.avatar;
+          if (img.decode) img.decode().catch(() => {});
+        }
+      });
+    }
+  }, []);
+
+  // --- Ensure all images are eagerly evaluated on beforeprint ---
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const handleBeforePrint = () => {
+      document.querySelectorAll("img").forEach((img) => {
+        img.loading = "eager";
+      });
+    };
+    window.addEventListener("beforeprint", handleBeforePrint);
+    return () => window.removeEventListener("beforeprint", handleBeforePrint);
   }, []);
 
   // --- Intersection Observer for Scroll Tracking ---
@@ -2382,11 +2424,41 @@ export default function DocsSystem() {
     setVisibility("SCHEDULED");
   };
 
-  // --- Export PDF ---
-  const handlePrint = () => {
+  // --- Export PDF (With Synchronous Pre-Decode Barrier for Flawless Printing) ---
+  const handlePrint = async () => {
     if (typeof window !== "undefined") {
       const oldTitle = document.title;
       document.title = "Advotech-Copilot-Whitepaper-YC-Pitch";
+
+      try {
+        const images = Array.from(document.querySelectorAll("img"));
+        await Promise.all(
+          images.map((img) => {
+            img.loading = "eager";
+            if (img.complete && img.naturalHeight !== 0) {
+              return img.decode ? img.decode().catch(() => {}) : Promise.resolve();
+            }
+            return new Promise<void>((resolve) => {
+              const timer = setTimeout(resolve, 800);
+              img.onload = () => {
+                clearTimeout(timer);
+                if (img.decode) img.decode().catch(() => {}).then(() => resolve());
+                else resolve();
+              };
+              img.onerror = () => {
+                clearTimeout(timer);
+                resolve();
+              };
+            });
+          })
+        );
+      } catch (e) {
+        console.warn("Print image pre-decode warning:", e);
+      }
+
+      // Small tick for paint layout stabilization
+      await new Promise((r) => setTimeout(r, 150));
+
       window.print();
       setTimeout(() => {
         document.title = oldTitle;
@@ -3394,8 +3466,9 @@ export default function DocsSystem() {
                         src={member.avatar}
                         alt={member.name}
                         className="team-img"
-                        loading="lazy"
-                        style={{ objectPosition: member.objPos || "top center" }}
+                        loading="eager"
+                        decoding="sync"
+                        style={{ objectPosition: member.objPos || "center center" }}
                         onError={() => setImgErrors((prev) => ({ ...prev, [member.name]: true }))}
                       />
                     )}
@@ -3782,7 +3855,7 @@ export default function DocsSystem() {
               ))}
             </div>
 
-            <div style={{ marginTop: "2rem", background: "#0e0e0e", border: "1px solid var(--border-color)", borderRadius: "10px", padding: "1.75rem" }}>
+            <div className="perf-opt-box" style={{ marginTop: "2rem", background: "#0e0e0e", border: "1px solid var(--border-color)", borderRadius: "10px", padding: "1.75rem" }}>
               <h4 style={{ fontFamily: "var(--font-fraunces), sans-serif", fontSize: "1.2rem", margin: "0 0 1rem 0", color: "var(--text-dark)" }}>
                 Production Latency & Concurrency Optimization
               </h4>
@@ -3872,7 +3945,7 @@ export default function DocsSystem() {
         <div data-section="contributors">
           <Section id="contributors" eyebrow="N. Team & Contributors" headline={d.tech.contributors.headline} altBg>
             <p className="section-lead">{d.tech.contributors.summary}</p>
-            <div style={{ background: "#0e0e0e", border: "1px solid var(--border-color)", borderRadius: "10px", padding: "1.75rem", marginBottom: "1.5rem" }}>
+            <div className="governance-box" style={{ background: "#0e0e0e", border: "1px solid var(--border-color)", borderRadius: "10px", padding: "1.75rem", marginBottom: "1.5rem" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "var(--accent-clay)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
                   Active Engineering Core & Code Governance
