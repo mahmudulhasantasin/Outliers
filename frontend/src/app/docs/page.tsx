@@ -33,7 +33,7 @@ const INITIAL_DOCS_DATA = {
     total_users: 45,
     total_audits: 36,
     statutes_indexed: 3547,
-    avg_turnaround: "30s",
+    avg_turnaround: "< 1 min",
     benchmark_pass: "80.8%",
     accuracy_rate: "91.7%",
   },
@@ -98,15 +98,15 @@ const INITIAL_DOCS_DATA = {
           id: "contractmind",
           tag: "ENGINE 2: AUTONOMOUS AUDIT",
           tagColor: "orange",
-          title: "ContractMind (30s Contract Risk Audit)",
-          desc: "Upload any PDF agreement. Within ~30 seconds, obtain an executive risk grade (0–100), statutory violation warnings, and copy-ready redlines.",
+          title: "ContractMind (Sub-Minute Contract Risk Audit)",
+          desc: "Upload any PDF agreement. In under 1 minute (benchmarked at ~28s), obtain an executive risk grade (0–100), statutory violation warnings, and copy-ready redlines.",
           highlights: [
             "Unfair penalty (§ 74) & void non-compete (§ 27) auto-detection",
             "Client-side sovereign PII redaction before cloud transmission",
             "Direct Human-in-the-Loop advocate verification dispatch (3-hr SLA)",
           ],
           metrics: [
-            { v: "~30s", l: "Full audit" },
+            { v: "< 1 min", l: "Full audit" },
             { v: "0–100", l: "Risk grade" },
           ],
           cta: "Inspect Sample Audit Below",
@@ -174,7 +174,7 @@ const INITIAL_DOCS_DATA = {
           price: "৳28 / Audit",
           subtext: "Pay-as-you-go via bKash / SSLCommerz",
           features: [
-            "৳28 per autonomous 30s contract audit",
+            "৳28 per autonomous sub-minute contract audit",
             "৳5 per deep multi-statute research query",
             "Zero subscription commitment, instant onboarding",
             "Direct top-up ledger tied to user phone number",
@@ -505,7 +505,7 @@ const INITIAL_DOCS_DATA = {
 
     feature_matrix: [
       // --- LIVE PRODUCTION CORE ---
-      { name: "30s AI Contract Audit (PDF)", status: "LIVE", tier: "Core", note: "Clause-by-clause risk scoring, 100% recall across lease/employment contracts, executive health score (0-100) & redline diffs" },
+      { name: "Sub-Minute AI Contract Audit (PDF)", status: "LIVE", tier: "Core", note: "Clause-by-clause risk scoring in under 1 minute (benchmarked at ~28s for 15-page contracts), 100% recall across lease/employment contracts, executive health score (0-100) & redline diffs" },
       { name: "Bilingual Grounded Legal Chat", status: "LIVE", tier: "Core", note: "3,547 Bangladesh Acts (35,000+ sections), MRR 0.864, answers in Bengali, Banglish & English with hyperlinked gazette citations" },
       { name: "Enterprise Workspaces & Vaults", status: "LIVE", tier: "Enterprise", note: "Departmental encrypted legal repositories, corporate credit pooling, team seat provisioning (Admin/Reviewer/Viewer) (/enterprise/admin)" },
       { name: "Super Admin Platform Governance", status: "LIVE", tier: "Platform", note: "Real-time metrics, RJSC corporate verification, Bar Council advocate approvals, and tamper-evident cryptographic audit logs (/admin)" },
@@ -621,7 +621,7 @@ const INITIAL_DOCS_DATA = {
         method: "POST",
         path: "/api/contract/upload",
         auth: "Bearer JWT",
-        desc: "Accepts multipart/form-data PDF, executes 30s risk analysis, and returns structured clause findings with redlines.",
+        desc: "Accepts multipart/form-data PDF, executes sub-minute risk analysis (benchmarked at ~28s), and returns structured clause findings with redlines.",
         payload: "FormData: { file: document.pdf, contractType: 'employment' }",
       },
       {
@@ -3181,7 +3181,7 @@ export default function DocsSystem() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem", flexWrap: "wrap", gap: "0.5rem" }}>
                 <div>
                   <h3 style={{ fontFamily: "var(--font-fraunces), sans-serif", fontSize: "1.25rem", margin: 0, color: "var(--text-dark)" }}>
-                    2. ContractMind — Autonomous 30s Audit Report Sample
+                    2. ContractMind — Autonomous Sub-Minute Audit Report Sample
                   </h3>
                   <span style={{ fontSize: "0.8rem", color: "var(--text-body)" }}>
                     Document: <code>Software_Engineer_Consultancy_Agreement.pdf</code> (12 pages)

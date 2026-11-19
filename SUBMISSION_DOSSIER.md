@@ -18,14 +18,14 @@ Advotech Copilot
 
 ### 2. Elevator Pitch * (One-liner pitch)
 ```text
-Advotech Copilot is Bangladesh’s first sovereign AI legal intelligence platform, combining 30-second automated contract auditing, grounded bilingual statutory Q&A across 3,547 Acts, and a cryptographic human-in-the-loop advocate verification marketplace.
+Advotech Copilot is Bangladesh’s first sovereign AI legal intelligence platform, combining sub-minute automated contract auditing (avg. ~28s), grounded bilingual statutory Q&A across 3,547 Acts, and a cryptographic human-in-the-loop advocate verification marketplace.
 ```
 
 ---
 
 ### 3. Public Summary *
 ```text
-Advotech Copilot eliminates asymmetric legal vulnerability for tech freelancers, MSMEs, and 4.5M+ South Asian diaspora workers. Built on an asynchronous zero-trust microservice architecture (FastAPI + Next.js 15), the platform unites dual-path vector retrieval (Dense Qdrant with multilingual-e5-small + Sparse BM25), deterministic anti-repeal guardrails across 35,000+ Bangladesh Code sections, zero-knowledge client-side PII scrubbing, and instant ৳28 bKash micro-payments via SSLCommerz. With 91.7% contract clause recall and an 80.8% gold benchmark pass rate, users can audit high-risk vendor contracts in under 30 seconds or escalate complex disputes to verified Bangladesh Supreme Court advocates under a 3-hour SLA window.
+Advotech Copilot eliminates asymmetric legal vulnerability for tech freelancers, MSMEs, and 4.5M+ South Asian diaspora workers. Built on an asynchronous zero-trust microservice architecture (FastAPI + Next.js 15), the platform unites dual-path vector retrieval (Dense Qdrant with multilingual-e5-small + Sparse BM25), deterministic anti-repeal guardrails across 35,000+ Bangladesh Code sections, zero-knowledge client-side PII scrubbing, and instant ৳28 bKash micro-payments via SSLCommerz. With 91.7% contract clause recall and an 80.8% gold benchmark pass rate, users can audit high-risk vendor contracts in under 1 minute (benchmarked at ~28s for 15-page agreements) or escalate complex disputes to verified Bangladesh Supreme Court advocates under a 3-hour SLA window.
 ```
 
 ---
@@ -52,7 +52,7 @@ In developing economies like Bangladesh, legal protection is an unaffordable lux
 ```text
 Advotech Copilot solves this through a 5-tier sovereign architecture combining deterministic guardrails, multi-agent reasoning, and human-in-the-loop verification:
 
-1. ContractMind 30s Contract Audit: Users upload agreement PDFs (employment, lease, NDA, SaaS vendor). Client-side regex rules redact phone numbers (+8801[3-9]), NID (10/13/17 digits), bank accounts, and personal names in browser memory before bytes leave the device. A specialized LangGraph extraction pipeline analyzes clauses against statutory thresholds, outputting an Executive Health Score (0-100), risk flags, and redline diffs.
+1. ContractMind Sub-Minute Contract Audit: Users upload agreement PDFs (employment, lease, NDA, SaaS vendor). In under 1 minute (benchmarked at ~28s), client-side regex rules redact phone numbers (+8801[3-9]), NID (10/13/17 digits), bank accounts, and personal names in browser memory before bytes leave the device. A specialized LangGraph extraction pipeline analyzes clauses against statutory thresholds, outputting an Executive Health Score (0-100), risk flags, and redline diffs.
 2. Dual-Path Statutory Grounding Engine: Legal queries are resolved through Path A (exact dictionary alias lookup across 3,547 Bangladesh Acts) and Path B (dense vector search on Qdrant Cloud using multilingual-e5-small embeddings with Reciprocal Rank Fusion).
 3. Deterministic Anti-Repeal Guardrail: Every cited statute is verified against the official legislative gazette database (bdlaws.minlaw.gov.bd). If an LLM attempts to cite an amended or repealed section, the deterministic interceptor blocks the output and forces statutory re-prompting, achieving a 0% hallucination rate on statutory citations.
 4. Human-in-the-Loop (HITL) Lawyer Escrow Marketplace: For high-stakes contracts, users click "Escalate to Advocate" for ৳28 micro-payment or bespoke escrow review. Supreme Court advocates review redlines on a dedicated portal (/lawyer/pending), sign off with their digital Bar Council registration seal, and release audit memos within a 3-hour SLA.
