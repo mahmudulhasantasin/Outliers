@@ -33,7 +33,6 @@ import {
   EyeOff,
   X,
   Globe2,
-  Star,
   Quote,
   User,
   Building2,
@@ -1420,9 +1419,6 @@ export default function LandingAndAuthPage() {
                             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
                           </div>
                           <div className="text-xs text-neutral-400 mt-0.5">{testimonials[activeTestimonial].role}</div>
-                        </div>
-                        <div className="flex items-center gap-1 text-amber-400">
-                          {[...Array(5)].map((_, i) => <Star key={i} className="w-4 h-4 fill-current" />)}
                         </div>
                       </div>
                     </div>
