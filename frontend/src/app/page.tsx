@@ -731,6 +731,15 @@ export default function LandingAndAuthPage() {
 
   const testimonials = [
     {
+      name: isBn ? "এহসানুল জুবায়ের" : "Ehsanul Jubayer",
+      role: isBn ? "ডিপার্টমেন্ট অব সিভিল, আইইউবিএটি" : "Department of Civil, IUBAT",
+      avatar: "/avatar_3.jpg",
+      quote: isBn
+        ? '“এই প্ল্যাটফর্মটি অত্যন্ত সহজ ও সাবলীল ভাষায় আইনি তথ্য উপস্থাপন করে, যা কোনো বিভ্রান্তি ছাড়াই মানুষকে তাদের অধিকার ও দায়িত্বগুলো সঠিকভাবে বুঝতে সাহায্য করে। এটি সত্যিই অত্যন্ত সুচিন্তিত, ভারসাম্যপূর্ণ এবং অনুসরণ করা সহজ।”'
+        : '“This resource explains legal information in a clear, approachable style, which helps people understand their rights and responsibilities without confusion. It feels thoughtful, balanced, and easy to follow.”',
+      rating: 5,
+    },
+    {
       name: isBn ? "ব্যারিস্টার তারিকুল ইসলাম" : "Barrister Tariqul Islam",
       role: isBn ? "সিনিয়র পার্টনার, ইসলাম অ্যান্ড অ্যাসোসিয়েটস" : "Senior Partner, Islam & Associates",
       avatar: "/avatar_1.jpg",
@@ -746,15 +755,6 @@ export default function LandingAndAuthPage() {
       quote: isBn
         ? '“জিরো হ্যালুসিনেশন ফিচারটি সত্যিই অসাধারণ। সাধারণ কোনো এআই নয়—সরাসরি bdlaws এর ধারা ও সুপ্রিম কোর্টের নজির সংযুক্ত থাকায় আত্মবিশ্বাসের সাথে ড্রাফট প্রস্তুত করা যায়।”'
         : '“Zero hallucination is real here. Having every risk tied directly to verifiable Bangladesh statutory provisions gives us complete advisory confidence.”',
-      rating: 5,
-    },
-    {
-      name: isBn ? "এহসানুল জুবায়ের" : "Ehsanul Jubayer",
-      role: isBn ? "ডিপার্টমেন্ট অব সিভিল, আইইউবিএটি" : "Dept: Civil, IUBAT",
-      avatar: "/avatar_3.jpg",
-      quote: isBn
-        ? '“এই প্ল্যাটফর্মটি অত্যন্ত সহজ ও সাবলীল ভাষায় আইনি তথ্য উপস্থাপন করে, যা কোনো বিভ্রান্তি ছাড়াই মানুষকে তাদের অধিকার ও দায়িত্বগুলো সঠিকভাবে বুঝতে সাহায্য করে। এটি সত্যিই অত্যন্ত সুচিন্তিত, ভারসাম্যপূর্ণ এবং অনুসরণ করা সহজ।”'
-        : '“This resource explains legal information in a clear, approachable style, which helps people understand their rights and responsibilities without confusion. It feels thoughtful, balanced, and easy to follow.”',
       rating: 5,
     },
   ];
