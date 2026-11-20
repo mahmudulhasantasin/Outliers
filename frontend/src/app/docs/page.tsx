@@ -2836,8 +2836,8 @@ export default function DocsSystem() {
             <span>Long-term Vision</span>
             <span className="toc-count">11</span>
           </a>
-          <a href="#team" className={tocActive("team")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("Outliers") || tocMatch("Team") ? undefined : "none" }}>
-            <span>Outliers</span>
+          <a href="#team" className={tocActive("team")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("Team Outliers") || tocMatch("Outliers") || tocMatch("Team") ? undefined : "none" }}>
+            <span>Team Outliers</span>
             <span className="toc-count">12</span>
           </a>
 
