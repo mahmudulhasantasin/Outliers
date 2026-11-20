@@ -25,7 +25,7 @@ const INITIAL_DOCS_DATA = {
   meta: {
     company: "AdvoTech Copilot",
     tagline: "AI-powered Legal Intelligence for the Global South",
-    one_liner: "30-second AI contract audits for ৳28 ($0.25) — verified by real lawyers. Legal help that 80% of South Asians can actually afford.",
+    one_liner: "AI contract audits for ৳28 ($0.25) — verified by real lawyers. Legal help that 80% of South Asians can actually afford.",
     version: "v1.0.0",
     last_updated: "2026-11-20",
   },
