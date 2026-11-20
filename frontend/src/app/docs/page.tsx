@@ -26,8 +26,8 @@ const INITIAL_DOCS_DATA = {
     company: "AdvoTech Copilot",
     tagline: "AI-powered Legal Intelligence for the Global South",
     one_liner: "30-second AI contract audits for ৳28 ($0.25) — verified by real lawyers. Legal help that 80% of South Asians can actually afford.",
-    version: "v1.4.0",
-    last_updated: "2026-11-18",
+    version: "v1.0.0",
+    last_updated: "2026-11-20",
   },
   stats: {
     total_users: 45,
@@ -973,15 +973,13 @@ const INITIAL_DOCS_DATA = {
       headline: "Engineering Leadership, Open Source & Governance",
       summary: "Advotech Copilot is built and governed under rigorous CI/CD test gates, signed commits, and specialized functional division across systems engineering, AI research, and statutory legal research.",
       lead: "Outliers Engineering Core",
-      branches: "Main Active Branch: sayem (Base: main) • Production API: Render Docker • Frontend: Vercel Edge",
+      branches: "Main Active Branch: main • Production API: Render Docker • Frontend: Vercel Edge",
     },
 
     changelog: [
-      { v: "v1.4.0", date: "2026-11-18", changes: "Interactive /docs release: YC pitch deck, deep technical whitepaper, real team directory, rendered SVG architecture, and admin access control." },
-      { v: "v1.3.0", date: "2026-11-14", changes: "FastMCP legal tool server integration, MCP retry ladder, and case-law search triggers." },
-      { v: "v1.2.0", date: "2026-11-12", changes: "BOLA security audit hardening, client-side PII scrubbing regex, and OTP SMS masking." },
-      { v: "v1.1.0", date: "2026-11-11", changes: "Deterministic rule verification filter, adaptive Qdrant threshold (0.78), and benchmark harness." },
-      { v: "v1.0.0", date: "2026-10-26", changes: "Initial production launch: Advotech Copilot, ContractMind PDF audit, and SSLCommerz billing." },
+      { v: "v1.0.0", date: "2026-11-20", changes: "Official Submission Release: Production-ready legal AI copilot, contract audit engine, security hardening (OWASP standards, rate limiting, 102/102 test pass rate), and full statutory grounding." },
+      { v: "v1.0.0-rc2", date: "2026-11-15", changes: "Interactive /docs release: YC pitch deck, deep technical whitepaper, real team directory, rendered SVG architecture, and admin access control." },
+      { v: "v1.0.0-rc1", date: "2026-11-10", changes: "Initial architecture milestone: Advotech Copilot, ContractMind PDF audit, dual-path statutory retriever, and SSLCommerz billing." },
     ],
   },
 };
@@ -2903,7 +2901,7 @@ export default function DocsSystem() {
         </div>
 
         <div style={{ paddingTop: "1rem", borderTop: "1px solid var(--border-color)", fontSize: "0.75rem", opacity: 0.7 }}>
-          v1.4.0 • Dhaka, Bangladesh
+          v1.0.0 • Dhaka, Bangladesh
         </div>
       </aside>
 
