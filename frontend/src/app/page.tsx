@@ -1806,7 +1806,7 @@ export default function LandingAndAuthPage() {
             {/* Footer Bottom Bar (Border removed & text centered) */}
             <div className="mt-12 pt-6 pb-8 flex items-center justify-center text-xs text-[var(--text-muted)] text-center">
               <div>
-                © 2026, All Rights Reserved Advotech Copilot & ContractMind
+                © 2026, All Rights Reserved Team Outliers
               </div>
             </div>
           </div>
