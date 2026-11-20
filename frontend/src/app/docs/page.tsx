@@ -238,7 +238,7 @@ const INITIAL_DOCS_DATA = {
         },
         {
           feature: "Audit Turnaround Time",
-          advotech: "~30 Seconds (Live)",
+          advotech: "< 1 Minute (Live)",
           harvey: "2-5 Minutes (General)",
           traditional: "5 to 10 Business Days",
           directories: "N/A (No Audits)",
