@@ -749,12 +749,12 @@ export default function LandingAndAuthPage() {
       rating: 5,
     },
     {
-      name: isBn ? "মাহমুদুল হাসান" : "Mahmudul Hasan",
-      role: isBn ? "ব্যবস্থাপনা পরিচালক, ঢাকা টেক ভেনচার্স" : "Managing Director, Dhaka Tech Ventures",
+      name: isBn ? "এহসানুল জুবায়ের" : "Ehsanul Jubayer",
+      role: isBn ? "ডিপার্টমেন্ট অব সিভিল, আইইউবিএটি" : "Dept: Civil, IUBAT",
       avatar: "/avatar_3.jpg",
       quote: isBn
-        ? '“এসএমই এবং স্টার্টআপ হিসেবে বড় ল ফার্ম নিয়োগের আগে প্রাথমিক চুক্তি অডিট ও ক্লায়েন্ট-সাইড প্রাইভেসি নিশ্চিত করায় এটি আমাদের জন্য অপরিহার্য এক সঙ্গী।”'
-        : '“As an SME founder, the client-side PII masking and instant contract risk scoring saved us from several unfavorable indemnity traps.”',
+        ? '“এই প্ল্যাটফর্মটি অত্যন্ত সহজ ও সাবলীল ভাষায় আইনি তথ্য উপস্থাপন করে, যা কোনো বিভ্রান্তি ছাড়াই মানুষকে তাদের অধিকার ও দায়িত্বগুলো সঠিকভাবে বুঝতে সাহায্য করে। এটি সত্যিই অত্যন্ত সুচিন্তিত, ভারসাম্যপূর্ণ এবং অনুসরণ করা সহজ।”'
+        : '“This resource explains legal information in a clear, approachable style, which helps people understand their rights and responsibilities without confusion. It feels thoughtful, balanced, and easy to follow.”',
       rating: 5,
     },
   ];
