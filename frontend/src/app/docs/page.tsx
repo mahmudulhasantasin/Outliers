@@ -2846,8 +2846,8 @@ export default function DocsSystem() {
             <span>Product Overview</span>
             <span className="toc-count">A</span>
           </a>
-          <a href="#architecture" className={tocActive("architecture")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("System Architecture (SVG)") ? undefined : "none" }}>
-            <span>System Architecture (SVG)</span>
+          <a href="#architecture" className={tocActive("architecture")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("System Architecture") ? undefined : "none" }}>
+            <span>System Architecture</span>
             <span className="toc-count">B</span>
           </a>
           <a href="#data-flow" className={tocActive("data-flow")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("5-Phase Data Flow") ? undefined : "none" }}>
