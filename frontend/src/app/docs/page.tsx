@@ -2850,8 +2850,8 @@ export default function DocsSystem() {
             <span>System Architecture</span>
             <span className="toc-count">B</span>
           </a>
-          <a href="#data-flow" className={tocActive("data-flow")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("5-Phase Data Flow") ? undefined : "none" }}>
-            <span>5-Phase Data Flow</span>
+          <a href="#data-flow" className={tocActive("data-flow")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("Data Flow") || tocMatch("5-Phase Data Flow") ? undefined : "none" }}>
+            <span>Data Flow</span>
             <span className="toc-count">C</span>
           </a>
           <a href="#features" className={tocActive("features")} onClick={() => setMobileMenuOpen(false)} style={{ display: tocMatch("Feature Matrix") ? undefined : "none" }}>
