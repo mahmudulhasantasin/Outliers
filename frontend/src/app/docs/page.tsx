@@ -432,7 +432,7 @@ const INITIAL_DOCS_DATA = {
     },
 
     architecture: {
-      headline: "System Architecture Topology: UI → API → Services → DB",
+      headline: "System Architecture Topology",
       diagramTitle: "Four-Tier Distributed Architecture (Rendered SVG Topology)",
       layers: [
         {
@@ -3553,7 +3553,7 @@ export default function DocsSystem() {
         </div>
 
         {/* ======================================================== */}
-        {/* B. ARCHITECTURE (Interactive 4-System Topology: UI → API → Services → DB) */}
+        {/* B. ARCHITECTURE (Interactive 4-System Topology)          */}
         {/* ======================================================== */}
         <div data-section="architecture">
           <Section id="architecture" eyebrow="B. System Architecture" headline={d.tech.architecture.headline}>
