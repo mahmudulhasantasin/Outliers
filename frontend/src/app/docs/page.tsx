@@ -2128,14 +2128,14 @@ const Section = ({
   altBg,
 }: {
   id?: string;
-  eyebrow: string;
+  eyebrow?: string;
   headline?: string;
   children: React.ReactNode;
   altBg?: boolean;
 }) => (
   <section id={id} data-section={id} className={`doc-section${altBg ? " alt" : ""}`}>
     <div className="doc-inner">
-      <span className="eyebrow">{eyebrow}</span>
+      {eyebrow && <span className="eyebrow">{eyebrow}</span>}
       {headline && <h2 className="headline">{headline}</h2>}
       {children}
     </div>
@@ -2935,7 +2935,6 @@ export default function DocsSystem() {
         <div data-section="top">
           <Section
             id="top"
-            eyebrow={`Live System Documentation & Pitch Deck · ${d.meta.version} · Updated ${d.meta.last_updated}`}
             altBg
           >
             <div className="hero-editorial-grid">
