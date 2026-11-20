@@ -875,8 +875,8 @@ const INITIAL_DOCS_DATA = {
         label: "Q1 — Q3 2027",
         title: "Enterprise ComplianceOS & Team Playbooks",
         items: [
-          "Custom corporate compliance playbook builder with rule injection",
-          "Multi-tenant company billing with pooled credit balances and role quotas",
+          "Visual drag-and-drop compliance playbook designer & CI/CD legal linting",
+          "Enterprise ERP/HRIS (SAP, Oracle, Workday) automated billing & SSO integration",
           "Dispute Preparation AI Agent: Autonomous generation of statutory demand notices",
           "Shared audit repositories with cryptographic digital watermark stamps",
         ],
