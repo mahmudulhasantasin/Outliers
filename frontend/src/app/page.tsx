@@ -739,12 +739,12 @@ export default function LandingAndAuthPage() {
       rating: 5,
     },
     {
-      name: isBn ? "ব্যারিস্টার তারিকুল ইসলাম" : "Barrister Tariqul Islam",
-      role: isBn ? "সিনিয়র পার্টনার, ইসলাম অ্যান্ড অ্যাসোসিয়েটস" : "Senior Partner, Islam & Associates",
-      avatar: "/avatar_1.jpg",
+      name: isBn ? "হুসাম উদ্দিন" : "Husam Uddin",
+      role: isBn ? "ডিপার্টমেন্ট অব সিএসই, ড্যাফোডিল ইন্টারন্যাশনাল ইউনিভার্সিটি" : "Department of CSE, Daffodil International University",
+      avatar: "/husam_uddin.jpg",
       quote: isBn
-        ? '“আগে ৫০ পাতার বাণিজ্যিক চুক্তি রিভিউ করতে ঘণ্টার পর ঘণ্টা সময় লাগত। Advotech Copilot এর মাধ্যমে চুক্তির অসামঞ্জস্যপূর্ণ ধারা এবং দ্য কন্ট্রাক্ট অ্যাক্ট ১৮৭২ এর রেফারেন্স চোখের পলকে শনাক্ত করা সম্ভব হচ্ছে।”'
-        : '“Advotech Copilot transformed our contract audit workflow. Spotting void non-compete clauses under Section 27 and labor non-compliance takes seconds instead of hours.”',
+        ? '“কন্ট্রাক্টমাইন্ড দ্রুত ঝুঁকি শনাক্ত করে এবং গুরুত্বপূর্ণ ধারাগুলো ব্যাখ্যা করে চুক্তি পর্যালোচনাকে সহজ করে তোলে। এর আইনজীবী যাচাইকরণ ফিচারটি আরও নির্ভুলতা, নির্ভরযোগ্যতা এবং আত্মবিশ্বাস নিশ্চিত করে।”'
+        : '“ContractMind simplifies contract review by quickly identifying risks and explaining key clauses. Its lawyer verification feature ensures greater accuracy, reliability, and confidence.”',
       rating: 5,
     },
     {
