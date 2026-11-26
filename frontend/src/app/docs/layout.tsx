@@ -17,8 +17,18 @@ const karla = Poppins({
 });
 
 export const metadata: Metadata = {
-  title: "Advotech Copilot | Pitch Deck",
-  description: "AI-powered Legal Intelligence for the Global South",
+  title: "Whitepaper & Pitch Deck",
+  description:
+    "Technical architecture, statutory grounding, benchmark metrics, and investor pitch deck for Advotech Copilot (JusticeSphere AI).",
+  alternates: {
+    canonical: "/docs",
+  },
+  openGraph: {
+    title: "Whitepaper & Pitch Deck | Advotech Copilot",
+    description:
+      "Technical architecture and pitch deck for Bangladesh's AI-native legal intelligence platform.",
+    url: "https://advotech-copilot.vercel.app/docs",
+  },
 };
 
 export default function RootLayout({
