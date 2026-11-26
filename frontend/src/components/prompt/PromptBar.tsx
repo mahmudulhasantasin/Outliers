@@ -12,12 +12,15 @@ import React, {
 } from 'react';
 import { HugeiconsIcon } from '@hugeicons/react';
 import { Mic01Icon } from '@hugeicons/core-free-icons';
+import { Loader2, Square, X } from 'lucide-react';
 
 export interface PromptBarCommand {
   key: string;
   name: string;
   description?: string;
 }
+
+export type PromptVoiceStatus = 'idle' | 'recording' | 'transcribing';
 
 export interface PromptBarProps {
   placeholder?: string;
@@ -26,6 +29,14 @@ export interface PromptBarProps {
   onSend?: (text: string, detail?: { attachments?: string[] }) => void;
   onStop?: () => void;
   onDictate?: () => string | void | Promise<string | void>;
+  voiceStatus?: PromptVoiceStatus;
+  recordingSeconds?: number;
+  onVoiceStart?: () => void;
+  onVoiceStop?: () => void;
+  onVoiceCancel?: () => void;
+  insertedText?: { seq: number; text: string } | null;
+  voiceLabel?: string;
+  transcribingLabel?: string;
   background?: string;
   color?: string;
   menuBackground?: string;
@@ -40,7 +51,10 @@ export interface PromptBarProps {
 }
 
 type Token = { kind: 'slash'; query: string; start: number };
-type Latest = Pick<PromptBarProps, 'onSend' | 'onStop' | 'onDictate'>;
+type Latest = Pick<
+  PromptBarProps,
+  'onSend' | 'onStop' | 'onDictate' | 'onVoiceStart' | 'onVoiceStop' | 'onVoiceCancel'
+>;
 
 const LINE = 22;
 
@@ -107,6 +121,13 @@ const STYLE = `
 }
 `;
 
+const formatDuration = (seconds: number) => {
+  const safe = Math.max(0, Math.floor(seconds));
+  const mins = Math.floor(safe / 60);
+  const secs = safe % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
 const PromptBar: React.FC<PromptBarProps> = ({
   placeholder = 'Ask anything',
   commands = DEFAULT_COMMANDS,
@@ -114,6 +135,14 @@ const PromptBar: React.FC<PromptBarProps> = ({
   onSend,
   onStop,
   onDictate,
+  voiceStatus = 'idle',
+  recordingSeconds = 0,
+  onVoiceStart,
+  onVoiceStop,
+  onVoiceCancel,
+  insertedText = null,
+  voiceLabel = 'Listening…',
+  transcribingLabel = 'Transcribing voice…',
   background = 'var(--bg-card)',
   color = 'var(--text-primary)',
   menuBackground = 'var(--bg-card)',
@@ -129,13 +158,19 @@ const PromptBar: React.FC<PromptBarProps> = ({
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const lastOpen = useRef<string | null>(null);
   const dictation = useRef(0);
+  const lastInsertedSeq = useRef<number | null>(null);
   const latest = useRef<Latest>({});
-  latest.current = { onSend, onStop, onDictate };
+  latest.current = { onSend, onStop, onDictate, onVoiceStart, onVoiceStop, onVoiceCancel };
 
   const [draft, setDraft] = useState('');
   const [dismissed, setDismissed] = useState(false);
   const [active, setActive] = useState(0);
   const [listening, setListening] = useState(false);
+
+  const hasControlledVoice = Boolean(onVoiceStart && onVoiceStop);
+  const isRecording = hasControlledVoice ? voiceStatus === 'recording' : listening;
+  const isTranscribing = hasControlledVoice && voiceStatus === 'transcribing';
+  const showMicButton = hasControlledVoice || Boolean(onDictate);
 
   const token = dismissed ? null : parseToken(draft);
   const open = token?.kind ?? null;
@@ -147,7 +182,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
   }, [open, query, commands]);
 
   const cursor = Math.min(active, Math.max(0, list.length - 1));
-  const canSend = draft.trim().length > 0;
+  const canSend = draft.trim().length > 0 && !isTranscribing;
   const armed = busy || canSend;
 
   const focusInput = () => inputRef.current?.focus({ preventScroll: true });
@@ -188,6 +223,16 @@ const PromptBar: React.FC<PromptBarProps> = ({
     el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
   }, [draft, maxRows]);
 
+  useEffect(() => {
+    if (!insertedText || insertedText.seq === lastInsertedSeq.current) return;
+    lastInsertedSeq.current = insertedText.seq;
+    const text = insertedText.text.trim();
+    if (!text) return;
+    setDraft(d => (d.trim() ? `${d.trimEnd()} ${text}` : text));
+    setDismissed(false);
+    focusInput();
+  }, [insertedText]);
+
   useEffect(
     () => () => {
       dictation.current += 1;
@@ -211,6 +256,16 @@ const PromptBar: React.FC<PromptBarProps> = ({
   };
 
   const toggleListen = () => {
+    if (hasControlledVoice) {
+      if (isTranscribing) return;
+      if (isRecording) {
+        latest.current.onVoiceStop?.();
+      } else if (!busy) {
+        latest.current.onVoiceStart?.();
+      }
+      return;
+    }
+
     if (listening) {
       dictation.current += 1;
       setListening(false);
@@ -245,6 +300,11 @@ const PromptBar: React.FC<PromptBarProps> = ({
       }
     }
     if (e.key === 'Escape') {
+      if (isRecording && hasControlledVoice) {
+        e.preventDefault();
+        latest.current.onVoiceCancel?.();
+        return;
+      }
       if (open) {
         e.preventDefault();
         setDismissed(true);
@@ -256,6 +316,12 @@ const PromptBar: React.FC<PromptBarProps> = ({
       send();
     }
   };
+
+  const activePlaceholder = isRecording
+    ? voiceLabel
+    : isTranscribing
+    ? transcribingLabel
+    : placeholder;
 
   return (
     <div
@@ -327,11 +393,13 @@ const PromptBar: React.FC<PromptBarProps> = ({
         {/* ১. রোটেটিং কনিক গ্রেডিয়েন্ট বর্ডার (busy হলে দেখাবে) */}
         <div
           className={`pointer-events-none absolute inset-[-200%] animate-[prompt-bar-spin_4s_linear_infinite] transition-opacity duration-500 ${
-            busy ? 'opacity-100' : 'opacity-0'
+            busy || isRecording || isTranscribing ? 'opacity-100' : 'opacity-0'
           }`}
           style={{
             background:
-              'conic-gradient(from 0deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb923c, #38bdf8)'
+              isRecording
+                ? 'conic-gradient(from 0deg, #f43f5e, #fb7185, #f97316, #f43f5e)'
+                : 'conic-gradient(from 0deg, #38bdf8, #818cf8, #c084fc, #f472b6, #fb923c, #38bdf8)'
           }}
         />
 
@@ -354,7 +422,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
             }}
             rows={1}
             value={draft}
-            placeholder={listening ? 'Listening…' : placeholder}
+            placeholder={activePlaceholder}
             aria-label="Prompt"
             onChange={e => {
               setDraft(e.target.value);
@@ -367,22 +435,59 @@ const PromptBar: React.FC<PromptBarProps> = ({
           />
 
           <div className="flex items-center gap-1.5 shrink-0 self-center">
-            {onDictate ? (
+            {isRecording && hasControlledVoice && onVoiceCancel ? (
               <button
                 type="button"
-                className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors"
-                style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }}
-                aria-label={listening ? 'Stop dictation' : 'Dictate'}
-                aria-pressed={listening}
+                className="inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors hover:opacity-85"
+                style={{ backgroundColor: "var(--bg-surface)", color: "var(--text-muted)" }}
+                aria-label="Cancel voice recording"
+                title="Cancel"
+                onMouseDown={e => e.preventDefault()}
+                onClick={() => latest.current.onVoiceCancel?.()}
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : null}
+
+            {showMicButton ? (
+              <button
+                type="button"
+                disabled={(busy && !isRecording) || isTranscribing}
+                className={
+                  isRecording
+                    ? "inline-flex h-8 flex-none cursor-pointer items-center gap-1.5 rounded-xl border border-rose-500/35 bg-rose-500/12 px-2.5 text-rose-600 dark:text-rose-400 outline-none transition-colors hover:bg-rose-500/20"
+                    : "inline-grid h-8 w-8 flex-none cursor-pointer place-items-center rounded-xl border-0 outline-none transition-colors disabled:opacity-45 disabled:cursor-not-allowed"
+                }
+                style={
+                  isRecording
+                    ? undefined
+                    : { backgroundColor: "var(--bg-surface)", color: "var(--text-primary)" }
+                }
+                aria-label={
+                  isTranscribing
+                    ? 'Transcribing voice'
+                    : isRecording
+                    ? 'Stop voice recording'
+                    : 'Start voice input'
+                }
+                aria-pressed={isRecording}
                 onMouseDown={e => e.preventDefault()}
                 onClick={toggleListen}
               >
-                {listening ? (
-                  <span className="flex h-3.5 items-center gap-[2.5px] [&>i]:block [&>i]:h-full [&>i]:w-[2.5px] [&>i]:rounded-full [&>i]:bg-red-500 [&>i]:animate-pulse">
-                    <i />
-                    <i />
-                    <i />
-                  </span>
+                {isTranscribing ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isRecording ? (
+                  <>
+                    <span className="flex h-3 items-center gap-[2px] [&>i]:block [&>i]:h-full [&>i]:w-[2px] [&>i]:rounded-full [&>i]:bg-rose-500">
+                      <i className="animate-[prompt-bar-eq_0.8s_ease-in-out_infinite]" />
+                      <i className="animate-[prompt-bar-eq_0.8s_ease-in-out_0.2s_infinite]" />
+                      <i className="animate-[prompt-bar-eq_0.8s_ease-in-out_0.4s_infinite]" />
+                    </span>
+                    <span className="text-[11px] font-mono font-semibold tabular-nums">
+                      {formatDuration(recordingSeconds)}
+                    </span>
+                    <Square className="h-2.5 w-2.5 fill-current" />
+                  </>
                 ) : (
                   <HugeiconsIcon icon={Mic01Icon} size={15} strokeWidth={2} />
                 )}

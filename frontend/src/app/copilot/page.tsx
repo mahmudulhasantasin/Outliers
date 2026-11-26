@@ -28,9 +28,11 @@ import {
   closeChatSession,
   lookupStatuteSection,
 } from "@/lib/apiServices";
+import { useCopilotVoice } from "@/lib/useCopilotVoice";
 import { maskPii } from "@/lib/piiMasker";
 import {
   ArrowDown,
+  AudioLines,
   BookOpen,
   Check,
   ChevronDown,
@@ -53,8 +55,10 @@ import {
   Shield,
   ShieldCheck,
   Sparkles,
+  Square,
   SquarePen,
   Trash2,
+  Volume2,
   X,
 } from "lucide-react";
 
@@ -499,6 +503,35 @@ export default function CopilotPage() {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [piiMaskEnabled, setPiiMaskEnabled] = useState(true);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [voiceInsert, setVoiceInsert] = useState<{ seq: number; text: string } | null>(null);
+  const sendPromptRef = useRef<(text: string) => void>(() => {});
+
+  const {
+    voiceModeEnabled,
+    voiceStatus,
+    recordingSeconds,
+    speakingMsgId,
+    ttsLoadingMsgId,
+    toggleVoiceMode,
+    startRecording,
+    stopRecording,
+    cancelRecording,
+    toggleSpeakMessage,
+    stopTtsPlayback,
+    autoSpeakReply,
+  } = useCopilotVoice({
+    isBn,
+    isBusy,
+    onTranscriptReady: (text, { autoSend }) => {
+      if (autoSend) {
+        sendPromptRef.current(text);
+      } else {
+        setVoiceInsert({ seq: Date.now(), text });
+      }
+    },
+    onError: (msg) => toast.error(msg),
+    onInfo: (msg) => toast.info(msg),
+  });
 
   // History Drawer State
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -613,6 +646,7 @@ export default function CopilotPage() {
   const handleSelectSession = useCallback(
     async (session: ChatSession | { session_id: string | number; mode?: string }) => {
       const sid = session.session_id;
+      stopTtsPlayback();
       setIsLoadingHistory(true);
       setIsDrawerOpen(false);
       setConfirmDeleteId(null);
@@ -652,7 +686,7 @@ export default function CopilotPage() {
         setIsLoadingHistory(false);
       }
     },
-    [defaultMode, isBn, isLawyer, toast]
+    [defaultMode, isBn, isLawyer, stopTtsPlayback, toast]
   );
 
   // Initial load: fetch sessions & consume any handoff from ContractMind / Archive / Lawyer Pending
@@ -741,6 +775,7 @@ export default function CopilotPage() {
 
   // Start fresh chat
   const handleNewChat = useCallback(() => {
+    stopTtsPlayback();
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
     setIsBusy(false);
@@ -751,7 +786,7 @@ export default function CopilotPage() {
     setTurnLimit(isLawyer ? 20 : 5);
     setShowJumpToBottom(false);
     setIsDrawerOpen(false);
-  }, [activeContractContext, defaultMode, isLawyer]);
+  }, [activeContractContext, defaultMode, isLawyer, stopTtsPlayback]);
 
   // Stop active generation
   const handleStopGeneration = useCallback(() => {
@@ -836,6 +871,7 @@ export default function CopilotPage() {
       const trimmed = rawText.trim();
       if (!trimmed || isBusy || !isAuthenticated) return;
 
+      stopTtsPlayback();
       const expandedPrompt = expandSlashCommand(trimmed, isBn);
       const masked = piiMaskEnabled
         ? maskPii(expandedPrompt, true)
@@ -966,6 +1002,10 @@ export default function CopilotPage() {
 
         fetchSessions();
 
+        if (answerText) {
+          autoSpeakReply(assistantMsgId, answerText);
+        }
+
         // Scroll cleanly to the START of the newly arrived assistant message
         // (unless the user intentionally scrolled away up the history)
         setTimeout(() => {
@@ -1047,8 +1087,16 @@ export default function CopilotPage() {
       isEnterpriseMember,
       updateUser,
       refreshUser,
+      stopTtsPlayback,
+      autoSpeakReply,
     ]
   );
+
+  useEffect(() => {
+    sendPromptRef.current = (text: string) => {
+      void handleSendPrompt(text);
+    };
+  }, [handleSendPrompt]);
 
   // Copy full assistant markdown
   const handleCopyMessage = useCallback(
@@ -1271,8 +1319,36 @@ export default function CopilotPage() {
         {/* ─── Top Bar: Turn quota ─── */}
         <header className="shrink-0 flex items-center justify-end gap-2 pb-1.5 sm:pb-2">
 
-          {/* Right Side: Session Turn Quota Badge */}
+          {/* Right Side: Voice Mode Toggle & Session Turn Quota Badge */}
           <div className="flex items-center gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={toggleVoiceMode}
+              aria-pressed={voiceModeEnabled}
+              title={
+                isBn
+                  ? voiceModeEnabled
+                    ? "ভয়েস মোড চালু (ভয়েস সরাসরি পাঠানো হবে ও উত্তর শোনানো হবে)"
+                    : "হ্যান্ডস-ফ্রি ভয়েস মোড চালু করুন"
+                  : voiceModeEnabled
+                  ? "Voice Mode ON (auto-send voice & read replies aloud)"
+                  : "Enable hands-free Voice Mode"
+              }
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border transition-all cursor-pointer ${
+                voiceModeEnabled
+                  ? "bg-indigo-500/12 border-indigo-500/35 text-indigo-700 dark:text-indigo-300"
+                  : "bg-(--bg-card) border-(--text-primary)/10 text-(--text-muted) hover:text-(--text-primary)"
+              }`}
+            >
+              <AudioLines className="w-3.5 h-3.5" />
+              <span>{isBn ? "ভয়েস মোড" : "Voice Mode"}</span>
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  voiceModeEnabled ? "bg-indigo-500 animate-pulse" : "bg-(--text-muted)/40"
+                }`}
+              />
+            </button>
+
             {activeSessionId && (
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-(--bg-card) border border-(--text-primary)/10 text-(--text-muted)">
                 {turnLimit === -1 || turnLimit >= 10000
@@ -1478,18 +1554,55 @@ export default function CopilotPage() {
                         </div>
 
                         {!msg.isThinking && msg.content && !msg.isError && !msg.isStopped && (
-                          <button
-                            type="button"
-                            onClick={() => handleCopyMessage(msg.id, msg.content)}
-                            className="p-1.5 rounded-lg text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/6 transition-colors shrink-0 cursor-pointer"
-                            title={isBn ? "উত্তর কপি করুন" : "Copy response"}
-                          >
-                            {copiedId === msg.id ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-500" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => void toggleSpeakMessage(msg.id, msg.content)}
+                              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                speakingMsgId === msg.id || ttsLoadingMsgId === msg.id
+                                  ? "text-indigo-600 dark:text-indigo-400 bg-indigo-500/10"
+                                  : "text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/6"
+                              }`}
+                              title={
+                                speakingMsgId === msg.id
+                                  ? isBn
+                                    ? "শোনা বন্ধ করুন"
+                                    : "Stop reading"
+                                  : isBn
+                                  ? "শুনে নিন"
+                                  : "Read aloud"
+                              }
+                              aria-label={
+                                speakingMsgId === msg.id
+                                  ? isBn
+                                    ? "শোনা বন্ধ করুন"
+                                    : "Stop reading"
+                                  : isBn
+                                  ? "শুনে নিন"
+                                  : "Read aloud"
+                              }
+                            >
+                              {ttsLoadingMsgId === msg.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : speakingMsgId === msg.id ? (
+                                <Square className="w-3.5 h-3.5 fill-current" />
+                              ) : (
+                                <Volume2 className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyMessage(msg.id, msg.content)}
+                              className="p-1.5 rounded-lg text-(--text-muted) hover:text-(--text-primary) hover:bg-(--text-primary)/6 transition-colors cursor-pointer"
+                              title={isBn ? "উত্তর কপি করুন" : "Copy response"}
+                            >
+                              {copiedId === msg.id ? (
+                                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                              ) : (
+                                <Copy className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          </div>
                         )}
                       </div>
 
@@ -1662,17 +1775,38 @@ export default function CopilotPage() {
                 width={660}
                 onSend={(text) => handleSendPrompt(text)}
                 onStop={handleStopGeneration}
+                voiceStatus={voiceStatus}
+                recordingSeconds={recordingSeconds}
+                onVoiceStart={startRecording}
+                onVoiceStop={stopRecording}
+                onVoiceCancel={cancelRecording}
+                insertedText={voiceInsert}
+                voiceLabel={
+                  isBn
+                    ? "শুনছি… শেষ হলে মাইকে ট্যাপ করুন"
+                    : "Listening… tap mic to finish"
+                }
+                transcribingLabel={
+                  isBn ? "ভয়েস টেক্সটে রূপান্তর হচ্ছে…" : "Transcribing voice…"
+                }
                 placeholder={
                   isMobileViewport
                     ? isBn
-                      ? "আইনি প্রশ্ন লিখুন..."
-                      : "Ask about Bangladesh law..."
+                      ? "আইনি প্রশ্ন লিখুন বা মাইকে বলুন..."
+                      : "Ask or tap mic for voice..."
                     : isBn
-                    ? "আইনি প্রশ্ন বা ধারা লিখুন... (/audit, /memo, /redline)"
-                    : "Ask a question about Bangladesh law... (type / for commands)"
+                    ? "আইনি প্রশ্ন বা ধারা লিখুন বা মাইকে বলুন... (/audit, /memo, /redline)"
+                    : "Ask about Bangladesh law or tap mic... (type / for commands)"
                 }
                 className="mx-auto"
               />
+              {voiceModeEnabled && (
+                <p className="text-[11px] text-(--text-muted) text-center px-2">
+                  {isBn
+                    ? "ভয়েস মোড চালু: মাইকে বললেই প্রশ্ন পাঠানো হবে এবং উত্তর শোনানো হবে।"
+                    : "Voice Mode active: mic recordings auto-send and replies read aloud."}
+                </p>
+              )}
             </div>
           )}
         </footer>

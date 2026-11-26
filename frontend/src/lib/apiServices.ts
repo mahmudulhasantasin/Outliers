@@ -591,6 +591,45 @@ export async function closeChatSession(sessionId: string | number): Promise<void
   await api.post(`/api/chat/sessions/${sid}/close`);
 }
 
+export interface VoiceTranscribeResponse {
+  text: string;
+  language: string;
+  provider: string;
+  model: string;
+}
+
+export interface VoiceTtsRequest {
+  text: string;
+  language?: "auto" | "bn" | "en";
+  voice?: "female" | "male" | string;
+  rate?: string;
+  signal?: AbortSignal;
+}
+
+/** Transcribe recorded voice audio via Groq Whisper / Gemini fallback (POST /api/chat/transcribe, 0 credits) */
+export async function transcribeVoiceAudio(
+  audioBlob: Blob,
+  filename: string = "voice.webm",
+  language: "auto" | "bn" | "en" = "auto",
+  signal?: AbortSignal
+): Promise<VoiceTranscribeResponse> {
+  const formData = new FormData();
+  formData.append("audio", audioBlob, filename);
+  if (language && language !== "auto") {
+    formData.append("language", language);
+  }
+  return api.upload<VoiceTranscribeResponse>("/api/chat/transcribe", formData, signal, 45000);
+}
+
+/** Synthesize spoken MP3 audio via Microsoft Edge Neural TTS (POST /api/chat/tts, 0 credits) */
+export async function synthesizeVoiceSpeech(req: VoiceTtsRequest): Promise<Blob> {
+  const payload: Record<string, unknown> = { text: req.text };
+  if (req.language) payload.language = req.language;
+  if (req.voice) payload.voice = req.voice;
+  if (req.rate) payload.rate = req.rate;
+  return api.postBlob("/api/chat/tts", payload, req.signal, 45000);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // LAWYER TYPES & HOOKS
 // ────────────────────────────────────────────────────────────────────────────

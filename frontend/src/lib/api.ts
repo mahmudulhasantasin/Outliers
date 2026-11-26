@@ -36,10 +36,10 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(
+async function executeRequest(
   path: string,
   options: ApiOptions = {}
-): Promise<T> {
+): Promise<Response> {
   const { method = "GET", body, headers = {}, isFormData = false, signal } = options;
 
   const token = getToken();
@@ -162,10 +162,19 @@ async function request<T>(
     throw new ApiError(res.status, detail);
   }
 
+  return res;
+}
+
+async function request<T>(
+  path: string,
+  options: ApiOptions = {}
+): Promise<T> {
+  const res = await executeRequest(path, options);
+
   // 204 No Content
   if (res.status === 204) {
     if (process.env.NODE_ENV === "development") {
-      console.log(`[API Success] 204 No Content ${fullUrl}`);
+      console.log(`[API Success] 204 No Content ${BASE_URL}${path}`);
     }
     return undefined as T;
   }
@@ -174,7 +183,7 @@ async function request<T>(
   
   // [UPDATED] SECURITY: Never log response data in production (contains PII & legal text)
   if (process.env.NODE_ENV === "development") {
-    console.log(`[API Success] ${res.status} ${fullUrl}`);
+    console.log(`[API Success] ${res.status} ${BASE_URL}${path}`);
   }
   
   return data as T;
@@ -219,20 +228,24 @@ export const api = {
       timeoutMs: timeoutMs ?? 180000,
     }),
 
-  downloadBlob: async (path: string): Promise<Blob> => {
-    const token = getToken();
-    const reqHeaders: Record<string, string> = {};
-    if (token) {
-      reqHeaders["Authorization"] = `Bearer ${token}`;
-    }
-    const fullUrl = `${BASE_URL}${path}`;
-    const res = await fetch(fullUrl, {
-      method: "GET",
-      headers: reqHeaders,
+  postBlob: async (
+    path: string,
+    body?: Record<string, unknown>,
+    signal?: AbortSignal,
+    timeoutMs?: number
+  ): Promise<Blob> => {
+    const res = await executeRequest(path, {
+      method: "POST",
+      body,
+      headers: { Accept: "audio/mpeg, application/octet-stream" },
+      signal,
+      timeoutMs: timeoutMs ?? 45000,
     });
-    if (!res.ok) {
-      throw new ApiError(res.status, "Failed to download file");
-    }
+    return res.blob();
+  },
+
+  downloadBlob: async (path: string): Promise<Blob> => {
+    const res = await executeRequest(path, { method: "GET" });
     return res.blob();
   },
 };

@@ -68,7 +68,8 @@
 | `src/context/PersonaContext.tsx` | Persona management for tailored contract advice | `PersonaProvider`, `usePersona`, `PERSONAS` | React |
 | `src/context/ThemeContext.tsx` | Dark/Light theme toggle & root class toggle | `ThemeProvider`, `useTheme` | React |
 | `src/lib/api.ts` | Central HTTP client with Bearer auth & timeout handling | `api`, `ApiError` | `src/lib/auth.ts` |
-| `src/lib/apiServices.ts` | Typed backend API endpoints and data interfaces | `uploadContract`, `getContractHistory`, `createChatSession`, `sendChatQuery`, `getLawyerQueue`, `submitReview`, `getCompanyDashboard`, `getPaymentGatewayConfig`, `initiatePayment`, `verifyPaymentStatus`, `getAdminPayments`, `adjustAdminUserCredits`, `adjustAdminEnterpriseCredits` | `src/lib/api.ts` |
+| `src/lib/apiServices.ts` | Typed backend API endpoints and data interfaces | `uploadContract`, `getContractHistory`, `createChatSession`, `sendChatQuery`, `transcribeVoiceAudio`, `synthesizeVoiceSpeech`, `getLawyerQueue`, `submitReview`, `getCompanyDashboard`, `getPaymentGatewayConfig`, `initiatePayment`, `verifyPaymentStatus`, `getAdminPayments`, `adjustAdminUserCredits`, `adjustAdminEnterpriseCredits` | `src/lib/api.ts` |
+| `src/lib/useCopilotVoice.ts` | Voice Mode hook managing MediaRecorder audio capture, STT upload, and Edge TTS + Web Speech playback | `useCopilotVoice` | `src/lib/apiServices.ts`, `src/components/prompt/PromptBar.tsx` |
 | `src/lib/auth.ts` | Local token and session storage operations | `saveTokenResponse`, `getToken`, `clearAuth`, `getRoleHint`, `setRoleHint` | Web Storage API |
 | `src/lib/dispatcher.ts` | Advocate matching algorithm | `runDispatchAlgorithm`, `INITIAL_DEMO_LAWYERS` | Pure TS |
 | `src/lib/piiMasker.ts` | Sovereign client-side PII redactor | `maskPii`, `PiiRedactionResult` | Pure TS |
