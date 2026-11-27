@@ -6,11 +6,34 @@ import { synthesizeVoiceSpeech, transcribeVoiceAudio } from "@/lib/apiServices";
 import type { PromptVoiceStatus } from "@/components/prompt/PromptBar";
 
 const VOICE_MODE_STORAGE_KEY = "copilot_voice_mode";
+const VOICE_LANG_STORAGE_KEY = "copilot_voice_lang";
 const MAX_RECORDING_SECONDS = 90;
+
+export type VoiceLanguage = "auto" | "bn" | "en";
 
 interface SupportedAudioFormat {
   mimeType: string;
   ext: string;
+}
+
+function extFromMime(mime: string, fallbackExt: string): string {
+  const clean = mime.split(";")[0].trim().toLowerCase();
+  if (clean === "audio/mp4" || clean === "audio/m4a" || clean === "audio/x-m4a" || clean === "audio/aac") {
+    return "m4a";
+  }
+  if (clean === "audio/ogg" || clean === "application/ogg" || clean === "audio/opus") {
+    return "ogg";
+  }
+  if (clean === "audio/webm" || clean === "video/webm") {
+    return "webm";
+  }
+  if (clean === "audio/wav" || clean === "audio/x-wav" || clean === "audio/wave") {
+    return "wav";
+  }
+  if (clean === "audio/mpeg" || clean === "audio/mp3") {
+    return "mp3";
+  }
+  return fallbackExt;
 }
 
 function pickSupportedAudioFormat(): SupportedAudioFormat | null {
@@ -62,6 +85,7 @@ export function useCopilotVoice({
   onInfo,
 }: UseCopilotVoiceOptions) {
   const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
+  const [voiceLanguage, setVoiceLanguageState] = useState<VoiceLanguage>("auto");
   const [voiceStatus, setVoiceStatus] = useState<PromptVoiceStatus>("idle");
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [speakingMsgId, setSpeakingMsgId] = useState<string | null>(null);
@@ -69,6 +93,9 @@ export function useCopilotVoice({
 
   const voiceModeRef = useRef(voiceModeEnabled);
   voiceModeRef.current = voiceModeEnabled;
+
+  const voiceLanguageRef = useRef<VoiceLanguage>(voiceLanguage);
+  voiceLanguageRef.current = voiceLanguage;
 
   const callbacksRef = useRef({ isBn, isBusy, onTranscriptReady, onError, onInfo });
   callbacksRef.current = { isBn, isBusy, onTranscriptReady, onError, onInfo };
@@ -91,9 +118,34 @@ export function useCopilotVoice({
       if (saved === "1") {
         setVoiceModeEnabled(true);
       }
+      const savedLang = localStorage.getItem(VOICE_LANG_STORAGE_KEY);
+      if (savedLang === "auto" || savedLang === "bn" || savedLang === "en") {
+        setVoiceLanguageState(savedLang);
+      }
     } catch {
       /* ignore storage access errors */
     }
+  }, []);
+
+  const setVoiceLanguage = useCallback((lang: VoiceLanguage) => {
+    setVoiceLanguageState(lang);
+    try {
+      localStorage.setItem(VOICE_LANG_STORAGE_KEY, lang);
+    } catch {
+      /* ignore storage access errors */
+    }
+  }, []);
+
+  const cycleVoiceLanguage = useCallback(() => {
+    setVoiceLanguageState((prev) => {
+      const next: VoiceLanguage = prev === "auto" ? "bn" : prev === "bn" ? "en" : "auto";
+      try {
+        localStorage.setItem(VOICE_LANG_STORAGE_KEY, next);
+      } catch {
+        /* ignore storage access errors */
+      }
+      return next;
+    });
   }, []);
 
   const cleanupMediaResources = useCallback(() => {
@@ -336,7 +388,27 @@ export function useCopilotVoice({
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            channelCount: 1,
+          },
+        });
+      } catch (constraintErr) {
+        if (
+          constraintErr instanceof Error &&
+          (constraintErr.name === "OverconstrainedError" ||
+            constraintErr.name === "ConstraintNotSatisfiedError")
+        ) {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        } else {
+          throw constraintErr;
+        }
+      }
       mediaStreamRef.current = stream;
 
       const recorder = format.mimeType
@@ -358,6 +430,7 @@ export function useCopilotVoice({
         const wasDiscarded = voiceDiscardRef.current;
         const chunks = audioChunksRef.current;
         const recMime = recorder.mimeType || format.mimeType || "audio/webm";
+        const resolvedExt = extFromMime(recMime, format.ext);
         audioChunksRef.current = [];
         cleanupMediaResources();
 
@@ -386,8 +459,8 @@ export function useCopilotVoice({
         try {
           const res = await transcribeVoiceAudio(
             blob,
-            `voice.${format.ext}`,
-            "auto",
+            `voice.${resolvedExt}`,
+            voiceLanguageRef.current,
             abortCtrl.signal
           );
           const transcript = (res.text || "").trim();
@@ -459,11 +532,14 @@ export function useCopilotVoice({
 
   return {
     voiceModeEnabled,
+    voiceLanguage,
     voiceStatus,
     recordingSeconds,
     speakingMsgId,
     ttsLoadingMsgId,
     toggleVoiceMode,
+    setVoiceLanguage,
+    cycleVoiceLanguage,
     startRecording,
     stopRecording,
     cancelRecording,

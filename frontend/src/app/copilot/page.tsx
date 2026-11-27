@@ -42,6 +42,7 @@ import {
   ExternalLink,
   FileText,
   History,
+  Languages,
   Loader2,
   MessageSquarePlus,
   MoreVertical,
@@ -508,11 +509,13 @@ export default function CopilotPage() {
 
   const {
     voiceModeEnabled,
+    voiceLanguage,
     voiceStatus,
     recordingSeconds,
     speakingMsgId,
     ttsLoadingMsgId,
     toggleVoiceMode,
+    cycleVoiceLanguage,
     startRecording,
     stopRecording,
     cancelRecording,
@@ -1316,11 +1319,44 @@ export default function CopilotPage() {
           </button>
         </div>
 
-        {/* ─── Top Bar: Turn quota ─── */}
-        <header className="shrink-0 flex items-center justify-end gap-2 pb-1.5 sm:pb-2">
+        {/* ─── Top Bar: Voice Controls & Turn quota ─── */}
+        <header className="shrink-0 flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 pl-24 md:pl-0 pb-1.5 sm:pb-2">
 
-          {/* Right Side: Voice Mode Toggle & Session Turn Quota Badge */}
-          <div className="flex items-center gap-2 ml-auto">
+          {/* Right Side: Voice Language, Voice Mode Toggle & Session Turn Quota Badge */}
+          <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2 ml-auto">
+            <button
+              type="button"
+              onClick={cycleVoiceLanguage}
+              title={
+                voiceLanguage === "bn"
+                  ? isBn
+                    ? "ভয়েস ভাষা: বাংলা ও বাংলিশ (পরিবর্তন করতে ক্লিক করুন)"
+                    : "Voice input: Bangla & Banglish priority (click to switch)"
+                  : voiceLanguage === "en"
+                  ? isBn
+                    ? "ভয়েস ভাষা: ইংরেজি (পরিবর্তন করতে ক্লিক করুন)"
+                    : "Voice input: English priority (click to switch)"
+                  : isBn
+                  ? "ভয়েস ভাষা: অটো — বাংলা, বাংলিশ ও ইংরেজি (পরিবর্তন করতে ক্লিক করুন)"
+                  : "Voice input: Auto — Bangla, Banglish & English (click to switch)"
+              }
+              aria-label="Switch voice input language"
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium border bg-(--bg-card) border-(--text-primary)/10 text-(--text-muted) hover:text-(--text-primary) transition-all cursor-pointer"
+            >
+              <Languages className="w-3 h-3 shrink-0" />
+              <span>
+                {voiceLanguage === "bn"
+                  ? isBn
+                    ? "বাংলা"
+                    : "Bangla"
+                  : voiceLanguage === "en"
+                  ? "EN"
+                  : isBn
+                  ? "অটো"
+                  : "Auto"}
+              </span>
+            </button>
+
             <button
               type="button"
               onClick={toggleVoiceMode}
@@ -1803,8 +1839,20 @@ export default function CopilotPage() {
               {voiceModeEnabled && (
                 <p className="text-[11px] text-(--text-muted) text-center px-2">
                   {isBn
-                    ? "ভয়েস মোড চালু: মাইকে বললেই প্রশ্ন পাঠানো হবে এবং উত্তর শোনানো হবে।"
-                    : "Voice Mode active: mic recordings auto-send and replies read aloud."}
+                    ? `ভয়েস মোড চালু (${
+                        voiceLanguage === "bn"
+                          ? "বাংলা ও বাংলিশ"
+                          : voiceLanguage === "en"
+                          ? "ইংরেজি"
+                          : "অটো: বাংলা, বাংলিশ ও ইংরেজি"
+                      }): বললেই প্রশ্ন পাঠানো হবে ও উত্তর শোনানো হবে।`
+                    : `Voice Mode active (${
+                        voiceLanguage === "bn"
+                          ? "Bangla & Banglish"
+                          : voiceLanguage === "en"
+                          ? "English"
+                          : "Auto: Bangla, Banglish & English"
+                      }): recordings auto-send and replies read aloud.`}
                 </p>
               )}
             </div>
